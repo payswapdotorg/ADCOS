@@ -548,6 +548,31 @@ def main() -> int:
         edit_json_file(root, "spec/schemas/protocol.json", mutate)
     tree_case(results, "compact-codec-prematurely-normative-rejected", premature_codec_status, 1, "SCHEMA-07")
 
+    # WORK-004 negatives (SCHEMA-08: identity-profile registry semantics).
+    def unknown_derivation(root: Path) -> None:
+        def mutate(value: Dict[str, Any]) -> None:
+            value["entries"]["identity.sha256-ed25519.v1"]["derivation"] = "sha999-unknown-v1"
+        edit_registry(root, "identity-profile-registry.json", mutate)
+    tree_case(results, "identity-profile-unknown-derivation-rejected", unknown_derivation, 1, "SCHEMA-08")
+
+    def malformed_algorithm(root: Path) -> None:
+        def mutate(value: Dict[str, Any]) -> None:
+            value["entries"]["identity.sha256-ed25519.v1"]["signing_algorithms"] = ["Ed25519!"]
+        edit_registry(root, "identity-profile-registry.json", mutate)
+    tree_case(results, "identity-profile-algorithm-grammar-rejected", malformed_algorithm, 1, "SCHEMA-08")
+
+    def empty_roles(root: Path) -> None:
+        def mutate(value: Dict[str, Any]) -> None:
+            value["entries"]["identity.sha256-ed25519.v1"]["key_roles"] = []
+        edit_registry(root, "identity-profile-registry.json", mutate)
+    tree_case(results, "identity-profile-empty-roles-rejected", empty_roles, 1, "SCHEMA-08")
+
+    def missing_unknown_policy(root: Path) -> None:
+        def mutate(value: Dict[str, Any]) -> None:
+            del value["unknown_id_policy"]
+        edit_registry(root, "identity-profile-registry.json", mutate)
+    tree_case(results, "identity-profile-unknown-policy-required", missing_unknown_policy, 1, "SCHEMA-06")
+
     # Output.
     print("ADCOS schema/registry compatibility self-test")
     print("=" * 72)

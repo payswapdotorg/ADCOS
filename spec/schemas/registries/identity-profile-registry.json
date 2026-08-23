@@ -1,0 +1,54 @@
+{
+  "algorithm_id_grammar": "^alg(\\.[a-z0-9][a-z0-9-]*)+$",
+  "architecture_version": "1.0",
+  "derivation_rules": {
+    "sha256-domain-v1": {
+      "description": "NodeID digest = SHA-256(domain_separation || 0x00 || profile_id UTF-8 || 0x00 || identity public key bytes). The identity public key is the STABLE identity-role public material; rotating operational keys never participate in derivation. Domain separation binds the digest to this derivation rule and profile.",
+      "domain_separation": "ADCOS-NODEID-v1"
+    }
+  },
+  "description": "Registry of ADCOS identity profiles (WORK-004). A profile is explicit metadata: NodeID derivation rule, key roles, and supported signing algorithms — never a hidden implementation convention. Cryptographic providers are replaceable and declare the algorithms they implement; the identity core never branches on a specific algorithm. NodeID is derived ONLY from the stable identity-role public key (and the profile), so operational-key rotation and revocation never change it (LOCK-005, LOCK-015).",
+  "entries": {
+    "identity.sha256-ecdsa-p256.v1": {
+      "derivation": "sha256-domain-v1",
+      "description": "ECDSA P-256 (SECP256R1) profile. Requires a provider implementing alg.ecdsa-p256 (e.g. a hardware-backed or library provider in the reference implementation); the identity core only consumes the declared identifiers.",
+      "key_roles": [
+        "identity",
+        "operational"
+      ],
+      "signing_algorithms": [
+        "alg.ecdsa-p256"
+      ],
+      "status": "active"
+    },
+    "identity.sha256-ed25519.v1": {
+      "derivation": "sha256-domain-v1",
+      "description": "Ed25519 profile. Requires a provider implementing alg.ed25519; the identity core only consumes the declared identifiers.",
+      "key_roles": [
+        "identity",
+        "operational"
+      ],
+      "signing_algorithms": [
+        "alg.ed25519"
+      ],
+      "status": "active"
+    },
+    "identity.sha256-hmac-dev.v1": {
+      "derivation": "sha256-domain-v1",
+      "description": "DEVELOPMENT/TEST-ONLY profile using HMAC-SHA256 (a standard symmetric primitive) so the complete identity lifecycle can be exercised deterministically and offline with zero third-party dependencies. Because HMAC is symmetric, the public material stored for its credentials is a SHA-256 key fingerprint, and verification requires store-held key material; it MUST NOT be used where external public verification is required. Real deployments use the asymmetric profiles above with appropriate providers.",
+      "key_roles": [
+        "identity",
+        "operational"
+      ],
+      "signing_algorithms": [
+        "alg.hmac-sha256.dev"
+      ],
+      "status": "active"
+    }
+  },
+  "id_grammar": "^identity(\\.[a-z0-9][a-z0-9-]*){2,}$",
+  "key_role_grammar": "^[a-z][a-z0-9-]*$",
+  "registry": "adcos.identity-profile-registry",
+  "schema_version": "1.0",
+  "unknown_id_policy": "A well-formed identifier matching the id_grammar but not present in this registry is UNKNOWN, not invalid. Unknown profile identifiers must be preserved verbatim in metadata and error reporting, must never be coerced to a registered profile, and must fail closed when used for identity operations. A malformed identifier (not matching the id_grammar) is INVALID and is rejected by parsers."
+}

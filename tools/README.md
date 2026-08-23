@@ -101,7 +101,9 @@ Exit codes: `0` all blocking checks passed; `1` at least one failed. Also export
 | `SCHEMA-04` | Technology-neutrality: domain-object IDs and core-scoped capability IDs contain no access-technology, radio-generation, standards-body, or vendor tokens (LOCK-001..003). |
 | `SCHEMA-05` | All 11 frozen nouns are registered with matching noun/ID/schema references; all 9 frozen access IDs are registered active; `schema_ref` files exist with matching `$id` and `schema_version`; no unreferenced schema files; no non-frozen core nouns. |
 | `SCHEMA-06` | Cross-registry references resolve (profile-scoped capabilities carry a resolving `profile_ref`); registries with extension surface declare `unknown_id_policy`. |
+| `SCHEMA-08` | WORK-004 identity-profile registry: entries declare a registered derivation rule (with domain separation), non-empty unique key roles matching the role grammar, and non-empty unique signing algorithms matching the algorithm grammar; registry declares both grammars and at least one derivation rule. |
 | `SCHEMA-07` | WORK-003 protocol artifact (`spec/schemas/protocol.json`): protocol version line (MAJOR.MINOR, major in known majors), envelope schema reference resolution with matching `$id`/`schema_version`, message-type grammar equals the envelope schema pattern (single source of truth), registered message types match the grammar, all frozen compatibility dispositions declared, json-debug codec normative, and the compact-deterministic-cbor codec kept **provisional** — rejecting any premature claim of a production canonicalization profile (architecture section 7). |
+| `SCHEMA-08` | WORK-004 identity-profile registry: entries declare a registered derivation rule (with domain separation), non-empty unique key roles matching the role grammar, and non-empty unique signing algorithms matching the algorithm grammar; registry declares both grammars and at least one derivation rule. |
 | `SCHEMA-07` | WORK-003 protocol artifact (`spec/schemas/protocol.json`): protocol version line (MAJOR.MINOR, major ∈ known majors), envelope schema reference resolution with matching `$id`/`schema_version`, message-type grammar equals the envelope schema pattern (single source of truth), registered message types match the grammar, all frozen compatibility dispositions declared, json-debug codec normative, and the compact-deterministic-cbor codec kept **provisional** — rejecting any premature claim of a production canonicalization profile (architecture §7). |
 
 ## schema_selftest.py — schema/registry compatibility tests (WORK-002)
@@ -180,3 +182,35 @@ Exit codes: `0` all cases pass; `1` at least one case fails.
 | `explicit-policy-and-replay-hook` | unknown-type policy explicit (reject vs forward-opaque); replay hook ALLOW/REJECT/raise handled; `ValidatedEnvelope` only from the validation path |
 
 All PRNGs are seeded; repeat runs are byte-identical.
+
+## identity_selftest.py — identity lifecycle/security tests (WORK-004)
+
+Deterministic, offline verification of the identity package against the frozen WORK-004 requirements (spec/prompts/WORK-004.md section 13). All key material is fixed TEST-ONLY bytes; all clocks are injected.
+
+```bash
+python3 tools/identity_selftest.py
+```
+
+### Case catalog
+
+| Case | Verifies |
+|---|---|
+| `identity-construction-deterministic` | same key -> same NodeID; different key -> different; malformed input rejected |
+| `nodeid-canonical-form-enforced` | one canonical text form; 14 malformed forms rejected; 200 seeded mutations never crash |
+| `nodeid-collision-resistance-smoke` | 300 seeded keys -> 300 distinct NodeIDs; profile domain separation |
+| `public-metadata-roundtrip` | serialize -> parse -> same NodeID, byte-stable; duplicate JSON keys rejected |
+| `rotation-preserves-nodeid` | gen2 active, gen1 superseded, identity key untouched, NodeID unchanged |
+| `rotation-failure-leaves-previous-active` | 50 tampered signatures + wrong-role authorization rejected; zero half-state |
+| `revocation-fails-closed-distinct-from-expiry` | no reactivation; secret selection closed; identity stable; expiry carries no revocation metadata |
+| `lifecycle-transition-matrix-fail-closed` | all 36 state pairs: 10 legal, 26 rejected; terminals accept none |
+| `algorithm-negotiation-deterministic` | sorted mutual selection; disjoint rejected; unknown profiles never coerced |
+| `provider-replaceability-no-core-branch` | fake Ed25519 provider works via declared identifiers only; provider/profile mismatch fails closed |
+| `future-profile-preserved-not-coerced` | identity.future.example-v1 is UNKNOWN, preserved verbatim; explicit extension works with unchanged consumer API |
+| `secret-isolation-across-public-surfaces` | secret marker absent from metadata, envelope, compact bytes, reprs, exceptions; store is the only secret path |
+| `envelope-integration-via-work003` | identity metadata travels through the WORK-003 envelope (unregistered type forwarded opaquely); byte-deterministic |
+| `nodeid-access-independent` | NodeID byte-identical across 5G / Wi-Fi / future-IMT / unknown access contexts |
+| `negative-security-cases` | duplicate references, duplicate-active provisioning, expired activation, unknown profiles, malformed metadata all fail closed |
+| `serialized-metadata-fuzz` | 300 seeded mutations fail safely |
+| `destroy-explicit-and-historical-reference` | superseded generations remain queryable; explicit destruction revokes all and blocks provisioning |
+| `rotation-expired-credential-rejected` | REGRESSION: an ACTIVE credential expired at the rotation instant is not rotatable; an expired identity credential cannot authorize rotation; state unchanged |
+| `rotation-commit-atomic-fault-injection` | REGRESSION: injected storage-commit failures (first-commit scenario + later-commit scenario) and invalid batches leave the previous generation ACTIVE with no leaked records or secrets |

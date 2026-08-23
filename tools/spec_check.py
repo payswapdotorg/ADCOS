@@ -71,6 +71,18 @@ GOVERNANCE_ARTIFACTS: List[str] = [
     "tools/schema_check.py",
     "tools/schema_selftest.py",
     "tools/envelope_selftest.py",
+    "tools/identity_selftest.py",
+    "identity/__init__.py",
+    "identity/node_id.py",
+    "identity/profiles.py",
+    "identity/lifecycle.py",
+    "identity/credentials.py",
+    "identity/revocation.py",
+    "identity/store.py",
+    "identity/provider.py",
+    "identity/model.py",
+    "identity/serialization.py",
+    "spec/schemas/registries/identity-profile-registry.json",
     "protocol/__init__.py",
     "protocol/envelope.py",
     "protocol/versioning.py",
@@ -358,6 +370,7 @@ def check_files_02(report: Report) -> None:
             "schema_check.py",
             "schema_selftest.py",
             "envelope_selftest.py",
+            "identity_selftest.py",
         ):
             if required_tool not in workflow_text:
                 problems.append("CI workflow does not invoke tools/%s" % required_tool)
