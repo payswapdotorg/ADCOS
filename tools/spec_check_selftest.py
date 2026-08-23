@@ -70,7 +70,7 @@ Architecture Version: 1.0
 Everything else is ordinary prose.
 """
 
-PROMPT_WITH_REFERENCE = """# WORK-002 — reference fixture
+PROMPT_WITH_REFERENCE = """# WORK-000 — reference fixture
 
 This prompt references the governing architecture in ordinary prose:
 implement this Work Item against Architecture Version 1.0 and consult
@@ -198,8 +198,11 @@ CASES: List[Case] = [
     {
         # Positive: an ordinary prose reference in a new prompt document —
         # the exact usage future Z.ai prompts need — must be allowed.
+        # Fixture uses WORK-000: it matches the prompt naming convention but
+        # can never collide with a real handoff prompt (the backlog is frozen
+        # at WORK-001..WORK-040, gap-free).
         "name": "architecture-version-reference-in-new-prompt",
-        "ops": [("create", "spec/prompts/WORK-002.md", PROMPT_WITH_REFERENCE)],
+        "ops": [("create", "spec/prompts/WORK-000.md", PROMPT_WITH_REFERENCE)],
         "expect_exit": 0,
         "expect_check": None,
     },

@@ -68,6 +68,8 @@ GOVERNANCE_ARTIFACTS: List[str] = [
     "spec/acr/README.md",
     "tools/spec_check.py",
     "tools/spec_check_selftest.py",
+    "tools/schema_check.py",
+    "tools/schema_selftest.py",
     "tools/README.md",
     ".github/workflows/spec-check.yml",
     ".github/PULL_REQUEST_TEMPLATE.md",
@@ -334,8 +336,16 @@ def check_files_02(report: Report) -> None:
         if not (REPO_ROOT / artifact).is_file():
             problems.append("missing governance artifact: %s" % artifact)
     workflow = REPO_ROOT / ".github" / "workflows" / "spec-check.yml"
-    if workflow.is_file() and "spec_check.py" not in read(workflow):
-        problems.append("CI workflow does not invoke tools/spec_check.py")
+    if workflow.is_file():
+        workflow_text = read(workflow)
+        for required_tool in (
+            "spec_check.py",
+            "spec_check_selftest.py",
+            "schema_check.py",
+            "schema_selftest.py",
+        ):
+            if required_tool not in workflow_text:
+                problems.append("CI workflow does not invoke tools/%s" % required_tool)
     if problems:
         report.record("FAIL", "FILES-02", problems)
     else:
