@@ -20,3 +20,22 @@ The architecture is deliberately modeled after a strict architect → implemente
 **Architecture first. Code second.**
 
 Z.ai is the implementation agent. The Architect is the authority over architecture and acceptance. A successful CI run does not make an architecture-violating implementation acceptable.
+
+## Specification governance
+
+WORK-001 established the governance layer around the frozen specification:
+
+- `spec/governance.md` — document registry, naming conventions, versioning policy (architecture / protocol / schema / implementation versions are distinct lines), terminology ownership, machine-readable schema locations
+- `spec/change-control.md` — Architecture Change Request (ACR) process; ACR records live in `spec/acr/`
+- `spec/workflow.md` — Work Item / PR review rules and the Architect acceptance gate
+- `spec/schemas/` — canonical location for future machine-readable schemas and registries (content begins with WORK-002)
+
+The frozen documents change only through the ACR process. A normal implementation PR is never allowed to silently become an architecture change.
+
+Run the deterministic specification consistency checks (offline, zero dependencies):
+
+```bash
+python3 tools/spec_check.py
+```
+
+CI runs the same checks on every push and pull request.
