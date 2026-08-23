@@ -1,0 +1,26 @@
+{
+  "description": "Malformed message_type (violates the registered grammar); rejected as malformed.",
+  "envelope": {
+    "evidence": [],
+    "expires_at": "2030-01-01T01:00:00Z",
+    "extensions": {},
+    "issued_at": "2030-01-01T00:00:00Z",
+    "message_id": "msg-0001",
+    "message_type": "Not A Type",
+    "payload": {},
+    "protocol": "adcos",
+    "sender": "node:alpha",
+    "signature": "opaque-signature-material",
+    "version": 1
+  },
+  "expect": {
+    "accepted": false,
+    "classification": "rejected_malformed",
+    "policy": {
+      "unknown_type": "forward-opaque"
+    },
+    "validation_time": "2030-01-01T00:00:00Z"
+  },
+  "name": "malformed-message-type",
+  "status": "provisional"
+}

@@ -1,0 +1,31 @@
+{
+  "description": "Typical expired message rejected at the validation time.",
+  "envelope": {
+    "evidence": [],
+    "expires_at": "2029-01-02T00:00:00Z",
+    "extensions": {},
+    "issued_at": "2029-01-01T00:00:00Z",
+    "message_id": "msg-0001",
+    "message_type": "capability.advertise",
+    "payload": {},
+    "protocol": "adcos",
+    "sender": "node:alpha",
+    "signature": "opaque-signature-material",
+    "version": 1
+  },
+  "expect": {
+    "accepted": false,
+    "classification": "rejected_temporal",
+    "policy": {
+      "unknown_type": "reject"
+    },
+    "validation_time": "2030-01-01T00:00:00Z"
+  },
+  "expected": {
+    "canonical_cbor_hex": "ab6673656e6465726a6e6f64653a616c706861677061796c6f6164a06776657273696f6e016865766964656e6365806870726f746f636f6c656164636f73696973737565645f617474323032392d30312d30315430303a30303a30305a697369676e617475726578196f70617175652d7369676e61747572652d6d6174657269616c6a657870697265735f617474323032392d30312d30325430303a30303a30305a6a657874656e73696f6e73a06a6d6573736167655f6964686d73672d303030316c6d6573736167655f74797065746361706162696c6974792e616476657274697365",
+    "canonical_json": "{\"evidence\":[],\"expires_at\":\"2029-01-02T00:00:00Z\",\"extensions\":{},\"issued_at\":\"2029-01-01T00:00:00Z\",\"message_id\":\"msg-0001\",\"message_type\":\"capability.advertise\",\"payload\":{},\"protocol\":\"adcos\",\"sender\":\"node:alpha\",\"signature\":\"opaque-signature-material\",\"version\":1}",
+    "signature_input_json": "{\"evidence\":[],\"expires_at\":\"2029-01-02T00:00:00Z\",\"extensions\":{},\"issued_at\":\"2029-01-01T00:00:00Z\",\"message_id\":\"msg-0001\",\"message_type\":\"capability.advertise\",\"payload\":{},\"protocol\":\"adcos\",\"sender\":\"node:alpha\",\"version\":1}"
+  },
+  "name": "expired-message",
+  "status": "provisional"
+}
