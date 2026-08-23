@@ -483,8 +483,12 @@ def check_cross_references(report: Report, registries: Dict[str, Dict[str, Any]]
         return
 
     access_entries = access.get("entries", {})
-    for name in ("adcos.access-profile-registry", "adcos.capability-registry"):
-        if "unknown_id_policy" not in registries.get(name, {}):
+    for name in (
+        "adcos.access-profile-registry",
+        "adcos.capability-registry",
+        "adcos.identity-profile-registry",
+    ):
+        if name in registries and "unknown_id_policy" not in registries[name]:
             problems.append("%s: missing unknown_id_policy" % name)
 
     for entry_id, entry in sorted(capability.get("entries", {}).items()):
@@ -643,6 +647,87 @@ def check_protocol_artifact(report: Report, loaded: Dict[str, Tuple[Path, Any]])
         report.record("PASS", "SCHEMA-07")
 
 
+def check_identity_profiles(report: Report, registries: Dict[str, Dict[str, Any]]) -> None:
+    """SCHEMA-08: identity-profile registry (WORK-004): every profile entry
+    structurally declares a known derivation rule, non-empty unique key
+    roles matching the role grammar, and non-empty unique signing
+    algorithms matching the algorithm grammar; the registry declares the
+    grammars and at least one derivation rule."""
+    problems: List[str] = []
+    name = "adcos.identity-profile-registry"
+    registry = registries.get(name)
+    if registry is None:
+        report.record("FAIL", "SCHEMA-08", ["%s registry is missing (WORK-004)" % name])
+        return
+
+    algorithm_grammar = registry.get("algorithm_id_grammar")
+    if not isinstance(algorithm_grammar, str) or not algorithm_grammar:
+        problems.append("%s: missing algorithm_id_grammar" % name)
+    role_grammar = registry.get("key_role_grammar")
+    if not isinstance(role_grammar, str) or not role_grammar:
+        problems.append("%s: missing key_role_grammar" % name)
+    derivation_rules = registry.get("derivation_rules")
+    if not isinstance(derivation_rules, dict) or not derivation_rules:
+        problems.append("%s: derivation_rules must be a non-empty object" % name)
+    else:
+        for rule_id, rule in sorted(derivation_rules.items()):
+            if not isinstance(rule, dict) or "domain_separation" not in rule or "description" not in rule:
+                problems.append(
+                    "%s: derivation rule %r must declare domain_separation and description" % (name, rule_id)
+                )
+
+    entries = registry.get("entries", {})
+    if not isinstance(entries, dict) or not entries:
+        problems.append("%s: missing or empty entries" % name)
+    else:
+        active_seen = False
+        for profile_id, entry in sorted(entries.items()):
+            where = "%s entry %r" % (name, profile_id)
+            if not isinstance(entry, dict):
+                problems.append("%s: must be an object" % where)
+                continue
+            derivation = entry.get("derivation")
+            if not isinstance(derivation, str) or derivation not in (
+                derivation_rules if isinstance(derivation_rules, dict) else {}
+            ):
+                problems.append("%s: derivation %r is not a declared derivation rule" % (where, derivation))
+            roles = entry.get("key_roles")
+            if (
+                not isinstance(roles, list)
+                or not roles
+                or len(set(roles)) != len(roles)
+                or not all(isinstance(role, str) for role in roles)
+            ):
+                problems.append("%s: key_roles must be a non-empty list of unique strings" % where)
+            elif isinstance(role_grammar, str) and role_grammar:
+                for role in roles:
+                    if re.fullmatch(role_grammar, role) is None:
+                        problems.append("%s: key role %r does not match key_role_grammar" % (where, role))
+            algorithms = entry.get("signing_algorithms")
+            if (
+                not isinstance(algorithms, list)
+                or not algorithms
+                or len(set(algorithms)) != len(algorithms)
+                or not all(isinstance(alg, str) for alg in algorithms)
+            ):
+                problems.append("%s: signing_algorithms must be a non-empty list of unique strings" % where)
+            elif isinstance(algorithm_grammar, str) and algorithm_grammar:
+                for alg in algorithms:
+                    if re.fullmatch(algorithm_grammar, alg) is None:
+                        problems.append(
+                            "%s: algorithm %r does not match algorithm_id_grammar" % (where, alg)
+                        )
+            if entry.get("status") == "active":
+                active_seen = True
+        if not active_seen:
+            problems.append("%s: no active profile entry" % name)
+
+    if problems:
+        report.record("FAIL", "SCHEMA-08", problems)
+    else:
+        report.record("PASS", "SCHEMA-08")
+
+
 # --------------------------------------------------------------------------
 # Entry point
 # --------------------------------------------------------------------------
@@ -655,6 +740,7 @@ CHECK_TITLES: Dict[str, str] = {
     "SCHEMA-05": "Frozen-noun completeness and schema reference resolution",
     "SCHEMA-06": "Cross-registry references and unknown-ID policies",
     "SCHEMA-07": "Protocol artifact: version line, envelope reference, codec status",
+    "SCHEMA-08": "Identity-profile registry: derivation rules, key roles, algorithm grammar",
 }
 
 
@@ -701,6 +787,7 @@ def main() -> int:
         check_completeness(report, registries, loaded)
         check_cross_references(report, registries)
         check_protocol_artifact(report, loaded)
+        check_identity_profiles(report, registries)
     except (DuplicateKeyError, json.JSONDecodeError) as error:
         print("ADCOS schema/registry consistency checks")
         print("=" * 72)
