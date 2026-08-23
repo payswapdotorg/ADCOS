@@ -1,0 +1,72 @@
+{
+  "$id": "urn:adcos:schema:adapter",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "architecture_version": "1.0",
+  "description": "ADCOS Adapter object: a typed implementation boundary around a physical/logical access technology. Required properties encode the frozen MUST-expose list of spec/architecture.md §6.3. The adapter is authoritative only for the state of the technology it controls, never for ADCOS-wide state (LOCK-016, LOCK-017). Adapter runtime behavior is owned by WORK-016.",
+  "properties": {
+    "access_technology_id": {
+      "description": "Access technology/profile identifier; a registered entry of the access-profile registry, or a well-formed unknown future identifier (which consumers must preserve, not coerce).",
+      "minLength": 1,
+      "type": "string"
+    },
+    "adapter_id": {
+      "description": "Adapter instance identifier; distinct from NodeID (WORK-016).",
+      "minLength": 1,
+      "type": "string"
+    },
+    "capabilities": {
+      "description": "Capability references exposed by this adapter (capability-registry identifiers or well-formed unknown future identifiers).",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "health": {
+      "description": "Adapter health state.",
+      "type": "object"
+    },
+    "lifecycle_controls": {
+      "description": "Lifecycle control surface state (open/close/allocate/release semantics owned by WORK-016).",
+      "type": "object"
+    },
+    "link_metrics": {
+      "description": "Link metrics reported by this adapter; measurement semantics owned by WORK-026.",
+      "type": "object"
+    },
+    "resource_mapping": {
+      "description": "Mapping of technology-specific resources into the ADCOS resource model (WORK-008).",
+      "type": "object"
+    },
+    "security_state": {
+      "description": "Adapter security state.",
+      "type": "object"
+    },
+    "session_bearer_mapping": {
+      "description": "Mapping between ADCOS sessions and technology-specific bearers; generic term per architecture §25 rule 1.",
+      "type": "object"
+    },
+    "supported_profile_versions": {
+      "description": "Profile versions of the access technology this adapter supports.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "adapter_id",
+    "access_technology_id",
+    "supported_profile_versions",
+    "capabilities",
+    "link_metrics",
+    "lifecycle_controls",
+    "security_state",
+    "resource_mapping",
+    "session_bearer_mapping",
+    "health"
+  ],
+  "schema_version": "1.0",
+  "title": "ADCOS Adapter",
+  "type": "object"
+}

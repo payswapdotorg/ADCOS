@@ -1,0 +1,54 @@
+{
+  "architecture_version": "1.0",
+  "description": "Registry of ADCOS access/technology profiles. Access technologies are registry data behind the adapter boundary: a 5G profile is data here, a future 6G profile is data here, and neither is ever a core domain type (architecture §8, §10; LOCK-001..LOCK-003). No core state machine may branch on these identifiers.",
+  "entries": {
+    "access.3gpp.iab": {
+      "description": "3GPP integrated access and backhaul (IAB) access path (architecture §8).",
+      "status": "active"
+    },
+    "access.3gpp.lte.imtadvanced": {
+      "description": "3GPP LTE / IMT-Advanced access (architecture §8).",
+      "status": "active"
+    },
+    "access.3gpp.nr.imt2020": {
+      "description": "3GPP NR / IMT-2020 (5G) access profile. 5G is an adapter, never the core protocol (LOCK-002).",
+      "status": "active"
+    },
+    "access.3gpp.nr.imt2030": {
+      "description": "Reserved identifier path for a future 3GPP NR / IMT-2030 (6G) access profile, per the future-entry examples of architecture §8. This reservation registers only the stable identifier so that future registration is additive; it specifies and freezes no 6G semantics, radio behavior, or network functions. 6G enters through the same adapter boundary as every other access technology (LOCK-003).",
+      "status": "reserved"
+    },
+    "access.3gpp.sidelink": {
+      "description": "3GPP NR sidelink (direct device-to-device relay) access path (architecture §8).",
+      "status": "active"
+    },
+    "access.bluetooth": {
+      "description": "Bluetooth short-range access (architecture §8).",
+      "status": "active"
+    },
+    "access.generic.experimental": {
+      "description": "Generic profile for experimental and not-yet-registered technologies, backing the generic adapter of architecture §10.5. A technology may be tested through this profile before a dedicated profile entry is standardized.",
+      "status": "active"
+    },
+    "access.ieee.80211": {
+      "description": "IEEE 802.11 (Wi-Fi) access (architecture §8).",
+      "status": "active"
+    },
+    "access.ieee.8023": {
+      "description": "IEEE 802.3 (Ethernet) access (architecture §8).",
+      "status": "active"
+    },
+    "access.microwave": {
+      "description": "Microwave point-to-point backhaul/access (architecture §8).",
+      "status": "active"
+    },
+    "access.satellite": {
+      "description": "Satellite access/backhaul (architecture §8).",
+      "status": "active"
+    }
+  },
+  "id_grammar": "^access(\\.[a-z0-9][a-z0-9-]*)+$",
+  "registry": "adcos.access-profile-registry",
+  "schema_version": "1.0",
+  "unknown_id_policy": "A well-formed identifier matching the id_grammar but not present in this registry is UNKNOWN, not invalid. Consumers must preserve unknown identifiers, must not coerce them to any registered identifier, and may reject them only where an explicit consuming contract requires a known profile. A malformed identifier (not matching the id_grammar) is INVALID and is rejected by validators. The architecture's access.3gpp.future.unknown example (architecture §8) is realized by this classification rule rather than as a registry entry."
+}

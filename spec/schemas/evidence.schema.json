@@ -1,0 +1,45 @@
+{
+  "$id": "urn:adcos:schema:evidence",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "architecture_version": "1.0",
+  "description": "ADCOS Evidence object: a cryptographically attributable observation supporting a claim (spec/architecture.md §6.11). The evidence_type enum is the frozen §6.11 evidence-type list. A remote node's statement about another node is a claim by the reporter and is never automatically equivalent to a direct observation by the target (LOCK-008). Cryptographic protection and attestation mechanics are owned by later Work Items.",
+  "properties": {
+    "claim": {
+      "description": "Reference to the claim this evidence supports.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "evidence_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "evidence_type": {
+      "description": "Evidence provenance type; the frozen §6.11 list.",
+      "enum": [
+        "self-advertised",
+        "peer-observed",
+        "ue-observed",
+        "controller-measured",
+        "remotely-attested",
+        "external-authority-attested",
+        "historical-statistical"
+      ],
+      "type": "string"
+    },
+    "observer": {
+      "description": "Identity reference of the observer/reporter; provenance is explicit so reported claims cannot silently become authoritative facts (LOCK-008).",
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "evidence_id",
+    "evidence_type",
+    "claim",
+    "observer"
+  ],
+  "schema_version": "1.0",
+  "title": "ADCOS Evidence",
+  "type": "object"
+}

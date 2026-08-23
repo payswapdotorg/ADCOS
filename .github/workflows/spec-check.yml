@@ -13,7 +13,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      # Uses the runner's preinstalled Python 3 (both tools require only the
+      # Uses the runner's preinstalled Python 3 (all tools require only the
       # standard library and run fully offline — no package installation,
       # no network access, no external services).
       - name: Run specification consistency checks
@@ -21,3 +21,9 @@ jobs:
 
       - name: Run specification checker negative tests
         run: python3 tools/spec_check_selftest.py
+
+      - name: Run schema/registry consistency checks
+        run: python3 tools/schema_check.py
+
+      - name: Run schema/registry compatibility tests
+        run: python3 tools/schema_selftest.py

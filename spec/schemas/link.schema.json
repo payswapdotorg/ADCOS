@@ -1,0 +1,47 @@
+{
+  "$id": "urn:adcos:schema:link",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "architecture_version": "1.0",
+  "description": "ADCOS Link object: a directional or bidirectional connectivity relationship between two adapters. Link state is an independent topology dimension, never collapsed with identity, advertisement freshness, or reachability (spec/architecture.md §6.5, §11, LOCK-009). The state enum is frozen as the §11 Link dimension DOWN | DEGRADED | UP.",
+  "properties": {
+    "adapters": {
+      "description": "The two adapter references joined by this link.",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 2,
+      "type": "array"
+    },
+    "direction": {
+      "description": "Directionality of the relationship.",
+      "enum": [
+        "bidirectional",
+        "unidirectional"
+      ],
+      "type": "string"
+    },
+    "link_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "state": {
+      "description": "Link state dimension (architecture §11); independent of node identity and advertisement freshness.",
+      "enum": [
+        "down",
+        "degraded",
+        "up"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "link_id",
+    "adapters",
+    "direction",
+    "state"
+  ],
+  "schema_version": "1.0",
+  "title": "ADCOS Link",
+  "type": "object"
+}

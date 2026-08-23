@@ -1,8 +1,8 @@
 # ADCOS Specification Tooling
 
-## spec_check.py
+## spec_check.py — specification consistency checks
 
-Deterministic, offline consistency checks for the ADCOS specification repository. Introduced by WORK-001.
+Deterministic, offline consistency checks for the ADCOS specification repository. Introduced by WORK-001. See the check catalog below.
 
 ### Invocation
 
@@ -80,3 +80,59 @@ Positive cases (legitimate content must pass — proving the checker distinguish
 | `architecture-version-reference-in-new-prompt` | new `spec/prompts/WORK-002.md` referencing the architecture version in ordinary prose | exit 0 |
 
 Mutation anchors are asserted to match exactly once; if frozen text drifts, the self-test fails loudly and must be updated deliberately. Output is fully deterministic (temporary paths are never printed).
+
+## schema_check.py — schema/registry consistency checks (WORK-002)
+
+Deterministic, offline validation of the machine-readable vocabulary/registry layer under `spec/schemas/`. Introduced by WORK-002. Zero third-party dependencies; the built-in validator covers the JSON Schema subset used by the ADCOS schema files (type, properties, required, additionalProperties, items, enum, pattern, minLength, minItems).
+
+```bash
+python3 tools/schema_check.py
+```
+
+Exit codes: `0` all blocking checks passed; `1` at least one failed. Also exports reusable primitives: `canonical_json_bytes` / `load_json` (canonical formatting; duplicate-key rejection), `classify_id` (known / unknown / invalid identifier classification), and `validate_instance`.
+
+### Check catalog
+
+| ID | Verifies |
+|---|---|
+| `SCHEMA-01` | JSON artifacts parse (duplicate keys rejected) and are in canonical form (sorted keys, 2-space indent, trailing newline). |
+| `SCHEMA-02` | Every artifact carries `schema_version` and `architecture_version` in `MAJOR.MINOR` form; `architecture_version` never exceeds the Architecture Version declared in `spec/architecture.md` Status. |
+| `SCHEMA-03` | Registry entries match their registry's `id_grammar`; entries are objects with valid status (`active` \| `reserved` \| `deprecated`). |
+| `SCHEMA-04` | Technology-neutrality: domain-object IDs and core-scoped capability IDs contain no access-technology, radio-generation, standards-body, or vendor tokens (LOCK-001..003). |
+| `SCHEMA-05` | All 11 frozen nouns are registered with matching noun/ID/schema references; all 9 frozen access IDs are registered active; `schema_ref` files exist with matching `$id` and `schema_version`; no unreferenced schema files; no non-frozen core nouns. |
+| `SCHEMA-06` | Cross-registry references resolve (profile-scoped capabilities carry a resolving `profile_ref`); registries with extension surface declare `unknown_id_policy`. |
+
+## schema_selftest.py — schema/registry compatibility tests (WORK-002)
+
+Deterministic, offline compatibility tests covering the frozen WORK-002 compatibility requirements (`spec/prompts/WORK-002.md` §8): known entries validate; additive entries (access, core capability, profile-scoped capability) are accepted without invalidating existing entries; unknown well-formed identifiers are tolerated, preserved, and never coerced; malformed identifiers are rejected distinctly; future profiles require no core change; version metadata is validated consistently. Tree-mutating cases run against temporary copies; no repository file is ever modified.
+
+```bash
+python3 tools/schema_selftest.py
+```
+
+Exit codes: `0` all cases pass; `1` at least one case fails.
+
+### Case catalog
+
+| Case | Verifies |
+|---|---|
+| `baseline-unmutated-tree` | control — unmodified tree passes |
+| `golden-fixtures-validate-known-entries` | valid instances of all 11 domain-object schemas validate; registered IDs classify as known (compatibility 1) |
+| `invalid-instances-rejected` | missing-required, wrong-type, enum, pattern, and case-sensitivity violations are all rejected |
+| `unknown-distinct-from-malformed` | well-formed unregistered IDs are UNKNOWN; malformed IDs are INVALID (compatibility 5) |
+| `unknown-identifiers-not-coerced` | near-miss IDs stay UNKNOWN, never coerced to registered IDs (compatibility 4) |
+| `additive-access-entry-accepted` | new access profile entry accepted, existing entries unaffected (compatibility 2) |
+| `additive-core-capability-accepted` | new core capability entry accepted (compatibility 2) |
+| `additive-profile-capability-resolves` | profile-scoped capability with resolving `profile_ref` accepted |
+| `profile-capability-unresolved-ref-rejected` | non-resolving `profile_ref` rejected (`SCHEMA-06`) |
+| `future-profile-added-without-core-change` | future IMT-style profile added with domain registry and all schemas byte-identical (compatibility 6+7) |
+| `malformed-registry-id-rejected` | malformed registry entry ID rejected (`SCHEMA-03`) |
+| `core-id-technology-token-rejected` | technology token in a core ID rejected (`SCHEMA-04`) |
+| `extra-core-noun-rejected` | silently adding a non-frozen core noun rejected (`SCHEMA-05`) |
+| `malformed-schema-version-rejected` | non-`MAJOR.MINOR` `schema_version` rejected (`SCHEMA-02`) (compatibility 8) |
+| `future-architecture-version-rejected` | `architecture_version` above the declared Architecture Version rejected (`SCHEMA-02`) (compatibility 8) |
+| `registry-schema-version-mismatch-rejected` | registry/schema version mismatch rejected (`SCHEMA-05`) (compatibility 8) |
+| `non-canonical-formatting-rejected` | non-canonical JSON formatting rejected (`SCHEMA-01`) |
+| `duplicate-json-keys-rejected` | duplicate JSON object keys rejected (`SCHEMA-01`) |
+
+Output is fully deterministic (temporary paths are never printed).

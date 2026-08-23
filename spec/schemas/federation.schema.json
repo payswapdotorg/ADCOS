@@ -1,0 +1,69 @@
+{
+  "$id": "urn:adcos:schema:federation",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "architecture_version": "1.0",
+  "description": "ADCOS Federation object: a typed relationship between administrative domains allowing selected capabilities and services to be shared (spec/architecture.md §6.10). Required properties encode the federation-relationship specification list of §21. Federation is not equivalent to trust of every node in a peer domain: trust is scoped to explicitly granted capabilities and policies. Lifecycle and inter-domain protocol behavior are owned by WORK-015.",
+  "properties": {
+    "audit_requirements": {
+      "type": "object"
+    },
+    "federation_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "peer_identities": {
+      "description": "Identities of the peering domains.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "resource_exposure": {
+      "description": "Which resources are exposed across the federation boundary.",
+      "type": "object"
+    },
+    "revocation_semantics": {
+      "description": "How federation trust can be revoked; removal must not require deleting local state (WORK-015).",
+      "type": "object"
+    },
+    "route_policy": {
+      "description": "Route import/export policy.",
+      "type": "object"
+    },
+    "service_exposure": {
+      "description": "Which services are exposed across the federation boundary.",
+      "type": "object"
+    },
+    "settlement_policy": {
+      "description": "Economic settlement policy; deliberately opaque here — billing/token systems must not be imported into routing semantics (architecture §17).",
+      "type": "object"
+    },
+    "shared_capabilities": {
+      "description": "Capability identifiers shared across the federation boundary.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "trust_policy": {
+      "description": "Scoped trust policy for this relationship.",
+      "type": "object"
+    }
+  },
+  "required": [
+    "federation_id",
+    "peer_identities",
+    "trust_policy",
+    "shared_capabilities",
+    "route_policy",
+    "service_exposure",
+    "resource_exposure",
+    "settlement_policy",
+    "audit_requirements",
+    "revocation_semantics"
+  ],
+  "schema_version": "1.0",
+  "title": "ADCOS Federation",
+  "type": "object"
+}
