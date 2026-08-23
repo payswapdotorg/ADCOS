@@ -151,10 +151,12 @@ def authorize_rotation(
     *,
     provider: Optional[SignatureProvider] = None,
 ) -> bytes:
+    """Build a valid authorization signature for rotating ``role`` at
+    ``rotated_at`` (the current generation is read AT that instant)."""
     provider = provider or service._provider
     from identity.model import _require_active
 
-    current = _require_active(store.list_records(), node_id, role, now="1970-01-01T00:00:00Z")
+    current = _require_active(store.list_records(), node_id, role, now=rotated_at)
     statement = service.rotation_statement(
         node_id, role, current.key_version, current.key_version + 1,
         provider.public_material(new_secret), rotated_at,
@@ -866,6 +868,284 @@ def case_destroy_and_history(results: List[Tuple[str, bool, str]]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Correction-cycle-1 regressions: expired-credential authorization and
+# commit-time fault injection (storage atomicity)
+# ---------------------------------------------------------------------------
+
+
+class CommitFailingStore(InMemoryCredentialStore):
+    """Fault-injection wrapper: raises RuntimeError at the Nth commit_batch
+    call (N=1 fails the first commit). Records and secrets remain fully
+    inspectable through the inherited read APIs."""
+
+    def __init__(self, fail_on_commit: int) -> None:
+        super().__init__()
+        self._fail_on_commit = fail_on_commit
+        self.commit_calls = 0
+
+    def commit_batch(self, batch) -> None:
+        self.commit_calls += 1
+        if self.commit_calls == self._fail_on_commit:
+            raise RuntimeError(
+                "injected storage failure at commit #%d" % self._fail_on_commit
+            )
+        return super().commit_batch(batch)
+
+
+def case_rotation_expired_current_credential(results: List[Tuple[str, bool, str]]) -> None:
+    """REGRESSION (review finding 2): an ACTIVE credential whose expires_at
+    has passed at the rotation instant must NOT be rotatable — even with a
+    perfectly valid authorization signature."""
+    profiles = ProfileSet.load_default()
+    service, store = make_service()
+    profile = profiles.get("identity.sha256-hmac-dev.v1")
+    ident = NodeIdentity.create(profile, service._provider.public_material(IDENTITY_SECRET), NOW)
+    identity_ref = service.provision(ident, KeyRole.IDENTITY, IDENTITY_SECRET, now=NOW)
+    service.activate(identity_ref, now=NOW)
+    # Operational credential ACTIVE but expiring before the rotation time.
+    op_ref = service.provision(
+        ident, KeyRole.OPERATIONAL, OPERATIONAL_SECRET_1, now=NOW,
+        expires_at="2030-01-01T06:00:00Z",
+    )
+    service.activate(op_ref, now=NOW)
+    rotation_time = "2030-01-01T12:00:00Z"  # after expiry
+    # A signature built as-if the credential were still usable.
+    statement = service.rotation_statement(
+        ident.node_id, KeyRole.OPERATIONAL, 1, 2,
+        service._provider.public_material(OPERATIONAL_SECRET_2), rotation_time,
+    )
+    authorization = service._provider.sign(store, identity_ref, statement)
+    failures: List[str] = []
+    try:
+        service.rotate(
+            identity_ref, node_id=ident.node_id, role=KeyRole.OPERATIONAL,
+            new_secret=OPERATIONAL_SECRET_2, authorization=authorization,
+            rotated_at=rotation_time,
+        )
+        failures.append("rotation with expired current credential accepted")
+    except IdentityError as error:
+        if error.code != "expired":
+            failures.append("wrong error code: %s (%s)" % (error.code, error.detail))
+    # State must be unchanged: no gen-2 record, no gen-2 secret, gen-1 still ACTIVE.
+    records = service.records_for(ident.node_id)
+    versions = sorted(r.key_version for r in records if r.role == KeyRole.OPERATIONAL)
+    if versions != [1]:
+        failures.append("operational generations mutated: %r" % versions)
+    op_record = store.get_record(op_ref)
+    if op_record.status is not LifecycleState.ACTIVE:
+        failures.append("gen-1 no longer ACTIVE: %s" % op_record.status.value)
+    if len(service.records_for(ident.node_id)) != 2:
+        failures.append("stray records leaked: %d records" % len(service.records_for(ident.node_id)))
+
+    # Also: an EXPIRED identity credential must not authorize rotation.
+    service2, store2 = make_service()
+    ident2 = NodeIdentity.create(profile, service2._provider.public_material(IDENTITY_SECRET), NOW)
+    identity_ref2 = service2.provision(
+        ident2, KeyRole.IDENTITY, IDENTITY_SECRET, now=NOW, expires_at="2030-01-01T06:00:00Z"
+    )
+    service2.activate(identity_ref2, now=NOW)
+    op_ref2 = service2.provision(ident2, KeyRole.OPERATIONAL, OPERATIONAL_SECRET_1, now=NOW)
+    service2.activate(op_ref2, now=NOW)
+    statement2 = service2.rotation_statement(
+        ident2.node_id, KeyRole.OPERATIONAL, 1, 2,
+        service2._provider.public_material(OPERATIONAL_SECRET_2), rotation_time,
+    )
+    authorization2 = service2._provider.sign(store2, identity_ref2, statement2)
+    try:
+        service2.rotate(
+            identity_ref2, node_id=ident2.node_id, role=KeyRole.OPERATIONAL,
+            new_secret=OPERATIONAL_SECRET_2, authorization=authorization2,
+            rotated_at=rotation_time,
+        )
+        failures.append("expired identity credential authorized rotation")
+    except IdentityError as error:
+        if error.code != "authorization":
+            failures.append("wrong error for expired authorizer: %s" % error.code)
+    results.append(
+        (
+            "rotation-expired-credential-rejected",
+            not failures,
+            "expired current credential and expired identity authorizer both "
+            "fail closed; state unchanged" if not failures else failures[0],
+        )
+    )
+
+
+def case_rotation_commit_fault_injection(results: List[Tuple[str, bool, str]]) -> None:
+    """REGRESSION (review finding 1): the rotation's storage commit is a
+    single atomic transaction. Inject a commit failure and prove the old
+    credential remains ACTIVE, with NO new record and NO new secret
+    leaked anywhere in the store."""
+    profiles = ProfileSet.load_default()
+    failures: List[str] = []
+
+    def bootstrap(fail_on: int):
+        store = CommitFailingStore(fail_on_commit=fail_on)
+        service = IdentityService(store=store, provider=DevHmacSha256Provider())
+        profile = profiles.get("identity.sha256-hmac-dev.v1")
+        ident = NodeIdentity.create(
+            profile, service._provider.public_material(IDENTITY_SECRET), NOW
+        )
+        identity_ref = service.provision(ident, KeyRole.IDENTITY, IDENTITY_SECRET, now=NOW)
+        service.activate(identity_ref, now=NOW)
+        op_ref = service.provision(ident, KeyRole.OPERATIONAL, OPERATIONAL_SECRET_1, now=NOW)
+        service.activate(op_ref, now=NOW)
+        return store, service, ident, identity_ref, op_ref
+
+    def try_rotate(service, identity_ref, ident, *, generation: int, secret: bytes, at: str):
+        current = next(
+            r for r in service.records_for(ident.node_id)
+            if r.role == KeyRole.OPERATIONAL and r.status is LifecycleState.ACTIVE
+        )
+        statement = service.rotation_statement(
+            ident.node_id, KeyRole.OPERATIONAL, generation, generation + 1,
+            service._provider.public_material(secret), at,
+        )
+        authorization = service._provider.sign(service._store, identity_ref, statement)
+        service.rotate(
+            identity_ref, node_id=ident.node_id, role=KeyRole.OPERATIONAL,
+            new_secret=secret, authorization=authorization, rotated_at=at,
+        )
+
+    # Scenario A — the rotation commit ITSELF fails (commit #1):
+    # gen-1 must remain ACTIVE with no gen-2 record/secret anywhere.
+    store, service, ident, identity_ref, op_ref = bootstrap(fail_on=1)
+    try:
+        try_rotate(service, identity_ref, ident, generation=1, secret=OPERATIONAL_SECRET_2, at="2030-01-01T01:00:00Z")
+        failures.append("scenario A: rotation succeeded despite injected commit failure")
+    except RuntimeError:
+        pass
+    op_versions = sorted(
+        r.key_version for r in service.records_for(ident.node_id)
+        if r.role == KeyRole.OPERATIONAL
+    )
+    if op_versions != [1]:
+        failures.append("scenario A: operational generations = %r" % op_versions)
+    op_record = store.get_record(op_ref)
+    if op_record.status is not LifecycleState.ACTIVE or op_record.superseded_at is not None:
+        failures.append(
+            "scenario A: gen-1 status=%s superseded_at=%r"
+            % (op_record.status.value, op_record.superseded_at)
+        )
+    gen2_reference = CredentialReference(
+        reference_id="cred:%s:%s:v2" % (ident.node_id.text, KeyRole.OPERATIONAL)
+    )
+    try:
+        store.get_secret(gen2_reference)
+        failures.append("scenario A: gen-2 secret leaked")
+    except Exception:
+        pass
+    try:
+        store.get_record(gen2_reference)
+        failures.append("scenario A: gen-2 record retrievable")
+    except KeyError:
+        pass
+
+    # Scenario B — a LATER commit fails: rotation 1 succeeds (gen-2 ACTIVE),
+    # then rotation 2's commit (commit #2) fails and must leave the fully
+    # rotated gen-2 state intact with no gen-3 leakage.
+    store, service, ident, identity_ref, op_ref = bootstrap(fail_on=2)
+    try:
+        try_rotate(service, identity_ref, ident, generation=1, secret=OPERATIONAL_SECRET_2, at="2030-01-01T01:00:00Z")
+    except Exception as error:
+        failures.append("scenario B: first rotation failed: %s" % error)
+    gen2_ref = CredentialReference(
+        reference_id="cred:%s:%s:v2" % (ident.node_id.text, KeyRole.OPERATIONAL)
+    )
+    try:
+        try_rotate(service, identity_ref, ident, generation=2, secret=b"TEST-ONLY-op-material-003", at="2030-01-01T02:00:00Z")
+        failures.append("scenario B: second rotation succeeded despite injected commit failure")
+    except RuntimeError:
+        pass
+    op_versions = sorted(
+        r.key_version for r in service.records_for(ident.node_id)
+        if r.role == KeyRole.OPERATIONAL
+    )
+    if op_versions != [1, 2]:
+        failures.append("scenario B: operational generations = %r" % op_versions)
+    gen2_record = store.get_record(gen2_ref)
+    if gen2_record.status is not LifecycleState.ACTIVE or gen2_record.superseded_at is not None:
+        failures.append(
+            "scenario B: gen-2 status=%s superseded_at=%r"
+            % (gen2_record.status.value, gen2_record.superseded_at)
+        )
+    gen3_reference = CredentialReference(
+        reference_id="cred:%s:%s:v3" % (ident.node_id.text, KeyRole.OPERATIONAL)
+    )
+    try:
+        store.get_secret(gen3_reference)
+        failures.append("scenario B: gen-3 secret leaked")
+    except Exception:
+        pass
+    try:
+        store.get_record(gen3_reference)
+        failures.append("scenario B: gen-3 record retrievable")
+    except KeyError:
+        pass
+    # Batch-internal failure atomicity: a batch whose LATER operation is
+    # invalid must apply NOTHING (no partial application).
+    store = InMemoryCredentialStore()
+    service = IdentityService(store=store, provider=DevHmacSha256Provider())
+    profile = profiles.get("identity.sha256-hmac-dev.v1")
+    ident = NodeIdentity.create(profile, service._provider.public_material(IDENTITY_SECRET), NOW)
+    identity_ref = service.provision(ident, KeyRole.IDENTITY, IDENTITY_SECRET, now=NOW)
+    service.activate(identity_ref, now=NOW)
+    op_ref = service.provision(ident, KeyRole.OPERATIONAL, OPERATIONAL_SECRET_1, now=NOW)
+    service.activate(op_ref, now=NOW)
+    from identity.store import StoreBatch
+    from identity.credentials import CredentialRecord as CR
+    from identity.model import replace as _replace
+
+    bad_new_record = CR(
+        reference=CredentialReference(reference_id="cred:atomic-test:v99"),
+        node_id=ident.node_id,
+        profile_id=profile.profile_id,
+        role=KeyRole.OPERATIONAL,
+        algorithm=op_record.algorithm if False else "alg.hmac-sha256.dev",
+        key_version=99,
+        public_material_hex=service._provider.public_material(OPERATIONAL_SECRET_2).hex(),
+        status=LifecycleState.PROVISIONED,
+        provisioned_at=NOW,
+    )
+    superseded_final = _replace(
+        store.get_record(op_ref), status=LifecycleState.SUPERSEDED, superseded_at=NOW
+    )
+    before_records = {r.reference.reference_id: r for r in store.list_records()}
+    try:
+        store.commit_batch(
+            StoreBatch(
+                records_to_add=(bad_new_record,),
+                secrets_to_add=(
+                    (bad_new_record.reference, OPERATIONAL_SECRET_2),
+                    (bad_new_record.reference, OPERATIONAL_SECRET_2),  # duplicate -> fails
+                ),
+                records_to_update=(superseded_final,),
+            )
+        )
+        failures.append("invalid batch committed")
+    except Exception:
+        pass
+    after_records = {r.reference.reference_id: r for r in store.list_records()}
+    if set(before_records) != set(after_records):
+        failures.append("invalid batch partially applied records")
+    if after_records[op_ref.reference_id].status is not LifecycleState.ACTIVE:
+        failures.append("invalid batch partially applied a transition")
+    try:
+        store.get_secret(bad_new_record.reference)
+        failures.append("invalid batch leaked a secret")
+    except Exception:
+        pass
+    results.append(
+        (
+            "rotation-commit-atomic-fault-injection",
+            not failures,
+            "injected commit failures (first-commit) and invalid batches leave "
+            "gen-1 ACTIVE with no leaked records or secrets" if not failures else failures[0],
+        )
+    )
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -889,6 +1169,8 @@ def main() -> int:
     case_negatives(results)
     case_metadata_fuzz(results)
     case_destroy_and_history(results)
+    case_rotation_expired_current_credential(results)
+    case_rotation_commit_fault_injection(results)
 
     print("ADCOS identity self-test")
     print("=" * 72)

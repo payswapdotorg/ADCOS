@@ -33,7 +33,7 @@ from .node_id import NodeID, NodeIdError, derive_node_id
 from .profiles import IdentityProfile, ProfileError, ProfileSet
 from .provider import SignatureProvider
 from .revocation import RevocationInfo
-from .store import CredentialStore, DuplicateCredentialError
+from .store import CredentialStore, DuplicateCredentialError, StoreBatch
 
 
 class IdentityError(ValueError):
@@ -304,7 +304,18 @@ class IdentityService:
                 "identity credential %s is %s; authorization fails closed"
                 % (identity_credential.reference_id, identity_record.status.value),
             )
-        current = self._require_role_credential(node_id, role)
+        if identity_record.expires_at is not None and parse_instant(
+            identity_record.expires_at
+        ) <= parse_instant(rotated_at):
+            raise IdentityError(
+                "authorization",
+                "identity credential %s expired at %s (rotation time %s); "
+                "authorization fails closed"
+                % (identity_credential.reference_id, identity_record.expires_at, rotated_at),
+            )
+        # The CURRENT role credential must be ACTIVE and unexpired at the
+        # actual rotation instant — never at a synthetic epoch timestamp.
+        current = self._require_role_credential(node_id, role, now=rotated_at)
         profile = self._profiles.get(node_id.profile_id)
         if not profile.supports_role(role):
             raise IdentityError(
@@ -354,25 +365,28 @@ class IdentityService:
         transition(current.status, LifecycleState.ROTATING)
         transition(LifecycleState.ROTATING, LifecycleState.SUPERSEDED)
         transition(new_record.status, LifecycleState.ACTIVE)
-        # Commit (deterministic references make partial-write ambiguity
-        # impossible: each step addresses distinct records).
-        self._store.put_record(new_record)
-        self._store.put_secret(new_reference, new_secret)
-        superseded = replace(
-            transition_record(self._store, current.reference, LifecycleState.ROTATING),
-        )
-        self._store.update_record(superseded)
-        superseded = replace(
-            transition_record(self._store, current.reference, LifecycleState.SUPERSEDED),
+        # Build the FINAL states of every affected record, then commit the
+        # whole rotation as ONE atomic store transaction: any failure at
+        # the storage boundary leaves the pre-rotation state untouched
+        # (old credential still ACTIVE, no new record, no new secret).
+        superseded_final = replace(
+            current,
+            status=LifecycleState.SUPERSEDED,
             superseded_at=rotated_at,
         )
-        self._store.update_record(superseded)
-        activated = replace(
-            transition_record(self._store, new_reference, LifecycleState.ACTIVE),
+        activated_final = replace(
+            new_record,
+            status=LifecycleState.ACTIVE,
             activated_at=rotated_at,
         )
-        self._store.update_record(activated)
-        return activated
+        self._store.commit_batch(
+            StoreBatch(
+                records_to_add=(new_record,),
+                secrets_to_add=((new_reference, new_secret),),
+                records_to_update=(superseded_final, activated_final),
+            )
+        )
+        return activated_final
 
     # ------------------------------------------------------------------
     # Revocation / expiry / destruction
@@ -401,13 +415,24 @@ class IdentityService:
         remain queryable (historical reference); no new credentials may
         be provisioned or rotated. This is the only operation that ends
         an identity's operability, and it is never implicit."""
-        revoked: List[CredentialReference] = []
-        for record in self._store.list_records():
-            if record.node_id == node_id and not record.status.terminal:
-                self.revoke(record.reference, reason=reason, now=now)
-                revoked.append(record.reference)
+        targets = [
+            record
+            for record in self._store.list_records()
+            if record.node_id == node_id and not record.status.terminal
+        ]
+        batch = StoreBatch(
+            records_to_update=tuple(
+                replace(
+                    record,
+                    status=LifecycleState.REVOKED,
+                    revoked=RevocationInfo(revoked_at=now, reason=reason),
+                )
+                for record in targets
+            )
+        )
+        self._store.commit_batch(batch)  # all-or-nothing destruction
         self._destroyed[node_id.text] = True
-        return revoked
+        return [record.reference for record in targets]
 
     # ------------------------------------------------------------------
     # Queries
@@ -437,12 +462,24 @@ class IdentityService:
     # Internals
     # ------------------------------------------------------------------
 
-    def _require_role_credential(self, node_id: NodeID, role: str) -> CredentialRecord:
+    def _require_role_credential(
+        self, node_id: NodeID, role: str, *, now: str
+    ) -> CredentialRecord:
+        """The ACTIVE, unexpired credential for (node, role) at ``now``.
+
+        ``now`` is the actual operation instant (e.g. the rotation time) —
+        never a synthetic epoch value, so an ACTIVE credential whose
+        expires_at has passed cannot be used for or authorize a rotation.
+        """
         try:
-            return _require_active(self._store.list_records(), node_id, role, now="1970-01-01T00:00:00Z")
+            return _require_active(self._store.list_records(), node_id, role, now=now)
         except IdentityError as error:
             if error.code == "expired":
-                raise
+                raise IdentityError(
+                    "expired",
+                    "current %s credential for %s is expired at %s; rotation fails closed"
+                    % (role, node_id.text, now),
+                ) from error
             raise IdentityError(
                 "no-active-credential",
                 "rotation requires an active %s credential for %s (%s)"

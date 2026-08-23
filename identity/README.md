@@ -40,7 +40,7 @@ identity/
   lifecycle.py      PROVISIONED/ACTIVE/ROTATING/SUPERSEDED/REVOKED/EXPIRED
   credentials.py    CredentialReference (opaque) + CredentialRecord (public metadata only)
   revocation.py     RevocationInfo (distinct from expiry)
-  store.py          CredentialStore interface + in-memory dev store (only secret holder)
+  store.py          CredentialStore interface + atomic commit_batch + dev store (only secret holder)
   provider.py       SignatureProvider abstraction + DevHmacSha256Provider (TEST-ONLY)
   model.py          NodeIdentity, IdentityService (atomic rotation, revocation, destruction)
   serialization.py  public metadata via the WORK-003 canonicalization/envelope
@@ -50,8 +50,13 @@ identity/
 
 - **Rotation is atomic and authorized**: the identity-role credential
   signs the canonical rotation statement (WORK-003 canonicalization);
-  every transition is validated before any state is persisted, so a
-  failed rotation leaves the previous credential active — no half-state.
+  every transition is validated in memory, and the whole rotation commits
+  as ONE atomic store transaction (`CredentialStore.commit_batch`) — a
+  failure at validation, authorization, OR the storage boundary leaves
+  the previous credential active with no leaked record/secret (no
+  half-state). The current role credential and the authorizing identity
+  credential are both validated against the actual rotation instant, so
+  an expired credential can neither be rotated nor authorize a rotation.
 - **Revocation ≠ expiry**: revocation is an explicit act with metadata;
   expiry is time-based. Both fail closed (no reactivation, no secret
   selection); revoked secrets are not selectable through the store.

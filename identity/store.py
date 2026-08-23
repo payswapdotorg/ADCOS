@@ -10,11 +10,28 @@ provider (WORK-004 section 8).
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
 
 from .credentials import CredentialRecord, CredentialReference
 from .lifecycle import LifecycleState
 from .revocation import RevocationInfo
+
+
+@dataclass(frozen=True)
+class StoreBatch:
+    """A batch of record/secret writes committed ATOMICALLY (all-or-nothing).
+
+    Batches are the only supported multi-write path: every write in the
+    batch is validated and applied against a single transaction, so a
+    failure at any point leaves the store exactly as it was before the
+    commit — no partially applied rotations, no leaked secrets, no
+    orphan records.
+    """
+
+    records_to_add: Tuple[CredentialRecord, ...] = ()
+    secrets_to_add: Tuple[Tuple[CredentialReference, bytes], ...] = ()
+    records_to_update: Tuple[CredentialRecord, ...] = ()
 
 
 class DuplicateCredentialError(ValueError):
@@ -58,6 +75,18 @@ class CredentialStore(ABC):
     @abstractmethod
     def update_record(self, record: CredentialRecord) -> None:
         """Persist a mutated record (lifecycle/revocation transitions)."""
+
+    @abstractmethod
+    def commit_batch(self, batch: StoreBatch) -> None:
+        """Apply a batch of writes atomically.
+
+        All-or-nothing semantics: if any write in the batch is invalid
+        (duplicate reference, unknown record, duplicate secret, malformed
+        material) or the backing provider fails, NO write from the batch
+        is persisted and the store state is exactly the pre-commit state.
+        Multi-step identity operations (rotation, destruction) MUST use
+        this primitive instead of sequences of single writes.
+        """
 
 
 class InMemoryCredentialStore(CredentialStore):
@@ -112,3 +141,40 @@ class InMemoryCredentialStore(CredentialStore):
         if key not in self._records:
             raise KeyError("unknown credential reference %r" % key)
         self._records[key] = record
+
+    def commit_batch(self, batch: StoreBatch) -> None:
+        """Transactionally apply the batch.
+
+        Validation and application happen against private working copies;
+        the live dicts are swapped only after every write succeeds, so a
+        failure at any point (including duplicates injected mid-batch)
+        leaves the store byte-identical to its pre-commit state.
+        """
+        working_records: Dict[str, CredentialRecord] = dict(self._records)
+        working_secrets: Dict[str, bytes] = dict(self._secrets)
+
+        for record in batch.records_to_add:
+            key = record.reference.reference_id
+            if key in working_records:
+                raise DuplicateCredentialError(
+                    "batch would duplicate credential reference %r" % key
+                )
+            working_records[key] = record
+        for reference, secret in batch.secrets_to_add:
+            if not isinstance(secret, (bytes, bytearray)) or not secret:
+                raise SecretMaterialError("secret material must be non-empty bytes")
+            key = reference.reference_id
+            if key in working_secrets:
+                raise DuplicateCredentialError(
+                    "batch would duplicate secret for %r" % key
+                )
+            working_secrets[key] = bytes(secret)
+        for record in batch.records_to_update:
+            key = record.reference.reference_id
+            if key not in working_records:
+                raise KeyError("batch updates unknown credential reference %r" % key)
+            working_records[key] = record
+
+        # Commit point: swap live state only after full validation.
+        self._records = working_records
+        self._secrets = working_secrets

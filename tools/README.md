@@ -212,3 +212,5 @@ python3 tools/identity_selftest.py
 | `negative-security-cases` | duplicate references, duplicate-active provisioning, expired activation, unknown profiles, malformed metadata all fail closed |
 | `serialized-metadata-fuzz` | 300 seeded mutations fail safely |
 | `destroy-explicit-and-historical-reference` | superseded generations remain queryable; explicit destruction revokes all and blocks provisioning |
+| `rotation-expired-credential-rejected` | REGRESSION: an ACTIVE credential expired at the rotation instant is not rotatable; an expired identity credential cannot authorize rotation; state unchanged |
+| `rotation-commit-atomic-fault-injection` | REGRESSION: injected storage-commit failures (first-commit scenario + later-commit scenario) and invalid batches leave the previous generation ACTIVE with no leaked records or secrets |
