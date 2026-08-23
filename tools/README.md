@@ -214,3 +214,27 @@ python3 tools/identity_selftest.py
 | `destroy-explicit-and-historical-reference` | superseded generations remain queryable; explicit destruction revokes all and blocks provisioning |
 | `rotation-expired-credential-rejected` | REGRESSION: an ACTIVE credential expired at the rotation instant is not rotatable; an expired identity credential cannot authorize rotation; state unchanged |
 | `rotation-commit-atomic-fault-injection` | REGRESSION: injected storage-commit failures (first-commit scenario + later-commit scenario) and invalid batches leave the previous generation ACTIVE with no leaked records or secrets |
+
+## capability_selftest.py — capability statement/negotiation tests (WORK-005)
+
+Deterministic, offline verification of the capabilities package against the frozen WORK-005 requirements (spec/prompts/WORK-005.md): the 20 required test cases plus serialization/envelope round-trips and seeded fuzz.
+
+```bash
+python3 tools/capability_selftest.py
+```
+
+### Case catalog
+
+| Case | Verifies (required-test numbers) |
+|---|---|
+| `capability-construction-and-schema` | canonical construction; WORK-002 capability-schema validation; deterministic signature input (1, 2) |
+| `signing-through-provider-seam` | sign/verify via the WORK-004 provider seam; distinct content -> distinct input (3) |
+| `tampered-content-rejected` | tampering parameters, provider identity, evidence references, validity, constraints, withdrawal, schema version, capability id each invalidates the signature (4, 5, 6) |
+| `expiry-and-withdrawal-rejected-in-negotiation` | expired and withdrawn statements never negotiate as usable; withdrawal distinct from expiry (7, 8) |
+| `open-world-identifier-semantics` | unknown optional ignored safely; unknown required fails explicitly; malformed rejected; future well-formed id preserved verbatim (9, 10, 11, 12) |
+| `negotiation-deterministic-matrix` | compatible negotiation succeeds; version/parameter/constraint mismatches fail deterministically with explicit reasons; tie-breaking stable under input reordering and repeat runs (13-17) |
+| `claim-not-trust-not-authority` | negotiation result exposes claims only — no trust/authorization surface; evidence stays opaque references; a signed statement about a third party is an attributable claim (18, 19) |
+| `validity-matrix-distinct-concepts` | malformed intervals fail closed; active/not-yet-valid/expired/withdrawn distinct; boundary instants exact (7, 8 + validity semantics) |
+| `serialization-and-envelope-roundtrip` | canonical round-trip byte-stable; duplicate keys rejected; WORK-003 envelope integration (registered capability.advertise type); compact codec stable (round-trip requirement) |
+| `no-duplicated-vocabulary-in-code` | the WORK-002 registry is the single vocabulary authority — no identifier literals in executable code (no-second-authority rule) |
+| `fuzzed-statements-fail-safely` | 306 mutated/garbage inputs handled without crashes (20) |
