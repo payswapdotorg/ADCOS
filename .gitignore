@@ -22,3 +22,7 @@ coverage/
 *.sqlite
 *.log
 
+
+# Python tooling (added by WORK-001: spec checker bytecode caches)
+__pycache__/
+*.pyc

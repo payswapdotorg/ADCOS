@@ -1,0 +1,23 @@
+name: spec-check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  specification-consistency:
+    name: Specification consistency checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Uses the runner's preinstalled Python 3 (both tools require only the
+      # standard library and run fully offline — no package installation,
+      # no network access, no external services).
+      - name: Run specification consistency checks
+        run: python3 tools/spec_check.py
+
+      - name: Run specification checker negative tests
+        run: python3 tools/spec_check_selftest.py
