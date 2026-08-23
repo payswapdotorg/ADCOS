@@ -70,6 +70,20 @@ GOVERNANCE_ARTIFACTS: List[str] = [
     "tools/spec_check_selftest.py",
     "tools/schema_check.py",
     "tools/schema_selftest.py",
+    "tools/envelope_selftest.py",
+    "protocol/__init__.py",
+    "protocol/envelope.py",
+    "protocol/versioning.py",
+    "protocol/validation.py",
+    "protocol/temporal.py",
+    "protocol/canonicalization.py",
+    "protocol/codec.py",
+    "protocol/codec_json.py",
+    "protocol/codec_cbor.py",
+    "protocol/signature.py",
+    "protocol/vectors.py",
+    "spec/schemas/protocol.json",
+    "spec/schemas/envelope.schema.json",
     "tools/README.md",
     ".github/workflows/spec-check.yml",
     ".github/PULL_REQUEST_TEMPLATE.md",
@@ -343,6 +357,7 @@ def check_files_02(report: Report) -> None:
             "spec_check_selftest.py",
             "schema_check.py",
             "schema_selftest.py",
+            "envelope_selftest.py",
         ):
             if required_tool not in workflow_text:
                 problems.append("CI workflow does not invoke tools/%s" % required_tool)

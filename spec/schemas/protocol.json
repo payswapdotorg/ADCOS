@@ -1,0 +1,43 @@
+{
+  "architecture_version": "1.0",
+  "artifact": "adcos.protocol",
+  "codecs": {
+    "compact-deterministic-cbor": {
+      "description": "Provisional compact codec implementing RFC 8949 core deterministic encoding (section 4.2) for the supported value subset: UTF-8 text strings, integers, booleans, null, definite-length arrays, and string-keyed definite-length maps with keys sorted per RFC 8949 section 4.2.1 (length first, then bytewise). Integers and lengths must use the shortest form per RFC 8949 section 4.2.1: the decoder rejects non-minimal argument encodings so that every accepted byte sequence uses exactly the representation the encoder emits (encode(decode(bytes)) == bytes). No tags, no floating-point numbers, no indefinite lengths, no byte strings. This is NOT the frozen production canonicalization profile: spec/architecture.md section 7 leaves the exact production canonicalization profile to later conformance work before production wire compatibility is declared.",
+      "status": "provisional"
+    },
+    "json-debug": {
+      "description": "Required human/debug encoding (spec/architecture.md section 7). Deterministic canonical JSON form: object keys sorted by UTF-16 code-unit order, minimal JSON escaping, no insignificant whitespace, UTF-8 output, integers in shortest decimal form, absent optional members omitted rather than null. Floating-point values are outside the canonical subset and fail safely. Provisional until the production canonicalization profile is frozen by later conformance work.",
+      "status": "normative"
+    }
+  },
+  "compatibility_rules": {
+    "expired_or_replayed": "reject according to validation policy",
+    "incompatible_major": "reject safely",
+    "known_additive": "parse and preserve unknown optional content according to negotiated capability",
+    "known_compatible": "parse and process",
+    "malformed": "reject safely",
+    "unknown_optional": "preserve and forward where proxying semantics permit",
+    "unknown_required": "fail safely"
+  },
+  "description": "Protocol version line and envelope compatibility semantics for the ADCOS stable protocol envelope (spec/architecture.md section 7). Established by WORK-003. The Protocol Version is an independent version line: it is not the Architecture Version, not a Schema Version, and not an Implementation Version (spec/governance.md section 3). The envelope wire contract carries the protocol major version; minor-version evolution is additive and expressed through preserved unknown optional content, never through silent field rewrites.",
+  "envelope": {
+    "schema_id": "urn:adcos:schema:envelope",
+    "schema_ref": "spec/schemas/envelope.schema.json",
+    "schema_version": "1.0"
+  },
+  "known_major_versions": [
+    1
+  ],
+  "message_type_grammar": "^[a-z][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+$",
+  "message_types": {
+    "capability.advertise": {
+      "description": "Capability advertisement message type named by spec/architecture.md section 7. Payload schema and advertisement/negotiation runtime semantics are owned by WORK-005; at the envelope level the payload is typed-opaque content.",
+      "payload_schema": null,
+      "source": "spec/architecture.md section 7 (example message type)",
+      "status": "active"
+    }
+  },
+  "protocol_version": "1.0",
+  "schema_version": "1.0"
+}

@@ -36,7 +36,7 @@ from typing import Dict, List, Optional, cast
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Tracked tree items required for the checker to be representative.
-COPY_ITEMS: List[str] = ["spec", "tools", ".github", "README.md", ".gitignore"]
+COPY_ITEMS: List[str] = ["spec", "tools", ".github", "protocol", "README.md", ".gitignore"]
 
 FAIL_LINE_RE = re.compile(r"^\[FAIL    \] (\S+)", re.MULTILINE)
 
@@ -50,7 +50,7 @@ FAIL_LINE_RE = re.compile(r"^\[FAIL    \] (\S+)", re.MULTILINE)
 #   expect_check  expected failing check id (implies expect_exit == 1)
 Case = Dict[str, object]
 
-PROMPT_WITH_STATUS_DECLARATION = """# WORK-003 — declaration fixture
+PROMPT_WITH_STATUS_DECLARATION = """# WORK-000 — declaration fixture (status form)
 
 ## Status
 
@@ -60,7 +60,7 @@ This fixture declares the architecture version in its Status section,
 which only `spec/architecture.md` may do.
 """
 
-PROMPT_WITH_FIELD_DECLARATION = """# WORK-004 — declaration fixture
+PROMPT_WITH_FIELD_DECLARATION = """# WORK-000 — declaration fixture (field form)
 
 This fixture contains an explicit declaration field outside the
 authoritative document:
@@ -146,9 +146,11 @@ CASES: List[Case] = [
     },
     {
         # A Status-section declaration in a brand-new document must fail.
+        # Fixtures use WORK-000: matching the naming convention but never a
+        # real handoff prompt (the backlog is frozen gap-free WORK-001..040).
         "name": "architecture-version-declared-in-status-of-new-doc",
         "ops": [
-            ("create", "spec/prompts/WORK-003.md", PROMPT_WITH_STATUS_DECLARATION)
+            ("create", "spec/prompts/WORK-000.md", PROMPT_WITH_STATUS_DECLARATION)
         ],
         "expect_exit": 1,
         "expect_check": "VERS-01",
@@ -157,7 +159,7 @@ CASES: List[Case] = [
         # An explicit declaration field must fail, even outside Status.
         "name": "architecture-version-declaration-field-in-new-doc",
         "ops": [
-            ("create", "spec/prompts/WORK-004.md", PROMPT_WITH_FIELD_DECLARATION)
+            ("create", "spec/prompts/WORK-000.md", PROMPT_WITH_FIELD_DECLARATION)
         ],
         "expect_exit": 1,
         "expect_check": "VERS-01",

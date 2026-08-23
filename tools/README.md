@@ -101,6 +101,8 @@ Exit codes: `0` all blocking checks passed; `1` at least one failed. Also export
 | `SCHEMA-04` | Technology-neutrality: domain-object IDs and core-scoped capability IDs contain no access-technology, radio-generation, standards-body, or vendor tokens (LOCK-001..003). |
 | `SCHEMA-05` | All 11 frozen nouns are registered with matching noun/ID/schema references; all 9 frozen access IDs are registered active; `schema_ref` files exist with matching `$id` and `schema_version`; no unreferenced schema files; no non-frozen core nouns. |
 | `SCHEMA-06` | Cross-registry references resolve (profile-scoped capabilities carry a resolving `profile_ref`); registries with extension surface declare `unknown_id_policy`. |
+| `SCHEMA-07` | WORK-003 protocol artifact (`spec/schemas/protocol.json`): protocol version line (MAJOR.MINOR, major in known majors), envelope schema reference resolution with matching `$id`/`schema_version`, message-type grammar equals the envelope schema pattern (single source of truth), registered message types match the grammar, all frozen compatibility dispositions declared, json-debug codec normative, and the compact-deterministic-cbor codec kept **provisional** — rejecting any premature claim of a production canonicalization profile (architecture section 7). |
+| `SCHEMA-07` | WORK-003 protocol artifact (`spec/schemas/protocol.json`): protocol version line (MAJOR.MINOR, major ∈ known majors), envelope schema reference resolution with matching `$id`/`schema_version`, message-type grammar equals the envelope schema pattern (single source of truth), registered message types match the grammar, all frozen compatibility dispositions declared, json-debug codec normative, and the compact-deterministic-cbor codec kept **provisional** — rejecting any premature claim of a production canonicalization profile (architecture §7). |
 
 ## schema_selftest.py — schema/registry compatibility tests (WORK-002)
 
@@ -136,3 +138,45 @@ Exit codes: `0` all cases pass; `1` at least one case fails.
 | `duplicate-json-keys-rejected` | duplicate JSON object keys rejected (`SCHEMA-01`) |
 
 Output is fully deterministic (temporary paths are never printed).
+
+## envelope_selftest.py — envelope/serialization tests (WORK-003)
+
+Deterministic, offline verification of the `protocol/` package against the frozen WORK-003 requirements (`spec/prompts/WORK-003.md`): the 16-case compatibility/evolution matrix (section 11), golden-vector verification with expected canonical JSON / compact-CBOR / signature-input bytes (section 12), seeded property tests (round-trip stability across both codecs, signature-input determinism), seeded fuzz robustness (byte flips, truncations, insertions, duplicated keys, structural garbage, targeted CBOR violations — never crash, never silently altered), envelope-schema cross-check against `spec/schemas/envelope.schema.json`, and explicit policy/replay-hook boundary checks.
+
+```bash
+python3 tools/envelope_selftest.py
+```
+
+Exit codes: `0` all cases pass; `1` at least one case fails.
+
+### Case catalog
+
+| Case | Verifies |
+|---|---|
+| `matrix-01-known-envelope-parses` | known envelope parses and processes (matrix 1) |
+| `matrix-02-unknown-optional-field-parses` | unknown optional top-level field parses, preserved in `extra` (matrix 2) |
+| `matrix-03-unknown-field-survives-proxying` | unknown fields/extensions survive parse -> serialize -> parse byte-identically in both codecs (matrix 3) |
+| `matrix-04-no-identifier-coercion` | near-miss identifiers preserved verbatim, never coerced (matrix 4) |
+| `matrix-05-unknown-required-fails` | `"required": true` unknown extension fails safely (matrix 5) |
+| `matrix-06-incompatible-major-fails` | unknown protocol major rejected safely (matrix 6) |
+| `matrix-07-additive-evolution-parseable` | additive compatible evolution remains parseable (matrix 7) |
+| `matrix-08-expires-before-issued-fails` | `expires_at < issued_at` rejected (matrix 8) |
+| `matrix-09-expired-fails` | expired rejected; `expires == now` valid; clock-skew tolerance honored (matrix 9) |
+| `matrix-10-malformed-temporal-fails` | format rejected at parse; month-13/day-30 rejected by calendar validation (matrix 10) |
+| `matrix-11-required-members-enforced` | 11 missing + 7 invalid members rejected deterministically (matrix 11) |
+| `matrix-12-id-roundtrip` | message_id/correlation_id round-trip; absent member omitted not null (matrix 12) |
+| `matrix-13-canonical-determinism` | canonical serialization byte-identical across repeat runs (matrix 13) |
+| `matrix-14-signature-input-determinism` | signature-input bytes deterministic, signature-excluded (matrix 14) |
+| `matrix-15-payload-survives-json-debug` | deep payload survives JSON/debug without semantic mutation (matrix 15) |
+| `matrix-16-future-access-ids-transparent` | WORK-002 access-profile IDs incl. unknown future IDs are opaque data, no core branching (matrix 16) |
+| `golden-vectors-verified` | all 13 golden vectors: expected canonical JSON/CBOR/signature-input bytes and validation outcomes byte-exact |
+| `golden-vectors-compact-roundtrip` | every parseable vector compact-round-trips byte-stably |
+| `property-roundtrip-stability` | 300 seeded envelopes: canonical stability through JSON+CBOR round trips; signature-input stability |
+| `fuzz-mutations-fail-safely` | 716 mutated inputs (flips/truncations/insertions/dup-keys/garbage/CBOR violations/oversize): no crash, no silent alteration; accepted CBOR inputs additionally verified byte-canonical (`encode(decode(bytes)) == bytes`); accepted inputs re-parse stably |
+| `envelope-schema-crosscheck` | golden envelopes conform to `envelope.schema.json`; negatives (missing member, numeric signature, foreign protocol) rejected |
+| `cbor-minimal-encoding-enforced` | RFC 8949 §4.2.1 shortest form: 13 non-minimal integer/length encodings (unsigned, negative, text, array, map) rejected with a non-minimal reason; 5 boundary-minimal forms accepted; minimal forms of every rejected value round-trip |
+| `cbor-canonical-roundtrip-identity` | `encode(decode(bytes)) == bytes` over all golden vectors, 300 seeded values, and 100 seeded envelopes |
+| `cbor-envelope-nonminimal-rejected` | surgical envelope test: `version: 1` spliced as `0x18 0x01` into a golden vector's bytes — whole envelope rejected as malformed; canonical control accepted |
+| `explicit-policy-and-replay-hook` | unknown-type policy explicit (reject vs forward-opaque); replay hook ALLOW/REJECT/raise handled; `ValidatedEnvelope` only from the validation path |
+
+All PRNGs are seeded; repeat runs are byte-identical.

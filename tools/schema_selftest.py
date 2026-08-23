@@ -529,6 +529,25 @@ def main() -> int:
         path.write_text(text, encoding="utf-8")
     tree_case(results, "duplicate-json-keys-rejected", duplicate_keys, 1, "SCHEMA-01")
 
+    # WORK-003 negatives (SCHEMA-07: protocol artifact consistency).
+    def broken_envelope_ref(root: Path) -> None:
+        def mutate(value: Dict[str, Any]) -> None:
+            value["envelope"]["schema_ref"] = "spec/schemas/missing.schema.json"
+        edit_json_file(root, "spec/schemas/protocol.json", mutate)
+    tree_case(results, "protocol-envelope-ref-broken-rejected", broken_envelope_ref, 1, "SCHEMA-07")
+
+    def grammar_mismatch(root: Path) -> None:
+        def mutate(value: Dict[str, Any]) -> None:
+            value["message_type_grammar"] = "^z[a-z.]*$"
+        edit_json_file(root, "spec/schemas/protocol.json", mutate)
+    tree_case(results, "protocol-grammar-mismatch-rejected", grammar_mismatch, 1, "SCHEMA-07")
+
+    def premature_codec_status(root: Path) -> None:
+        def mutate(value: Dict[str, Any]) -> None:
+            value["codecs"]["compact-deterministic-cbor"]["status"] = "normative"
+        edit_json_file(root, "spec/schemas/protocol.json", mutate)
+    tree_case(results, "compact-codec-prematurely-normative-rejected", premature_codec_status, 1, "SCHEMA-07")
+
     # Output.
     print("ADCOS schema/registry compatibility self-test")
     print("=" * 72)

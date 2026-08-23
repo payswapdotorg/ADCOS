@@ -1,0 +1,44 @@
+{
+  "description": "WORK-002 access-profile registry identifiers (registered, reserved-future, and unknown-future) carried inside extension and payload content; treated as opaque data with no core branching on technology names.",
+  "envelope": {
+    "evidence": [],
+    "expires_at": "2030-01-01T01:00:00Z",
+    "extensions": {
+      "adcos.test.access-profiles": {
+        "profiles": [
+          "access.3gpp.nr.imt2030",
+          "access.generic.experimental",
+          "access.vendor.newradio-2060"
+        ]
+      }
+    },
+    "issued_at": "2030-01-01T00:00:00Z",
+    "message_id": "msg-0005",
+    "message_type": "capability.advertise",
+    "payload": {
+      "candidate_access": [
+        "access.3gpp.nr.imt2020",
+        "access.ieee.80211"
+      ]
+    },
+    "protocol": "adcos",
+    "sender": "node:alpha",
+    "signature": "opaque-signature-material",
+    "version": 1
+  },
+  "expect": {
+    "accepted": true,
+    "classification": "known_additive",
+    "policy": {
+      "unknown_type": "reject"
+    },
+    "validation_time": "2030-01-01T00:00:00Z"
+  },
+  "expected": {
+    "canonical_cbor_hex": "ab6673656e6465726a6e6f64653a616c706861677061796c6f6164a17063616e6469646174655f61636365737382766163636573732e336770702e6e722e696d7432303230716163636573732e696565652e38303231316776657273696f6e016865766964656e6365806870726f746f636f6c656164636f73696973737565645f617474323033302d30312d30315430303a30303a30305a697369676e617475726578196f70617175652d7369676e61747572652d6d6174657269616c6a657870697265735f617474323033302d30312d30315430313a30303a30305a6a657874656e73696f6e73a1781a6164636f732e746573742e6163636573732d70726f66696c6573a16870726f66696c657383766163636573732e336770702e6e722e696d7432303330781b6163636573732e67656e657269632e6578706572696d656e74616c781b6163636573732e76656e646f722e6e6577726164696f2d323036306a6d6573736167655f6964686d73672d303030356c6d6573736167655f74797065746361706162696c6974792e616476657274697365",
+    "canonical_json": "{\"evidence\":[],\"expires_at\":\"2030-01-01T01:00:00Z\",\"extensions\":{\"adcos.test.access-profiles\":{\"profiles\":[\"access.3gpp.nr.imt2030\",\"access.generic.experimental\",\"access.vendor.newradio-2060\"]}},\"issued_at\":\"2030-01-01T00:00:00Z\",\"message_id\":\"msg-0005\",\"message_type\":\"capability.advertise\",\"payload\":{\"candidate_access\":[\"access.3gpp.nr.imt2020\",\"access.ieee.80211\"]},\"protocol\":\"adcos\",\"sender\":\"node:alpha\",\"signature\":\"opaque-signature-material\",\"version\":1}",
+    "signature_input_json": "{\"evidence\":[],\"expires_at\":\"2030-01-01T01:00:00Z\",\"extensions\":{\"adcos.test.access-profiles\":{\"profiles\":[\"access.3gpp.nr.imt2030\",\"access.generic.experimental\",\"access.vendor.newradio-2060\"]}},\"issued_at\":\"2030-01-01T00:00:00Z\",\"message_id\":\"msg-0005\",\"message_type\":\"capability.advertise\",\"payload\":{\"candidate_access\":[\"access.3gpp.nr.imt2020\",\"access.ieee.80211\"]},\"protocol\":\"adcos\",\"sender\":\"node:alpha\",\"version\":1}"
+  },
+  "name": "future-access-profile-ids",
+  "status": "provisional"
+}
