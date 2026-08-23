@@ -1,0 +1,109 @@
+{
+  "$id": "urn:adcos:schema:envelope",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "architecture_version": "1.0",
+  "description": "ADCOS stable protocol envelope (spec/architecture.md section 7). Unknown top-level fields and unknown extension entries are forward-compatibility surface: conformant parsers preserve them when proxying, never coerce or rewrite known fields, and never let an extension shadow a standard envelope field. An extension entry whose value is an object carrying \"required\": true is a required-to-understand extension; processors that do not understand it must fail safely. Canonical serialization rules and the provisional status of the compact codec are declared in spec/schemas/protocol.json.",
+  "properties": {
+    "correlation_id": {
+      "description": "Optional correlation identifier associating messages of a larger interaction; absent where not applicable.",
+      "pattern": "^[^\\u0000-\\u001f]{1,256}$",
+      "type": "string"
+    },
+    "evidence": {
+      "description": "Evidence references carried by the message; opaque/reference-bearing at the envelope level (provenance semantics are grounded in the WORK-002 evidence model and later trust work).",
+      "items": {},
+      "type": "array"
+    },
+    "expires_at": {
+      "description": "Expiration instant, RFC 3339 UTC with Z suffix. Must satisfy expires_at >= issued_at; temporal metadata is validated before an envelope is accepted for processing.",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$",
+      "type": "string"
+    },
+    "extensions": {
+      "additionalProperties": true,
+      "description": "Forward-compatibility surface. Entries are preserved verbatim by parsers that do not own them; an object-valued entry carrying \"required\": true must be understood or the envelope fails safely.",
+      "type": "object"
+    },
+    "issued_at": {
+      "description": "Issuance instant, RFC 3339 UTC with Z suffix.",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$",
+      "type": "string"
+    },
+    "message_id": {
+      "description": "Message-instance identifier. Not coupled to NodeID, access technology, radio bearer, transport connection, or implementation process identity.",
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^[^\\u0000-\\u001f]{1,256}$",
+      "type": "string"
+    },
+    "message_type": {
+      "description": "Dotted message-type identifier. Well-formed unregistered types are handled per explicit policy (reject safely or transport opaquely); malformed types are rejected. The grammar is declared in spec/schemas/protocol.json and must match this pattern mechanically.",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+$",
+      "type": "string"
+    },
+    "payload": {
+      "description": "Typed application/protocol content; message payload schemas expand in later Work Items. Unconstrained at the envelope level."
+    },
+    "protocol": {
+      "const": "adcos",
+      "description": "Protocol identifier of the ADCOS envelope."
+    },
+    "sender": {
+      "description": "Sender identity reference, opaque at the envelope level; cryptographic identity semantics are owned by WORK-004.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "signature": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "additionalProperties": true,
+          "description": "Structured signature metadata.",
+          "properties": {
+            "algorithm": {
+              "description": "Opaque or registry-backed algorithm/profile identifier (LOCK-015 cryptographic agility; no algorithm is hard-coded).",
+              "minLength": 1,
+              "type": "string"
+            },
+            "value": {
+              "description": "Opaque signature material.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "algorithm",
+            "value"
+          ],
+          "type": "object"
+        }
+      ],
+      "description": "Signature metadata, opaque at this layer. WORK-003 provides deterministic canonical signature-input material only; signing, verification, keys, and trust policy are owned by later security Work Items."
+    },
+    "version": {
+      "description": "Protocol major version of this envelope (the frozen conceptual baseline is 1). Incompatible majors are rejected safely.",
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "protocol",
+    "version",
+    "message_type",
+    "message_id",
+    "sender",
+    "issued_at",
+    "expires_at",
+    "extensions",
+    "payload",
+    "evidence",
+    "signature"
+  ],
+  "schema_version": "1.0",
+  "title": "ADCOS Protocol Envelope",
+  "type": "object"
+}

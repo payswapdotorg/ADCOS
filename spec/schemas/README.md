@@ -4,7 +4,7 @@
 
 **ACTIVE — Canonical Schema Location**
 
-This directory is the canonical location for ADCOS machine-readable protocol schemas and registries. The location and conventions were established by WORK-001; the vocabulary and registry model below was implemented by WORK-002 (Core protocol vocabulary and registry model). WORK-002 deliberately implements no wire/protocol runtime behavior — the envelope and serialization layer belong to WORK-003.
+This directory is the canonical location for ADCOS machine-readable protocol schemas and registries. The location and conventions were established by WORK-001; the vocabulary and registry model by WORK-002; the protocol version line, envelope schema, and compatibility semantics by WORK-003 (versioned protocol envelope and serialization). WORK-003 deliberately implements no wire/protocol runtime behavior beyond the envelope/serialization library in `protocol/`.
 
 ## Structure
 
@@ -14,6 +14,8 @@ spec/schemas/
     domain-object-registry.json    the 11 frozen architecture nouns → stable IDs + schema references
     access-profile-registry.json   access/technology profiles (5G, LTE, Wi-Fi, ..., future IMT) as registry data
     capability-registry.json       capability identifiers, core- or profile-scoped
+  protocol.json                    protocol version line, envelope reference, message-type grammar, codec statuses (WORK-003)
+  envelope.schema.json             the frozen §7 protocol envelope schema (WORK-003)
   <noun>.schema.json               one JSON Schema (draft 2020-12) per frozen domain object
 ```
 
@@ -35,12 +37,13 @@ access/profile registries (access.*, capability.*)
 
 ## Conventions
 
-- Files are UTF-8 JSON in canonical form: sorted keys, 2-space indent, trailing newline (SCHEMA-01). Registry artifacts contain no timestamps, no machine-local paths, and no nondeterministic generated values; ordering is stable wherever ordering is semantically irrelevant.
+- Files are UTF-8 JSON in canonical form: sorted keys, 2-space indent, trailing newline (SCHEMA-01). Registry artifacts contain no timestamps, no machine-local paths, and no nondeterministic generated values; ordering is stable wherever ordering is semantically irrelevant. (Note: this repository canonical form is distinct from the *wire* canonical JSON form implemented by `protocol/canonicalization.py`, which is compact and used for encoding/signature input material.)
 - Every artifact declares a top-level `schema_version` string (`MAJOR.MINOR`) and the `architecture_version` it is written against (SCHEMA-02; never greater than the Architecture Version declared in `spec/architecture.md` Status). The `architecture_version` field is a written-against reference, not an Architecture Version declaration.
-- Protocol-level registries additionally declare the `protocol_version` they belong to once WORK-003 establishes the protocol version line; WORK-002 registries are vocabulary artifacts and deliberately carry no `protocol_version` field yet.
+- The **Protocol Version** line is declared in `spec/schemas/protocol.json` (`protocol_version` field, established by WORK-003) — an independent version kind, never conflated with architecture/schema/implementation versions (spec/governance.md §3).
 - Registration is additive: appending new entries is a minor `schema_version` bump; removing, renaming, or reinterpreting entries is a breaking change (major bump) and requires an Architecture Change Request (`spec/change-control.md`).
 - Domain-object schemas are standard JSON Schema draft 2020-12 documents, referenced from the domain-object registry (`schema_ref` + `schema_id` + matching `schema_version`; SCHEMA-05). Each schema encodes exactly the frozen field lists of architecture §6 with `additionalProperties: true` so the model evolves additively (LOCK-014). Structures the architecture does not freeze (e.g. resource accounting, trust state) are open objects owned by later Work Items.
-- Closed `enum`s are used only where the frozen architecture defines a closed set (link state dimensions §11, resource kinds/availability §17, evidence types §6.11). Evolving vocabularies (intent metrics §6.9, capability references) are open strings so future entries never require schema changes.
+- The envelope schema (`envelope.schema.json`) is referenced from `protocol.json`; its `message_type` pattern must equal `protocol.json`'s `message_type_grammar` mechanically (SCHEMA-07 — single source of truth).
+- Closed `enum`s are used only where the frozen architecture defines a closed set (link state dimensions §11, resource kinds/availability §17, evidence types §6.11). Evolving vocabularies (intent metrics §6.9, capability references, envelope extension entries) are open so future entries never require schema changes.
 
 ## Unknown-identifier semantics
 
@@ -55,8 +58,10 @@ The architecture's `access.3gpp.future.unknown` example (§8) is realized by thi
 ## Validation tooling
 
 ```bash
-python3 tools/schema_check.py      # deterministic registry/schema consistency checks (SCHEMA-01..06)
-python3 tools/schema_selftest.py   # compatibility self-test (additive evolution, unknown-ID safety)
+python3 tools/spec_check.py       # WORK-001 governance/specification consistency checks
+python3 tools/schema_check.py     # WORK-002/003 registry/schema/protocol-artifact consistency checks (SCHEMA-01..07)
+python3 tools/schema_selftest.py  # WORK-002/003 registry compatibility + protocol-artifact negative tests
+python3 tools/envelope_selftest.py  # WORK-003 envelope/serialization compatibility matrix, golden vectors, property/fuzz
 ```
 
-Both are zero-dependency (Python 3 standard library), fully offline, deterministic (byte-identical repeat output), and run in CI on every push and pull request. The check catalog and test case list are documented in `tools/README.md`.
+All are zero-dependency (Python 3 standard library), fully offline, deterministic (byte-identical repeat output), and run in CI on every push and pull request. The check catalogs and test case lists are documented in `tools/README.md`. The envelope implementation itself lives in the `protocol/` package (see `protocol/README.md`), including the provisional compact codec — the production canonicalization profile remains unfrozen until later conformance work.
