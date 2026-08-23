@@ -11,13 +11,18 @@ the codec's declared status in spec/schemas/protocol.json stays
 
 Supported subset (bijective with the canonical JSON subset):
 
-- unsigned and negative integers (major types 0/1);
-- UTF-8 text strings (major type 3);
-- definite-length arrays (major type 4);
-- definite-length string-keyed maps (major type 5), keys sorted per
-  RFC 8949 section 4.2.1: shorter encoded key first, then bytewise
-  lexicographic order;
+- unsigned and negative integers (major types 0/1) in SHORTEST FORM;
+- UTF-8 text strings (major type 3) with definite, shortest-form lengths;
+- definite-length arrays (major type 4) with shortest-form lengths;
+- definite-length string-keyed maps (major type 5) with shortest-form
+  lengths and keys sorted per RFC 8949 section 4.2.1: shorter encoded key
+  first, then bytewise lexicographic order;
 - false/true/null (major type 7, simple values 20/21/22).
+
+The DECODER enforces the same deterministic profile the encoder emits:
+non-minimal integer or length encodings (e.g. 0x18 0x01 for the integer
+1, or a length < 24 encoded with additional-info 24) are rejected, so
+encode(decode(bytes)) == bytes holds for every accepted input.
 
 Explicitly rejected (fail safely, deterministically):
 
@@ -26,6 +31,10 @@ Explicitly rejected (fail safely, deterministically):
 - tags (major type 6) — no tag semantics are frozen;
 - floating-point numbers (major type 7, additional info 25/26/27) —
   outside the canonical subset;
+- NON-MINIMAL integer or length encodings — RFC 8949 section 4.2.1
+  requires the shortest form; alternate byte representations of the
+  same value would break determinism of golden vectors and signature
+  input material;
 - indefinite lengths (additional info 31) and break codes;
 - trailing bytes after a complete top-level value;
 - inputs exceeding the size limit or the nesting-depth limit.
@@ -45,6 +54,20 @@ MAX_CBOR_DEPTH = 64
 DEFAULT_MAX_INPUT_BYTES = 1 << 20  # 1 MiB
 
 _UINT64_MAX = (1 << 64) - 1
+
+# additional-info -> argument byte length
+_ARGUMENT_LENGTHS = {24: 1, 25: 2, 26: 4, 27: 8}
+
+# The smallest argument value that legitimately requires the given
+# argument byte length (RFC 8949 section 4.2.1 shortest-form rule):
+# values below these bounds must use a shorter form and are rejected as
+# non-minimal when they appear in the longer form.
+_MINIMAL_ARGUMENT_BOUNDS = {
+    1: 24,           # 1-byte form starts at 24 (0-23 use direct info)
+    2: 1 << 8,      # 2-byte form starts at 256
+    4: 1 << 16,     # 4-byte form starts at 65536
+    8: 1 << 32,     # 8-byte form starts at 2**32
+}
 
 
 def _head(major: int, argument: int) -> bytes:
@@ -116,10 +139,22 @@ def _decode_item(data: bytes, offset: int, depth: int) -> Tuple[Any, int]:
     if info < 24:
         argument: int = info
     elif info in (24, 25, 26, 27):
-        length = {24: 1, 25: 2, 26: 4, 27: 8}[info]
+        length = _ARGUMENT_LENGTHS[info]
         if offset + length > len(data):
             raise CodecError("truncated length field at offset %d" % (offset - 1))
         argument = int.from_bytes(data[offset : offset + length], "big")
+        # Core deterministic encoding (RFC 8949 section 4.2.1): integers
+        # and lengths MUST be encoded in the shortest available form. A
+        # longer-than-necessary argument encoding is NOT part of the
+        # deterministic profile and is rejected here, so every accepted
+        # byte sequence uses the same representation the encoder emits
+        # (decode-then-encode is the identity on accepted input).
+        if argument < _MINIMAL_ARGUMENT_BOUNDS[length]:
+            raise CodecError(
+                "non-minimal argument encoding: value %d uses the %d-byte form "
+                "but fits in a shorter form (RFC 8949 section 4.2.1 shortest-form "
+                "requirement)" % (argument, length)
+            )
         offset += length
     elif info == 31:
         raise CodecError("indefinite lengths are not permitted in the deterministic profile")

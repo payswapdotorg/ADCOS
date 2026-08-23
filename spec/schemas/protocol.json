@@ -3,7 +3,7 @@
   "artifact": "adcos.protocol",
   "codecs": {
     "compact-deterministic-cbor": {
-      "description": "Provisional compact codec implementing RFC 8949 core deterministic encoding (section 4.2) for the supported value subset: UTF-8 text strings, integers, booleans, null, definite-length arrays, and string-keyed definite-length maps with keys sorted per RFC 8949 section 4.2.1 (length first, then bytewise). No tags, no floating-point numbers, no indefinite lengths, no byte strings. This is NOT the frozen production canonicalization profile: spec/architecture.md section 7 leaves the exact production canonicalization profile to later conformance work before production wire compatibility is declared.",
+      "description": "Provisional compact codec implementing RFC 8949 core deterministic encoding (section 4.2) for the supported value subset: UTF-8 text strings, integers, booleans, null, definite-length arrays, and string-keyed definite-length maps with keys sorted per RFC 8949 section 4.2.1 (length first, then bytewise). Integers and lengths must use the shortest form per RFC 8949 section 4.2.1: the decoder rejects non-minimal argument encodings so that every accepted byte sequence uses exactly the representation the encoder emits (encode(decode(bytes)) == bytes). No tags, no floating-point numbers, no indefinite lengths, no byte strings. This is NOT the frozen production canonicalization profile: spec/architecture.md section 7 leaves the exact production canonicalization profile to later conformance work before production wire compatibility is declared.",
       "status": "provisional"
     },
     "json-debug": {

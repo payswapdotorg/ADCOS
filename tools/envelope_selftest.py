@@ -41,7 +41,12 @@ from protocol import (  # noqa: E402
     signature_input_bytes,
     validation_clock,
 )
-from protocol.codec_cbor import CompactDeterministicCborCodec, cbor_bytes, cbor_value  # noqa: E402
+from protocol.codec_cbor import (  # noqa: E402
+    CompactDeterministicCborCodec,
+    CodecError as CborCodecError,
+    cbor_bytes,
+    cbor_value,
+)
 from protocol.codec_json import JsonDebugCodec  # noqa: E402
 from protocol.validation import (  # noqa: E402
     ParsePolicy,
@@ -400,6 +405,166 @@ def case_matrix(results: List[Tuple[str, bool, str]]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Deterministic-CBOR shortest-form enforcement (correction cycle 1)
+# ---------------------------------------------------------------------------
+
+
+def case_cbor_minimal_encoding(results: List[Tuple[str, bool, str]]) -> None:
+    """RFC 8949 section 4.2.1: integers and lengths must use the shortest
+    form. Non-minimal encodings are alternate byte representations of the
+    same semantic value and must be rejected; boundary-minimal values must
+    be accepted."""
+    from protocol.codec import CodecError as WireCodecError
+
+    reject_cases = [
+        # (label, bytes, expected semantic value if it were accepted)
+        ("unsigned-1-as-1-byte-form", b"\x18\x01", 1),            # 0-23 -> direct
+        ("unsigned-23-as-1-byte-form", b"\x18\x17", 23),
+        ("unsigned-100-as-2-byte-form", b"\x19\x00\x64", 100),    # <=255 -> 1-byte form
+        ("unsigned-255-as-2-byte-form", b"\x19\x00\xff", 255),
+        ("unsigned-256-as-4-byte-form", b"\x1a\x00\x00\x01\x00", 256),  # <=65535 -> 2-byte
+        ("unsigned-65535-as-4-byte-form", b"\x1a\x00\x00\xff\xff", 65535),
+        ("unsigned-65536-as-8-byte-form", b"\x1b" + (65536).to_bytes(8, "big"), 65536),
+        ("negative-minus1-as-1-byte-form", b"\x38\x00", -1),      # major 1, arg 0 -> -1
+        ("negative-minus25-as-2-byte-form", b"\x39\x00\x17", -25),
+        ("text-length2-as-1-byte-form", b"\x78\x02hi", "hi"),      # len<24 -> direct
+        ("text-length10-as-2-byte-form", b"\x59\x00\x0a" + b"0123456789", "0123456789"),
+        ("array-length2-as-1-byte-form", b"\x98\x02\x01\x02", [1, 2]),
+        ("map-length1-as-1-byte-form", b"\xb8\x01\x61\x61\x01", {"a": 1}),
+    ]
+    accept_cases = [
+        # boundary values whose longer form IS the minimal form
+        ("unsigned-24-direct-invalid", b"\x18\x18", 24),          # 24 requires 1-byte form
+        ("unsigned-255-1-byte-form", b"\x18\xff", 255),
+        ("unsigned-256-2-byte-form", b"\x19\x01\x00", 256),
+        ("unsigned-65536-4-byte-form", b"\x1a\x00\x01\x00\x00", 65536),
+        ("text-length-24-1-byte-form", b"\x78\x18" + b"x" * 24, "x" * 24),
+    ]
+
+    failures: List[str] = []
+    for label, payload, expected in reject_cases:
+        try:
+            value = cbor_value(payload)
+            failures.append("%s: non-minimal encoding accepted as %r" % (label, value))
+        except (CborCodecError, WireCodecError) as error:
+            if "non-minimal" not in str(error):
+                failures.append("%s: rejected for wrong reason: %s" % (label, error))
+        except Exception as error:  # pragma: no cover
+            failures.append("%s: raised %s" % (label, type(error).__name__))
+        # also confirm the minimal form of the same value IS accepted
+        try:
+            minimal = cbor_bytes(expected)
+            if cbor_value(minimal) != expected:
+                failures.append("%s: minimal form does not round-trip" % label)
+        except Exception as error:  # pragma: no cover
+            failures.append("%s: minimal form rejected: %s" % (label, error))
+
+    for label, payload, expected in accept_cases:
+        try:
+            value = cbor_value(payload)
+            if value != expected:
+                failures.append("%s: decoded %r, expected %r" % (label, value, expected))
+        except Exception as error:
+            failures.append("%s: minimal boundary encoding rejected: %s" % (label, error))
+
+    results.append(
+        (
+            "cbor-minimal-encoding-enforced",
+            not failures,
+            "13 non-minimal forms rejected (uint/neg/text/array/map); "
+            "5 boundary-minimal forms accepted" if not failures else failures[0],
+        )
+    )
+
+
+def case_cbor_canonical_roundtrip_identity(results: List[Tuple[str, bool, str]]) -> None:
+    """Every accepted CBOR byte sequence must round-trip to exactly the
+    encoder's canonical bytes: encode(decode(bytes)) == bytes."""
+    rng = SeededRandom(seed=5544332)
+    failures: List[str] = []
+
+    # 1. Golden vectors: byte-identity on decode-then-encode.
+    for vector in load_vectors():
+        if vector.expected is None:
+            continue
+        canonical = bytes.fromhex(vector.expected.canonical_cbor_hex)
+        decoded = CBOR_CODEC.decode(canonical)
+        reencoded = CBOR_CODEC.encode(decoded)
+        if reencoded != canonical:
+            failures.append("%s: re-encoding differs from golden bytes" % vector.name)
+
+    # 2. Seeded random values: byte-identity through the value codec.
+    for iteration in range(300):
+        value = random_value(rng, 0)
+        encoded = cbor_bytes(value)
+        try:
+            decoded = cbor_value(encoded)
+        except Exception as error:  # pragma: no cover
+            failures.append("iter %d: decoder rejected encoder output: %s" % (iteration, error))
+            break
+        if cbor_bytes(decoded) != encoded:
+            failures.append("iter %d: encode(decode(bytes)) != bytes" % iteration)
+            break
+
+    # 3. Envelope-level identity for seeded random envelopes.
+    for iteration in range(100):
+        data = random_envelope(rng)
+        try:
+            env = envelope_from_mapping(data)
+        except Exception:  # pragma: no cover - generator produces valid envelopes
+            continue
+        encoded = CBOR_CODEC.encode(env)
+        decoded = CBOR_CODEC.decode(encoded)
+        if CBOR_CODEC.encode(decoded) != encoded:
+            failures.append("envelope iter %d: byte identity failed" % iteration)
+            break
+
+    results.append(
+        (
+            "cbor-canonical-roundtrip-identity",
+            not failures,
+            "golden vectors + 300 values + 100 envelopes: "
+            "encode(decode(bytes)) == bytes" if not failures else failures[0],
+        )
+    )
+
+
+def case_cbor_envelope_nonminimal_rejected(results: List[Tuple[str, bool, str]]) -> None:
+    """Envelope-level surgical test: splice a non-minimal integer encoding
+    (version 1 as 0x18 0x01) into an otherwise valid golden-vector envelope
+    and verify the whole envelope is rejected as malformed."""
+    vector = None
+    for candidate in load_vectors():
+        if candidate.name == "minimal-valid":
+            vector = candidate
+            break
+    assert vector is not None and vector.expected is not None
+    canonical = bytes.fromhex(vector.expected.canonical_cbor_hex)
+    marker = b"\x67version" + b"\x01"  # key "version" (7 bytes) + value 1
+    if marker not in canonical:  # pragma: no cover - ordering invariant
+        results.append(("cbor-envelope-nonminimal-rejected", False, "marker not found"))
+        return
+    mutated = canonical.replace(marker, b"\x67version" + b"\x18\x01", 1)
+    outcome = accept(mutated, now=NOW, policy=POLICY_REJECT, codec=CBOR_CODEC)
+    ok = (
+        outcome.rejected
+        and outcome.classification == Classification.REJECTED_MALFORMED
+        and "non-minimal" in outcome.detail
+    )
+    # control: the unmutated canonical bytes still decode
+    control = accept(canonical, now=NOW, policy=POLICY_REJECT, codec=CBOR_CODEC)
+    ok = ok and control.accepted
+    results.append(
+        (
+            "cbor-envelope-nonminimal-rejected",
+            ok,
+            "version 1 as 0x18 0x01 rejected (%s); canonical control accepted"
+            % outcome.detail[:60],
+        )
+    )
+
+
+# ---------------------------------------------------------------------------
 # Golden vectors
 # ---------------------------------------------------------------------------
 
@@ -566,10 +731,20 @@ def case_fuzz(results: List[Tuple[str, bool, str]]) -> None:
         if outcome.accepted:
             accepted_count += 1
             # An accepted mutated envelope must still be internally
-            # consistent: re-encoding it must be stable.
+            # consistent: re-encoding it must re-parse, and — for the
+            # deterministic compact codec — must reproduce the exact
+            # input bytes (canonical byte-identity, per the decoder's
+            # shortest-form enforcement). The JSON debug codec
+            # deliberately accepts non-canonical input (whitespace, key
+            # order), so byte-identity is not required there.
             try:
                 assert outcome.validated is not None
                 encoded = codec.encode(outcome.validated.envelope)
+                if isinstance(codec, CompactDeterministicCborCodec) and encoded != bytes(payload):
+                    failures.append(
+                        "%s: encode(decode(bytes)) != bytes — accepted CBOR input "
+                        "is not in canonical form" % label
+                    )
                 reparsed = accept(encoded, now=NOW, policy=POLICY_FORWARD, codec=codec)
                 if not reparsed.accepted:
                     failures.append("%s: accepted envelope failed re-parse" % label)
@@ -717,6 +892,9 @@ def case_policy_boundary(results: List[Tuple[str, bool, str]]) -> None:
 def main() -> int:
     results: List[Tuple[str, bool, str]] = []
     case_matrix(results)
+    case_cbor_minimal_encoding(results)
+    case_cbor_canonical_roundtrip_identity(results)
+    case_cbor_envelope_nonminimal_rejected(results)
     case_golden_vectors(results)
     case_property_roundtrip(results)
     case_fuzz(results)

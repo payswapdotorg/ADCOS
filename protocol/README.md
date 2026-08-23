@@ -75,6 +75,12 @@ protocol/
   the production profile to later conformance work. `tools/schema_check.py`
   (SCHEMA-07) mechanically rejects any attempt to mark the compact codec
   normative in `spec/schemas/protocol.json` prematurely.
+- **Deterministic acceptance**: the decoder enforces the same profile the
+  encoder emits — RFC 8949 §4.2.1 shortest-form integers/lengths (non-minimal
+  argument encodings such as `0x18 0x01` for `1` are rejected) and canonical
+  map-key ordering — so `encode(decode(bytes)) == bytes` holds for every
+  accepted compact input (proven over golden vectors, 300 seeded values, 100
+  seeded envelopes, and all fuzz-accepted inputs).
 
 ## Usage sketch
 

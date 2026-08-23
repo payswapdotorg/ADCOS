@@ -172,8 +172,11 @@ Exit codes: `0` all cases pass; `1` at least one case fails.
 | `golden-vectors-verified` | all 13 golden vectors: expected canonical JSON/CBOR/signature-input bytes and validation outcomes byte-exact |
 | `golden-vectors-compact-roundtrip` | every parseable vector compact-round-trips byte-stably |
 | `property-roundtrip-stability` | 300 seeded envelopes: canonical stability through JSON+CBOR round trips; signature-input stability |
-| `fuzz-mutations-fail-safely` | 716 mutated inputs (flips/truncations/insertions/dup-keys/garbage/CBOR violations/oversize): no crash, no silent alteration; valid-after-mutation inputs re-parse stably |
+| `fuzz-mutations-fail-safely` | 716 mutated inputs (flips/truncations/insertions/dup-keys/garbage/CBOR violations/oversize): no crash, no silent alteration; accepted CBOR inputs additionally verified byte-canonical (`encode(decode(bytes)) == bytes`); accepted inputs re-parse stably |
 | `envelope-schema-crosscheck` | golden envelopes conform to `envelope.schema.json`; negatives (missing member, numeric signature, foreign protocol) rejected |
+| `cbor-minimal-encoding-enforced` | RFC 8949 §4.2.1 shortest form: 13 non-minimal integer/length encodings (unsigned, negative, text, array, map) rejected with a non-minimal reason; 5 boundary-minimal forms accepted; minimal forms of every rejected value round-trip |
+| `cbor-canonical-roundtrip-identity` | `encode(decode(bytes)) == bytes` over all golden vectors, 300 seeded values, and 100 seeded envelopes |
+| `cbor-envelope-nonminimal-rejected` | surgical envelope test: `version: 1` spliced as `0x18 0x01` into a golden vector's bytes — whole envelope rejected as malformed; canonical control accepted |
 | `explicit-policy-and-replay-hook` | unknown-type policy explicit (reject vs forward-opaque); replay hook ALLOW/REJECT/raise handled; `ValidatedEnvelope` only from the validation path |
 
 All PRNGs are seeded; repeat runs are byte-identical.
