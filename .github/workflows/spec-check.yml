@@ -27,3 +27,6 @@ jobs:
 
       - name: Run schema/registry compatibility tests
         run: python3 tools/schema_selftest.py
+
+      - name: Run envelope/serialization tests
+        run: python3 tools/envelope_selftest.py
