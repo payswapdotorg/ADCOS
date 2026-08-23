@@ -30,3 +30,6 @@ jobs:
 
       - name: Run envelope/serialization tests
         run: python3 tools/envelope_selftest.py
+
+      - name: Run identity lifecycle/security tests
+        run: python3 tools/identity_selftest.py
