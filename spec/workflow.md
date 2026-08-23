@@ -2,7 +2,7 @@
 
 ## Status
 
-**ACTIVE — Process Authority (Architecture Version 1.0)**
+**ACTIVE — Process Authority**
 
 This document defines the Work Item / PR review rules for ADCOS, operationalizing `spec/architecture-lock.md` §7 (Implementation Gate) and `spec/dependency-graph.md` §6–§7. It is process documentation maintained by the Architect; it does not alter any frozen architectural rule.
 

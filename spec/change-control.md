@@ -2,7 +2,7 @@
 
 ## Status
 
-**ACTIVE — Process Authority (Architecture Version 1.0)**
+**ACTIVE — Process Authority**
 
 This document defines the Architecture Change Request (ACR) process required by `spec/architecture-lock.md` §6 (Change Control). It is process documentation maintained by the Architect; it does not alter any frozen architectural rule.
 

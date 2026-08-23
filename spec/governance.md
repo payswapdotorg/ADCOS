@@ -2,7 +2,7 @@
 
 ## Status
 
-**ACTIVE — Process Authority (Architecture Version 1.0)**
+**ACTIVE — Process Authority**
 
 This document defines how the ADCOS specification repository is governed: document roles and registry, naming conventions, versioning policy, terminology ownership, machine-readable schema locations, and specification consistency checking.
 
@@ -47,7 +47,7 @@ Stable, fixed naming is part of the frozen contract of the repository. These con
 
 ADCOS maintains **four distinct version kinds**. They are independent lines that **must never be conflated or collapsed into a single number**:
 
-1. **Architecture Version** — identifies the frozen architecture as a whole. It is declared in exactly one place: the `## Status` section of `spec/architecture.md` (currently `Architecture Version 1.0`). A major bump marks a semantic change to the architecture; a minor bump marks an additive clarification that does not alter semantics. Any bump requires an approved ACR.
+1. **Architecture Version** — identifies the frozen architecture as a whole. It is declared in exactly one place: the `## Status` section of `spec/architecture.md`; its current value is authoritative there and is not restated elsewhere. A major bump marks a semantic change to the architecture; a minor bump marks an additive clarification that does not alter semantics. Any bump requires an approved ACR.
 2. **Protocol Version** — the wire/protocol compatibility line carried by the versioned protocol envelope (`spec/architecture.md` §7). It evolves through the registry and envelope Work Items (WORK-002, WORK-003) and is recorded with the machine-readable schemas under `spec/schemas/` once they exist. The Protocol Version evolves independently of the Architecture Version: an architecture clarification does not imply a protocol revision, and a new protocol minor version does not imply a new architecture version.
 3. **Schema Version** — the version of an individual machine-readable schema or registry file under `spec/schemas/`, carried in that file's `schema_version` field. Additive entries bump the minor version; removing, renaming, or reinterpreting entries is a breaking change that bumps the major version and requires ACR assessment.
 4. **Implementation Version** — the release version of ADCOS software (for example, an Agent build). It is tracked by the implementation, not by the specification repository, and is never evidence of conformance or of specification compatibility.
@@ -56,7 +56,7 @@ Additional rules:
 
 - No document may use a bare phrase such as "ADCOS version N" without naming which of the four version kinds it means.
 - The Architecture Version and the Protocol Version must never be declared as equal, linked, or interchangeable.
-- `tools/spec_check.py` (check `VERS-01`) mechanically verifies that the Architecture Version is declared only in `spec/architecture.md`, that no frozen document's status section declares a Protocol Version, and that this document defines all four version kinds.
+- `tools/spec_check.py` (check `VERS-01`) mechanically verifies, across all repository Markdown documents, that the Architecture Version declaration appears only in the Status section of `spec/architecture.md`, that no frozen document's status section declares a Protocol Version, and that this document defines all four version kinds.
 
 ## 4. Terminology
 

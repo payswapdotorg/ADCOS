@@ -2,7 +2,7 @@
 
 ## Status
 
-**ACTIVE — Change-Control Records Location (Architecture Version 1.0)**
+**ACTIVE — Change-Control Records Location**
 
 Architecture Change Requests (ACRs) are recorded in this directory as:
 

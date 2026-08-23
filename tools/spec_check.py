@@ -67,6 +67,7 @@ GOVERNANCE_ARTIFACTS: List[str] = [
     "spec/schemas/README.md",
     "spec/acr/README.md",
     "tools/spec_check.py",
+    "tools/spec_check_selftest.py",
     "tools/README.md",
     ".github/workflows/spec-check.yml",
     ".github/PULL_REQUEST_TEMPLATE.md",
@@ -84,7 +85,7 @@ VERSION_KIND_TERMS = [
     "**Implementation Version**",
 ]
 
-ARCH_VERSION_RE = re.compile(r"Architecture Version \d+\.\d+")
+ARCH_VERSION_RE = re.compile(r"Architecture Version \d+(?:\.\d+)?")
 
 
 # --------------------------------------------------------------------------
@@ -359,7 +360,9 @@ def check_markers(report: Report, texts: Dict[str, str]) -> None:
 
 
 def check_versions(report: Report, texts: Dict[str, str]) -> None:
-    """VERS-01: architecture and protocol version identifiers are distinct."""
+    """VERS-01: architecture and protocol version identifiers are distinct,
+    and the Architecture Version declaration appears only in the Status
+    section of spec/architecture.md (across all repository Markdown docs)."""
     problems: List[str] = []
     arch = texts.get("spec/architecture.md", "")
     arch_status = status_section(arch)
@@ -373,14 +376,31 @@ def check_versions(report: Report, texts: Dict[str, str]) -> None:
             "spec/architecture.md Status must not declare a Protocol Version; "
             "protocol versioning is a separate line (spec/governance.md §3)"
         )
-    for doc in FROZEN_DOCS:
-        if doc == "spec/architecture.md":
+    # The Architecture Version declaration pattern is legal ONLY inside the
+    # Status section of spec/architecture.md. Scan every Markdown document
+    # in the repository working tree (deterministic sorted order, .git
+    # excluded) so a declaration cannot hide in a process, location, or
+    # README document.
+    for md_path in sorted(REPO_ROOT.rglob("*.md")):
+        if ".git" in md_path.parts:
             continue
-        if ARCH_VERSION_RE.search(status_section(texts.get(doc, ""))):
-            problems.append(
-                "%s: the Architecture Version may only be declared in "
-                "spec/architecture.md" % doc
-            )
+        rel_path = rel(md_path)
+        if rel_path == "spec/architecture.md":
+            total = len(ARCH_VERSION_RE.findall(arch))
+            if total != 1:
+                problems.append(
+                    "spec/architecture.md: the Architecture Version declaration "
+                    "must appear only in its Status section (found %d occurrence(s) "
+                    "in the document)" % total
+                )
+        else:
+            foreign = ARCH_VERSION_RE.findall(read(md_path))
+            if foreign:
+                problems.append(
+                    "%s: must not declare an Architecture Version (%r) — "
+                    "spec/architecture.md Status is the only authoritative "
+                    "declaration site (spec/governance.md §3)" % (rel_path, foreign)
+                )
     governance = texts.get("spec/governance.md", "")
     for term in VERSION_KIND_TERMS:
         if term not in governance:

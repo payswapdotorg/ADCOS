@@ -2,7 +2,7 @@
 
 ## Status
 
-**ACTIVE — Canonical Schema Location (Architecture Version 1.0)**
+**ACTIVE — Canonical Schema Location**
 
 This directory is the canonical location for ADCOS machine-readable protocol schemas and registries, established by WORK-001 (`spec/work-items.md`, Phase 0).
 
