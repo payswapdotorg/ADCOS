@@ -1,0 +1,27 @@
+{
+  "$id": "urn:adcos:schema:identity",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "architecture_version": "1.0",
+  "description": "ADCOS Identity object: an asymmetric-key-backed identity independent of access technology (spec/architecture.md §6.2, LOCK-005). Credential material is represented only as opaque references and is never serialized as ordinary topology/resource data (LOCK-023). Key lifecycle, rotation, revocation, and algorithm agility are owned by WORK-004 and are deliberately not modeled here.",
+  "properties": {
+    "credential_references": {
+      "description": "Opaque references to node/operator/user credential material held outside ordinary topology data. Never contains secret material itself.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "node_id": {
+      "description": "Stable NodeID derived from a public-key identity or a registered equivalent; survives changes of access technology.",
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "node_id"
+  ],
+  "schema_version": "1.0",
+  "title": "ADCOS Identity",
+  "type": "object"
+}

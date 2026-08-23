@@ -1,0 +1,26 @@
+{
+  "architecture_version": "1.0",
+  "description": "Registry of ADCOS capability identifiers. Capability entries classify each identifier as core-scoped (technology-neutral, defined by the core architecture) or profile-scoped (meaningful only in the context of a specific access profile, referenced via profile_ref). Registration is additive: appending new entries is a minor schema_version bump; removing, renaming, or reinterpreting entries is a breaking change requiring an Architecture Change Request (spec/governance.md §3). Capability advertisement, signing, negotiation, provenance, and runtime handling belong to later Work Items (WORK-005) and are deliberately not modeled here.",
+  "entries": {
+    "capability.core.local-breakout": {
+      "description": "Node can keep local traffic local via local breakout when policy permits (architecture §16).",
+      "scope": "core",
+      "status": "active"
+    },
+    "capability.core.multipath": {
+      "description": "Node or session supports multiple concurrent access paths; multipath is a first-class capability, not a required transport implementation (architecture §13, LOCK-020).",
+      "scope": "core",
+      "status": "active"
+    },
+    "capability.core.store-and-forward": {
+      "description": "Node supports store-carry-forward operation for intermittently connected paths (architecture §16; WORK-023).",
+      "scope": "core",
+      "status": "active"
+    }
+  },
+  "id_grammar": "^capability\\.(core|profile)(\\.[a-z0-9][a-z0-9-]*)+$",
+  "profile_scoped_rule": "Entries with scope 'profile' must carry a profile_ref that resolves to an entry of the access-profile registry. Core-scoped entries must not carry a profile_ref.",
+  "registry": "adcos.capability-registry",
+  "schema_version": "1.0",
+  "unknown_id_policy": "A well-formed identifier matching the id_grammar but not present in this registry is UNKNOWN, not invalid. Unknown future capabilities must be safely ignorable by implementations that do not require them (architecture §2 P4). Consumers must preserve unknown identifiers, must not coerce them to any registered identifier, and may reject them only where an explicit consuming contract requires a known capability. A malformed identifier (not matching the id_grammar) is INVALID and is rejected by validators."
+}

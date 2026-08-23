@@ -1,0 +1,43 @@
+{
+  "$id": "urn:adcos:schema:intent",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "architecture_version": "1.0",
+  "description": "ADCOS Intent object: a machine-readable request describing what connectivity is desired rather than how to obtain it (spec/architecture.md §6.9; LOCK-019). Constraint metrics are deliberately open strings, not an enum: intent vocabulary evolves additively and future metrics must not require schema changes. Normalization, hard/soft preferences, and unsupported-constraint failure semantics are owned by WORK-009.",
+  "properties": {
+    "constraints": {
+      "description": "Connectivity constraints (e.g. bandwidth >= 20 Mbps, latency <= 30 ms, availability >= 99.9%, energy_cost <= threshold, local_breakout = preferred, privacy = end_to_end). Metric names are open vocabulary; routing/adapter implementations determine how to satisfy them.",
+      "items": {
+        "additionalProperties": true,
+        "properties": {
+          "metric": {
+            "description": "Constraint metric name (open vocabulary; examples from architecture §6.9).",
+            "minLength": 1,
+            "type": "string"
+          },
+          "operator": {
+            "type": "string"
+          },
+          "value": {}
+        },
+        "required": [
+          "metric"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "intent_id": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "intent_id",
+    "constraints"
+  ],
+  "schema_version": "1.0",
+  "title": "ADCOS Intent",
+  "type": "object"
+}

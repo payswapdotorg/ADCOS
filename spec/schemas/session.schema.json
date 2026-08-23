@@ -1,0 +1,28 @@
+{
+  "$id": "urn:adcos:schema:session",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "architecture_version": "1.0",
+  "description": "ADCOS Session object: a logical connectivity relationship independent of a particular radio bearer. Session identity must not encode a cell ID, bearer ID, radio technology, or vendor-specific modem identifier (spec/architecture.md §6.7; LOCK-006). Session lifecycle, renewal, replay-safety, and teardown are owned by WORK-012 and are deliberately not modeled here.",
+  "properties": {
+    "path_bindings": {
+      "description": "Path references currently bound to this logical session; multipath sessions bind multiple paths (architecture §5.4, §13).",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "session_id": {
+      "description": "Logical session identifier; access-independent and stable across supported handovers (LOCK-006, LOCK-021).",
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "session_id",
+    "path_bindings"
+  ],
+  "schema_version": "1.0",
+  "title": "ADCOS Session",
+  "type": "object"
+}

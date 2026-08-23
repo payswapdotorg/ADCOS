@@ -1,0 +1,136 @@
+{
+  "architecture_version": "1.0",
+  "description": "Registry of ADCOS core domain objects (the frozen architecture nouns of spec/architecture.md §6). Each entry maps a frozen noun to a stable, technology-neutral identifier and its versioned machine-readable schema definition. Core object identifiers never encode an access technology, radio generation, vendor, or implementation language (architecture §2 P1/P2, §25). Access technologies are data in the access-profile registry, never core domain types (LOCK-001..LOCK-003).",
+  "entries": {
+    "adcos.adapter": {
+      "description": "Typed implementation boundary around a physical or logical access technology (architecture §6.3).",
+      "noun": "Adapter",
+      "schema_id": "urn:adcos:schema:adapter",
+      "schema_ref": "spec/schemas/adapter.schema.json",
+      "schema_version": "1.0",
+      "source_sections": [
+        "§6.3"
+      ],
+      "status": "active"
+    },
+    "adcos.capability": {
+      "description": "Signed, versioned statement describing something the node or adapter may provide (architecture §6.4).",
+      "noun": "Capability",
+      "schema_id": "urn:adcos:schema:capability",
+      "schema_ref": "spec/schemas/capability.schema.json",
+      "schema_version": "1.0",
+      "source_sections": [
+        "§6.4"
+      ],
+      "status": "active"
+    },
+    "adcos.evidence": {
+      "description": "Cryptographically attributable observation supporting a claim, with explicit provenance (architecture §6.11, LOCK-008).",
+      "noun": "Evidence",
+      "schema_id": "urn:adcos:schema:evidence",
+      "schema_ref": "spec/schemas/evidence.schema.json",
+      "schema_version": "1.0",
+      "source_sections": [
+        "§6.11",
+        "§11"
+      ],
+      "status": "active"
+    },
+    "adcos.federation": {
+      "description": "Typed relationship between administrative domains allowing selected capabilities and services to be shared (architecture §6.10, §21).",
+      "noun": "Federation",
+      "schema_id": "urn:adcos:schema:federation",
+      "schema_ref": "spec/schemas/federation.schema.json",
+      "schema_version": "1.0",
+      "source_sections": [
+        "§6.10",
+        "§21"
+      ],
+      "status": "active"
+    },
+    "adcos.identity": {
+      "description": "Asymmetric-key-backed node identity, independent of access technology (architecture §6.2, LOCK-005).",
+      "noun": "Identity",
+      "schema_id": "urn:adcos:schema:identity",
+      "schema_ref": "spec/schemas/identity.schema.json",
+      "schema_version": "1.0",
+      "source_sections": [
+        "§6.2"
+      ],
+      "status": "active"
+    },
+    "adcos.intent": {
+      "description": "Machine-readable request describing desired connectivity properties rather than the technology used to obtain them (architecture §6.9, LOCK-019).",
+      "noun": "Intent",
+      "schema_id": "urn:adcos:schema:intent",
+      "schema_ref": "spec/schemas/intent.schema.json",
+      "schema_version": "1.0",
+      "source_sections": [
+        "§6.9"
+      ],
+      "status": "active"
+    },
+    "adcos.link": {
+      "description": "Directional or bidirectional connectivity relationship between two adapters; link state is independent of node identity and advertisement freshness (architecture §6.5, §11).",
+      "noun": "Link",
+      "schema_id": "urn:adcos:schema:link",
+      "schema_ref": "spec/schemas/link.schema.json",
+      "schema_version": "1.0",
+      "source_sections": [
+        "§6.5",
+        "§11"
+      ],
+      "status": "active"
+    },
+    "adcos.node": {
+      "description": "Cryptographically identified participant in the ADCOS fabric (architecture §6.1, §4).",
+      "noun": "Node",
+      "schema_id": "urn:adcos:schema:node",
+      "schema_ref": "spec/schemas/node.schema.json",
+      "schema_version": "1.0",
+      "source_sections": [
+        "§6.1",
+        "§4"
+      ],
+      "status": "active"
+    },
+    "adcos.path": {
+      "description": "Ordered set of links that can satisfy a session or resource intent (architecture §6.6).",
+      "noun": "Path",
+      "schema_id": "urn:adcos:schema:path",
+      "schema_ref": "spec/schemas/path.schema.json",
+      "schema_version": "1.0",
+      "source_sections": [
+        "§6.6"
+      ],
+      "status": "active"
+    },
+    "adcos.resource": {
+      "description": "Consumable or reservable quantity such as throughput, compute, storage, energy, or service capacity (architecture §6.8, §17).",
+      "noun": "Resource",
+      "schema_id": "urn:adcos:schema:resource",
+      "schema_ref": "spec/schemas/resource.schema.json",
+      "schema_version": "1.0",
+      "source_sections": [
+        "§6.8",
+        "§17"
+      ],
+      "status": "active"
+    },
+    "adcos.session": {
+      "description": "Logical connectivity relationship independent of a particular radio bearer; session identity is access-independent (architecture §6.7, LOCK-006).",
+      "noun": "Session",
+      "schema_id": "urn:adcos:schema:session",
+      "schema_ref": "spec/schemas/session.schema.json",
+      "schema_version": "1.0",
+      "source_sections": [
+        "§6.7",
+        "§5.4"
+      ],
+      "status": "active"
+    }
+  },
+  "id_grammar": "^adcos\\.[a-z][a-z0-9-]*$",
+  "registry": "adcos.domain-object-registry",
+  "schema_version": "1.0"
+}

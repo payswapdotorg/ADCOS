@@ -1,0 +1,79 @@
+{
+  "$id": "urn:adcos:schema:node",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "architecture_version": "1.0",
+  "description": "ADCOS Node object: a cryptographically identified participant in the fabric. Required fields encode the frozen list of spec/architecture.md §6.1. Field structures that the architecture does not freeze (resource_state, trust_state) are open objects whose internal schemas are owned by later Work Items (WORK-008 resources, WORK-004 identity/trust).",
+  "properties": {
+    "adapters": {
+      "description": "Adapter references (adcos.adapter instance identifiers).",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "administrative_domains": {
+      "description": "Administrative domain references the node belongs to.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "capabilities": {
+      "description": "Capability statement references (adcos.capability instances; identifiers from the capability registry).",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "hardware_class": {
+      "description": "Optional hardware class disclosure.",
+      "type": "string"
+    },
+    "node_id": {
+      "description": "Stable NodeID; identity format is owned by the identity Work Item (WORK-004).",
+      "minLength": 1,
+      "type": "string"
+    },
+    "protocol_versions": {
+      "description": "Set of protocol versions the node speaks (WORK-003 owns the version line semantics).",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "resource_state": {
+      "description": "Node resource state; internal structure owned by the resource model Work Item (WORK-008).",
+      "type": "object"
+    },
+    "roles": {
+      "description": "Additive, dynamic roles. A role is never itself an identity (architecture §4).",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "software_build_id": {
+      "type": "string"
+    },
+    "trust_state": {
+      "description": "Node trust/attestation state; internal structure owned by identity/trust Work Items.",
+      "type": "object"
+    }
+  },
+  "required": [
+    "node_id",
+    "protocol_versions",
+    "software_build_id",
+    "roles",
+    "adapters",
+    "capabilities",
+    "resource_state",
+    "trust_state",
+    "administrative_domains"
+  ],
+  "schema_version": "1.0",
+  "title": "ADCOS Node",
+  "type": "object"
+}

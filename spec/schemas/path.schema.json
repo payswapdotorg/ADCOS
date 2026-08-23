@@ -1,0 +1,56 @@
+{
+  "$id": "urn:adcos:schema:path",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "architecture_version": "1.0",
+  "description": "ADCOS Path object: an ordered set of links that can satisfy a session or resource intent. Required properties encode the frozen carries-list of spec/architecture.md §6.6. Path computation and scoring semantics are owned by WORK-011; the metrics/policy_score/confidence structures are deliberately open.",
+  "properties": {
+    "confidence": {
+      "description": "Confidence and provenance of the path assessment; evidence semantics owned by later Work Items.",
+      "type": "object"
+    },
+    "expiry": {
+      "description": "Path expiry; temporal encoding owned by WORK-003.",
+      "type": "string"
+    },
+    "failover_options": {
+      "description": "Alternate/failover path references retained for graceful degradation (LOCK-013).",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "links": {
+      "description": "Ordered constituent link references (adcos.link instances).",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "metrics": {
+      "description": "Measured path metrics; measurement model owned by WORK-026.",
+      "type": "object"
+    },
+    "path_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "policy_score": {
+      "description": "Opaque policy scoring data; semantics owned by the routing Work Item (WORK-011).",
+      "type": "object"
+    }
+  },
+  "required": [
+    "path_id",
+    "links",
+    "metrics",
+    "policy_score",
+    "confidence",
+    "expiry",
+    "failover_options"
+  ],
+  "schema_version": "1.0",
+  "title": "ADCOS Path",
+  "type": "object"
+}

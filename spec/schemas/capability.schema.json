@@ -1,0 +1,60 @@
+{
+  "$id": "urn:adcos:schema:capability",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "architecture_version": "1.0",
+  "description": "ADCOS Capability object: a signed, versioned statement describing something the node/adapter may provide. Required properties encode the frozen contains-list of spec/architecture.md §6.4. Advertisement, signing, negotiation, withdrawal, and provenance semantics are owned by WORK-005; the signature here is an opaque reference/value whose cryptographic profile is negotiated later (LOCK-015).",
+  "properties": {
+    "capability_id": {
+      "description": "Capability identifier; a registered entry of the capability registry, or a well-formed unknown future identifier (safely ignorable per architecture §2 P4).",
+      "minLength": 1,
+      "type": "string"
+    },
+    "constraints": {
+      "description": "Constraints on the offered capability.",
+      "type": "object"
+    },
+    "evidence_references": {
+      "description": "References to evidence objects (adcos.evidence instances) supporting this advertisement (LOCK-008: claims carry provenance).",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "parameters": {
+      "description": "Capability parameters.",
+      "type": "object"
+    },
+    "provider_identity": {
+      "description": "Identity reference of the provider making this statement.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema_version": {
+      "description": "Schema version of this capability statement itself (MAJOR.MINOR).",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "type": "string"
+    },
+    "signature": {
+      "description": "Opaque signature reference covering this statement; cryptographic profile owned by later Work Items (LOCK-014, LOCK-015).",
+      "type": "string"
+    },
+    "validity": {
+      "description": "Validity interval of the statement; temporal semantics owned by WORK-005.",
+      "type": "object"
+    }
+  },
+  "required": [
+    "capability_id",
+    "schema_version",
+    "provider_identity",
+    "validity",
+    "parameters",
+    "constraints",
+    "evidence_references",
+    "signature"
+  ],
+  "schema_version": "1.0",
+  "title": "ADCOS Capability",
+  "type": "object"
+}

@@ -1,0 +1,52 @@
+{
+  "$id": "urn:adcos:schema:resource",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "architecture_version": "1.0",
+  "description": "ADCOS Resource object: a consumable or reservable quantity (spec/architecture.md §6.8, §17). The kind enum is the frozen §17 resource list; additions are deliberate additive schema changes (minor version bump per spec/governance.md §3), never silent extensions. Resource accounting, validity/expiry semantics, and measurement are owned by WORK-008; economic settlement is explicitly out of scope (§17).",
+  "properties": {
+    "availability": {
+      "description": "Availability mode; the frozen §17 list. Technical resource admission is separate from economic settlement.",
+      "enum": [
+        "continuous",
+        "reservation-based",
+        "best-effort",
+        "scheduled",
+        "quota-constrained",
+        "metered"
+      ],
+      "type": "string"
+    },
+    "kind": {
+      "description": "Resource kind; the frozen §17 list. Technology-neutral: no access technology or radio generation appears here.",
+      "enum": [
+        "bandwidth",
+        "spectrum-availability",
+        "compute",
+        "storage",
+        "energy",
+        "backhaul",
+        "coverage",
+        "edge-service-capacity"
+      ],
+      "type": "string"
+    },
+    "quantity": {
+      "description": "Resource quantity/measurement; accounting semantics owned by WORK-008.",
+      "type": "object"
+    },
+    "resource_id": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "resource_id",
+    "kind",
+    "quantity",
+    "availability"
+  ],
+  "schema_version": "1.0",
+  "title": "ADCOS Resource",
+  "type": "object"
+}
