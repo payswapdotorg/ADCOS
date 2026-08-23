@@ -14,6 +14,7 @@ spec/schemas/
     domain-object-registry.json    the 11 frozen architecture nouns → stable IDs + schema references
     access-profile-registry.json   access/technology profiles (5G, LTE, Wi-Fi, ..., future IMT) as registry data
     capability-registry.json       capability identifiers, core- or profile-scoped
+    identity-profile-registry.json identity profiles: derivation rules, key roles, algorithms (WORK-004)
   protocol.json                    protocol version line, envelope reference, message-type grammar, codec statuses (WORK-003)
   envelope.schema.json             the frozen §7 protocol envelope schema (WORK-003)
   <noun>.schema.json               one JSON Schema (draft 2020-12) per frozen domain object
@@ -62,6 +63,7 @@ python3 tools/spec_check.py       # WORK-001 governance/specification consistenc
 python3 tools/schema_check.py     # WORK-002/003 registry/schema/protocol-artifact consistency checks (SCHEMA-01..07)
 python3 tools/schema_selftest.py  # WORK-002/003 registry compatibility + protocol-artifact negative tests
 python3 tools/envelope_selftest.py  # WORK-003 envelope/serialization compatibility matrix, golden vectors, property/fuzz
+python3 tools/identity_selftest.py   # WORK-004 identity lifecycle, rotation, revocation, secret isolation
 ```
 
 All are zero-dependency (Python 3 standard library), fully offline, deterministic (byte-identical repeat output), and run in CI on every push and pull request. The check catalogs and test case lists are documented in `tools/README.md`. The envelope implementation itself lives in the `protocol/` package (see `protocol/README.md`), including the provisional compact codec — the production canonicalization profile remains unfrozen until later conformance work.
