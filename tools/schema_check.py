@@ -139,10 +139,22 @@ def validate_instance(instance: Any, schema: Dict[str, Any], path: str = "$") ->
     """Validate an instance against the ADCOS JSON Schema subset.
 
     Supported keywords: type, properties, required, additionalProperties
-    (boolean), items, enum, pattern, minLength, minItems. Returns a list
-    of human-readable error strings (empty when valid).
+    (boolean), items, enum, const, anyOf, pattern, minLength, maxLength,
+    minItems, minimum. Returns a list of human-readable error strings
+    (empty when valid).
     """
     errors: List[str] = []
+
+    if "const" in schema:
+        if instance != schema["const"] or type(instance) is not type(schema["const"]):
+            errors.append("%s: %r is not the constant %r" % (path, instance, schema["const"]))
+        return errors
+
+    if "anyOf" in schema:
+        branches = schema["anyOf"]
+        if not any(not validate_instance(instance, branch, path) for branch in branches):
+            errors.append("%s: %r does not satisfy any branch of anyOf" % (path, instance))
+        return errors
 
     if "enum" in schema:
         if instance not in schema["enum"]:
@@ -172,6 +184,14 @@ def validate_instance(instance: Any, schema: Dict[str, Any], path: str = "$") ->
         min_length = schema.get("minLength")
         if min_length is not None and len(instance) < min_length:
             errors.append("%s: shorter than minLength %d" % (path, min_length))
+        max_length = schema.get("maxLength")
+        if max_length is not None and len(instance) > max_length:
+            errors.append("%s: longer than maxLength %d" % (path, max_length))
+
+    if isinstance(instance, int) and not isinstance(instance, bool):
+        minimum = schema.get("minimum")
+        if minimum is not None and instance < minimum:
+            errors.append("%s: %r is less than minimum %r" % (path, instance, minimum))
 
     if isinstance(instance, list):
         min_items = schema.get("minItems")
@@ -207,6 +227,11 @@ def registry_files() -> List[Path]:
 
 def schema_files() -> List[Path]:
     return sorted(SCHEMA_DIR.glob("*.schema.json")) if SCHEMA_DIR.is_dir() else []
+
+
+def protocol_artifact_file() -> Optional[Path]:
+    candidate = SCHEMA_DIR / "protocol.json"
+    return candidate if candidate.is_file() else None
 
 
 # --------------------------------------------------------------------------
@@ -429,11 +454,16 @@ def check_completeness(
         for entry in entries.values()
         if isinstance(entry, dict) and isinstance(entry.get("schema_ref"), str)
     }
+    protocol = loaded.get("spec/schemas/protocol.json")
+    if protocol is not None:
+        envelope_ref = protocol[1].get("envelope", {}).get("schema_ref")
+        if isinstance(envelope_ref, str):
+            referenced.add((REPO_ROOT / envelope_ref).resolve().as_posix())
     for rel_path in sorted(loaded):
         if rel_path.endswith(".schema.json"):
             absolute = (REPO_ROOT / rel_path).resolve().as_posix()
             if absolute not in referenced:
-                problems.append("%s: schema file is not referenced by the domain-object registry" % rel_path)
+                problems.append("%s: schema file is not referenced by the domain-object or protocol registry" % rel_path)
 
     if problems:
         report.record("FAIL", "SCHEMA-05", problems)
@@ -486,6 +516,133 @@ def check_cross_references(report: Report, registries: Dict[str, Dict[str, Any]]
         report.record("PASS", "SCHEMA-06")
 
 
+def check_protocol_artifact(report: Report, loaded: Dict[str, Tuple[Path, Any]]) -> None:
+    """SCHEMA-07: WORK-003 protocol artifact (spec/schemas/protocol.json):
+    protocol version line, envelope reference, message-type grammar
+    consistency, registered message types, and codec status — including the
+    guard that the compact codec must not claim normative/production status
+    before the production canonicalization profile is frozen."""
+    problems: List[str] = []
+    key = "spec/schemas/protocol.json"
+    if key not in loaded:
+        report.record("FAIL", "SCHEMA-07", ["%s is missing (WORK-003 protocol artifact)" % key])
+        return
+    value = loaded[key][1]
+
+    if value.get("artifact") != "adcos.protocol":
+        problems.append("%s: artifact must be 'adcos.protocol'" % key)
+
+    protocol_version = value.get("protocol_version")
+    if not isinstance(protocol_version, str) or SCHEMA_VERSION_RE.fullmatch(protocol_version) is None:
+        problems.append("%s: protocol_version must be a MAJOR.MINOR string" % key)
+        protocol_version = None
+
+    known = value.get("known_major_versions")
+    if not isinstance(known, list) or not known or not all(
+        isinstance(item, int) and not isinstance(item, bool) and item >= 1 for item in known
+    ):
+        problems.append("%s: known_major_versions must be a non-empty list of positive integers" % key)
+    elif protocol_version is not None:
+        major = int(protocol_version.split(".")[0])
+        if major not in known:
+            problems.append(
+                "%s: protocol_version major %d is not in known_major_versions %r" % (key, major, known)
+            )
+
+    envelope = value.get("envelope")
+    envelope_schema: Optional[Dict[str, Any]] = None
+    if not isinstance(envelope, dict):
+        problems.append("%s: missing envelope reference block" % key)
+    else:
+        schema_ref = envelope.get("schema_ref")
+        schema_id = envelope.get("schema_id")
+        schema_version = envelope.get("schema_version")
+        if not isinstance(schema_ref, str):
+            problems.append("%s: envelope.schema_ref must be a string" % key)
+        else:
+            target = REPO_ROOT / schema_ref
+            if not target.is_file():
+                problems.append("%s: envelope.schema_ref %r does not resolve to a file" % (key, schema_ref))
+            else:
+                rel_path = target.relative_to(REPO_ROOT).as_posix()
+                pair = loaded.get(rel_path)
+                if pair is None:
+                    problems.append("%s: envelope.schema_ref %r is not a tracked schema artifact" % (key, schema_ref))
+                else:
+                    envelope_schema = pair[1]
+                    if envelope_schema.get("$id") != schema_id:
+                        problems.append(
+                            "%s: envelope schema $id %r does not match protocol schema_id %r"
+                            % (key, envelope_schema.get("$id"), schema_id)
+                        )
+                    if envelope_schema.get("schema_version") != schema_version:
+                        problems.append(
+                            "%s: envelope schema_version %r does not match protocol declaration %r"
+                            % (key, envelope_schema.get("schema_version"), schema_version)
+                        )
+
+    grammar = value.get("message_type_grammar")
+    if not isinstance(grammar, str) or not grammar:
+        problems.append("%s: message_type_grammar must be a non-empty string" % key)
+    elif envelope_schema is not None:
+        schema_pattern = (
+            envelope_schema.get("properties", {}).get("message_type", {}).get("pattern")
+        )
+        if schema_pattern != grammar:
+            problems.append(
+                "%s: message_type_grammar does not match the envelope schema message_type pattern "
+                "(single source of truth violated: %r vs %r)" % (key, grammar, schema_pattern)
+            )
+
+    message_types = value.get("message_types")
+    if not isinstance(message_types, dict):
+        problems.append("%s: message_types must be an object" % key)
+    else:
+        for type_id, entry in sorted(message_types.items()):
+            if isinstance(grammar, str) and re.fullmatch(grammar, type_id) is None:
+                problems.append("%s: message type %r does not match the message_type_grammar" % (key, type_id))
+            if not isinstance(entry, dict) or entry.get("status") != "active":
+                problems.append("%s: message type %r must be an entry with status 'active'" % (key, type_id))
+
+    compatibility = value.get("compatibility_rules")
+    required_rules = {
+        "known_compatible",
+        "known_additive",
+        "unknown_optional",
+        "unknown_required",
+        "incompatible_major",
+        "malformed",
+        "expired_or_replayed",
+    }
+    if not isinstance(compatibility, dict) or not required_rules.issubset(compatibility):
+        problems.append(
+            "%s: compatibility_rules must declare all frozen dispositions %s"
+            % (key, sorted(required_rules))
+        )
+
+    codecs = value.get("codecs")
+    if not isinstance(codecs, dict):
+        problems.append("%s: codecs must be an object" % key)
+    else:
+        json_codec = codecs.get("json-debug")
+        if not isinstance(json_codec, dict) or json_codec.get("status") != "normative":
+            problems.append("%s: the json-debug codec must be declared with status 'normative'" % key)
+        compact = codecs.get("compact-deterministic-cbor")
+        if not isinstance(compact, dict):
+            problems.append("%s: the compact-deterministic-cbor codec must be declared" % key)
+        elif compact.get("status") != "provisional":
+            problems.append(
+                "%s: the compact-deterministic-cbor codec must keep status 'provisional' — "
+                "the production canonicalization profile is frozen only by later conformance "
+                "work (spec/architecture.md section 7)" % key
+            )
+
+    if problems:
+        report.record("FAIL", "SCHEMA-07", problems)
+    else:
+        report.record("PASS", "SCHEMA-07")
+
+
 # --------------------------------------------------------------------------
 # Entry point
 # --------------------------------------------------------------------------
@@ -497,12 +654,17 @@ CHECK_TITLES: Dict[str, str] = {
     "SCHEMA-04": "Technology-neutrality of core identifiers",
     "SCHEMA-05": "Frozen-noun completeness and schema reference resolution",
     "SCHEMA-06": "Cross-registry references and unknown-ID policies",
+    "SCHEMA-07": "Protocol artifact: version line, envelope reference, codec status",
 }
 
 
 def load_all() -> Dict[str, Tuple[Path, Any]]:
     loaded: Dict[str, Tuple[Path, Any]] = {}
-    for path in registry_files() + schema_files():
+    paths = registry_files() + schema_files()
+    protocol_artifact = protocol_artifact_file()
+    if protocol_artifact is not None:
+        paths.append(protocol_artifact)
+    for path in paths:
         rel_path = path.relative_to(REPO_ROOT).as_posix()
         loaded[rel_path] = (path, load_json(path.read_text(encoding="utf-8")))
     return loaded
@@ -538,6 +700,7 @@ def main() -> int:
         check_technology_neutrality(report, registries)
         check_completeness(report, registries, loaded)
         check_cross_references(report, registries)
+        check_protocol_artifact(report, loaded)
     except (DuplicateKeyError, json.JSONDecodeError) as error:
         print("ADCOS schema/registry consistency checks")
         print("=" * 72)
