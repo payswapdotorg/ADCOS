@@ -87,6 +87,27 @@ VERSION_KIND_TERMS = [
 
 ARCH_VERSION_RE = re.compile(r"Architecture Version \d+(?:\.\d+)?")
 
+# Explicit declaration field form, e.g. line-leading "Architecture Version: 1.0",
+# "**Architecture Version**: 1.0", or a list-item "- Architecture Version: 1.0".
+# Prose references never match this form (they are not line-leading key/value
+# statements).
+ARCH_VERSION_FIELD_RE = re.compile(
+    r"^\s{0,3}(?:[-*+]\s+)?(?:\*\*)?Architecture Version(?:\*\*)?\s*[:=]\s*\d+(?:\.\d+)?",
+    re.MULTILINE,
+)
+
+
+def status_declarations(text: str) -> List[str]:
+    """Architecture Version declaration occurrences in a document's Status
+    section (the declaration site convention of this repository)."""
+    return ARCH_VERSION_RE.findall(status_section(text))
+
+
+def field_declarations(text: str) -> List[str]:
+    """Explicit Architecture Version declaration-field occurrences anywhere in
+    a document (line-leading key/value statements)."""
+    return [m.group(0).strip() for m in ARCH_VERSION_FIELD_RE.finditer(text)]
+
 
 # --------------------------------------------------------------------------
 # Parsing helpers
@@ -360,47 +381,66 @@ def check_markers(report: Report, texts: Dict[str, str]) -> None:
 
 
 def check_versions(report: Report, texts: Dict[str, str]) -> None:
-    """VERS-01: architecture and protocol version identifiers are distinct,
-    and the Architecture Version declaration appears only in the Status
-    section of spec/architecture.md (across all repository Markdown docs)."""
+    """VERS-01: version-kind distinction and the single authoritative
+    Architecture Version declaration site.
+
+    Declaration vs reference (spec/governance.md §3): a *declaration* is the
+    Architecture Version statement in a document's Status section, or an
+    explicit declaration field (line-leading 'Architecture Version: X.Y').
+    Declarations are legal only in the Status section of
+    spec/architecture.md. Any other occurrence — e.g. a prompt or audit note
+    saying it is written against a given architecture version — is a
+    *reference* and is unrestricted. This check therefore rejects actual
+    declarations outside the authoritative site; it does not ban the phrase
+    repository-wide."""
     problems: List[str] = []
     arch = texts.get("spec/architecture.md", "")
     arch_status = status_section(arch)
-    if len(ARCH_VERSION_RE.findall(arch_status)) != 1:
+    arch_status_decls = ARCH_VERSION_RE.findall(arch_status)
+    if len(arch_status_decls) != 1:
         problems.append(
             "spec/architecture.md Status must declare exactly one "
-            "'Architecture Version X.Y' (found %d)" % len(ARCH_VERSION_RE.findall(arch_status))
+            "'Architecture Version X.Y' (found %d)" % len(arch_status_decls)
         )
     if "Protocol Version" in arch_status:
         problems.append(
             "spec/architecture.md Status must not declare a Protocol Version; "
             "protocol versioning is a separate line (spec/governance.md §3)"
         )
-    # The Architecture Version declaration pattern is legal ONLY inside the
-    # Status section of spec/architecture.md. Scan every Markdown document
-    # in the repository working tree (deterministic sorted order, .git
-    # excluded) so a declaration cannot hide in a process, location, or
-    # README document.
+    arch_field_decls = field_declarations(arch)
+    if arch_field_decls:
+        problems.append(
+            "spec/architecture.md: explicit declaration fields are a second "
+            "declaration site; the Architecture Version is declared only in "
+            "the Status section (found %r)" % arch_field_decls
+        )
+    # No document other than spec/architecture.md may declare the Architecture
+    # Version. Declarations are detected structurally (Status-section
+    # statement or line-leading declaration field); prose references are
+    # allowed everywhere.
     for md_path in sorted(REPO_ROOT.rglob("*.md")):
         if ".git" in md_path.parts:
             continue
         rel_path = rel(md_path)
         if rel_path == "spec/architecture.md":
-            total = len(ARCH_VERSION_RE.findall(arch))
-            if total != 1:
-                problems.append(
-                    "spec/architecture.md: the Architecture Version declaration "
-                    "must appear only in its Status section (found %d occurrence(s) "
-                    "in the document)" % total
-                )
-        else:
-            foreign = ARCH_VERSION_RE.findall(read(md_path))
-            if foreign:
-                problems.append(
-                    "%s: must not declare an Architecture Version (%r) — "
-                    "spec/architecture.md Status is the only authoritative "
-                    "declaration site (spec/governance.md §3)" % (rel_path, foreign)
-                )
+            continue
+        text = read(md_path)
+        status_decls = status_declarations(text)
+        if status_decls:
+            problems.append(
+                "%s: Status section declares an Architecture Version (%r) — "
+                "declarations are legal only in the Status section of "
+                "spec/architecture.md; use a prose reference instead "
+                "(spec/governance.md §3)" % (rel_path, status_decls)
+            )
+        field_decls = field_declarations(text)
+        if field_decls:
+            problems.append(
+                "%s: explicit Architecture Version declaration field (%r) — "
+                "declarations are legal only in the Status section of "
+                "spec/architecture.md; use a prose reference instead "
+                "(spec/governance.md §3)" % (rel_path, field_decls)
+            )
     governance = texts.get("spec/governance.md", "")
     for term in VERSION_KIND_TERMS:
         if term not in governance:
@@ -600,7 +640,7 @@ CHECK_TITLES: Dict[str, str] = {
     "FILES-02": "Governance artifacts and CI invocation exist",
     "MARK-01": "Document headings and role markers",
     "MARK-02": "Frozen-status markers on architecture-authority documents",
-    "VERS-01": "Architecture/protocol/schema/implementation version distinction",
+    "VERS-01": "Version-kind distinction; single architecture-version declaration site (declarations vs references)",
     "BACKLOG-01": "Work Item backlog integrity (WORK-001..WORK-%03d)" % EXPECTED_WORK_ITEM_COUNT,
     "DEPS-01": "Dependency references resolve to known Work Items",
     "DEPS-02": "Dependency graph is acyclic",

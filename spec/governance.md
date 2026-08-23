@@ -54,9 +54,11 @@ ADCOS maintains **four distinct version kinds**. They are independent lines that
 
 Additional rules:
 
+- A **declaration** of the Architecture Version is either the version statement in a document's `## Status` section, or an explicit declaration field of the form `Architecture Version: X.Y`. Declarations are legal only in the `## Status` section of `spec/architecture.md`; no other document may declare the Architecture Version.
+- Any other occurrence is a **reference** — for example a prompt, ACR, or audit note stating that it is written against Architecture Version 1.0 — and references are unrestricted.
 - No document may use a bare phrase such as "ADCOS version N" without naming which of the four version kinds it means.
 - The Architecture Version and the Protocol Version must never be declared as equal, linked, or interchangeable.
-- `tools/spec_check.py` (check `VERS-01`) mechanically verifies, across all repository Markdown documents, that the Architecture Version declaration appears only in the Status section of `spec/architecture.md`, that no frozen document's status section declares a Protocol Version, and that this document defines all four version kinds.
+- `tools/spec_check.py` (check `VERS-01`) mechanically distinguishes declarations from references: it rejects Status-section declarations and explicit declaration fields in every Markdown document other than `spec/architecture.md` (whose Status section must carry exactly one declaration), while leaving prose references untouched. It also verifies that no frozen document's status section declares a Protocol Version and that this document defines all four version kinds.
 
 ## 4. Terminology
 
