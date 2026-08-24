@@ -44,8 +44,10 @@ capabilities/
   optional, an explicit `unknown-required-capability` failure when
   required. Malformed identifiers fail closed.
 - **Statements** follow frozen §6.4: capability_id, schema_version
-  (MAJOR.MINOR), provider_identity (WORK-004 NodeID reference), validity
-  interval (valid_from/expires_at; WORK-003 RFC 3339 UTC), parameters and
+  (MAJOR.MINOR), provider_identity (a canonical WORK-004 NodeID — validated
+  through `identity.node_id.parse_node_id`, never a duplicated grammar;
+  arbitrary strings and near-miss forms fail closed), validity interval
+  (valid_from/expires_at; WORK-003 RFC 3339 UTC), parameters and
   constraints (open-world typed data — never technology-specific core
   semantics), evidence references (opaque), signature (opaque), and an
   explicit withdrawal state. Serialization matches the WORK-002
@@ -67,9 +69,13 @@ capabilities/
   parameter/constraint expectations compare only defined semantics
   (numeric ≥ capacity-style, exact equality otherwise, recursive objects);
   unsupported required values fail explicitly, never silently satisfied.
-  Rejection reasons are stable and explicit: unknown-required-capability,
-  malformed-capability-id, version-incompatible, parameter-mismatch,
-  constraint-mismatch, no-active-statement.
+  Rejection reasons are stable, explicit, and DISTINCT: unknown-required-
+  capability, malformed-capability-id, version-incompatible,
+  parameter-mismatch (required parameters unsatisfied), constraint-mismatch
+  (parameters satisfied but required constraints unsatisfied), and
+  no-active-statement. When both dimensions fail, parameters are reported
+  first (deterministic order); optional requirements surface the distinct
+  reason non-fatally in the outcome detail.
 
 ## Verification
 

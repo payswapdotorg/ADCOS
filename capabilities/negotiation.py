@@ -236,6 +236,15 @@ def negotiate(spec: NegotiationSpec, *, requirements: Sequence[Requirement] = ()
             continue
 
         compatible: List[CapabilityStatement] = []
+        # Parameter and constraint compatibility are evaluated SEPARATELY so
+        # rejection reasons stay distinguishable: parameter-mismatch means the
+        # offered parameters do not satisfy the required parameters;
+        # constraint-mismatch means the offered constraints do not satisfy
+        # the required constraints. A candidate is compatible only when both
+        # hold (and the version matches). When no candidate is compatible,
+        # the reason reflects the FIRST failing dimension among
+        # version-compatible candidates, checked parameters first then
+        # constraints (deterministic order).
         for candidate in candidates:
             if not _version_compatible(candidate.schema_version, requirement.min_schema_version):
                 continue
@@ -253,7 +262,8 @@ def negotiate(spec: NegotiationSpec, *, requirements: Sequence[Requirement] = ()
 
         if not compatible:
             if candidates:
-                # Present but incompatible: classify the dominant reason.
+                # Present but incompatible: classify the dominant reason by
+                # evaluating each failing dimension separately.
                 version_ok = [
                     c for c in candidates
                     if _version_compatible(c.schema_version, requirement.min_schema_version)
@@ -265,8 +275,19 @@ def negotiate(spec: NegotiationSpec, *, requirements: Sequence[Requirement] = ()
                         requirement.min_schema_version,
                     )
                 else:
-                    reason = RejectionReason.PARAMETER_MISMATCH
-                    detail = "no candidate satisfies required parameters/constraints"
+                    params_ok = [
+                        c for c in version_ok
+                        if all(
+                            _values_compatible(c.parameters.get(key), value)
+                            for key, value in requirement.required_parameters.items()
+                        )
+                    ]
+                    if not params_ok:
+                        reason = RejectionReason.PARAMETER_MISMATCH
+                        detail = "no version-compatible candidate satisfies the required parameters"
+                    else:
+                        reason = RejectionReason.CONSTRAINT_MISMATCH
+                        detail = "parameters satisfy the requirement but no candidate satisfies the required constraints"
             else:
                 reason = RejectionReason.NO_ACTIVE_STATEMENT
                 detail = "peer offers no active statement for this capability at the evaluation instant"
@@ -275,7 +296,7 @@ def negotiate(spec: NegotiationSpec, *, requirements: Sequence[Requirement] = ()
                     capability_id=requirement.capability_id,
                     selected=None,
                     reason=reason if requirement.required else None,
-                    detail=detail if requirement.required else "optional capability unsatisfied (non-fatal)",
+                    detail=detail if requirement.required else "optional capability unsatisfied: %s (non-fatal)" % reason,
                 )
             )
             continue

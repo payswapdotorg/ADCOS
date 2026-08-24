@@ -29,6 +29,7 @@ sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 from capabilities import (  # noqa: E402
     CapabilityError,
+    statement_from_mapping,
     CapabilityIdClass,
     CapabilityStatement,
     NegotiationSpec,
@@ -365,7 +366,7 @@ def case_negotiation(results: List[Tuple[str, bool, str]]) -> None:
     )
     if result15.succeeded or result15.outcomes[0].reason != RejectionReason.PARAMETER_MISMATCH:
         ok, detail = False, "parameter mismatch not detected"
-    # 16: constraint mismatch fails deterministically.
+    # 16: constraint mismatch fails deterministically AND distinctly.
     result16 = negotiate(
         NegotiationSpec(
             requirements=(Requirement("capability.core.multipath", required_constraints={"privacy": "plaintext"}),),
@@ -373,8 +374,30 @@ def case_negotiation(results: List[Tuple[str, bool, str]]) -> None:
             now=NEGOTIATION_NOW,
         )
     )
-    if result16.succeeded or result16.outcomes[0].reason != RejectionReason.PARAMETER_MISMATCH:
-        ok, detail = False, "constraint mismatch not detected"
+    if result16.succeeded or result16.outcomes[0].reason != RejectionReason.CONSTRAINT_MISMATCH:
+        ok, detail = False, "constraint mismatch not detected distinctly (got %s)" % result16.outcomes[0].reason
+    # Parameter-only failure must emit parameter-mismatch, not constraint-mismatch.
+    result16b = negotiate(
+        NegotiationSpec(
+            requirements=(Requirement("capability.core.multipath", required_parameters={"max_paths": 100}),),
+            peer_statements=(signed,),
+            now=NEGOTIATION_NOW,
+        )
+    )
+    if result16b.outcomes[0].reason != RejectionReason.PARAMETER_MISMATCH:
+        ok, detail = False, "parameter-only failure misclassified: %s" % result16b.outcomes[0].reason
+    # Both failing: parameters checked first (deterministic order).
+    result16c = negotiate(
+        NegotiationSpec(
+            requirements=(
+                Requirement("capability.core.multipath", required_parameters={"max_paths": 100}, required_constraints={"privacy": "plaintext"}),
+            ),
+            peer_statements=(signed,),
+            now=NEGOTIATION_NOW,
+        )
+    )
+    if result16c.outcomes[0].reason != RejectionReason.PARAMETER_MISMATCH:
+        ok, detail = False, "both-failing case not deterministic: %s" % result16c.outcomes[0].reason
     # 17: deterministic tie-breaking with multiple compatible candidates.
     candidates = [
         signed,
@@ -705,6 +728,156 @@ def case_no_second_vocabulary(results: List[Tuple[str, bool, str]]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Correction-cycle-1 regressions: provider_identity NodeID validation and
+# distinct parameter/constraint rejection reasons
+# ---------------------------------------------------------------------------
+
+
+def case_provider_identity_nodeid(results: List[Tuple[str, bool, str]]) -> None:
+    """REGRESSION (review finding 1): provider_identity must be a canonical
+    ADCOS NodeID (WORK-004 model) — arbitrary strings and near-miss forms
+    fail closed."""
+    failures: List[str] = []
+    bad_identities = [
+        "alice",                                   # arbitrary string
+        "",                                        # empty
+        "node:identity.sha256-hmac-dev.v1:" + "1" * 64,   # wrong prefix
+        "adcos:node:identity.sha256-hmac-dev.v1:" + "1" * 63,  # short digest
+        "adcos:node:identity.sha256-hmac-dev.v1:" + "1" * 65,  # long digest
+        "adcos:node:identity.sha256-hmac-dev.v1:" + "A" * 64,  # uppercase
+        "adcos:node:single:" + "1" * 64,           # 1-segment profile
+        "ADCOs:node:identity.sha256-hmac-dev.v1:" + "1" * 64,  # case
+        "adcos:node:identity.sha256-hmac-dev.v1:%s:extra" % ("1" * 64),
+        42, None, [], {},
+    ]
+    for bad in bad_identities:
+        try:
+            base_statement(provider_identity=bad)  # type: ignore[arg-type]
+            failures.append("malformed provider_identity %r accepted" % (bad,))
+        except CapabilityError as error:
+            if error.code != "provider-identity":
+                failures.append("wrong error code for %r: %s" % (bad, error.code))
+    # A canonical NodeID (any registered profile) is accepted.
+    valid = base_statement(
+        provider_identity="adcos:node:identity.sha256-ed25519.v1:" + "a" * 64
+    )
+    # statement_from_mapping path validates too.
+    try:
+        statement_from_mapping({"provider_identity": "bob", **{k: v for k, v in valid.to_dict().items() if k != "provider_identity"}})
+        failures.append("from_mapping accepted arbitrary provider_identity")
+    except CapabilityError:
+        pass
+    results.append(
+        (
+            "provider-identity-nodeid-validated",
+            not failures,
+            "12 malformed/near-miss NodeIDs rejected (wrong prefix, short/long "
+            "digest, uppercase, 1-segment profile, case, suffix, non-strings); "
+            "canonical NodeIDs accepted on both construction paths"
+            if not failures
+            else failures[0],
+        )
+    )
+
+
+def case_parameter_constraint_distinction(results: List[Tuple[str, bool, str]]) -> None:
+    """REGRESSION (review finding 2): parameter-mismatch and
+    constraint-mismatch are DISTINCT rejection reasons — parameter-only
+    failures emit parameter-mismatch; constraint-only failures (with
+    parameters satisfied) emit constraint-mismatch; both required and
+    optional requirements report the distinct reason."""
+    _, store, provider, _, ref = make_identity()
+    signed = signed_statement(store, provider, ref)
+    failures: List[str] = []
+
+    # Parameter-only failure (constraints satisfied).
+    r_param = negotiate(
+        NegotiationSpec(
+            requirements=(
+                Requirement(
+                    "capability.core.multipath",
+                    required_parameters={"max_paths": 100},
+                    required_constraints={"privacy": "end_to_end"},  # satisfied
+                ),
+            ),
+            peer_statements=(signed,),
+            now=NEGOTIATION_NOW,
+        )
+    )
+    if r_param.outcomes[0].reason != RejectionReason.PARAMETER_MISMATCH:
+        failures.append("parameter-only failure: %s" % r_param.outcomes[0].reason)
+
+    # Constraint-only failure (parameters satisfied).
+    r_constraint = negotiate(
+        NegotiationSpec(
+            requirements=(
+                Requirement(
+                    "capability.core.multipath",
+                    required_parameters={"max_paths": 2},  # satisfied (4 >= 2)
+                    required_constraints={"privacy": "plaintext"},  # violated
+                ),
+            ),
+            peer_statements=(signed,),
+            now=NEGOTIATION_NOW,
+        )
+    )
+    if r_constraint.outcomes[0].reason != RejectionReason.CONSTRAINT_MISMATCH:
+        failures.append("constraint-only failure: %s" % r_constraint.outcomes[0].reason)
+
+    # Both failing: deterministic order — parameters checked first.
+    r_both = negotiate(
+        NegotiationSpec(
+            requirements=(
+                Requirement(
+                    "capability.core.multipath",
+                    required_parameters={"max_paths": 100},
+                    required_constraints={"privacy": "plaintext"},
+                ),
+            ),
+            peer_statements=(signed,),
+            now=NEGOTIATION_NOW,
+        )
+    )
+    if r_both.outcomes[0].reason != RejectionReason.PARAMETER_MISMATCH:
+        failures.append("both-failing order: %s" % r_both.outcomes[0].reason)
+
+    # Optional requirement with constraint-only failure: NON-FATAL by design
+    # (optional requirements never fail the negotiation), but nothing is
+    # silently swallowed — the outcome is unselected and the DISTINCT reason
+    # appears in the detail.
+    r_optional = negotiate(
+        NegotiationSpec(
+            requirements=(
+                Requirement(
+                    "capability.core.multipath", required=False,
+                    required_constraints={"privacy": "plaintext"},
+                ),
+            ),
+            peer_statements=(signed,),
+            now=NEGOTIATION_NOW,
+        )
+    )
+    if not r_optional.succeeded:
+        failures.append("optional requirement wrongly failed the whole negotiation")
+    if r_optional.outcomes[0].selected is not None:
+        failures.append("optional requirement selected despite violated constraints")
+    if RejectionReason.CONSTRAINT_MISMATCH not in (r_optional.outcomes[0].detail or ""):
+        failures.append("optional constraint failure reason not surfaced: %r" % r_optional.outcomes[0].detail)
+
+    results.append(
+        (
+            "parameter-vs-constraint-distinct-reasons",
+            not failures,
+            "parameter-only -> parameter-mismatch; constraint-only -> "
+            "constraint-mismatch; both-failing deterministic (params first); "
+            "optional surfaces the distinct reason non-fatally"
+            if not failures
+            else failures[0],
+        )
+    )
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -721,6 +894,8 @@ def main() -> int:
     case_validity_matrix(results)
     case_serialization_roundtrip(results)
     case_no_second_vocabulary(results)
+    case_provider_identity_nodeid(results)
+    case_parameter_constraint_distinction(results)
     case_fuzz(results)
 
     print("ADCOS capability self-test")

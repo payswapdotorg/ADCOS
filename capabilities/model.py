@@ -18,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import Any, Mapping, Optional, Tuple
 
+from identity.node_id import NodeIdError, parse_node_id
 from protocol.temporal import TemporalError, parse_instant
 
 from .classification import CapabilityIdClass, classify_capability_id
@@ -69,8 +70,18 @@ class CapabilityStatement:
                 "schema-version",
                 "schema_version %r must be MAJOR.MINOR" % self.schema_version,
             )
-        if not isinstance(self.provider_identity, str) or not self.provider_identity:
-            raise CapabilityError("provider-identity", "provider_identity must be a non-empty string")
+        # provider_identity must be a canonical ADCOS NodeID (WORK-004
+        # identity model) — validated through the accepted parse_node_id,
+        # never a duplicated grammar. Near-miss and malformed values fail
+        # closed.
+        try:
+            parse_node_id(self.provider_identity)
+        except NodeIdError as error:
+            raise CapabilityError(
+                "provider-identity",
+                "provider_identity must be a canonical ADCOS NodeID "
+                "(adcos:node:<profile_id>:<64 lowercase hex>): %s" % error,
+            ) from error
         try:
             validate_validity(self.valid_from, self.expires_at)
         except Exception as error:

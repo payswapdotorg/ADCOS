@@ -237,4 +237,6 @@ python3 tools/capability_selftest.py
 | `validity-matrix-distinct-concepts` | malformed intervals fail closed; active/not-yet-valid/expired/withdrawn distinct; boundary instants exact (7, 8 + validity semantics) |
 | `serialization-and-envelope-roundtrip` | canonical round-trip byte-stable; duplicate keys rejected; WORK-003 envelope integration (registered capability.advertise type); compact codec stable (round-trip requirement) |
 | `no-duplicated-vocabulary-in-code` | the WORK-002 registry is the single vocabulary authority — no identifier literals in executable code (no-second-authority rule) |
+| `provider-identity-nodeid-validated` | REGRESSION: 12 malformed/near-miss NodeIDs rejected (wrong prefix, short/long digest, uppercase, 1-segment profile, case, suffix, non-strings); canonical NodeIDs accepted on both construction paths |
+| `parameter-vs-constraint-distinct-reasons` | REGRESSION: parameter-only -> parameter-mismatch; constraint-only (parameters satisfied) -> constraint-mismatch; both-failing deterministic (params first); optional requirements surface the distinct reason non-fatally |
 | `fuzzed-statements-fail-safely` | 306 mutated/garbage inputs handled without crashes (20) |
