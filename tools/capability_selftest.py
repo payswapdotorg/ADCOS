@@ -133,8 +133,17 @@ def signed_statement(
     store: InMemoryCredentialStore,
     provider: DevHmacSha256Provider,
     credential: CredentialReference,
+    *,
+    provider_identity: Optional[str] = None,
     **overrides: Any,
 ) -> CapabilityStatement:
+    """Sign a base statement, using the credential's NodeID as
+    provider_identity by default (the binding is now enforced by
+    verify_statement, so the two must match)."""
+    record = store.get_record(credential)
+    overrides.setdefault("provider_identity", record.node_id.text)
+    if provider_identity is not None:
+        overrides["provider_identity"] = provider_identity
     return sign_statement(
         base_statement(**overrides), store=store, provider=provider, credential=credential
     )
@@ -454,17 +463,28 @@ def case_not_authority(results: List[Tuple[str, bool, str]]) -> None:
     """18: negotiation grants no trust/authorization; 19: evidence stays
     references. A signed statement from a valid identity about another
     node remains a CLAIM — nothing in the capability layer upgrades it."""
-    _, store, provider, ident, ref = make_identity()
-    # A statement whose provider_identity is a THIRD party (not the signer)
-    # still verifies if the signer signed it — but it is a claim BY THE
-    # SIGNER about that provider, never an authoritative fact.
-    third_party = "adcos:node:identity.sha256-hmac-dev.v1:" + "7" * 64
-    claim = sign_statement(
-        base_statement(provider_identity=third_party, evidence_references=("evidence:remote-claim-1",)),
-        store=store, provider=provider, credential=ref,
+    service, store, provider, ident, ref = make_identity()
+    profiles = ProfileSet.load_default()
+    profile = profiles.get("identity.sha256-hmac-dev.v1")
+    # Node B (the signer) reports a claim ABOUT Node A. The statement's
+    # provider_identity is B (the signer/provenance), and the EVIDENCE
+    # references point to observations about A. The statement is an
+    # attributable claim BY B — verify_statement confirms B signed it —
+    # but nothing upgrades it to truth/authority about A.
+    secret_b = b"TEST-ONLY-node-B-for-claim-test"
+    ident_b = NodeIdentity.create(profile, provider.public_material(secret_b), NOW_TEXT)
+    ref_b = service.provision(ident_b, KeyRole.IDENTITY, secret_b, now=NOW_TEXT)
+    service.activate(ref_b, now=NOW_TEXT)
+    claim = signed_statement(
+        store, provider, ref_b,
+        evidence_references=("evidence:observation-about-node-A",),
     )
-    # The negotiation result exposes the selected STATEMENT — the claim —
-    # and nothing about trust/authorization.
+    # verify_statement confirms B signed this (B's credential matches the
+    # statement's provider_identity, which IS B). But the evidence about
+    # A remains a CLAIM by B, never authority (LOCK-008).
+    claim_verified = verify_statement(
+        claim, store=store, provider=provider, credential=ref_b,
+    )
     result = negotiate(
         NegotiationSpec(
             requirements=(Requirement("capability.core.multipath"),),
@@ -474,10 +494,11 @@ def case_not_authority(results: List[Tuple[str, bool, str]]) -> None:
     )
     selected = result.outcomes[0].selected
     ok = (
-        result.succeeded
+        claim_verified
+        and result.succeeded
         and selected is claim
-        and selected.evidence_references == ("evidence:remote-claim-1",)
-        and selected.provider_identity == third_party
+        and selected.evidence_references == ("evidence:observation-about-node-A",)
+        and selected.provider_identity == ident_b.node_id.text
         and not hasattr(result, "trust")  # no trust concept on the result
         and not hasattr(result, "authorized")  # no authorization concept
     )
@@ -878,6 +899,96 @@ def case_parameter_constraint_distinction(results: List[Tuple[str, bool, str]]) 
 
 
 # ---------------------------------------------------------------------------
+# Correction-cycle-2 regression: signature is bound to provider_identity
+# ---------------------------------------------------------------------------
+
+
+def case_cross_node_forgery_rejected(results: List[Tuple[str, bool, str]]) -> None:
+    """REGRESSION (cycle-2 review): a valid signature from Node B's
+    credential must NOT verify a statement whose provider_identity names
+    Node A. The signature is bound to the credential's NodeID through
+    verify_statement's record check.
+
+    This does NOT introduce trust/authorization policy — it verifies
+    PROVENANCE (the statement came from the node it claims to be from),
+    never truth or authorization.
+    """
+    profiles = ProfileSet.load_default()
+    profile = profiles.get("identity.sha256-hmac-dev.v1")
+    store = InMemoryCredentialStore()
+    provider = DevHmacSha256Provider()
+    service = IdentityService(store=store, provider=provider, profiles=profiles)
+
+    # Node A
+    secret_a = b"TEST-ONLY-node-A-identity-key-material"
+    ident_a = NodeIdentity.create(profile, provider.public_material(secret_a), NOW_TEXT)
+    ref_a = service.provision(ident_a, KeyRole.IDENTITY, secret_a, now=NOW_TEXT)
+    service.activate(ref_a, now=NOW_TEXT)
+
+    # Node B
+    secret_b = b"TEST-ONLY-node-B-identity-key-material"
+    ident_b = NodeIdentity.create(profile, provider.public_material(secret_b), NOW_TEXT)
+    ref_b = service.provision(ident_b, KeyRole.IDENTITY, secret_b, now=NOW_TEXT)
+    service.activate(ref_b, now=NOW_TEXT)
+
+    # Statement claiming Node A as provider, signed by Node B's credential.
+    # Both signatures are valid HMAC signatures over the canonical content;
+    # the ONLY thing that should make verify_statement return False is the
+    # NodeID mismatch (B's credential does not belong to A).
+    statement_a = base_statement(provider_identity=ident_a.node_id.text)
+    # Sign with B's credential (valid signature, wrong node)
+    forged = sign_statement(
+        statement_a, store=store, provider=provider, credential=ref_b
+    )
+    # Verify with B's credential — the signature is correct, but B is not A
+    cross_ok = verify_statement(forged, store=store, provider=provider, credential=ref_b)
+    # Verify with A's credential — the signature was not produced by A
+    wrong_key = verify_statement(forged, store=store, provider=provider, credential=ref_a)
+
+    # Positive control: a properly signed statement by A verifies with A's credential
+    legitimate = sign_statement(
+        base_statement(provider_identity=ident_a.node_id.text),
+        store=store, provider=provider, credential=ref_a,
+    )
+    positive_ok = verify_statement(legitimate, store=store, provider=provider, credential=ref_a)
+
+    # The same signed content also must NOT verify under a superseded (rotated)
+    # credential of the same node — provenance must trace to an active credential.
+    # Rotate A's identity key; verify the OLD statement with the OLD credential.
+    op_secret = b"TEST-ONLY-operational-A"
+    op_ref = service.provision(ident_a, KeyRole.OPERATIONAL, op_secret, now=NOW_TEXT)
+    service.activate(op_ref, now=NOW_TEXT)
+    from identity.model import _require_active
+    from identity.credentials import CredentialReference as _CR
+
+    # Rotate A's identity key.
+    new_secret_a = b"TEST-ONLY-node-A-new-identity-key"
+    rotation_time = "2030-06-01T00:00:00Z"
+    statement_rotation = service.rotation_statement(
+        ident_a.node_id, KeyRole.IDENTITY, 1, 2,
+        provider.public_material(new_secret_a), rotation_time,
+    )
+    auth_sig = provider.sign(store, ref_a, statement_rotation)
+    service.rotate(ref_a, node_id=ident_a.node_id, role=KeyRole.IDENTITY,
+                   new_secret=new_secret_a, authorization=auth_sig, rotated_at=rotation_time)
+    # The old identity credential is now SUPERSEDED; its record still belongs to A
+    # but is no longer ACTIVE. A statement signed with the old credential (before
+    # rotation) must not verify post-rotation, even though the NodeID matches.
+    superseded_ok = verify_statement(legitimate, store=store, provider=provider, credential=ref_a)
+
+    results.append(
+        (
+            "cross-node-signature-forgery-rejected",
+            not cross_ok and not wrong_key and positive_ok and not superseded_ok,
+            "Node B's valid signature rejected for a statement naming Node A; "
+            "positive control verifies; superseded-credential provenance break rejected"
+            if not (cross_ok or wrong_key or not positive_ok or superseded_ok)
+            else "FAILED: cross=%r wrong=%r positive=%r superseded=%r" % (cross_ok, wrong_key, positive_ok, superseded_ok),
+        )
+    )
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -896,6 +1007,7 @@ def main() -> int:
     case_no_second_vocabulary(results)
     case_provider_identity_nodeid(results)
     case_parameter_constraint_distinction(results)
+    case_cross_node_forgery_rejected(results)
     case_fuzz(results)
 
     print("ADCOS capability self-test")

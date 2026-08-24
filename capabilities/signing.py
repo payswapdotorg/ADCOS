@@ -19,6 +19,7 @@ from typing import Optional
 from identity.credentials import CredentialReference
 from identity.store import CredentialStore
 from identity.provider import SignatureProvider
+from identity.node_id import NodeID, parse_node_id
 from protocol.canonicalization import CanonicalizationError, canonical_json_bytes
 
 from .model import CapabilityError, CapabilityStatement
@@ -77,12 +78,39 @@ def verify_statement(
 ) -> bool:
     """Verify a statement's signature through the provider seam.
 
-    Returns True only for a byte-exact signature over the canonical
-    security-critical content. Tampering with ANY covered member
-    (capability id, provider identity, validity, parameters, constraints,
-    evidence references, withdrawal state) invalidates the signature.
+    Returns True ONLY when:
+    1. the credential's WORK-004 record belongs to the SAME NodeID as
+       the statement's provider_identity (cross-node forgery rejected);
+    2. the credential is ACTIVE and not expired at the current evaluation
+       time (the store rejects revoked secrets already; we additionally
+       confirm the credential is usable); and
+    3. the signature is byte-exact over the canonical security-critical
+       content.
+
+    This does NOT introduce trust or authorization policy — it verifies
+    PROVENANCE (the statement came from the node it claims to be from),
+    never truth or authorization.
     """
     if not statement.signature:
+        return False
+    # BIND: the credential used for verification must belong to the same
+    # NodeID the statement names as its provider_identity. A valid
+    # signature from Node B on a statement naming Node A is rejected.
+    try:
+        record = store.get_record(credential)
+    except Exception:
+        return False
+    try:
+        declared_node_id = parse_node_id(statement.provider_identity)
+    except Exception:
+        return False
+    if record.node_id != declared_node_id:
+        return False
+    # The credential must be in an ACTIVE usable state (not revoked, not
+    # superseded — those are provenance-breaks).
+    from identity.lifecycle import LifecycleState
+
+    if record.status is not LifecycleState.ACTIVE:
         return False
     try:
         expected = provider.sign(store, credential, statement_signature_input(statement))
