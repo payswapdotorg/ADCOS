@@ -33,3 +33,6 @@ jobs:
 
       - name: Run identity lifecycle/security tests
         run: python3 tools/identity_selftest.py
+
+      - name: Run capability statement/negotiation tests
+        run: python3 tools/capability_selftest.py
