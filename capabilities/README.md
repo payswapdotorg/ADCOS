@@ -58,6 +58,18 @@ capabilities/
   canonical signature-input machinery and the WORK-004 provider seam.
   Tampering with ANY covered member invalidates the signature. No key
   material ever enters this layer.
+- **Verification** (`verify_statement`) is time-aware and provenance-bound:
+  the caller injects the evaluation instant (no wall clock — fully
+  deterministic), and the verifier checks that (1) the credential's
+  WORK-004 record belongs to the SAME NodeID as the statement's
+  `provider_identity` (cross-node forgery rejected), (2) the credential's
+  lifecycle is usable AT the injected instant — ACTIVE status, not revoked,
+  and not expired (`expires_at <= now` is rejected, mirroring
+  `IdentityService._require_active`; an ACTIVE-but-expired credential has a
+  byte-correct signature but is rejected because the key was no longer
+  usable at the claimed instant), and (3) the signature is byte-exact over
+  the canonical content. This verifies PROVENANCE — never truth, trust, or
+  authorization.
 - **Lifecycle**: withdrawal (explicit act) and expiry (time-based) are
   DISTINCT terminal-for-usability states; neither negotiates as currently
   usable; historical statements remain queryable for audit. Neither is a
@@ -80,7 +92,7 @@ capabilities/
 ## Verification
 
 ```bash
-python3 tools/capability_selftest.py   # 11 deterministic cases (20 required tests)
+python3 tools/capability_selftest.py   # 15 deterministic cases (20 required tests)
 ```
 
 CI runs this suite with all prior suites. All key material is TEST-ONLY;

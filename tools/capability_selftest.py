@@ -174,7 +174,7 @@ def case_construction_and_schema(results: List[Tuple[str, bool, str]]) -> None:
 def case_signing_and_verification(results: List[Tuple[str, bool, str]]) -> None:
     _, store, provider, _, ref = make_identity()
     signed = signed_statement(store, provider, ref)
-    ok = verify_statement(signed, store=store, provider=provider, credential=ref)
+    ok = verify_statement(signed, store=store, provider=provider, credential=ref, now=NOW)
     # Different statement content -> different signature input bytes.
     other = signed_statement(store, provider, ref, parameters={"max_paths": 8})
     different_input = (
@@ -197,7 +197,7 @@ def case_signing_and_verification(results: List[Tuple[str, bool, str]]) -> None:
 def case_tamper_rejection(results: List[Tuple[str, bool, str]]) -> None:
     _, store, provider, _, ref = make_identity()
     signed = signed_statement(store, provider, ref)
-    verify = lambda s: verify_statement(s, store=store, provider=provider, credential=ref)  # noqa: E731
+    verify = lambda s: verify_statement(s, store=store, provider=provider, credential=ref, now=NOW)  # noqa: E731
     checks = {
         "parameters": replace(signed, parameters={"max_paths": 999}),
         "provider": replace(signed, provider_identity="adcos:node:identity.sha256-hmac-dev.v1:" + "9" * 64),
@@ -483,7 +483,7 @@ def case_not_authority(results: List[Tuple[str, bool, str]]) -> None:
     # statement's provider_identity, which IS B). But the evidence about
     # A remains a CLAIM by B, never authority (LOCK-008).
     claim_verified = verify_statement(
-        claim, store=store, provider=provider, credential=ref_b,
+        claim, store=store, provider=provider, credential=ref_b, now=NEGOTIATION_NOW,
     )
     result = negotiate(
         NegotiationSpec(
@@ -941,16 +941,16 @@ def case_cross_node_forgery_rejected(results: List[Tuple[str, bool, str]]) -> No
         statement_a, store=store, provider=provider, credential=ref_b
     )
     # Verify with B's credential — the signature is correct, but B is not A
-    cross_ok = verify_statement(forged, store=store, provider=provider, credential=ref_b)
+    cross_ok = verify_statement(forged, store=store, provider=provider, credential=ref_b, now=NOW)
     # Verify with A's credential — the signature was not produced by A
-    wrong_key = verify_statement(forged, store=store, provider=provider, credential=ref_a)
+    wrong_key = verify_statement(forged, store=store, provider=provider, credential=ref_a, now=NOW)
 
     # Positive control: a properly signed statement by A verifies with A's credential
     legitimate = sign_statement(
         base_statement(provider_identity=ident_a.node_id.text),
         store=store, provider=provider, credential=ref_a,
     )
-    positive_ok = verify_statement(legitimate, store=store, provider=provider, credential=ref_a)
+    positive_ok = verify_statement(legitimate, store=store, provider=provider, credential=ref_a, now=NOW)
 
     # The same signed content also must NOT verify under a superseded (rotated)
     # credential of the same node — provenance must trace to an active credential.
@@ -974,7 +974,7 @@ def case_cross_node_forgery_rejected(results: List[Tuple[str, bool, str]]) -> No
     # The old identity credential is now SUPERSEDED; its record still belongs to A
     # but is no longer ACTIVE. A statement signed with the old credential (before
     # rotation) must not verify post-rotation, even though the NodeID matches.
-    superseded_ok = verify_statement(legitimate, store=store, provider=provider, credential=ref_a)
+    superseded_ok = verify_statement(legitimate, store=store, provider=provider, credential=ref_a, now=NOW)
 
     results.append(
         (
@@ -984,6 +984,106 @@ def case_cross_node_forgery_rejected(results: List[Tuple[str, bool, str]]) -> No
             "positive control verifies; superseded-credential provenance break rejected"
             if not (cross_ok or wrong_key or not positive_ok or superseded_ok)
             else "FAILED: cross=%r wrong=%r positive=%r superseded=%r" % (cross_ok, wrong_key, positive_ok, superseded_ok),
+        )
+    )
+
+
+# ---------------------------------------------------------------------------
+# Correction-cycle-3 regression: ACTIVE-but-expired credential cannot
+# validate a statement (verify_statement must be time-aware: injected
+# evaluation instant; expires_at/revoked/lifecycle checked at that instant)
+# ---------------------------------------------------------------------------
+
+
+def case_expired_active_credential_rejected(results: List[Tuple[str, bool, str]]) -> None:
+    """REGRESSION (cycle-3 review): an ACTIVE-but-expired credential must
+    NOT validate a capability statement. ``verify_statement`` previously
+    claimed to reject expired credentials but never checked
+    ``record.expires_at``; an ACTIVE credential whose expiry had passed
+    could therefore still produce a valid signature.
+
+    The verifier is now time-aware: the caller injects the evaluation
+    instant (no wall clock), and the credential's expiry/revocation/
+    lifecycle is checked at that instant before accepting provenance.
+    Trust/authorization semantics stay out of the verifier — this is
+    provenance only.
+    """
+    profiles = ProfileSet.load_default()
+    profile = profiles.get("identity.sha256-hmac-dev.v1")
+    store = InMemoryCredentialStore()
+    provider = DevHmacSha256Provider()
+    service = IdentityService(store=store, provider=provider, profiles=profiles)
+
+    # Node A with a credential whose expires_at is set to a NEAR-FUTURE
+    # instant (one day after provisioning). Activation at NOW succeeds
+    # because expires_at is still in the future at that instant.
+    secret = b"TEST-ONLY-expiry-regression-node-A"
+    ident = NodeIdentity.create(profile, provider.public_material(secret), NOW_TEXT)
+    CRED_EXPIRES = "2030-01-02T00:00:00Z"
+    ref = service.provision(
+        ident, KeyRole.IDENTITY, secret, now=NOW_TEXT, expires_at=CRED_EXPIRES
+    )
+    service.activate(ref, now=NOW_TEXT)
+
+    # Sign a statement whose OWN validity window spans well past the
+    # credential expiry (so the statement validity is never the reason
+    # verification fails — only the credential expiry is). The provider
+    # seam signs at NOW, while the credential is still in its window.
+    signed = signed_statement(
+        store, provider, ref,
+        valid_from="2030-01-01T00:00:00Z",
+        expires_at="2030-12-31T00:00:00Z",
+    )
+
+    # Positive control: at an instant WITHIN the credential's validity
+    # window, the byte-correct signature verifies.
+    in_window = datetime(2030, 1, 1, 12, tzinfo=timezone.utc)
+    positive_ok = verify_statement(
+        signed, store=store, provider=provider, credential=ref, now=in_window
+    )
+
+    # Boundary: at the EXACT expires_at instant, the credential is already
+    # expired (mirrors IdentityService._require_active: expires_at <= now).
+    at_boundary = datetime(2030, 1, 2, 0, 0, 0, tzinfo=timezone.utc)
+    boundary_ok = verify_statement(
+        signed, store=store, provider=provider, credential=ref, now=at_boundary
+    )
+
+    # ACTIVE-but-expired: the credential status is STILL ACTIVE in the
+    # store (no expire() call has been made — only time has passed), but
+    # the injected evaluation instant is past expires_at. The byte-correct
+    # signature MUST NOT validate.
+    past_expiry = datetime(2030, 1, 3, 0, 0, 0, tzinfo=timezone.utc)
+    expired_ok = not verify_statement(
+        signed, store=store, provider=provider, credential=ref, now=past_expiry
+    )
+
+    # Sanity: the credential record really is still ACTIVE (status) at the
+    # evaluation instant — this PROVES the rejection came from the expiry
+    # check against the injected instant, NOT from a status flip. The
+    # status field has not been touched; only time-aware expiry rejected it.
+    from identity.lifecycle import LifecycleState as _LS
+
+    record = store.get_record(ref)
+    still_active = record.status is _LS.ACTIVE and record.revoked is None
+
+    # Negative control: a naive (tz-unaware) evaluation instant fails closed.
+    naive_ok = not verify_statement(
+        signed, store=store, provider=provider, credential=ref,
+        now=datetime(2030, 1, 1, 12),  # no tzinfo
+    )
+
+    results.append(
+        (
+            "expired-active-credential-rejected",
+            positive_ok and not boundary_ok and expired_ok and still_active and naive_ok,
+            "ACTIVE-but-expired credential cannot validate a statement at the "
+            "injected instant; positive control verifies in-window; boundary "
+            "instant rejected (expires_at <= now); status still ACTIVE (rejection "
+            "from the expiry check, not a status flip); naive instant fails closed"
+            if positive_ok and not boundary_ok and expired_ok and still_active and naive_ok
+            else "FAILED: positive=%r boundary=%r expired_ok=%r still_active=%r naive=%r"
+                 % (positive_ok, boundary_ok, expired_ok, still_active, naive_ok),
         )
     )
 
@@ -1008,6 +1108,7 @@ def main() -> int:
     case_provider_identity_nodeid(results)
     case_parameter_constraint_distinction(results)
     case_cross_node_forgery_rejected(results)
+    case_expired_active_credential_rejected(results)
     case_fuzz(results)
 
     print("ADCOS capability self-test")
