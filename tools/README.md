@@ -702,3 +702,63 @@ python3 tools/session_selftest.py
 | `53-forged-reconnected-event-rejected` | REGRESSION (PR #12 blocker 1): 5 forged-event shapes (no validating decision / mismatched new refs / forged old refs / wrong transition shape / expired route) rejected; `current_route_decision_id`/`current_path_id` byte-identical |
 | `54-terminate-atomicity-fault-injection` | REGRESSION (PR #12 blocker 2): fault-injected second-event failure leaves the active session + history byte-identical; healthy path appends exactly 2 events atomically |
 | `55-mid-history-replay-idempotent` | exact duplicate of ANY already-accepted event replays idempotently; different content at the same sequence still fails closed |
+
+## multipath_selftest.py — multipath session semantics tests (WORK-013)
+
+Deterministic, offline verification of the multipath package against the frozen WORK-013 handoff: the path admission contract (decision/path content binding, endpoints, policy/intent bindings, expiry boundaries), the cross-path-binding security property, the frozen constituent-status table, explicit add/remove lifecycle operations recorded as state-preserving session events, plan ordering/identity determinism, atomicity, replay under WORK-012 semantics with admission validation, and the mechanical prohibitions (no engine invocation, no authority mutation, no scheduler/transport/radio/adapter logic, no wall-clock/randomness/network). Runs in CI after the session suite.
+
+### Invocation
+
+```bash
+python3 tools/multipath_selftest.py
+```
+
+### Case catalog
+
+| Case | Verifies |
+|---|---|
+| `01-valid-path-addition` | path admitted; state-preserving event; provenance (route_decision_id, added_sequence) recorded |
+| `02-reject-non-selected` | non-selected decision → `route-not-selected` |
+| `03-reject-tampered-decision-id` | decision id content binding → `route-tampered` |
+| `04-reject-tampered-path-id` | internally-consistent decision with misbound path id → `path-tampered` (invariant 6) |
+| `05-reject-endpoint-mismatch` | path endpoints ≠ session endpoints (invariant 2) |
+| `06-reject-expired-path` | `now > expires` rejected (add + reactivation); `now == expires` valid |
+| `07-cross-path-binding` | HEADLINE SECURITY TEST: cross-policy + cross-intent injection rejected; legitimate same-binding reuse allowed |
+| `08-duplicate-path-rejected` | `duplicate-path`; store byte-identical; one entry (invariant 4) |
+| `09-deterministic-ordering` | same plan_id + entry order + plan state under reversed adds (invariants 5, 13) |
+| `10-plan-identity-binding` | plan_id content-derived (plan STATE, provenance excluded), tamper-evident, round-trips |
+| `11-legal-status-transitions` | all 4 legal constituent-status edges walk |
+| `12-illegal-status-transitions` | all illegal status edges fail closed, no mutation (incl. FAILED→ACTIVE) |
+| `13-explicit-removal` | removal event; absent-path ops fail closed; re-add is a fresh entry |
+| `14-no-route-redefinition` | authoritative route byte-identical through degrade/fail/**all-paths-failed** (invariants 8, 14) |
+| `15-plan-ops-are-session-events` | 5 plan ops = 5 sequenced session events; plan == fold(history) (invariants 7, 12) |
+| `16-atomic-failure` | admission/construction/status failures leave everything byte-identical |
+| `17-replay-idempotent` | exact duplicates idempotent via multipath AND generic append paths |
+| `18-replay-conflict-gap` | conflicting reuse + sequence gaps fail closed, no mutation |
+| `19-forged-path-added-replay` | forged refs rejected (no decision → `reconnect-validation-required`; mismatch → `event-binding-mismatch`); faithful replay validated + applied |
+| `20-manufactured-events-generic-path` | generic append rejects plan events (`illegal-transition`); no public/registration plan-append API exists on the generic substrate; the multipath commit path fails closed without a constructed authority; the legitimate authority path works |
+| `21-no-authority-mutation` | resources/topology/policy/lifecycle/authoritative-route byte-identical across all ops |
+| `22-no-engine-invocation` | AST scan: no engine/topology/resource identifiers or imports in multipath/ |
+| `23-no-clock-random-network` | AST scan: no wall-clock/random/uuid/network |
+| `24-no-scheduler-transport-logic` | AST scan: no scheduler/congestion/transport/radio/adapter/primary-selection logic (invariants 10, 14) |
+| `25-session-state-gating` | fail-closed from terminal/pre-establishment/TERMINATING; allowed from post-establishment states |
+| `26-plan-serialization-roundtrip` | byte-identical round-trips; tampered entry content rejected under a stale plan id |
+| `27-cross-process-determinism` | identical plan_id + store digest across processes (invariant 13) |
+| `28-concurrent-add-determinism` | 20 concurrent identical adds: exactly 1 wins, 19 fail closed, no corruption |
+| `29-faithful-cross-store-replay` | validated event replay reproduces plan + history byte-identically |
+| `30-secret-and-leakage-rejection` | LOCK-023 + access-tech/vendor leakage rejected in actor/reason/extensions |
+| `31-expired-reactivation-only` | expired reactivation fails closed; teardown (fail/remove) unaffected |
+| `32-plan-modifiable-states-constant` | frozen gating set: post-establishment non-terminal states |
+| `33-multipath-vocabulary` | 7 multipath codes + reused session codes; no duplicate vocabulary |
+| `34-frozen-doc-unchanged` | all 4 frozen architecture docs byte-identical vs origin/main |
+| `35-prior-prompts-unchanged` | all prior prompts WORK-001..012 byte-identical vs origin/main |
+| `36-fuzz-never-crashes` | 60 seeded fuzz trials: only fail-closed envelopes, never crashes |
+| `37-interleaved-lifecycle-and-plan-ops` | one contiguous sequence; fold correct across interleaving (invariant 11) |
+| `38-plan-derivation-pure` | pure fold; empty plan deterministic; unknown session → None |
+| `39-arbitrary-plan-events-rejected` | REGRESSION (PR #13 correction 1): all 5 plan-event types × (generic append + no-authority commit path) fail closed with no mutation |
+| `40-authority-registration-gate` | REGRESSION (PR #13 correction 3): sessions/ has NO multipath dependency (AST layering proof); no registration/authority API exists on the substrate; no capability attribute on MultipathStore instances (`vars()` carries none); the claim-first attack has no callable surface and the commit path fails closed without authority; the legitimate handshake works; a second authority is rejected by the multipath layer |
+| `41-commit-token-required` | REGRESSION (PR #13 corrections 4-6): with a LEGITIMATE authority constructed, the DIRECT session primitive call fails closed (function/lambda/method wrapper shapes); the closure capability retrieved via deep closure introspection still cannot be exercised by attacker code; foreign authorities are powerless; only the genuine validated operation commits |
+| `42-token-acquisition-surfaces` | REGRESSION (PR #13 correction 6): the module namespace contains NO commit function/registry/capability; MultipathStore instances carry only `_lock` + `_sessions`; every module callable probed; the direct primitive rejects the attacker frame; the store stays byte-identical; only the genuine validated operation commits (no registry lookup used) |
+| `43-direct-primitive-attack` | REGRESSION (PR #13 correction 6 — the Architect's exact required test): `session_store._append_state_preserving_event(forged)` after a legitimate MultipathStore exists → `extension-authority-required`; store/history/plan byte-identical |
+| `44-registration-forgery` | REGRESSION (PR #13 correction 7): the EXACT Architect attack (runtime-forged class registering its own `__init__` code), a forged same-named class, an ordinary function named `__init__`, a runtime call presenting the GENUINE constructor code object, and a runtime declaration attempt — all rejected with no capability installed, the direct primitive closed, and the store byte-identical; the genuine flow is unaffected |
+| `45-trust-store-mutation` | REGRESSION (PR #13 correction 8): the instance trust attribute and the module trust set DO NOT EXIST (setattr creates unrelated attributes the gates never consult); replacing the primitive attribute commits nothing and cannot redirect genuine ops (captured primitive); direct primitive + forged callback rejected; the legitimate operation succeeds |

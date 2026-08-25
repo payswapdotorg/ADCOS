@@ -190,7 +190,58 @@ values are rejected. Unknown/extension data survives round-trips via
 the opaque `extensions` tuples (the repository forward-compatibility
 contract).
 
-## Store semantics
+## Extension-event seam (generic internal substrate)
+
+Extension events (e.g. multipath plan operations) are appended through
+a **generic, private, internal substrate primitive**:
+`SessionStore._append_state_preserving_event(event)`.
+
+WORK-012 is a GENERIC lifecycle/session substrate: this primitive is
+deliberately extension-agnostic — no extension imports, no
+registration, no capability issuance, no extension types, no knowledge
+that any extension exists. It performs ONLY the generic atomic session
+commit (state-preserving check, sequencing, duplicate idempotency,
+terminal-state check). The SEMANTIC validation of extension events
+belongs entirely to the owning extension layer, which validates and
+then invokes this internal primitive. Extensions depend on WORK-012;
+WORK-012 never depends on any extension (verified mechanically: no
+sessions module imports or references any extension package).
+
+Manufactured extension events cannot enter history through any public
+API — `append_event` rejects state-preserving events as
+`illegal-transition`, and there is no public or registration-based
+plan-event append surface at all.
+
+**Call-frame identity gate with closure-captured trust state**
+(Architect reviews of PR #13, corrections 6-8): the primitive verifies
+that its DIRECT CALLER is literally executing the registered extension
+commit capability (`sys._getframe(1).f_code`). A direct call —
+`store._append_state_preserving_event(forged)` — fails closed with
+`extension-authority-required` even after a legitimate extension
+authority exists: holding references to the store, the capability,
+or the registry cannot satisfy a frame check.
+
+**The trust state is closure-captured, never an ordinary attribute**
+(correction 8): the declared-constructor set lives in the closure
+shared by `_declare_extension_constructor` / `_is_declared_constructor`
+(there is NO `_DECLARED_CONSTRUCTORS` module attribute to mutate), and
+the per-store trusted capability codes live in the closure shared by
+the per-store registration and commit gates created by the factory
+`__init__` (there is NO `_extension_commit_codes` instance attribute
+to mutate). The genuine checker is bound into the class's `__init__`
+at CLASS-DEFINITION time, so later module-attribute replacement cannot
+redirect it. Mutating store or module attributes (or `setattr`-ing new
+ones) cannot alter what the gates trust: the trust decision depends on
+no mutable Python collection reachable through ordinary references.
+Registration is a generic constructor-time handshake: first
+registration wins, and the registering frame's code object must BE a
+**declared genuine extension constructor** (correction 7): extension
+packages pin their constructor code objects at **import time** via
+`_declare_extension_constructor` (module-level frame + filename
+binding — only the module that owns the constructor can declare it).
+A function merely named `__init__` proves nothing: runtime-forged
+classes, forged same-named classes, and ordinary functions named
+`__init__` were never import-declared and are rejected.## Store semantics
 
 Atomic `create` / `transition` / `append_event` (replay) / `reconnect`
 (binding update) / `suspend` / `terminate`. A failed transition leaves
