@@ -27,7 +27,7 @@ CI runs the same command on every push and pull request (`.github/workflows/spec
 | `FILES-02` | yes | Governance artifacts exist (governance/change-control/workflow documents, schema and ACR locations, tooling) and the CI workflow invokes the checker. |
 | `MARK-01` | yes | Every registered document carries its exact H1 title and a Status section identifying its role (frozen architecture vs. process authority). |
 | `MARK-02` | yes | The four architecture-authority documents carry `FROZEN` status markers. |
-| `VERS-01` | yes | Version-kind distinction and the single architecture-version declaration site. **Declaration vs reference**: a *declaration* is the Architecture Version statement in a document's Status section or an explicit declaration field (line-leading `Architecture Version: X.Y`); declarations are legal only in the Status section of `spec/architecture.md`, which must carry exactly one. Every Markdown document's Status section and declaration fields are scanned; no other document may declare. Ordinary prose references (e.g. "written against Architecture Version 1.0") are unrestricted. Also verifies no frozen document's status section declares a Protocol Version and that `spec/governance.md` defines all four version kinds with the non-conflation rule. |
+| `VERS-01` | yes | Version-kind distinction and the single architecture-version declaration site. **Declaration vs reference** (classification refined per the Architect's WORK-015 review direction): a *declaration* is (a) an Architecture Version phrase in a document's Status section attached as the document's own version — a bare statement, state-marker attachment, or parenthetical with **no referring expression** in its sentence-bounded prefix — or (b) an explicit declaration field (line-leading `Architecture Version: X.Y`) anywhere. Declarations are legal only in the Status section of `spec/architecture.md`, which must carry exactly one. Ordinary prose **references** — an Architecture Version phrase whose sentence-bounded prefix carries a referring expression from the closed list (`follows`, `written against` / `against`, `implements`, `conforms to`, `in accordance with`, `according to`, `based on`, `references`, `pursuant to`, `as specified/defined by`, `per`) — are unrestricted, including inside Status sections; unknown Status-section phrasing fails closed as a declaration. Also verifies no frozen document's status section declares a Protocol Version and that `spec/governance.md` defines all four version kinds with the non-conflation rule. |
 | `BACKLOG-01` | yes | Work Item backlog integrity: unique, gap-free `WORK-001..WORK-040`, with `Objective:` and `Dependencies:` lines per item. |
 | `DEPS-01` | yes | All dependency references (declared dependencies, DAG nodes and edges, execution-phase members, critical-path members) resolve to known Work Item IDs. |
 | `DEPS-02` | yes | The dependency graph (DAG edges ∪ declared dependencies) is acyclic. |
@@ -44,7 +44,7 @@ This tool validates repository structure and specification mechanics only. It is
 
 ## spec_check_selftest.py
 
-Deterministic, offline negative and positive tests for the checker itself, introduced by WORK-001 correction cycles 2 and 3 (Architect reviews of PR #1). Each case copies the specification tree into a temporary directory, applies exactly one change, runs the checker, and asserts the expected exit code and failing check. No repository file is ever modified; temporary directories are always removed.
+Deterministic, offline negative and positive tests for the checker itself, introduced by WORK-001 correction cycles 2 and 3 (Architect reviews of PR #1) and extended during the WORK-015 review (Architect-directed VERS-01 declaration/reference refinement: Status-section prose references must pass while all declaration forms still fail). Each case copies the specification tree into a temporary directory, applies exactly one change, runs the checker, and asserts the expected exit code and failing check. No repository file is ever modified; temporary directories are always removed.
 
 ### Invocation
 
@@ -67,6 +67,7 @@ Negative cases (injected violations must fail):
 | `architecture-version-declared-in-process-doc` | architecture-version **declaration** injected into `spec/workflow.md` Status (the declaration form from the correction cycle 2 review) | `VERS-01` |
 | `architecture-version-declared-in-status-of-new-doc` | new prompt document declaring the architecture version in its Status section | `VERS-01` |
 | `architecture-version-declaration-field-in-new-doc` | new document with an explicit `Architecture Version: 1.0` declaration field | `VERS-01` |
+| `architecture-version-status-mixed-reference-and-declaration` | Status section containing both an allowed prose reference and a bare declaration statement (the refinement is not a wholesale Status-section whitelist) | `VERS-01` |
 | `frozen-marker-removed` | FROZEN marker replaced with DRAFT | `MARK-02` |
 | `execution-phase-order-violation` | W001 appended to Phase 8 sequence | `DEPS-03` |
 
@@ -77,7 +78,9 @@ Positive cases (legitimate content must pass — proving the checker distinguish
 | `baseline-unmutated-tree` | none (control) | exit 0 |
 | `architecture-version-reference-in-process-doc-body` | prose reference in `spec/governance.md` body: “written against Architecture Version 1.0” | exit 0 |
 | `architecture-version-reference-in-readme` | prose reference sentence in `README.md` | exit 0 |
-| `architecture-version-reference-in-new-prompt` | new `spec/prompts/WORK-002.md` referencing the architecture version in ordinary prose | exit 0 |
+| `architecture-version-reference-in-new-prompt` | new `spec/prompts/WORK-000.md` referencing the architecture version in ordinary prose | exit 0 |
+| `architecture-version-status-prose-reference-sentence` | prose reference **inside a Status section** (sentence form): “written against Architecture Version 1.0” | exit 0 |
+| `architecture-version-status-prose-reference-marker-line` | prose reference inside a Status-section marker line — the corrected WORK-015 handoff shape: “follows the frozen Architecture Version 1.0” | exit 0 |
 
 Mutation anchors are asserted to match exactly once; if frozen text drifts, the self-test fails loudly and must be updated deliberately. Output is fully deterministic (temporary paths are never printed).
 
@@ -820,3 +823,71 @@ python3 tools/mobility_selftest.py
 | `41-fabricated-event-replay` | REGRESSION (PR #14 correction 1): fabricated COMMITTED/ROLLED_BACK/FAILED/CANCELLED events — each structurally perfect (valid event_id, correct next sequence, correct previous_state, legal transition) — all rejected with `replay-provenance`; transaction/session/event-history snapshots unchanged; genuine replay + commit still work |
 | `42-mbb-cleanup-failure` | REGRESSION (PR #14 correction 2): fault-injected candidate-removal failure after a failed reconnect → the explicit `CLEANUP_FAILED` terminal outcome (`rolled-back-cleanup-failed`); old binding authoritative; the candidate is NOT silently considered removed (it remains in the plan, explicitly recorded); the `cleanup-failed` event is in the history; no new session |
 | `43-rollback-variants-independent` | REGRESSION (PR #14 correction 2): the old-route session rollback and the MBB candidate cleanup are independent axes — (a) both succeed → ROLLED_BACK; (b) rollback succeeds + cleanup fails → CLEANUP_FAILED with the session authoritative on the old binding; (c) rollback unavailable (no retained old decision) + cleanup succeeds → ROLLED_BACK with the session in its explicit RECONNECTING state; (d) post-commit retire failure → COMMITTED with the distinct cleanup-failure code, the new path authoritative, the stale old entry explicit |
+## federation_selftest.py — federation protocol tests (WORK-015)
+
+Deterministic, offline verification of the federation package against the frozen WORK-015 handoff: the 36 mandatory verification categories plus adversarial regressions. Exercises the authority boundary end-to-end — peer-domain membership never implies node trust (remote claims stay REMOTE_CLAIM in a real WORK-007 graph), imported routes/capabilities never bypass local policy or negotiation (tested against real WORK-010 evaluation and WORK-005 negotiation), settlement stays an opaque reference, exchanges ride WORK-003 envelopes opaquely without registering message types, and the deterministic conflict rules (duplicate/stale/gap/conflict, revocation races) are order-independent. Runs in CI after the mobility suite.
+
+### Invocation
+
+```bash
+python3 tools/federation_selftest.py
+```
+
+### Case catalog
+
+| Case | Verifies |
+|---|---|
+| `01-stable-domain-identity` | domain_id is a content fingerprint over identity material only; admin metadata is not identity; operator binding immutable |
+| `02-relationship-creation` | direct establishment: ESTABLISHED v1, genesis event, symmetric pair identity |
+| `03-invalid-peer-identity` | malformed NodeIDs fail closed at establishment and at exchange construction |
+| `04-duplicate-relationship-idempotency` | exact duplicate → replayed (no new event); conflicting material → relationship-exists |
+| `05-same-sequence-conflict` | same-slot different content → sequence-conflict, watermark + state unchanged (revocation never silently overridden) |
+| `06-sequence-gap` | future sequence → sequence-gap, no mutation |
+| `07-stale-update` | already-used slot with new content → sequence-conflict |
+| `08-scope-allow` | declared + granted + valid → scope-allowed with the active grant returned |
+| `09-scope-denial` | ungranted / undeclared / malformed / unknown scopes all fail closed with distinct codes |
+| `10-grant-escalation-rejection` | grant outside the declared envelope → grant-escalation, nothing stored |
+| `11-route-scope-independence` | route.import granted does not imply route.export |
+| `12-capability-scope-independence` | capability.read does not imply capability.offer |
+| `13-service-scope-independence` | service.discover does not imply service.invoke |
+| `14-resource-scope-independence` | resource.read does not imply resource.reserve |
+| `15-revocation-blocks-new-authorization` | post-revoke scope check / grant publication / exchange all denied |
+| `16-expiry-blocks-new-authorization` | expired instant denies; state stays ESTABLISHED; expiry is not revocation |
+| `17-revoke-preserves-history` | events, grants, and snapshot all preserved after revocation |
+| `18-termination-preserves-unrelated-state` | other relationship + domains + history byte-identical after termination |
+| `19-peer-membership-no-node-trust` | check_scope has no node parameter; peer node stays topology-unknown |
+| `20-remote-claim-provenance` | REMOTE_CLAIM class, peer reporter, exchange id in evidence refs |
+| `21-gateway-claim-not-authoritative` | remote GATEWAY claim never enters get_authoritative_claims; self claim does (LOCK-008) |
+| `22-route-import-local-policy` | ungranted import recording denied; recorded refs are opaque strings; scope check is not a PolicyDecision; WORK-010 deny set denies |
+| `23-capability-import-local-negotiation` | imported refs do not satisfy WORK-005 negotiation (explicit rejection reasons) |
+| `24-settlement-opaque` | settlement reference stored/round-tripped verbatim; no settlement-consuming API exists |
+| `25-replay-duplicate-safety` | duplicate exchanges idempotent; genuine event replay idempotent; fabricated event → replay-provenance |
+| `26-deterministic-snapshot` | byte-identical snapshots across drives and across insertion orders |
+| `27-serialize-deserialize-byte-identity` | all five object kinds + snapshot byte-identical round-trips |
+| `28-cross-process-determinism` | identical snapshot digest across processes |
+| `29-no-wall-clock` | AST scan: no wall-clock reads in federation/ |
+| `30-no-randomness` | AST scan: no random/uuid imports |
+| `31-no-access-tech` | no access/vendor identifiers or network imports; leakage in free text rejected |
+| `32-no-secret-leakage` | secret-shaped extensions rejected; snapshots clean |
+| `33-no-duplicated-authority` | no second identity/policy/routing/topology/resource/capability authority (AST) |
+| `34-concurrent-updates-deterministic` | same-slot race: exactly one applies, rest sequence-conflict; distinct grants all apply |
+| `35-revocation-update-race` | both application orders converge on REVOKED; nothing applies after |
+| `36-extension-handling` | optional unknown extensions forwarded opaquely; unknown required extensions fail closed |
+| `37-cross-domain-identity-confusion` | wrong operator identity, unknown domain, third-domain pair, forged author all fail closed |
+| `38-domain-lifecycle-gates` | suspended/retired local + retired peer gate establishment; frozen transition table |
+| `39-relationship-not-yet-valid` | pre-validity instant denied |
+| `40-suspended-blocks-authorization` | suspension denies; resume restores |
+| `41-grant-lifecycle` | revoke → grant-inactive; re-grant at next sequence; grant expiry → grant-expired |
+| `42-exchange-typed-fields` | kind-conditional fields fail closed (route refs on scope-update etc.) |
+| `43-wire-tamper-ids` | tampered derived ids rejected for all five object kinds |
+| `44-fuzz-never-crashes` | 120 seeded fuzz trials: only fail-closed errors/envelopes, no raw exceptions |
+| `45-envelope-opaque-forward` | exchange payload round-trips through a real WORK-003 envelope; unregistered type forwarded opaquely only; no federation message type in the frozen registry |
+| `46-policy-gate-establishment` | missing / wrong-set / tampered / deny decisions fail; matching tamper-evident allow passes |
+| `47-frozen-schema-conformance` | all 10 required §21 members present with correct types |
+| `48-peer-identity-exchange` | declarations register domains; exact duplicates idempotent; operator binding immutable; registered peer usable |
+| `49-local-first` | no reachability state or API; terminal relationships fully queryable |
+| `50-vocabulary-freeze` | 8 scopes, 6 relationship states, 19 event types, 12 exchange kinds, 51 reason codes, closed transition tables |
+| `51-frozen-doc-unchanged` | all 4 frozen docs unchanged vs origin/main |
+| `52-prior-prompts-unchanged` | all prior prompts WORK-001..014 unchanged vs origin/main |
+
+
