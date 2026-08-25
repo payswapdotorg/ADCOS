@@ -900,18 +900,23 @@ class TransportManager:
             acceptance=acceptance,
             established_at=now,
         )
-        # The responder holds working keys from the acceptance on
-        # (TLS-1.3-style early data readiness); the initiator is
-        # authenticated at confirmation time, fail-closed.
-        record.state = TransportLifecycle.ESTABLISHED
+        # Zero trust (LOCK-022 — WORK-017 correction): the responder
+        # holds working keys from the acceptance on, but the initiator
+        # is NOT yet authenticated.  "Channel cryptographically usable"
+        # is deliberately NOT "peer authenticated/authorized": the
+        # transport enters AWAITING_CONFIRM and every privileged
+        # operation fails closed (peer-unconfirmed) until confirm()
+        # verifies the initiator key confirmation AND identity
+        # attestation.
+        record.state = TransportLifecycle.AWAITING_CONFIRM
         record.lineage.append(acceptance.key_lineage)
         self._offer_nonces.add(offer.offer_nonce)
         self._records[acceptance.transport_id] = record
         self._record_event(
             record,
-            TransportEventType.ESTABLISHED,
+            TransportEventType.AWAITING_CONFIRM,
             now,
-            "established",
+            "awaiting-confirmation",
             (("profile", acceptance.selected_profile), ("generation", "0")),
         )
         return TransportOpResult(ok=True, value=acceptance)
@@ -924,7 +929,8 @@ class TransportManager:
         now: str,
     ) -> TransportOpResult:
         """Responder-side completion: verify the initiator's key
-        confirmation and identity attestation (fail closed)."""
+        confirmation and identity attestation (fail closed), and only
+        then grant authorization — AWAITING_CONFIRM -> ESTABLISHED."""
         validate_instant(now, "now")
         validate_transport_id(transport_id)
         if not isinstance(confirmation, TransportConfirmation):
@@ -945,7 +951,31 @@ class TransportManager:
                 reason=TransportReasonCode.STATE_CONFLICT,
                 detail="confirm() applies to responder-side transports",
             )
+        if record.state != TransportLifecycle.AWAITING_CONFIRM:
+            return TransportOpResult(
+                ok=False,
+                reason=TransportReasonCode.STATE_CONFLICT,
+                detail="transport %s is %s; only AWAITING_CONFIRM transports "
+                "are confirmable" % (transport_id, record.state),
+            )
         offer = record.offer
+        # Zero-trust recheck of the LOCAL credential: authorization is
+        # granted only if the responder's own operational credential is
+        # still usable at confirmation time (revocation between
+        # acceptance and confirmation fails closed).
+        try:
+            self._identity.active_credential(offer.responder_node_id, "operational", now)
+        except TransportError as error:
+            self._record_event(
+                record,
+                TransportEventType.CREDENTIAL_REVOKED
+                if error.reason == TransportReasonCode.CREDENTIAL_REVOKED
+                else TransportEventType.REJECTED,
+                now,
+                error.reason,
+                (),
+            )
+            return TransportOpResult(ok=False, reason=error.reason, detail=error.detail)
         outcome = self._sandbox.accept_confirmation(
             now, transport_id, record.session_id, offer, record.acceptance, confirmation
         )
@@ -982,6 +1012,16 @@ class TransportManager:
                 detail="initiator attestation failed verification against %s"
                 % offer.initiator_node_id,
             )
+        # Mutual confirmation complete: authorization is granted NOW
+        # (peer authenticated + key-confirmed + local credential live).
+        record.state = TransportLifecycle.ESTABLISHED
+        self._record_event(
+            record,
+            TransportEventType.ESTABLISHED,
+            now,
+            "established",
+            (("profile", record.profile_id), ("generation", "0")),
+        )
         return TransportOpResult(ok=True, value=None)
 
     # ------------------------------------------------------------------
@@ -999,6 +1039,16 @@ class TransportManager:
             raise TransportError(
                 TransportReasonCode.TRANSPORT_CLOSED,
                 "transport %s is closed (terminal)" % transport_id,
+            )
+        if record.state == TransportLifecycle.AWAITING_CONFIRM:
+            # Zero-trust gate (LOCK-022): keys exist, the peer does not
+            # count as authenticated/authorized yet — no privileged
+            # ADCOS operation may execute in this state.
+            raise TransportError(
+                TransportReasonCode.PEER_UNCONFIRMED,
+                "transport %s is AWAITING_CONFIRM: the peer is not yet "
+                "authenticated/authorized, privileged operations are gated "
+                "until confirm() succeeds" % transport_id,
             )
         if record.state != TransportLifecycle.ESTABLISHED:
             raise TransportError(

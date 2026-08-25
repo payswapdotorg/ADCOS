@@ -12,10 +12,12 @@ module ownership: ``/transport`` owns secure transport mappings):
 - :class:`TransportContext` — the least-authority facade handed to
   implementations (ids, injected instant, deterministic step budget;
   nothing else);
-- :class:`ModeledTransportEngine` — the deterministic built-in
-  implementation of the initial profiles (TLS 1.3 / QUIC / standard
-  IP tunnels / generic) over standard IETF primitives (HKDF-SHA256
-  RFC 5869, HMAC-SHA256);
+- :class:`ModeledTransportEngine` — the deterministic REFERENCE
+  MODEL of the transport contract (models the contract's security
+  semantics — negotiation, transcript-bound key schedule over
+  HKDF-SHA256 RFC 5869, key confirmation, replay windows, lifecycle —
+  over standard IETF primitives; NOT a TLS 1.3 / QUIC / IPsec /
+  WireGuard implementation, no confidentiality claim);
 - :class:`SandboxedTransport` — the failure-isolation mediator
   (exception isolation, contract enforcement, deterministic budget);
 - :class:`TransportManager` — the Agent's secure transport service
@@ -109,6 +111,11 @@ from .profiles import (
     negotiate_transport_profiles,
     registered_transport_profiles,
 )
+from .recordprotection import (
+    REFERENCE_PROTECTION_MODEL,
+    RecordProtection,
+    ReferenceRecordProtection,
+)
 from .sandbox import (
     DEFAULT_STEP_BUDGET,
     FAILURE_THRESHOLD_DEGRADED,
@@ -143,6 +150,11 @@ __all__ = [
     "TRANSPORT_OPERATIONS",
     "CONTEXT_SURFACE",
     "MAX_KEY_GENERATIONS",
+    # Record protection (the profile-cryptography seam inside
+    # implementations — LOCK-018 standards boundary)
+    "RecordProtection",
+    "ReferenceRecordProtection",
+    "REFERENCE_PROTECTION_MODEL",
     # Sandbox / failure isolation
     "SandboxedTransport",
     "TransportFailure",

@@ -32,6 +32,15 @@ profile identifier: negotiation is property/policy driven
 (:func:`negotiate_transport_profiles`) and the identifiers ride as
 explicit metadata (LOCK-015 — cryptographic/transport agility).
 
+Profile entries are NEGOTIATION DATA describing standard
+technologies, not implementations of them: selecting
+``transport.tls.v1-3`` binds the transcript/key-schedule semantics to
+that profile's declared properties — it does not make the serving
+engine a TLS 1.3 implementation (the built-in engine is the
+deterministic transport-contract REFERENCE MODEL; see
+:mod:`transport.recordprotection` for the profile-cryptography
+boundary and :mod:`transport.contract` for the engine's scope).
+
 Unknown well-formed identifiers are UNKNOWN (preserved verbatim, never
 coerced, fail closed on use); malformed identifiers are INVALID — the
 WORK-002 unknown-ID semantics, unchanged.

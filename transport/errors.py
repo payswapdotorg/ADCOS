@@ -35,6 +35,7 @@ class TransportReasonCode:
     UNKNOWN_TRANSPORT = "unknown-transport"
     NOT_ESTABLISHED = "not-established"
     ALREADY_ESTABLISHED = "already-established"
+    PEER_UNCONFIRMED = "peer-unconfirmed"
     TRANSPORT_CLOSED = "transport-closed"
     STATE_CONFLICT = "state-conflict"
     PROFILE_INVALID = "profile-invalid"
@@ -64,6 +65,7 @@ class TransportReasonCode:
             cls.UNKNOWN_TRANSPORT,
             cls.NOT_ESTABLISHED,
             cls.ALREADY_ESTABLISHED,
+            cls.PEER_UNCONFIRMED,
             cls.TRANSPORT_CLOSED,
             cls.STATE_CONFLICT,
             cls.PROFILE_INVALID,

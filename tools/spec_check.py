@@ -172,6 +172,7 @@ GOVERNANCE_ARTIFACTS: List[str] = [
     "transport/model.py",
     "transport/validation.py",
     "transport/keyschedule.py",
+    "transport/recordprotection.py",
     "transport/contract.py",
     "transport/sandbox.py",
     "transport/manager.py",

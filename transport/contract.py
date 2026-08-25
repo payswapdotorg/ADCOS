@@ -11,7 +11,9 @@ identifiers, and never lets transport state become authoritative for
 ADCOS core state (LOCK-016/LOCK-017 in the transport direction;
 architecture section 25 rule 9 — no fixed transport).
 
-Handshake flow (modeled on TLS 1.3, deterministic and offline):
+Handshake flow (modeled on the SHAPE of the TLS 1.3 handshake —
+offer/acceptance/confirmation with transcript-bound key derivation
+and key confirmation — deterministic and offline):
 
 1. The initiator's manager builds a :class:`TransportOffer` (full
    offered profile set + policy floor + content-derived nonce) and
@@ -35,14 +37,20 @@ Handshake flow (modeled on TLS 1.3, deterministic and offline):
    verifies the initiator key confirmation (mutual key confirmation).
 
 Also provides :class:`ModeledTransportEngine`, the deterministic
-built-in implementation of the WORK-017 initial profiles (TLS 1.3 /
-QUIC / standard IP tunnels / generic).  It MODELS the standard
-handshake and record structure with standard IETF primitives
-(HKDF-SHA256 RFC 5869, HMAC-SHA256) — it is not a concrete network
-stack: no sockets, no wall clock, no randomness, no third-party TLS
-library.  Concrete production transports (a real TLS 1.3 or QUIC
-library, an IPsec/WireGuard daemon) plug in behind the same ABC
-without modifying the manager or any core semantics.
+REFERENCE MODEL of the ADCOS transport contract.  It models the
+contract's security semantics (negotiation, transcript-bound key
+derivation over HKDF-SHA256 RFC 5869, key confirmation over
+HMAC-SHA256 RFC 2104, replay windows, generation lifecycle) with a
+composable record-protection object
+(:class:`transport.recordprotection.RecordProtection` — the default
+being the integrity-only, NON-confidential reference record model).
+It is NOT a TLS 1.3, QUIC, IPsec, or WireGuard implementation: it
+speaks none of those protocols, its frames are not wire-compatible
+with any of them, and it makes no confidentiality claim.  Concrete
+production transports (a real TLS 1.3 or QUIC library, an
+IPsec/WireGuard daemon, each with its own standard record
+protection) plug in behind the same ABC without modifying the
+manager or any core semantics.
 """
 
 from __future__ import annotations
@@ -56,10 +64,8 @@ from .keyschedule import (
     confirmation_tag,
     direction_keys,
     master_secret,
-    protect_payload,
     public_generation_digest,
     rekey_secret,
-    unprotect_payload,
 )
 from .model import (
     ReplayWindow,
@@ -75,6 +81,10 @@ from .profiles import (
     TransportProfileSet,
     TransportSecurityPolicy,
     negotiate_transport_profiles,
+)
+from .recordprotection import (
+    RecordProtection,
+    ReferenceRecordProtection,
 )
 from .validation import (
     validate_frame_view,
@@ -253,12 +263,14 @@ class TransportContract(abc.ABC):
     @abc.abstractmethod
     def protect(self, context: TransportContext, payload: bytes) -> Dict[str, object]:
         """Protect one frame payload; return the frame view mapping
-        (transport_id, generation, sequence, ciphertext, tag)."""
+        (transport_id, generation, sequence, plus the implementation's
+        record-protection members — at minimum protection_model,
+        wire_payload, integrity_tag)."""
 
     @abc.abstractmethod
     def unprotect(self, context: TransportContext, frame: Mapping[str, object]) -> bytes:
-        """Verify one frame (integrity, generation, replay window) and
-        return the payload bytes."""
+        """Verify one frame (protection model, integrity, generation,
+        replay window) and return the payload bytes."""
 
     @abc.abstractmethod
     def rekey(self, context: TransportContext, cause: str) -> Dict[str, object]:
@@ -339,19 +351,32 @@ class _EngineState:
 
 
 class ModeledTransportEngine(TransportContract):
-    """Deterministic built-in implementation of the initial profiles.
+    """Deterministic reference model of the ADCOS transport contract.
 
-    Serves every profile in its profile set (the modeled schedule is
-    profile-bound through the transcript — selecting a different
-    profile yields different keys).  The construction is deterministic:
-    the handshake "ephemeral" contributions are the content-derived
-    offer/responder nonces, all instants are injected, and there is no
-    randomness, wall clock, or network anywhere.  Real deployments
-    replace this engine with a concrete TLS 1.3 / QUIC / IPsec
-    implementation behind the same contract.
+    Serves every profile in its profile set (the reference key
+    schedule is profile-bound through the transcript — selecting a
+    different profile yields different keys).  This is a REFERENCE
+    MODEL, not a protocol implementation: it proves the contract's
+    security semantics (negotiation, binding, replay windows,
+    downgrade detection, key lifecycle, isolation) for any profile;
+    it does not implement TLS 1.3, QUIC, IPsec, or WireGuard
+    cryptography and its frames are not wire-compatible with any
+    external protocol.
+
+    Record protection is DELEGATED to a composable
+    :class:`RecordProtection` object (the default is the
+    integrity-only, NON-confidential reference record model —
+    HMAC-SHA256 RFC 2104 in its standard MAC role over the visible
+    payload).  Production engines compose their profile's STANDARD
+    record protection instead; nothing outside the engine changes.
+
+    The construction is deterministic: the handshake "ephemeral"
+    contributions are the content-derived offer/responder nonces, all
+    instants are injected, and there is no randomness, wall clock, or
+    network anywhere.
     """
 
-    __slots__ = ("_states", "_profile_set")
+    __slots__ = ("_states", "_profile_set", "_record_protection")
 
     #: Deterministic step charges per operation (budget model).
     STEP_CHARGES: Dict[str, int] = {
@@ -366,9 +391,16 @@ class ModeledTransportEngine(TransportContract):
         "close": 2,
     }
 
-    def __init__(self, profile_set: Optional[TransportProfileSet] = None) -> None:
+    def __init__(
+        self,
+        profile_set: Optional[TransportProfileSet] = None,
+        record_protection: Optional[RecordProtection] = None,
+    ) -> None:
         self._states: Dict[str, _EngineState] = {}
         self._profile_set = profile_set or TransportProfileSet.load_default()
+        self._record_protection: RecordProtection = (
+            record_protection if record_protection is not None else ReferenceRecordProtection()
+        )
 
     # -- helpers ---------------------------------------------------------
 
@@ -608,16 +640,16 @@ class ModeledTransportEngine(TransportContract):
             )
         state.send_sequence += 1
         assert state.send_key is not None
-        ciphertext_hex, tag_hex = protect_payload(
-            state.send_key, state.send_sequence, bytes(payload)
+        members = self._record_protection.protect_record(
+            state.send_key, state.generation, state.send_sequence, bytes(payload)
         )
-        return {
+        frame: Dict[str, object] = {
             "transport_id": context.transport_id,
             "generation": state.generation,
             "sequence": state.send_sequence,
-            "ciphertext": ciphertext_hex,
-            "tag": tag_hex,
         }
+        frame.update(members)
+        return frame
 
     def unprotect(self, context: TransportContext, frame: Mapping[str, object]) -> bytes:
         self._charge(context, "unprotect")
@@ -640,20 +672,13 @@ class ModeledTransportEngine(TransportContract):
                 TransportReasonCode.REPLAY_REJECTED,
                 "frame sequence %d is a replay or outside the anti-replay window" % sequence,
             )
-        try:
-            assert state.recv_key is not None
-            payload = unprotect_payload(
-                state.recv_key,
-                sequence,
-                str(view["ciphertext"]),
-                str(view["tag"]),
-            )
-        except ValueError as error:
-            raise TransportError(
-                TransportReasonCode.INTEGRITY_REJECTED,
-                "frame verification failed: %s" % error,
-            ) from error
-        return payload
+        assert state.recv_key is not None
+        # Delegation to the record-protection seam: the engine owns
+        # generation/replay/sequence policy; the record model owns tag
+        # verification and payload extraction (fail closed).
+        return self._record_protection.unprotect_record(
+            state.recv_key, state.generation, sequence, view
+        )
 
     def rekey(self, context: TransportContext, cause: str) -> Dict[str, object]:
         self._charge(context, "rekey")

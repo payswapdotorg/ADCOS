@@ -17,6 +17,17 @@ wall-clock/randomness/network, secret rejection, tamper-evident ids,
 canonical round-trips, cross-process determinism, frozen-document
 guards).
 
+WORK-017 correction cycle adds the standards-boundary battery
+(cases 61-67): the built-in engine is a REFERENCE MODEL of the
+transport contract — the record-protection seam
+(transport.recordprotection) carries the profile-cryptography
+boundary (LOCK-018: no invented record-protection construction; the
+reference model is integrity-only and NON-confidential by design and
+by self-declaration), the responder-side pre-authorization lifecycle
+(AWAITING_CONFIRM — zero trust, LOCK-022) is proven to gate every
+privileged operation, the record-protection implementation is proven
+replaceable, and the public contract is proven independent of it.
+
 The central boundary is exercised throughout:
 
     SECURE TRANSPORT
@@ -87,6 +98,7 @@ from transport import (  # noqa: E402
     CONTEXT_SURFACE,
     MAX_KEY_GENERATIONS,
     PROFILE_PROPERTIES,
+    REFERENCE_PROTECTION_MODEL,
     REPLAY_MODES,
     SECURABLE_SESSION_STATES,
     TRANSPORT_OPERATIONS,
@@ -94,10 +106,13 @@ from transport import (  # noqa: E402
     IdentityAuthority,
     ModeledTransportEngine,
     NegotiationOutcome,
+    RecordProtection,
+    ReferenceRecordProtection,
     ReplayWindow,
     SandboxedTransport,
     SessionReader,
     TransportAcceptance,
+    TransportConfirmation,
     TransportContract,
     TransportContext,
     TransportError,
@@ -116,10 +131,13 @@ from transport import (  # noqa: E402
     default_profile_offers,
     derive_pending_handle,
     derive_transport_id,
+    initiator_attestation_basis,
+    lifecycle_transition_is_legal,
     negotiate_transport_profiles,
     parse_transport_id,
     registered_transport_profiles,
     reject_secrets,
+    responder_attestation_basis,
     transport_state_from_envelope,
     transport_state_to_envelope,
     transport_view,
@@ -133,6 +151,7 @@ from transport.keyschedule import (  # noqa: E402
     master_secret,
 )
 from transport.model import transcript_digest_from_basis  # noqa: E402
+from transport.validation import validate_frame_view  # noqa: E402
 
 from adapters import (  # noqa: E402
     AdapterDescriptor,
@@ -412,11 +431,18 @@ class BadShapeEngine(ModeledTransportEngine):
 class MiniTransportEngine(TransportContract):
     """A genuinely independent second implementation: its OWN deterministic
     key schedule (plain SHA-256/HMAC construction, different from the
-    HKDF modeled schedule).  Two Mini engines interoperate with each
-    other through the contract — proving the interface, not one
-    implementation, carries the semantics."""
+    HKDF reference schedule) and its own integrity-only record model
+    ("mini-test-mac").  Two Mini engines interoperate with each other
+    through the contract — proving the interface, not one
+    implementation, carries the semantics.  Like the reference model,
+    it composes no record-protection construction of its own: one
+    standard MAC (HMAC-SHA256) in its standard role over the visible
+    payload (LOCK-018)."""
 
     label = "mini-test-engine"
+
+    _MODEL = "mini-test-mac"
+    _MAC_DOMAIN = b"mini-frame/v1"
 
     def __init__(self) -> None:
         self._states: dict = {}
@@ -557,19 +583,21 @@ class MiniTransportEngine(TransportContract):
         state["send_sequence"] += 1
         seq = state["send_sequence"]
         key = state["send"]
-        stream = bytearray()
-        block = 0
-        while len(stream) < len(payload):
-            stream.extend(hashlib.sha256(key + seq.to_bytes(8, "big") + bytes([block])).digest())
-            block += 1
-        ciphertext = bytes(a ^ b for a, b in zip(payload, bytes(stream)))
-        tag = _hmac.new(key, seq.to_bytes(8, "big") + ciphertext, hashlib.sha256).hexdigest()
+        tag = _hmac.new(
+            key,
+            self._MAC_DOMAIN
+            + state["generation"].to_bytes(8, "big")
+            + seq.to_bytes(8, "big")
+            + bytes(payload),
+            hashlib.sha256,
+        ).hexdigest()
         return {
             "transport_id": context.transport_id,
             "generation": state["generation"],
             "sequence": seq,
-            "ciphertext": ciphertext.hex(),
-            "tag": tag,
+            "protection_model": self._MODEL,
+            "wire_payload": bytes(payload).hex(),
+            "integrity_tag": tag,
         }
 
     def unprotect(self, context: TransportContext, frame: Mapping[str, object]):
@@ -580,6 +608,10 @@ class MiniTransportEngine(TransportContract):
             raise TransportError(TransportReasonCode.NOT_ESTABLISHED, "mini: no keys")
         if frame.get("transport_id") != context.transport_id:
             raise TransportError(TransportReasonCode.INVALID_INPUT, "mini: wrong transport")
+        if frame.get("protection_model") != self._MODEL:
+            raise TransportError(
+                TransportReasonCode.INTEGRITY_REJECTED, "mini: foreign model"
+            )
         if frame.get("generation") != state["generation"]:
             raise TransportError(
                 TransportReasonCode.INTEGRITY_REJECTED, "mini: generation mismatch"
@@ -589,19 +621,18 @@ class MiniTransportEngine(TransportContract):
         seq_int = raw_seq
         if not state["window"].accept(seq_int):
             raise TransportError(TransportReasonCode.REPLAY_REJECTED, "mini: replay")
-        ciphertext = bytes.fromhex(str(frame["ciphertext"]))
+        payload = bytes.fromhex(str(frame["wire_payload"]))
         expected = _hmac.new(
-            state["recv"], seq_int.to_bytes(8, "big") + ciphertext, hashlib.sha256
+            state["recv"],
+            self._MAC_DOMAIN
+            + state["generation"].to_bytes(8, "big")
+            + seq_int.to_bytes(8, "big")
+            + payload,
+            hashlib.sha256,
         ).hexdigest()
-        if not _hmac.compare_digest(expected, str(frame["tag"])):
+        if not _hmac.compare_digest(expected, str(frame["integrity_tag"])):
             raise TransportError(TransportReasonCode.INTEGRITY_REJECTED, "mini: tag")
-        key = state["recv"]
-        stream = bytearray()
-        block = 0
-        while len(stream) < len(ciphertext):
-            stream.extend(hashlib.sha256(key + seq_int.to_bytes(8, "big") + bytes([block])).digest())
-            block += 1
-        return bytes(a ^ b for a, b in zip(ciphertext, bytes(stream)))
+        return payload
 
     def rekey(self, context: TransportContext, cause: str):
         state = self._state(context.transport_id)
@@ -1540,16 +1571,16 @@ def case_29_wrong_key_unprotect_fails(results: List[Result]) -> None:
     if r.ok:
         results.append(fail("case_29_wrong_key_unprotect_fails", "forged-address frame accepted"))
         return
-    # Tamper ciphertext byte.
+    # Tamper the visible payload region byte.
     tampered = dict(frame_a)
-    tampered["ciphertext"] = ("0" if tampered["ciphertext"][0] != "0" else "1") + tampered["ciphertext"][1:]
+    tampered["wire_payload"] = ("0" if tampered["wire_payload"][0] != "0" else "1") + tampered["wire_payload"][1:]
     r = mgr_r.receive(transport_id_a, tampered, now=_NOW)
     if r.ok or r.reason != TransportReasonCode.INTEGRITY_REJECTED:
-        results.append(fail("case_29_wrong_key_unprotect_fails", "tampered ciphertext: %r" % r.reason))
+        results.append(fail("case_29_wrong_key_unprotect_fails", "tampered payload: %r" % r.reason))
         return
     # Tamper tag.
     tampered = dict(frame_a)
-    tampered["tag"] = ("0" if tampered["tag"][0] != "0" else "1") + tampered["tag"][1:]
+    tampered["integrity_tag"] = ("0" if tampered["integrity_tag"][0] != "0" else "1") + tampered["integrity_tag"][1:]
     r = mgr_r.receive(transport_id_a, tampered, now=_NOW)
     if r.ok:
         results.append(fail("case_29_wrong_key_unprotect_fails", "tampered tag accepted"))
@@ -2233,8 +2264,8 @@ def case_49_health_degradation_thresholds(results: List[Result]) -> None:
     engine2 = FaultyTransportEngine("unprotect", RuntimeError("x"))
     mgr2, transport_id2 = _establish_with_engine(world, engine2, label="reset")
     mgr2.send(transport_id2, b"x", now=_NOW)  # fails via unprotect? no: send charges protect only
-    mgr2.receive(transport_id2, {"transport_id": transport_id2, "generation": 0, "sequence": 1, "ciphertext": "ab", "tag": "cd"}, now=_NOW)
-    mgr2.receive(transport_id2, {"transport_id": transport_id2, "generation": 0, "sequence": 2, "ciphertext": "ab", "tag": "cd"}, now=_NOW)
+    mgr2.receive(transport_id2, {"transport_id": transport_id2, "generation": 0, "sequence": 1, "protection_model": "reference-mac-only", "wire_payload": "ab", "integrity_tag": "cd"}, now=_NOW)
+    mgr2.receive(transport_id2, {"transport_id": transport_id2, "generation": 0, "sequence": 2, "protection_model": "reference-mac-only", "wire_payload": "ab", "integrity_tag": "cd"}, now=_NOW)
     if mgr2.engine_consecutive_failures != 2:
         results.append(fail("case_49_health_degradation_thresholds", "expected 2 consecutive failures"))
         return
@@ -2631,9 +2662,9 @@ def _main_sha() -> str:
 def case_59_vocabulary_freeze(results: List[Result]) -> None:
     """59. every frozen vocabulary is closed and exact."""
     expectations = {
-        TransportReasonCode.values(): 25,
-        TransportLifecycle.values(): 4,
-        TransportEventType.values(): 10,
+        TransportReasonCode.values(): 26,
+        TransportLifecycle.values(): 5,
+        TransportEventType.values(): 11,
         TransportHealth.values(): 3,
         PROFILE_PROPERTIES: 8,
         REPLAY_MODES: 2,
@@ -2723,6 +2754,605 @@ def case_60_concurrency_commutive(results: List[Result]) -> None:
 
 
 # --------------------------------------------------------------------------
+# 61-67: WORK-017 correction — the standards boundary battery
+# (LOCK-018 record-protection seam, zero-trust pre-authorization
+# lifecycle, replaceability, contract independence)
+# --------------------------------------------------------------------------
+
+
+class HmacSha512RecordProtection(RecordProtection):
+    """A second, independent record-protection implementation (test
+    fixture): HMAC-SHA512 in the standard MAC role with its own domain
+    label and its own model id.  Proves the record-protection seam is
+    replaceable without touching the engine, manager, sandbox, or any
+    core semantics — and that it composes no construction of its own
+    (one standard primitive, one standard role)."""
+
+    _MODEL = "reference-mac-sha512"
+    _DOMAIN = b"test-sha512-frame/v1"
+
+    def model_id(self) -> str:
+        return self._MODEL
+
+    def protect_record(self, direction_key, generation, sequence, payload):
+        import hmac as _hmac
+
+        tag = _hmac.new(
+            bytes(direction_key),
+            self._DOMAIN
+            + int(generation).to_bytes(8, "big")
+            + int(sequence).to_bytes(8, "big")
+            + bytes(payload),
+            hashlib.sha512,
+        ).hexdigest()
+        return {
+            "protection_model": self._MODEL,
+            "wire_payload": bytes(payload).hex(),
+            "integrity_tag": tag,
+        }
+
+    def unprotect_record(self, direction_key, generation, sequence, frame):
+        import hmac as _hmac
+
+        if frame.get("protection_model") != self._MODEL:
+            raise TransportError(
+                TransportReasonCode.INTEGRITY_REJECTED,
+                "sha512 model rejects foreign protection model %r" % (frame.get("protection_model"),),
+            )
+        payload = bytes.fromhex(str(frame["wire_payload"]))
+        expected = _hmac.new(
+            bytes(direction_key),
+            self._DOMAIN
+            + int(generation).to_bytes(8, "big")
+            + int(sequence).to_bytes(8, "big")
+            + payload,
+            hashlib.sha512,
+        ).hexdigest()
+        if not _hmac.compare_digest(expected, str(frame["integrity_tag"])):
+            raise TransportError(
+                TransportReasonCode.INTEGRITY_REJECTED, "sha512 tag mismatch"
+            )
+        return payload
+
+
+#: Tokens that must NEVER appear in transport/*.py source: the module
+#: must be unable to express an invented record-protection construction
+#: or claim one (LOCK-018).  ("confidentiality" IS allowed — profile
+#: DATA declares it; the reference record model simply does not
+#: provide it.)
+_FORBIDDEN_TRANSPORT_TOKENS = (
+    "aead",
+    "keystream",
+    "encrypt",
+    "cipher",
+    "urandom",
+    "secrets.token",
+    "getrandom",
+)
+
+
+def case_61_standards_primitives_audit(results: List[Result]) -> None:
+    """61. LOCK-018 static audit: the transport package uses ONLY the
+    standard primitives (HKDF-SHA256 RFC 5869, HMAC-SHA256 RFC 2104)
+    and cannot express an invented record-protection construction —
+    no cipher/keystream/AEAD tokens anywhere, no entropy sources, and
+    the standards-boundary citations are present in the seam modules.
+    """
+    sources = sorted((REPO_ROOT / "transport").glob("*.py"))
+    if len(sources) != 11:
+        results.append(fail("case_61_standards_primitives_audit", "expected 11 transport sources, saw %d" % len(sources)))
+        return
+    for source in sources:
+        text = source.read_text(encoding="utf-8").lower()
+        for token in _FORBIDDEN_TRANSPORT_TOKENS:
+            if token in text:
+                results.append(fail("case_61_standards_primitives_audit", "%s contains forbidden token %r" % (source.name, token)))
+                return
+        # No crypto-library or entropy imports anywhere in the package.
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                names = [node.module or ""]
+            else:
+                continue
+            for name in names:
+                root = name.split(".")[0]
+                if root in ("ssl", "cryptography", "crypto", "random", "secrets", "os"):
+                    results.append(fail("case_61_standards_primitives_audit", "%s imports %r" % (source.name, name)))
+                    return
+    # Standards leverage is DOCUMENTED where the primitives are used.
+    keyschedule_text = (REPO_ROOT / "transport" / "keyschedule.py").read_text(encoding="utf-8")
+    if "RFC 5869" not in keyschedule_text:
+        results.append(fail("case_61_standards_primitives_audit", "keyschedule does not cite RFC 5869"))
+        return
+    record_text = (REPO_ROOT / "transport" / "recordprotection.py").read_text(encoding="utf-8")
+    for citation in ("RFC 2104", "RFC 8446", "RFC 9001", "RFC 4303"):
+        if citation not in record_text:
+            results.append(fail("case_61_standards_primitives_audit", "recordprotection does not cite %s" % citation))
+            return
+    if "reference-mac-only" not in record_text:
+        results.append(fail("case_61_standards_primitives_audit", "reference model id missing"))
+        return
+    # The reference record model is integrity-only BY DECLARATION: the
+    # class docstring states the non-confidentiality explicitly.
+    if "NO confidentiality" not in record_text:
+        results.append(fail("case_61_standards_primitives_audit", "non-confidentiality not declared"))
+        return
+    results.append(ok("case_61_standards_primitives_audit", "11 sources: HKDF/HMAC only, no cipher tokens, RFCs cited"))
+
+
+def case_62_reference_frame_contract(results: List[Result]) -> None:
+    """62. the reference frame is SELF-DESCRIBING and honestly
+    non-confidential: every frame declares its protection model, the
+    payload region is visible by design (proving the model claims no
+    confidentiality), core structural validation stays crypto-neutral
+    (a foreign model id passes STRUCTURE but fails closed at the
+    engine), and every tamper class fails closed."""
+    world = _World()
+    mgr_i, mgr_r, transport_id, _, _, _ = _established_pair(world)
+    r = mgr_i.send(transport_id, b"visible-by-design", now=_NOW)
+    if not r.ok:
+        results.append(fail("case_62_reference_frame_contract", "send failed"))
+        return
+    frame = r.value
+    # (a) self-describing: the frame declares exactly the reference model.
+    if frame.get("protection_model") != REFERENCE_PROTECTION_MODEL:
+        results.append(fail("case_62_reference_frame_contract", "frame does not self-describe the model"))
+        return
+    # (b) honest non-confidentiality: the payload region is the
+    # plaintext, recoverable by plain hex-decode — the model makes NO
+    # confidentiality claim anywhere.
+    if bytes.fromhex(frame["wire_payload"]) != b"visible-by-design":
+        results.append(fail("case_62_reference_frame_contract", "payload region is not the visible plaintext"))
+        return
+    # (c) the tag is a standard HMAC-SHA256 length (64 hex).
+    if len(frame["integrity_tag"]) != 64:
+        results.append(fail("case_62_reference_frame_contract", "tag is not HMAC-SHA256 length"))
+        return
+    # (d) core structural validation is crypto-neutral: a
+    # production-shaped foreign model id passes STRUCTURE...
+    foreign = dict(frame)
+    foreign["protection_model"] = "production-tls13-record-protection"
+    try:
+        validate_frame_view(foreign)
+    except TransportError as error:
+        results.append(fail("case_62_reference_frame_contract", "core rejected a structurally valid foreign model: %s" % error.detail))
+        return
+    # ...but the reference ENGINE fails closed on the foreign model
+    # (each implementation enforces exactly its own model).
+    r2 = mgr_i.send(transport_id, b"model-gate", now=_NOW)
+    assert r2.ok
+    delivered = dict(r2.value)
+    delivered["protection_model"] = "production-tls13-record-protection"
+    r3 = mgr_r.receive(transport_id, delivered, now=_NOW)
+    if r3.ok or r3.reason != TransportReasonCode.INTEGRITY_REJECTED:
+        results.append(fail("case_62_reference_frame_contract", "foreign model accepted (%r)" % r3.reason))
+        return
+    # (e) the tag binds generation+sequence+payload: swapping the
+    # payload between two same-length frames breaks the tag.
+    ra = mgr_i.send(transport_id, b"AAAA", now=_NOW)
+    assert ra.ok
+    rb = mgr_i.send(transport_id, b"BBBB", now=_NOW)
+    assert rb.ok
+    swapped = dict(ra.value)
+    swapped["wire_payload"] = rb.value["wire_payload"]
+    rs = mgr_r.receive(transport_id, swapped, now=_NOW)
+    if rs.ok or rs.reason != TransportReasonCode.INTEGRITY_REJECTED:
+        results.append(fail("case_62_reference_frame_contract", "payload swap not detected (%r)" % rs.reason))
+        return
+    # (f) malformed member classes fail closed at structure.
+    for member, value in (
+        ("protection_model", "UPPER-CASE"),
+        ("wire_payload", "not-hex"),
+        ("integrity_tag", ""),
+    ):
+        bad = dict(rb.value)
+        bad[member] = value
+        try:
+            validate_frame_view(bad)
+            results.append(fail("case_62_reference_frame_contract", "malformed %r passed structure" % member))
+            return
+        except TransportError:
+            continue
+    results.append(ok("case_62_reference_frame_contract", "self-describing, visible, crypto-neutral core, fail-closed"))
+
+
+def case_63_preconfirmation_gate(results: List[Result]) -> None:
+    """63. ZERO-TRUST pre-authorization lifecycle: after respond() the
+    responder transport is AWAITING_CONFIRM (channel cryptographically
+    usable, peer NOT yet authenticated/authorized) and EVERY privileged
+    operation fails closed with peer-unconfirmed; wrong key
+    confirmation, a forged initiator attestation, and a revoked local
+    credential each fail without granting authorization; only a fully
+    verified confirm() reaches ESTABLISHED."""
+    world = _World()
+    mgr_i = world.manager(ModeledTransportEngine())
+    mgr_r = world.manager(ModeledTransportEngine())
+    r = mgr_i.establish_initiator(
+        world.session_ab, policy=TransportSecurityPolicy(require_confidentiality=True),
+        offered_profiles=list(default_profile_offers()), now=_NOW,
+        instance_label="gate-initiator",
+    )
+    assert r.ok, r.detail
+    offer = r.value
+    handle = mgr_i.pending_handles()[0]
+    r = mgr_r.respond(offer, now=_NOW, instance_label="gate-responder")
+    assert r.ok, r.detail
+    acceptance = r.value
+    transport_id = acceptance.transport_id
+    # (a) the responder is NOT established: the explicit
+    # pre-authorization state is visible in public state.
+    snapshot = mgr_r.snapshot()
+    entry = [t for t in snapshot["transports"] if t["transport_id"] == transport_id][0]
+    if entry["state"] != "AWAITING_CONFIRM":
+        results.append(fail("case_63_preconfirmation_gate", "responder state %r != AWAITING_CONFIRM" % entry["state"]))
+        return
+    if [e.event_type for e in mgr_r.get_events(transport_id)] != ["awaiting-confirmation"]:
+        results.append(fail("case_63_preconfirmation_gate", "responder events missing awaiting-confirmation"))
+        return
+    # (b) every privileged operation fails closed BEFORE confirm().
+    forged_frame = {
+        "transport_id": transport_id, "generation": 0, "sequence": 1,
+        "protection_model": REFERENCE_PROTECTION_MODEL,
+        "wire_payload": "ab", "integrity_tag": "cd" * 32,
+    }
+    envelope = Envelope(
+        version=1, message_type="capability.advertise", message_id="m-gate",
+        sender=world.node_a.node_id.text, issued_at=_NOW,
+        expires_at="2026-12-31T23:59:59Z", payload={"gated": True},
+        signature="opaque",
+    )
+    gates = [
+        ("send", mgr_r.send(transport_id, b"early", now=_NOW)),
+        ("receive", mgr_r.receive(transport_id, forged_frame, now=_NOW)),
+        ("protect_envelope", mgr_r.protect_envelope(transport_id, envelope, now=_NOW)),
+        ("receive_envelope", mgr_r.receive_envelope(transport_id, forged_frame, now=_NOW)),
+        ("rekey", mgr_r.rekey(transport_id, "early-rotation", now=_NOW)),
+    ]
+    for label, outcome in gates:
+        if outcome.ok or outcome.reason != TransportReasonCode.PEER_UNCONFIRMED:
+            results.append(fail("case_63_preconfirmation_gate", "%s not peer-unconfirmed-gated (%r)" % (label, outcome.reason)))
+            return
+    if mgr_r.suspend(transport_id, now=_NOW).ok:
+        results.append(fail("case_63_preconfirmation_gate", "suspend allowed pre-confirmation"))
+        return
+    # (c) lifecycle edges: AWAITING_CONFIRM -> ESTABLISHED is the only
+    # authorization edge; no suspension shortcut exists.
+    if not lifecycle_transition_is_legal("AWAITING_CONFIRM", "ESTABLISHED"):
+        results.append(fail("case_63_preconfirmation_gate", "confirm edge illegal"))
+        return
+    if lifecycle_transition_is_legal("AWAITING_CONFIRM", "SUSPENDED"):
+        results.append(fail("case_63_preconfirmation_gate", "unconfirmed channel may suspend"))
+        return
+    # (d) the initiator completes; a WRONG key confirmation does not
+    # grant authorization.
+    r = mgr_i.complete_initiator(handle, acceptance, now=_NOW)
+    assert r.ok, r.detail
+    confirmation = r.value
+    wrong = TransportConfirmation(
+        transport_id=transport_id,
+        offer_digest=confirmation.offer_digest,
+        initiator_confirmation="00" * 32,
+        initiator_attestation=confirmation.initiator_attestation,
+        issued_at=_NOW,
+    )
+    r = mgr_r.confirm(transport_id, wrong, now=_NOW)
+    if r.ok or r.reason != TransportReasonCode.INTEGRITY_REJECTED:
+        results.append(fail("case_63_preconfirmation_gate", "wrong confirmation accepted (%r)" % r.reason))
+        return
+    entry = [t for t in mgr_r.snapshot()["transports"] if t["transport_id"] == transport_id][0]
+    if entry["state"] != "AWAITING_CONFIRM":
+        results.append(fail("case_63_preconfirmation_gate", "state changed on failed confirmation"))
+        return
+    # (e) a FORGED initiator attestation (signed by node_c over the
+    # same basis) does not grant authorization — the key confirmation
+    # is valid, the identity is not.
+    forged_attestation = world.identity.sign(
+        world.node_c.node_id.text,
+        initiator_attestation_basis(confirmation.offer_digest),
+        _NOW,
+    )
+    impersonating = TransportConfirmation(
+        transport_id=transport_id,
+        offer_digest=confirmation.offer_digest,
+        initiator_confirmation=confirmation.initiator_confirmation,
+        initiator_attestation=forged_attestation,
+        issued_at=_NOW,
+    )
+    r = mgr_r.confirm(transport_id, impersonating, now=_NOW)
+    if r.ok or r.reason != TransportReasonCode.IDENTITY_UNUSABLE:
+        results.append(fail("case_63_preconfirmation_gate", "forged attestation accepted (%r)" % r.reason))
+        return
+    if mgr_r.send(transport_id, b"still-gated", now=_NOW).ok:
+        results.append(fail("case_63_preconfirmation_gate", "privileged op after failed confirmations"))
+        return
+    # (f) the properly signed confirmation grants authorization NOW.
+    r = mgr_r.confirm(transport_id, confirmation, now=_NOW)
+    if not r.ok:
+        results.append(fail("case_63_preconfirmation_gate", "legitimate confirmation rejected: %s" % r.detail))
+        return
+    entry = [t for t in mgr_r.snapshot()["transports"] if t["transport_id"] == transport_id][0]
+    if entry["state"] != "ESTABLISHED":
+        results.append(fail("case_63_preconfirmation_gate", "confirmation did not establish"))
+        return
+    events = [e.event_type for e in mgr_r.get_events(transport_id)]
+    # The audit trail shows: pre-authorization state, the REJECTED
+    # confirmation attempts (integrity-rejected / rejected — audited
+    # security evidence), then the granted authorization.
+    if events[0] != "awaiting-confirmation" or events[-1] != "established":
+        results.append(fail("case_63_preconfirmation_gate", "event order %s" % events))
+        return
+    if "integrity-rejected" not in events or "rejected" not in events:
+        results.append(fail("case_63_preconfirmation_gate", "failed attempts not audited: %s" % events))
+        return
+    if not _exchange_ok(mgr_i, mgr_r, transport_id, b"post-confirm"):
+        results.append(fail("case_63_preconfirmation_gate", "exchange failed after confirmation"))
+        return
+    # (g) double confirmation is a state conflict, not a silent no-op.
+    if mgr_r.confirm(transport_id, confirmation, now=_NOW).ok:
+        results.append(fail("case_63_preconfirmation_gate", "double confirm allowed"))
+        return
+    # (h) initiator-side symmetry: before complete_initiator the
+    # initiator has NO transport record at all — nothing to abuse.
+    world2 = _World()
+    mgr2 = world2.manager(ModeledTransportEngine())
+    r = mgr2.establish_initiator(
+        world2.session_ab, policy=TransportSecurityPolicy(),
+        offered_profiles=list(default_profile_offers()), now=_NOW,
+        instance_label="pending-only",
+    )
+    assert r.ok, r.detail
+    if mgr2.transports():
+        results.append(fail("case_63_preconfirmation_gate", "initiator holds a transport record pre-completion"))
+        return
+    results.append(ok("case_63_preconfirmation_gate", "AWAITING_CONFIRM gates 6 ops; only verified confirm() establishes"))
+
+
+def case_64_record_protection_replaceable(results: List[Result]) -> None:
+    """64. the record-protection implementation is REPLACEABLE behind
+    the same engine/contract: a second standard-primitive model
+    (HMAC-SHA512, its own domain and model id) runs end-to-end with
+    zero core changes, interops with itself, and both engines fail
+    closed on the other's frames."""
+    world = _World()
+    mgr_i = world.manager(ModeledTransportEngine(record_protection=HmacSha512RecordProtection()))
+    mgr_r = world.manager(ModeledTransportEngine(record_protection=HmacSha512RecordProtection()))
+    r = mgr_i.establish_initiator(
+        world.session_ab, policy=TransportSecurityPolicy(require_confidentiality=True),
+        offered_profiles=list(default_profile_offers()), now=_NOW,
+        instance_label="sha512-i",
+    )
+    assert r.ok, r.detail
+    offer = r.value
+    handle = mgr_i.pending_handles()[0]
+    r = mgr_r.respond(offer, now=_NOW, instance_label="sha512-r")
+    assert r.ok, r.detail
+    acceptance = r.value
+    r = mgr_i.complete_initiator(handle, acceptance, now=_NOW)
+    assert r.ok, r.detail
+    r = mgr_r.confirm(acceptance.transport_id, r.value, now=_NOW)
+    assert r.ok, r.detail
+    if not _exchange_ok(mgr_i, mgr_r, acceptance.transport_id, b"sha512-model"):
+        results.append(fail("case_64_record_protection_replaceable", "sha512 pair failed to interoperate"))
+        return
+    # The frames carry the second model's id and tag length.
+    r = mgr_i.send(acceptance.transport_id, b"model-check", now=_NOW)
+    assert r.ok
+    frame = r.value
+    if frame["protection_model"] != "reference-mac-sha512" or len(frame["integrity_tag"]) != 128:
+        results.append(fail("case_64_record_protection_replaceable", "second model's frame shape wrong"))
+        return
+    # A default-model (SHA-256) frame fails closed on the SHA-512 pair
+    # (fresh sequence on the target transport so the rejection comes
+    # from the MODEL gate, not the replay window).
+    default_pair = _established_pair(world, label="cross")
+    frame256 = default_pair[0].send(default_pair[2], b"sha256-frame", now=_NOW)
+    assert frame256.ok
+    delivered256 = dict(frame256.value, transport_id=acceptance.transport_id, sequence=3)
+    r = mgr_r.receive(acceptance.transport_id, delivered256, now=_NOW)
+    if r.ok or r.reason != TransportReasonCode.INTEGRITY_REJECTED:
+        results.append(fail("case_64_record_protection_replaceable", "sha256 frame accepted by sha512 engine (%r)" % r.reason))
+        return
+    # And vice versa: the SHA-512 frame fails closed on the default pair
+    # (fresh sequence on that transport).
+    delivered512 = dict(frame, transport_id=default_pair[2], sequence=1)
+    r = default_pair[1].receive(default_pair[2], delivered512, now=_NOW)
+    if r.ok or r.reason != TransportReasonCode.INTEGRITY_REJECTED:
+        results.append(fail("case_64_record_protection_replaceable", "sha512 frame accepted by default engine (%r)" % r.reason))
+        return
+    # Structural seam facts: both models satisfy the same ABC and the
+    # engine carries whichever it was composed with.
+    if not isinstance(HmacSha512RecordProtection(), RecordProtection):
+        results.append(fail("case_64_record_protection_replaceable", "second model is not a RecordProtection"))
+        return
+    engine_probe = ModeledTransportEngine(record_protection=HmacSha512RecordProtection())
+    if engine_probe._record_protection.model_id() != "reference-mac-sha512":  # type: ignore[attr-defined]
+        results.append(fail("case_64_record_protection_replaceable", "engine did not compose the second model"))
+        return
+    results.append(ok("case_64_record_protection_replaceable", "sha512 model end-to-end; cross-model fail-closed"))
+
+
+def case_65_contract_independent_of_crypto(results: List[Result]) -> None:
+    """65. the PUBLIC contract is independent of the record-protection
+    implementation: the same establishment + exchange history under two
+    different record models produces BYTE-IDENTICAL manager snapshots
+    and wire views — only the frames (crypto artifacts) differ."""
+    world = _World()
+
+    def run(record_protection):
+        mgr_i = world.manager(ModeledTransportEngine(record_protection=record_protection))
+        mgr_r = world.manager(ModeledTransportEngine(record_protection=record_protection))
+        r = mgr_i.establish_initiator(
+            world.session_ab, policy=TransportSecurityPolicy(require_confidentiality=True),
+            offered_profiles=list(default_profile_offers()), now=_NOW,
+            instance_label="indep",
+        )
+        assert r.ok, r.detail
+        offer = r.value
+        handle = mgr_i.pending_handles()[0]
+        r = mgr_r.respond(offer, now=_NOW, instance_label="indep-r")
+        assert r.ok, r.detail
+        acceptance = r.value
+        r = mgr_i.complete_initiator(handle, acceptance, now=_NOW)
+        assert r.ok, r.detail
+        confirmation = r.value
+        r = mgr_r.confirm(acceptance.transport_id, confirmation, now=_NOW)
+        assert r.ok, r.detail
+        send_a = mgr_i.send(acceptance.transport_id, b"same-history", now=_NOW)
+        assert send_a.ok
+        recv = mgr_r.receive(acceptance.transport_id, send_a.value, now=_NOW)
+        assert recv.ok and recv.value == b"same-history"
+        rekey = mgr_i.rekey(acceptance.transport_id, "independence", now=_NOW)
+        assert rekey.ok
+        send_b = mgr_i.send(acceptance.transport_id, b"after-rekey", now=_NOW)
+        assert send_b.ok
+        view = transport_view(mgr_i, acceptance.transport_id)
+        return mgr_i, acceptance.transport_id, send_a.value, send_b.value, view
+
+    mgr_a, tid_a, frame_a1, frame_a2, view_a = run(ReferenceRecordProtection())
+    mgr_b, tid_b, frame_b1, frame_b2, view_b = run(HmacSha512RecordProtection())
+    # Same transport identity (derivation is contract-side, not crypto-side).
+    if tid_a != tid_b:
+        results.append(fail("case_65_contract_independent_of_crypto", "transport ids diverged"))
+        return
+    # Byte-identical public snapshots: the manager's public state knows
+    # nothing about the record model serving it.
+    if mgr_a.to_canonical_bytes() != mgr_b.to_canonical_bytes():
+        results.append(fail("case_65_contract_independent_of_crypto", "snapshots differ across record models"))
+        return
+    if transport_view_canonical_bytes(view_a) != transport_view_canonical_bytes(view_b):
+        results.append(fail("case_65_contract_independent_of_crypto", "wire views differ across record models"))
+        return
+    # ...while the crypto artifacts (frames) DO differ — the crypto
+    # genuinely changed behind the unchanged contract.
+    if frame_a1 == frame_b1 or frame_a2 == frame_b2:
+        results.append(fail("case_65_contract_independent_of_crypto", "frames identical across record models"))
+        return
+    if frame_a1["protection_model"] == frame_b1["protection_model"]:
+        results.append(fail("case_65_contract_independent_of_crypto", "model ids identical"))
+        return
+    # Cross-model delivery of the same history fails closed (frames are
+    # bound to their model's keys and semantics).
+    r = mgr_b.receive(tid_b, dict(frame_a2, transport_id=tid_b), now=_NOW)
+    if r.ok:
+        results.append(fail("case_65_contract_independent_of_crypto", "cross-model frame accepted"))
+        return
+    results.append(ok("case_65_contract_independent_of_crypto", "byte-identical contract; differing frames"))
+
+
+def case_66_initiator_zero_trust(results: List[Result]) -> None:
+    """66. initiator-side zero trust: a forged responder attestation
+    (impersonation — the acceptance was produced over a transcript
+    containing node_c's signature) passes the cryptographic key
+    confirmation but FAILS the manager's identity gate; no transport
+    record is created and the pending establishment is consumed."""
+    world = _World()
+    mgr_i = world.manager(ModeledTransportEngine())
+    r = mgr_i.establish_initiator(
+        world.session_ab, policy=TransportSecurityPolicy(),
+        offered_profiles=list(default_profile_offers()), now=_NOW,
+        instance_label="impersonation",
+    )
+    assert r.ok, r.detail
+    offer = r.value
+    handle = mgr_i.pending_handles()[0]
+    # A "responder" that derived its acceptance over a transcript
+    # containing an attestation signed by node_c (not the bound
+    # responder node_b): the acceptance is internally consistent, so
+    # the engine-level confirmation check passes — only the identity
+    # gate can stop the impersonation.
+    rogue_attestation = world.identity.sign(
+        world.node_c.node_id.text,
+        responder_attestation_basis(offer.digest()),
+        _NOW,
+    )
+    engine = ModeledTransportEngine()
+    sandbox = SandboxedTransport(engine)
+    sandbox.initialize(_NOW, handle, offer.session_id)
+    outcome = sandbox.handshake_responder(
+        _NOW, handle, offer.session_id, offer, rogue_attestation
+    )
+    assert outcome.ok, outcome.failure and outcome.failure.detail
+    rogue_acceptance = outcome.value
+    r = mgr_i.complete_initiator(handle, rogue_acceptance, now=_NOW)
+    if r.ok or r.reason != TransportReasonCode.IDENTITY_UNUSABLE:
+        results.append(fail("case_66_initiator_zero_trust", "impersonated acceptance accepted (%r)" % getattr(r, "reason", None)))
+        return
+    # Fail-closed cleanup: no record, no pending entry, nothing usable.
+    if mgr_i.transports():
+        results.append(fail("case_66_initiator_zero_trust", "record created from impersonated acceptance"))
+        return
+    if mgr_i.pending_handles():
+        results.append(fail("case_66_initiator_zero_trust", "pending entry survived the rejection"))
+        return
+    # Control: the same flow with the genuine responder attestation
+    # establishes (the gate rejects forgery, not the flow).
+    r = mgr_i.establish_initiator(
+        world.session_ab, policy=TransportSecurityPolicy(),
+        offered_profiles=list(default_profile_offers()), now=_NOW,
+        instance_label="genuine",
+    )
+    assert r.ok, r.detail
+    offer2 = r.value
+    handle2 = mgr_i.pending_handles()[0]
+    genuine = world.manager(ModeledTransportEngine())
+    r = genuine.respond(offer2, now=_NOW, instance_label="genuine-r")
+    assert r.ok, r.detail
+    r = mgr_i.complete_initiator(handle2, r.value, now=_NOW)
+    if not r.ok:
+        results.append(fail("case_66_initiator_zero_trust", "genuine acceptance rejected: %s" % r.detail))
+        return
+    if len(mgr_i.transports()) != 1:
+        results.append(fail("case_66_initiator_zero_trust", "genuine record missing"))
+        return
+    results.append(ok("case_66_initiator_zero_trust", "impersonation passes key check, fails identity gate"))
+
+
+def case_67_standards_boundary_documented(results: List[Result]) -> None:
+    """67. the standards boundary is DOCUMENTED (C2): the module
+    README states precisely what is ADCOS semantics vs profile
+    cryptography, names the standard record protections production
+    implementations supply, and no longer contains the removed
+    overstated claim ('modeled AEAD') anywhere in the module or docs."""
+    readme = (REPO_ROOT / "transport" / "README.md").read_text(encoding="utf-8")
+    required_markers = (
+        "REFERENCE MODEL",
+        "does NOT implement",
+        "not wire-compatible",
+        "no confidentiality claim",
+        "reference-mac-only",
+        "wire_payload",
+        "RFC 8446",
+        "RFC 9001",
+        "RFC 4303",
+        "WireGuard",
+        "AWAITING_CONFIRM",
+        "peer-unconfirmed",
+        "RecordProtection",
+    )
+    for marker in required_markers:
+        if marker not in readme:
+            results.append(fail("case_67_standards_boundary_documented", "README missing boundary marker %r" % marker))
+            return
+    # The removed overstatement is gone everywhere it lived.
+    for path in [REPO_ROOT / "transport" / "README.md"] + sorted((REPO_ROOT / "transport").glob("*.py")):
+        if "modeled AEAD" in path.read_text(encoding="utf-8"):
+            results.append(fail("case_67_standards_boundary_documented", "%s still claims 'modeled AEAD'" % path.name))
+            return
+    # The lifecycle vocabulary the README documents matches the code.
+    if "AWAITING_CONFIRM" not in readme or TransportLifecycle.AWAITING_CONFIRM != "AWAITING_CONFIRM":
+        results.append(fail("case_67_standards_boundary_documented", "lifecycle documentation mismatch"))
+        return
+    # The frame contract the README documents matches validation.
+    if "protection_model" not in readme:
+        results.append(fail("case_67_standards_boundary_documented", "frame contract not documented"))
+        return
+    results.append(ok("case_67_standards_boundary_documented", "13 boundary markers; overstated claim removed"))
+
+
+# --------------------------------------------------------------------------
 # main
 # --------------------------------------------------------------------------
 
@@ -2789,6 +3419,13 @@ def main() -> int:
     case_58_frozen_docs_unchanged(results)
     case_59_vocabulary_freeze(results)
     case_60_concurrency_commutive(results)
+    case_61_standards_primitives_audit(results)
+    case_62_reference_frame_contract(results)
+    case_63_preconfirmation_gate(results)
+    case_64_record_protection_replaceable(results)
+    case_65_contract_independent_of_crypto(results)
+    case_66_initiator_zero_trust(results)
+    case_67_standards_boundary_documented(results)
 
     print("ADCOS secure transport self-test (WORK-017)")
     print("=" * 72)

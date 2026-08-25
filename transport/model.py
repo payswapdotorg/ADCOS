@@ -207,28 +207,49 @@ def sha256_hex(data: bytes) -> str:
 class TransportLifecycle:
     """Frozen lifecycle vocabulary.
 
-    ``CLOSED`` is terminal.  A transport is ``ESTABLISHED`` once the
-    modeled handshake completes; ``SUSPENDED`` models loss of the
-    underlying carrying path (session suspension / mobility handover)
-    while the logical ADCOS session survives (LOCK-006, LOCK-021);
-    resume re-establishes keys (rekey on resume — never reuse a
-    suspended generation).
+    ``CLOSED`` is terminal.  ``AWAITING_CONFIRM`` is the responder-side
+    pre-authorization state (WORK-017 correction, zero trust —
+    LOCK-022): the handshake has produced working keys and the channel
+    is cryptographically USABLE, but the initiator has not yet been
+    authenticated — the responder holds the transport in
+    ``AWAITING_CONFIRM`` and every privileged operation (send /
+    receive / protect_envelope / receive_envelope / rekey) fails
+    closed with ``peer-unconfirmed`` until :meth:`confirm` verifies
+    the initiator key confirmation AND identity attestation.
+    "Channel cryptographically usable" is thereby never conflated with
+    "peer authenticated and authorized".  A transport is
+    ``ESTABLISHED`` only after mutual confirmation on both sides;
+    ``SUSPENDED`` models loss of the underlying carrying path (session
+    suspension / mobility handover) while the logical ADCOS session
+    survives (LOCK-006, LOCK-021); resume re-establishes keys (rekey
+    on resume — never reuse a suspended generation).
     """
 
     CREATED = "CREATED"
+    AWAITING_CONFIRM = "AWAITING_CONFIRM"
     ESTABLISHED = "ESTABLISHED"
     SUSPENDED = "SUSPENDED"
     CLOSED = "CLOSED"
 
     @classmethod
     def values(cls) -> Tuple[str, ...]:
-        return (cls.CREATED, cls.ESTABLISHED, cls.SUSPENDED, cls.CLOSED)
+        return (cls.CREATED, cls.AWAITING_CONFIRM, cls.ESTABLISHED, cls.SUSPENDED, cls.CLOSED)
 
 
 #: Legal lifecycle edges.  ESTABLISHED -> ESTABLISHED is the rekey
-#: self-edge (generation advance without a state change).
+#: self-edge (generation advance without a state change).  The
+#: responder enters AWAITING_CONFIRM at acceptance (keys exist, peer
+#: unconfirmed) and may only reach ESTABLISHED through confirm();
+#: there is deliberately no AWAITING_CONFIRM -> SUSPENDED edge — a
+#: channel whose peer was never confirmed dies (CLOSED), it does not
+#: survive as a suspended logical channel.
 LIFECYCLE_TRANSITIONS: Dict[str, Tuple[str, ...]] = {
-    TransportLifecycle.CREATED: (TransportLifecycle.ESTABLISHED, TransportLifecycle.CLOSED),
+    TransportLifecycle.CREATED: (
+        TransportLifecycle.ESTABLISHED,
+        TransportLifecycle.AWAITING_CONFIRM,
+        TransportLifecycle.CLOSED,
+    ),
+    TransportLifecycle.AWAITING_CONFIRM: (TransportLifecycle.ESTABLISHED, TransportLifecycle.CLOSED),
     TransportLifecycle.ESTABLISHED: (
         TransportLifecycle.ESTABLISHED,
         TransportLifecycle.SUSPENDED,
@@ -261,6 +282,7 @@ class TransportEventType:
     decisions — architecture section 19)."""
 
     ESTABLISHED = "established"
+    AWAITING_CONFIRM = "awaiting-confirmation"
     REKEYED = "rekeyed"
     SUSPENDED = "suspended"
     RESUMED = "resumed"
@@ -275,6 +297,7 @@ class TransportEventType:
     def values(cls) -> Tuple[str, ...]:
         return (
             cls.ESTABLISHED,
+            cls.AWAITING_CONFIRM,
             cls.REKEYED,
             cls.SUSPENDED,
             cls.RESUMED,

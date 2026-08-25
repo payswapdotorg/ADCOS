@@ -37,6 +37,11 @@ _TRANSPORT_ID_RE = re.compile(
     r"^adcos:transport:((?:[a-z0-9][a-z0-9-]*\.)*[a-z0-9][a-z0-9-]*):([0-9a-f]{16})$"
 )
 
+#: Protection-model identifier grammar (OPEN vocabulary — the token is
+#: implementation-defined; core checks structure only, the record-
+#: protection seam owns the semantics).
+_PROTECTION_MODEL_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+
 #: Member names whose VALUES look like secret material by shape.
 _SECRET_MEMBER_HINTS: Tuple[str, ...] = (
     "secret",
@@ -243,13 +248,32 @@ def validate_replay_mode(value: object) -> str:
 
 
 def validate_frame_view(value: object) -> Mapping[str, Any]:
-    """Validate the public frame shape (before engine processing)."""
+    """Validate the public frame shape (before engine processing).
+
+    STRUCTURAL contract only — crypto-neutral by design (WORK-017
+    correction): core validates the member set, identifier shapes,
+    integer fields, and hex-encoding of the wire payload region and
+    the integrity tag.  The MEANING of ``wire_payload`` (record bytes
+    under some protection model) and the tag belongs entirely to the
+    producing implementation's record-protection seam
+    (:mod:`transport.recordprotection`); ``protection_model`` is an
+    OPEN vocabulary — an implementation-defined lowercase token that
+    every frame self-declares, so records are always explicit about
+    the protection they actually have.
+    """
     if not isinstance(value, Mapping):
         raise TransportError(
             TransportReasonCode.INVALID_INPUT,
             "frame must be a mapping",
         )
-    for member in ("transport_id", "generation", "sequence", "ciphertext", "tag"):
+    for member in (
+        "transport_id",
+        "generation",
+        "sequence",
+        "protection_model",
+        "wire_payload",
+        "integrity_tag",
+    ):
         if member not in value:
             raise TransportError(
                 TransportReasonCode.INVALID_INPUT,
@@ -258,7 +282,18 @@ def validate_frame_view(value: object) -> Mapping[str, Any]:
     validate_transport_id(value["transport_id"])
     validate_sequence(value["generation"], "frame.generation")
     validate_sequence(value["sequence"], "frame.sequence")
-    for member in ("ciphertext", "tag"):
+    model = value["protection_model"]
+    if (
+        not isinstance(model, str)
+        or _PROTECTION_MODEL_RE.fullmatch(model) is None
+        or len(model) > 64
+    ):
+        raise TransportError(
+            TransportReasonCode.INVALID_INPUT,
+            "frame.protection_model must be 1-64 chars: lowercase "
+            "'a-z', digits, hyphens, starting with a letter",
+        )
+    for member in ("wire_payload", "integrity_tag"):
         text = value[member]
         if not isinstance(text, str) or not re.fullmatch(r"[0-9a-f]+", text) or not text:
             raise TransportError(

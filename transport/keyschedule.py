@@ -1,12 +1,22 @@
-"""Standard-primitive key schedule helpers (WORK-017).
+"""Standard-primitive key schedule (WORK-017).
 
-HKDF-SHA256 (IETF RFC 5869) and HMAC-SHA256 — standard IETF primitives
-implemented over the Python standard library so the modeled transport
-engines run deterministically and offline with zero third-party
-dependencies (LOCK-018: standards-based primitives over reinvention).
-The exact extraction/expansion labels below are the FROZEN modeled key
-schedule; production transport implementations plug their
-profile-native schedules (TLS 1.3 / QUIC / ESP) in behind the same
+HKDF-SHA256 (IETF RFC 5869) and HMAC-SHA256 (IETF RFC 2104) — standard
+IETF primitives implemented over the Python standard library so the
+reference transport engine runs deterministically and offline with
+zero third-party dependencies (LOCK-018: standards-based primitives
+over reinvention).
+
+SCOPE (WORK-017 correction): this module is the KEY SCHEDULE ONLY —
+transcript-bound master-secret derivation, directional traffic-key
+separation, key confirmation, chained rekey, and public lineage
+digests.  It deliberately contains NO record protection: frame-level
+protection lives behind the record-protection seam
+(:mod:`transport.recordprotection`) inside transport implementations,
+where production engines supply their profile's STANDARD record
+protection (TLS 1.3 / QUIC / IPsec ESP / WireGuard-class).  The exact
+extraction/expansion labels below are the frozen reference schedule;
+production transport implementations plug their profile-native
+schedules in behind the same
 :class:`transport.contract.TransportContract` interface, and the
 transcript inputs make every derived secret bound to (session,
 identities, negotiated profile, policy floor) — the WORK-017 key
@@ -19,7 +29,7 @@ import hashlib
 import hmac
 from typing import Tuple
 
-#: Domain-separation prefix for every label in the modeled schedule.
+#: Domain-separation prefix for every label in the reference schedule.
 SCHEDULE_DOMAIN = "adcos-transport"
 
 #: Derived-secret length (bytes).
@@ -76,7 +86,9 @@ def direction_keys(master: bytes, role: str) -> Tuple[bytes, bytes]:
     send key EQUALS the responder's receive key (the i2r key) and vice
     versa (the r2i key) — directional derivation with role binding, so
     the two ends derive matching directional keys without ever
-    transmitting them.
+    transmitting them.  Each direction key is the HMAC key handed to
+    the record-protection seam for that direction (it is a key-derivation
+    output, never a record-protection construction).
     """
     if role not in ("initiator", "responder"):
         raise ValueError("role must be 'initiator' or 'responder'")
@@ -117,71 +129,3 @@ def public_generation_digest(master: bytes) -> str:
     convention).
     """
     return hashlib.sha256(_label("lineage") + master).hexdigest()[:16]
-
-
-def frame_keys(direction_key: bytes) -> Tuple[bytes, bytes]:
-    """Split a direction key into (enc_key, mac_key) for frame protection."""
-    material = hkdf_expand(direction_key, _label("frame-keys"), 2 * SECRET_LEN)
-    return (material[:SECRET_LEN], material[SECRET_LEN:])
-
-
-def frame_tag(mac_key: bytes, sequence: int, ciphertext: bytes) -> str:
-    """Per-frame integrity tag: HMAC over (sequence, ciphertext)."""
-    return _hmac(mac_key, sequence.to_bytes(8, "big") + ciphertext).hex()
-
-
-def frame_keystream_for(enc_key: bytes, sequence: int, length: int) -> bytes:
-    """Length-bounded HKDF keystream for one frame's payload."""
-    if length < 1:
-        raise ValueError("frame keystream requires a positive length")
-    return hkdf_expand(enc_key, _label("frame/%d" % sequence), length)
-
-
-def protect_payload(
-    direction_key: bytes,
-    sequence: int,
-    payload: bytes,
-) -> Tuple[str, str]:
-    """Protect one frame's payload (modeled AEAD).
-
-    The modeled construction is HKDF-keystream XOR for confidentiality
-    plus an HMAC-SHA256 tag over (sequence, ciphertext) for integrity
-    and authenticity — standard primitives only.  Production profiles
-    use their native AEAD (AES-GCM / ChaCha20-Poly1305 / ESP) behind
-    the same interface; the frame CONTRACT (sequence binding, tag
-    coverage, replay window) is what this module freezes.
-
-    Returns ``(ciphertext_hex, tag_hex)``.
-    """
-    if not isinstance(payload, (bytes, bytearray)) or len(payload) < 1:
-        raise ValueError("frame payload must be non-empty bytes")
-    payload = bytes(payload)
-    enc_key, mac_key = frame_keys(direction_key)
-    keystream = frame_keystream_for(enc_key, sequence, len(payload))
-    ciphertext = bytes(a ^ b for a, b in zip(payload, keystream))
-    return (ciphertext.hex(), frame_tag(mac_key, sequence, ciphertext))
-
-
-def unprotect_payload(
-    direction_key: bytes,
-    sequence: int,
-    ciphertext_hex: str,
-    tag_hex: str,
-) -> bytes:
-    """Verify and decode one frame (fail closed on any mismatch)."""
-    try:
-        ciphertext = bytes.fromhex(ciphertext_hex)
-    except ValueError as error:
-        raise ValueError("ciphertext is not valid hex") from error
-    if not ciphertext:
-        raise ValueError("ciphertext must be non-empty")
-    try:
-        tag = bytes.fromhex(tag_hex)
-    except ValueError as error:
-        raise ValueError("tag is not valid hex") from error
-    enc_key, mac_key = frame_keys(direction_key)
-    expected = bytes.fromhex(frame_tag(mac_key, sequence, ciphertext))
-    if not hmac.compare_digest(expected, tag):
-        raise ValueError("frame integrity tag mismatch")
-    keystream = frame_keystream_for(enc_key, sequence, len(ciphertext))
-    return bytes(a ^ b for a, b in zip(ciphertext, keystream))
