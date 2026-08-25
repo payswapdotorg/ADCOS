@@ -188,7 +188,7 @@ Definition of done: multipath exists as a stable session capability.
 
 ### WORK-014 — Mobility and handover manager
 Objective: Implement session-level mobility, candidate path reservation, make-before-break when possible, and rollback.
-Dependencies: WORK-012, WORK-013, WORK-017
+Dependencies: WORK-012, WORK-013
 Acceptance criteria:
 - session identity survives supported handover.
 - old/new path transition is auditable.
@@ -365,119 +365,128 @@ Definition of done: security is an executable property, not documentation only.
 Objective: Implement protocol/software capability negotiation, rolling upgrades, downgrade protection, schema compatibility, and rollback.
 Dependencies: WORK-003, WORK-005, WORK-016, WORK-026
 Acceptance criteria:
-- mixed-version nodes can coexist where compatibility permits.
-- unsupported versions fail safely.
-- rollback does not corrupt identity/session state.
-- future access profiles can be introduced without core replacement.
+- mixed-version nodes can coexist.
+- incompatible versions fail closed.
+- upgrades can be staged and rolled back.
+- schema migrations are reversible.
 Required verification: mixed-version integration tests.
-Definition of done: ADCOS can evolve without a network-wide flag day.
+Definition of done: ADCOS can evolve without a flag day.
 
-### WORK-030 — Management API and operator control plane
-Objective: Implement read/write APIs for node, topology, resources, intents, federation, sessions, policies, and lifecycle.
+### WORK-030 — Management API
+Objective: Implement management, configuration, audit, and operational control APIs.
 Dependencies: WORK-010, WORK-011, WORK-012, WORK-015, WORK-026
 Acceptance criteria:
-- authorization is server-side.
-- APIs are idempotent where required.
-- state changes are auditable.
-- management APIs cannot bypass core authorities.
-Required verification: API, authorization, audit tests.
-Definition of done: operators can run the network without editing internal state.
+- privileged actions require explicit policy.
+- audit logs are immutable or tamper-evident.
+- APIs cannot bypass core authority boundaries.
+Required verification: API security, audit, RBAC tests.
+Definition of done: ADCOS can be operated as a real network platform.
 
-# Phase 6 — Reference Implementations and Interoperability
+# Phase 6 — Executable reference platform
 
-### WORK-031 — Deterministic simulator
-Objective: Build a simulation environment for nodes, links, failures, mobility, energy, and routing.
+### WORK-031 — Network and behavior simulator
+Objective: Build a deterministic simulator for nodes, links, failures, resources, mobility, and policies.
 Dependencies: WORK-007, WORK-011, WORK-012, WORK-013, WORK-027
 Acceptance criteria:
-- scenarios are deterministic/replayable.
-- partitions and failures can be injected.
-- routing decisions are inspectable.
-Required verification: scenario suite.
-Definition of done: Architect can evaluate protocol behavior before RF hardware deployment.
+- scenarios are reproducible.
+- failures can be injected.
+- topology and policy behavior can be observed.
+- simulation does not alter core semantics.
+Required verification: deterministic scenario tests.
+Definition of done: ADCOS can be tested at scale without physical infrastructure.
 
-### WORK-032 — Core conformance suite and golden vectors
-Objective: Create machine-checkable conformance tests for envelopes, identity, capabilities, topology, routing, session, federation, and security semantics.
-Dependencies: WORK-003, WORK-004, WORK-005, WORK-007, WORK-011, WORK-012, WORK-015, WORK-017
+### WORK-032 — Conformance suite
+Objective: Build protocol/adapter conformance tests for all frozen contracts.
+Dependencies: WORK-003, WORK-004, WORK-005, WORK-007, WORK-011, WORK-012, WORK-015, WORK-017, WORK-016
 Acceptance criteria:
-- golden wire vectors exist.
-- negative/security vectors exist.
-- extension/future-version behavior is tested.
-Definition of done: independent implementations can validate core protocol compatibility.
+- known-good and known-bad vectors exist.
+- adapters can self-test against stable contracts.
+- interoperability failures are diagnosable.
+Required verification: complete conformance matrix.
+Definition of done: independent implementations can prove conformance.
 
-### WORK-033 — Linux reference Agent
-Objective: Build the complete reference ADCOS Agent for Linux/x86_64 and ARM64.
+### WORK-033 — Linux Agent
+Objective: Build a Linux reference Agent implementing the core node runtime and initial adapters.
 Dependencies: WORK-016, WORK-017, WORK-018, WORK-026, WORK-029, WORK-030, WORK-032
 Acceptance criteria:
-- endpoint, relay, gateway, and edge roles operate.
-- ARM64 works.
-- agent survives restart and reconnect.
-- no access-specific assumptions in core.
-Required verification: full integration suite.
-Definition of done: ADCOS is runnable on ordinary Linux hardware.
+- node can run headless.
+- multiple network interfaces can be exposed as adapters.
+- sessions can be established and monitored.
+- logs/metrics are available.
+Required verification: end-to-end Linux tests.
+Definition of done: a general-purpose computer can participate in ADCOS.
 
-### WORK-034 — Raspberry Pi reference node
-Objective: Package a low-cost experimental community node using Raspberry Pi-class ARM hardware.
-Dependencies: WORK-033, WORK-020, WORK-021, WORK-022, WORK-023, WORK-024
+# Phase 7 — Hardware/device profiles
+
+### WORK-034 — Raspberry Pi / low-power gateway
+Objective: Optimize the Linux Agent for Raspberry Pi and similar edge hardware.
+Dependencies: WORK-020, WORK-021, WORK-022, WORK-023, WORK-024, WORK-033
 Acceptance criteria:
-- node can serve as relay/gateway/edge node.
-- optional SDR/5G adapter works in laboratory conditions.
-- metrics and energy state are visible.
-Definition of done: a low-cost reference node demonstrates the architecture.
+- low-resource operation.
+- Ethernet/Wi-Fi/cellular adapters can coexist.
+- device can operate as relay/gateway.
+Required verification: hardware integration.
+Definition of done: inexpensive edge hardware can act as ADCOS infrastructure.
 
-### WORK-035 — Android endpoint integration
-Objective: Implement the Android-side ADCOS endpoint/companion capabilities that platform APIs permit.
+### WORK-035 — Android/mobile Agent
+Objective: Implement mobile participation with user policy, identity, session continuity, background limitations, and local discovery.
 Dependencies: WORK-012, WORK-013, WORK-018, WORK-033
 Acceptance criteria:
-- phone can participate through available Wi-Fi, cellular, tethering, VPN/tunnel, and supported local links.
-- no unsupported modem-control assumptions are made.
-- future open-radio APIs can be inserted through adapters.
-Definition of done: ordinary phones can consume and participate in ADCOS connectivity without pretending to be arbitrary gNBs.
+- mobile device participates without changing core semantics.
+- user-controlled resource sharing.
+- handover and offline behavior are supported within OS limits.
+Required verification: mobile lifecycle tests.
+Definition of done: phones can participate as clients, relays, or gateways where permitted.
 
-### WORK-036 — Network-in-a-Box reference deployment
-Objective: Produce a single-box community deployment with compute, core, management, optional 5G access, Wi-Fi, local services, and backhaul.
+### WORK-036 — Network-in-a-Box
+Objective: Package ADCOS as an autonomous local network appliance for community or emergency deployment.
 Dependencies: WORK-024, WORK-025, WORK-030, WORK-033, WORK-034
 Acceptance criteria:
-- install/boot/discover/configure workflow is automated.
-- offline/local-first mode works.
-- failure recovery works.
-Definition of done: a small community can deploy a coherent local network with minimal specialist intervention.
+- local services operate without upstream Internet.
+- multiple access adapters can coexist.
+- operators can provision a complete local fabric.
+Required verification: isolated-site integration.
+Definition of done: ADCOS can operate as a community-scale local network.
 
 ### WORK-037 — Open RAN/Core interoperability profile
-Objective: Validate ADCOS against current open-source 5G stacks.
+Objective: Validate ADCOS integration with open 5G Core/RAN and standardized non-3GPP access.
 Dependencies: WORK-019, WORK-020, WORK-021, WORK-032, WORK-033
 Acceptance criteria:
-- at least one Open5GS path works.
-- at least one OCUDU/OAI path works.
-- adapter replacement does not alter core session semantics.
-Definition of done: ADCOS proves real interoperability rather than a mocked architecture.
+- at least one real 5G lab works end-to-end.
+- adapter boundaries remain clean.
+- mixed access is demonstrated.
+Required verification: interoperability lab.
+Definition of done: ADCOS proves credible 5G interoperability.
 
-# Phase 7 — 6G/Future-Proofing and Scale
+# Phase 8 — Future generation and scale
 
-### WORK-038 — Future-IMT/6G adapter contract validation
-Objective: Validate that a hypothetical IMT-2030/6G access implementation can be integrated without core protocol changes.
+### WORK-038 — Future IMT / 6G adapter profile
+Objective: Prove a hypothetical future access technology can be integrated using the same adapter/registry/core contracts without modifying core protocol semantics.
 Dependencies: WORK-016, WORK-029, WORK-032, WORK-033
 Acceptance criteria:
-- mock future access profile implements Adapter contract.
-- no core module changes when swapping the mock profile.
-- new capability types can be added without breaking old nodes.
-- new mobility/radio objects can be mapped through adapter extensions.
-Definition of done: future-generation compatibility is demonstrated by executable tests, not prose.
+- new profile identifier can be added without core schema change.
+- capabilities are additive.
+- routing/session/resource/policy layers remain unchanged.
+Required verification: synthetic future-profile conformance test.
+Definition of done: future access generations can be introduced without architectural rewrite.
 
-### WORK-039 — Federated multi-community scale test
-Objective: Validate thousands of logical nodes/domains in simulation and selected hardware deployments.
+### WORK-039 — Federation at scale
+Objective: Scale federation, discovery, and route/capability exchange across many domains.
 Dependencies: WORK-015, WORK-031, WORK-033, WORK-036
 Acceptance criteria:
-- topology convergence remains bounded.
-- routing and resource decisions remain explainable.
-- compromised/failed domains do not collapse the global fabric.
-Definition of done: architecture scales beyond a single community.
+- federation scales horizontally.
+- failure domains remain isolated.
+- revocation propagates predictably.
+Required verification: large-scale simulation and integration.
+Definition of done: ADCOS can operate across independently administered regions.
 
-### WORK-040 — Pilot-grade community deployment
-Objective: Deliver an end-to-end rural/community deployment profile with solar/off-grid operation, local services, mixed access, open 5G, and external backhaul.
+### WORK-040 — Pilot deployment
+Objective: Execute an end-to-end pilot proving the full architecture in a real deployment.
 Dependencies: WORK-027, WORK-028, WORK-036, WORK-037, WORK-039
 Acceptance criteria:
-- deployment is reproducible.
-- operational telemetry exists.
-- failure recovery is documented and tested.
-- compliance/spectrum constraints are externalized to deployment policy.
-Definition of done: ADCOS is demonstrated as a credible deployable network architecture rather than a laboratory protocol.
+- real users/devices participate.
+- at least one 5G access path, one non-cellular path, and one relay/backhaul path work.
+- resilience/failover demonstrated.
+- operational evidence is captured.
+Required verification: pilot report and final conformance review.
+Definition of done: ADCOS is demonstrated as a credible decentralized connectivity platform.
