@@ -28,6 +28,15 @@ by self-declaration), the responder-side pre-authorization lifecycle
 privileged operation, the record-protection implementation is proven
 replaceable, and the public contract is proven independent of it.
 
+WORK-017 correction cycle 2 adds the two transactional-admission and
+per-transport-ownership regressions (cases 68-69): replay-window
+admission is TRANSACTIONAL — a forged high-sequence frame with an
+invalid tag cannot advance the window and starve legitimate
+lower-sequence frames (Blocker 1); and a runtime implementation swap
+preserves live transports — each transport record owns the sandbox
+captured at its establishment, so an already-established transport
+keeps its engine while new establishments use the new one (Blocker 2).
+
 The central boundary is exercised throughout:
 
     SECURE TRANSPORT
@@ -619,7 +628,11 @@ class MiniTransportEngine(TransportContract):
         raw_seq = frame["sequence"]
         assert isinstance(raw_seq, int)
         seq_int = raw_seq
-        if not state["window"].accept(seq_int):
+        # Transactional admission (mirrors the reference engine): a
+        # forged high-sequence frame with an invalid tag must NOT
+        # advance the window.  Pre-check without mutating, verify the
+        # tag, commit only on success.
+        if not state["window"].would_accept(seq_int):
             raise TransportError(TransportReasonCode.REPLAY_REJECTED, "mini: replay")
         payload = bytes.fromhex(str(frame["wire_payload"]))
         expected = _hmac.new(
@@ -632,6 +645,7 @@ class MiniTransportEngine(TransportContract):
         ).hexdigest()
         if not _hmac.compare_digest(expected, str(frame["integrity_tag"])):
             raise TransportError(TransportReasonCode.INTEGRITY_REJECTED, "mini: tag")
+        state["window"].accept(seq_int)
         return payload
 
     def rekey(self, context: TransportContext, cause: str):
@@ -3352,6 +3366,162 @@ def case_67_standards_boundary_documented(results: List[Result]) -> None:
     results.append(ok("case_67_standards_boundary_documented", "13 boundary markers; overstated claim removed"))
 
 
+def case_68_replay_window_transactional(results: List[Result]) -> None:
+    """68. replay-window admission is TRANSACTIONAL (Blocker 1, the
+    WORK-017 acceptance criterion): a forged frame with a huge
+    sequence number and an invalid integrity tag must NOT advance the
+    receive window, and the legitimate lower-sequence frame that
+    follows must still succeed.  Unauthenticated network input cannot
+    mutate security state (architecture section 19).
+
+    Under the prior (non-transactional) code, ``unprotect`` advanced
+    ``highest`` via ``accept`` BEFORE the MAC was checked; a forged
+    high-sequence frame with a bad tag then left the window pinned
+    far ahead, starving every legitimate lower-sequence frame
+    (REPLAY_REJECTED on the real traffic).  This case proves the
+    window is mutated only after authentication succeeds."""
+    # --- unit level: would_accept is genuinely read-only ---
+    window = ReplayWindow(size=8)
+    before = window.highest
+    if not window.would_accept(1_000_000):
+        results.append(fail("case_68_replay_window_transactional", "would_accept rejected a fresh high sequence"))
+        return
+    if window.highest != before:
+        results.append(fail("case_68_replay_window_transactional", "would_accept mutated highest (read-only violation)"))
+        return
+    # A normal sequence still admits after the (non-mutating) pre-check.
+    if not window.accept(1):
+        results.append(fail("case_68_replay_window_transactional", "legitimate sequence rejected after harmless pre-check"))
+        return
+    # --- behavioral: forged high-seq frame with an invalid tag ---
+    world = _World()
+    mgr_i, mgr_r, transport_id, _, _, _ = _established_pair(world)
+    # Receive one legitimate frame so the responder window has state.
+    r = mgr_i.send(transport_id, b"legit-1", now=_NOW)
+    assert r.ok
+    legit_1 = r.value
+    r = mgr_r.receive(transport_id, legit_1, now=_NOW)
+    assert r.ok, r.detail
+    # Forged frame: bump the legit frame's sequence to a huge value,
+    # leave the (now-wrong) tag in place.  transport_id/generation are
+    # valid, so it reaches the replay gate and the MAC check.
+    forged = dict(legit_1)
+    forged["sequence"] = 1_000_000
+    r = mgr_r.receive(transport_id, forged, now=_NOW)
+    if r.ok or r.reason != TransportReasonCode.INTEGRITY_REJECTED:
+        results.append(fail("case_68_replay_window_transactional", "forged high-seq frame not integrity-rejected: %r" % r.reason))
+        return
+    # The window was NOT advanced by the failed forged frame: the next
+    # legitimate frame (sequence 2) must still succeed.  Under the old
+    # code ``accept(1_000_000)`` would have advanced ``highest`` to
+    # 1_000_000 and sequence 2 would be REPLAY_REJECTED as below-floor.
+    r = mgr_i.send(transport_id, b"legit-2", now=_NOW)
+    assert r.ok
+    r = mgr_r.receive(transport_id, r.value, now=_NOW)
+    if not r.ok or r.value != b"legit-2":
+        results.append(fail("case_68_replay_window_transactional", "post-forgery legitimate frame rejected (window poisoned): %r" % r.reason))
+        return
+    results.append(ok("case_68_replay_window_transactional", "forged high-seq frame leaves window unchanged; legit frame still succeeds"))
+
+
+def case_69_swap_preserves_live_transports(results: List[Result]) -> None:
+    """69. runtime implementation swap preserves live transports
+    (Blocker 2, the WORK-017 acceptance criterion): an
+    already-established transport keeps the engine it was established
+    with (its frames still use that engine's record model and still
+    round-trip), and a transport established AFTER the swap uses the
+    new implementation.  The manager's single default sandbox is no
+    longer the routing target for established transports — each
+    transport record owns the sandbox captured at its establishment.
+
+    Under the prior code, ``register_implementation`` replaced the
+    manager's single ``_sandbox``; every established transport was
+    then routed into the new implementation, which held no state for
+    it (TRANSPORT_FAILURE).  This case proves A survives the swap and
+    B uses the new engine, coexisting on the same manager."""
+    world = _World()
+    mgr_i = world.manager(ModeledTransportEngine())
+    mgr_r = world.manager(ModeledTransportEngine())
+    # --- Establish transport A on the DEFAULT (Modeled) engine. ---
+    r = mgr_i.establish_initiator(
+        world.session_ab, policy=TransportSecurityPolicy(require_confidentiality=True),
+        offered_profiles=list(default_profile_offers()), now=_NOW,
+        instance_label="a-initiator",
+    )
+    assert r.ok, r.detail
+    offer_a = r.value
+    handle_a = mgr_i.pending_handles()[0]
+    r = mgr_r.respond(offer_a, now=_NOW, instance_label="a-responder")
+    assert r.ok, r.detail
+    acceptance_a = r.value
+    r = mgr_i.complete_initiator(handle_a, acceptance_a, now=_NOW)
+    assert r.ok, r.detail
+    confirmation_a = r.value
+    r = mgr_r.confirm(acceptance_a.transport_id, confirmation_a, now=_NOW)
+    assert r.ok, r.detail
+    transport_a = acceptance_a.transport_id
+    # A's frames use the reference (Modeled) record model.
+    r = mgr_i.send(transport_a, b"A-before-swap", now=_NOW)
+    assert r.ok
+    if r.value["protection_model"] != REFERENCE_PROTECTION_MODEL:
+        results.append(fail("case_69_swap_preserves_live_transports", "A frame not reference-mac-only before swap"))
+        return
+    r = mgr_r.receive(transport_a, r.value, now=_NOW)
+    if not r.ok or r.value != b"A-before-swap":
+        results.append(fail("case_69_swap_preserves_live_transports", "A exchange failed pre-swap"))
+        return
+    # --- Swap BOTH managers to the Mini implementation. ---
+    swap_i = mgr_i.register_implementation(MiniTransportEngine())
+    swap_r = mgr_r.register_implementation(MiniTransportEngine())
+    if not (swap_i.ok and swap_r.ok):
+        results.append(fail("case_69_swap_preserves_live_transports", "swap rejected"))
+        return
+    # --- A STILL WORKS: it keeps its original Modeled sandbox. ---
+    # Under the old code this routed A into the new Mini sandbox, which
+    # has no state for transport A -> TRANSPORT_FAILURE.
+    if not _exchange_ok(mgr_i, mgr_r, transport_a, b"A-after-swap"):
+        results.append(fail("case_69_swap_preserves_live_transports", "live transport A broken after swap"))
+        return
+    # And A's frames are STILL reference-mac-only (A did not migrate).
+    r = mgr_i.send(transport_a, b"A-probe", now=_NOW)
+    assert r.ok
+    if r.value["protection_model"] != REFERENCE_PROTECTION_MODEL:
+        results.append(fail("case_69_swap_preserves_live_transports", "A frame migrated to the new implementation after swap"))
+        return
+    # --- Establish transport B AFTER the swap; B uses Mini. ---
+    r = mgr_i.establish_initiator(
+        world.session_ab, policy=TransportSecurityPolicy(),
+        offered_profiles=list(default_profile_offers()), now=_NOW,
+        instance_label="b-initiator",
+    )
+    assert r.ok, r.detail
+    offer_b = r.value
+    handle_b = mgr_i.pending_handles()[0]
+    r = mgr_r.respond(offer_b, now=_NOW, instance_label="b-responder")
+    assert r.ok, r.detail
+    acceptance_b = r.value
+    r = mgr_i.complete_initiator(handle_b, acceptance_b, now=_NOW)
+    assert r.ok, r.detail
+    confirmation_b = r.value
+    r = mgr_r.confirm(acceptance_b.transport_id, confirmation_b, now=_NOW)
+    assert r.ok, r.detail
+    transport_b = acceptance_b.transport_id
+    # B's frames use the Mini record model (the new implementation).
+    r = mgr_i.send(transport_b, b"B-1", now=_NOW)
+    assert r.ok
+    if r.value["protection_model"] != MiniTransportEngine._MODEL:
+        results.append(fail("case_69_swap_preserves_live_transports", "B frame not using the new (Mini) implementation"))
+        return
+    if not _exchange_ok(mgr_i, mgr_r, transport_b, b"B-roundtrip"):
+        results.append(fail("case_69_swap_preserves_live_transports", "post-swap transport B does not interoperate on the new engine"))
+        return
+    # --- A and B coexist on different engines within one manager. ---
+    if transport_a == transport_b:
+        results.append(fail("case_69_swap_preserves_live_transports", "A and B collided on the same transport id"))
+        return
+    results.append(ok("case_69_swap_preserves_live_transports", "A keeps Modeled across swap; B uses Mini; both coexist"))
+
+
 # --------------------------------------------------------------------------
 # main
 # --------------------------------------------------------------------------
@@ -3426,6 +3596,8 @@ def main() -> int:
     case_65_contract_independent_of_crypto(results)
     case_66_initiator_zero_trust(results)
     case_67_standards_boundary_documented(results)
+    case_68_replay_window_transactional(results)
+    case_69_swap_preserves_live_transports(results)
 
     print("ADCOS secure transport self-test (WORK-017)")
     print("=" * 72)

@@ -118,7 +118,12 @@ transports (real TLS 1.3/QUIC libraries, IPsec/WireGuard daemons,
 each with its own standard record protection) plug in behind the same
 ABC; `TransportManager.register_implementation` swaps them at runtime,
 and `ModeledTransportEngine(record_protection=...)` composes any
-record model without touching core semantics.
+record model without touching core semantics.  A swap reassigns only
+the manager's DEFAULT sandbox (the one NEW establishments are routed
+to); every established transport record and pending handshake owns
+the sandbox it was established with, so a live transport is never
+re-routed into a new implementation that holds no state for it
+(per-transport sandbox ownership).
 
 ## Security model (§19; LOCK-022/LOCK-023)
 
@@ -148,7 +153,13 @@ record model without touching core semantics.
   confirmation over the transcript-derived secret.
 - **Replay protection**: offer-nonce ledger (handshake replay),
   sliding per-transport anti-replay windows (frame replay),
-  WORK-003 temporal validation (message expiration).
+  WORK-003 temporal validation (message expiration).  Window
+  admission is TRANSACTIONAL: the receive window is pre-checked
+  read-only, the record is authenticated (model + integrity tag),
+  and the sequence is committed ONLY on success — a forged frame
+  with a huge sequence and an invalid tag cannot advance the
+  window and starve legitimate lower-sequence frames (unauthenticated
+  network input never mutates security state).
 - **No secret leakage**: working key material lives only inside
   engine instances; every offer/acceptance/confirmation/state/event/
   view is structurally secret-free (deep secret rejection).

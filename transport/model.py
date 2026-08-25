@@ -328,6 +328,16 @@ class ReplayWindow:
     - a sequence at or below the window floor REJECTS (too old);
     - an unseen in-window sequence ACCEPTS exactly once (reordering
       tolerance).
+
+    Transactional admission (LOCK — replay-window poisoning, the
+    WORK-017 acceptance criterion): the window is the security state
+    an unauthenticated network input MUST NOT mutate.  Callers
+    authenticate the record FIRST (``would_accept`` pre-check, then
+    integrity verification) and commit the sequence with ``accept``
+    ONLY after authentication succeeds.  A forged record that fails
+    integrity verification therefore never advances ``highest`` and
+    cannot starve legitimate lower-sequence records (the attack
+    surface the WORK-017 review required closed).
     """
 
     __slots__ = ("_size", "_highest", "_seen")
@@ -350,24 +360,51 @@ class ReplayWindow:
     def highest(self) -> int:
         return self._highest
 
-    def accept(self, sequence: int) -> bool:
+    def would_accept(self, sequence: int) -> bool:
+        """Read-only admission pre-check.
+
+        Return whether ``sequence`` would be admitted by
+        :meth:`accept` WITHOUT mutating the window.  Used for
+        transactional replay admission: the caller pre-checks
+        admission, authenticates the record, and only then commits
+        via :meth:`accept`.  A forged record that fails
+        authentication therefore never advances the window and
+        cannot starve legitimate lower-sequence records (LOCK: the
+        replay-window poisoning the WORK-017 review required closed).
+        """
         if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence < 0:
             raise TransportError(
                 TransportReasonCode.INVALID_INPUT,
                 "replay window sequence must be a non-negative integer",
             )
         if sequence > self._highest:
-            self._highest = sequence
-            self._seen.add(sequence)
-            floor = self._highest - self._size
-            if floor > 0:
-                self._seen = {s for s in self._seen if s >= floor}
             return True
         if sequence in self._seen:
             return False
         if sequence <= self._highest - self._size:
             return False
-        self._seen.add(sequence)
+        return True
+
+    def accept(self, sequence: int) -> bool:
+        """Check and COMMIT ``sequence`` (mutating).
+
+        Returns True and advances the window when ``sequence`` is
+        admissible; returns False (without mutating) on an exact
+        replay or a below-floor sequence.  Callers that must keep
+        the window untouched on authentication failure should
+        pre-check with :meth:`would_accept` and call ``accept`` only
+        AFTER the record is authenticated (transactional admission).
+        """
+        if not self.would_accept(sequence):
+            return False
+        if sequence > self._highest:
+            self._highest = sequence
+            self._seen.add(sequence)
+            floor = self._highest - self._size
+            if floor > 0:
+                self._seen = {s for s in self._seen if s >= floor}
+        else:
+            self._seen.add(sequence)
         return True
 
     def view(self) -> Dict[str, int]:

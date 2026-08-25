@@ -271,19 +271,37 @@ class TransportOpResult:
 
 
 class _PendingEntry:
-    """An in-flight establishment (before the final transport id exists)."""
+    """An in-flight establishment (before the final transport id exists).
 
-    __slots__ = ("handle", "session_id", "offer", "events")
+    Retains the owning sandbox captured at establishment time so a
+    runtime implementation swap cannot split a pending handshake
+    across two implementations (Blocker 2 — per-transport sandbox
+    ownership)."""
 
-    def __init__(self, handle: str, session_id: str, offer: TransportOffer) -> None:
+    __slots__ = ("handle", "session_id", "offer", "events", "sandbox")
+
+    def __init__(
+        self, handle: str, session_id: str, offer: TransportOffer, sandbox: SandboxedTransport
+    ) -> None:
         self.handle = handle
         self.session_id = session_id
         self.offer = offer
         self.events: List[TransportEvent] = []
+        self.sandbox = sandbox
 
 
 class _TransportRecord:
-    """The manager's public per-transport state (structurally secret-free)."""
+    """The manager's per-transport state.
+
+    The public, structurally secret-free view is exposed by
+    :meth:`security_state` and :meth:`TransportManager.snapshot`
+    (neither serializes ``sandbox``); ``sandbox`` is internal
+    routing metadata — the owning implementation captured at
+    establishment time — so a runtime implementation swap routes
+    NEW establishments to the new implementation while an
+    already-established transport keeps the engine it was
+    established with (Blocker 2 — per-transport sandbox ownership;
+    the documented replaceability invariant made true)."""
 
     __slots__ = (
         "transport_id",
@@ -299,6 +317,7 @@ class _TransportRecord:
         "generation",
         "lineage",
         "events",
+        "sandbox",
     )
 
     def __init__(
@@ -311,6 +330,7 @@ class _TransportRecord:
         offer: TransportOffer,
         acceptance: TransportAcceptance,
         established_at: str,
+        sandbox: SandboxedTransport,
     ) -> None:
         self.transport_id = transport_id
         self.session_id = session_id
@@ -325,6 +345,7 @@ class _TransportRecord:
         self.generation = 0
         self.lineage: List[str] = []
         self.events: List[TransportEvent] = []
+        self.sandbox = sandbox
 
     def security_state(self) -> TransportSecurityState:
         return TransportSecurityState(
@@ -416,15 +437,19 @@ class TransportManager:
         *,
         now: Optional[str] = None,
     ) -> TransportOpResult:
-        """Swap the active transport implementation (replaceability).
+        """Swap the DEFAULT transport implementation (replaceability).
 
         The new implementation's supported profiles must be known to
-        the manager's profile set (data consistency, fail closed).  In
-        place of the sandbox's health accounting this operation does
-        not disturb existing transports: their engine state lives in
-        the previous implementation (documented — live transports keep
-        the engine they were established with; new establishments use
-        the new implementation).
+        the manager's profile set (data consistency, fail closed).
+        This reassigns only the manager's default sandbox — the one
+        NEW establishments are routed to.  It does NOT disturb
+        existing transports or pending handshakes: each transport
+        record and pending entry retains the owning sandbox it was
+        established with (Blocker 2 — per-transport sandbox
+        ownership), so an already-established transport keeps the
+        engine it was established with and is never routed into the
+        new implementation (which has no state for it).  New
+        establishments use the new implementation.
         """
         if not isinstance(implementation, TransportContract):
             raise TransportError(
@@ -449,6 +474,11 @@ class TransportManager:
                     detail="implementation serves profile %r unknown to the "
                     "manager's profile set" % (identifier,),
                 )
+        # Reassign the DEFAULT sandbox only (new establishments).
+        # Existing _TransportRecord / _PendingEntry instances keep their
+        # own captured sandbox — see _TransportRecord.sandbox and
+        # _PendingEntry.sandbox.  The previous implementation is not
+        # disturbed while any live transport still references it.
         self._sandbox = SandboxedTransport(implementation, profile_set=self._profile_set)
         return TransportOpResult(ok=True, value={"supported_profiles": tuple(profiles)})
 
@@ -644,14 +674,18 @@ class TransportManager:
             expires_at=expires,
         )
         handle = derive_pending_handle(nonce, instance_label)
-        outcome = self._sandbox.initialize(now, handle, session_id)
+        # Capture the owning sandbox NOW: a runtime implementation swap
+        # between establish_initiator and complete_initiator must not
+        # split this handshake across two implementations (Blocker 2).
+        sandbox = self._sandbox
+        outcome = sandbox.initialize(now, handle, session_id)
         if not outcome.ok:
             return self._pending_failure(outcome, handle, now)
-        outcome = self._sandbox.handshake_initiator(now, handle, session_id, offer)
+        outcome = sandbox.handshake_initiator(now, handle, session_id, offer)
         if not outcome.ok:
             return self._pending_failure(outcome, handle, now)
         self._offer_nonces.add(nonce)
-        self._pending[handle] = _PendingEntry(handle, session_id, offer)
+        self._pending[handle] = _PendingEntry(handle, session_id, offer, sandbox)
         return TransportOpResult(ok=True, value=offer)
 
     def complete_initiator(
@@ -688,7 +722,9 @@ class TransportManager:
             )
         except TransportError as error:
             return TransportOpResult(ok=False, reason=error.reason, detail=error.detail)
-        outcome = self._sandbox.complete_initiator(
+        # Route through the pending entry's OWNING sandbox, not the
+        # manager's current default — see establish_initiator (Blocker 2).
+        outcome = entry.sandbox.complete_initiator(
             now, pending_handle, entry.session_id, offer, acceptance, attestation
         )
         if not outcome.ok:
@@ -744,6 +780,7 @@ class TransportManager:
             offer=offer,
             acceptance=acceptance,
             established_at=now,
+            sandbox=entry.sandbox,
         )
         record.state = TransportLifecycle.ESTABLISHED
         record.lineage.append(acceptance.key_lineage)
@@ -862,10 +899,14 @@ class TransportManager:
         except TransportError as error:
             return TransportOpResult(ok=False, reason=error.reason, detail=error.detail)
         handle = derive_pending_handle(offer.offer_nonce, instance_label)
-        outcome = self._sandbox.initialize(now, handle, offer.session_id)
+        # Capture the owning sandbox NOW: the responder record keeps
+        # the engine it was established with across later swaps
+        # (Blocker 2 — per-transport sandbox ownership).
+        sandbox = self._sandbox
+        outcome = sandbox.initialize(now, handle, offer.session_id)
         if not outcome.ok:
             return self._pending_failure(outcome, handle, now)
-        outcome = self._sandbox.handshake_responder(
+        outcome = sandbox.handshake_responder(
             now, handle, offer.session_id, offer, attestation
         )
         if not outcome.ok:
@@ -899,6 +940,7 @@ class TransportManager:
             offer=offer,
             acceptance=acceptance,
             established_at=now,
+            sandbox=sandbox,
         )
         # Zero trust (LOCK-022 — WORK-017 correction): the responder
         # holds working keys from the acceptance on, but the initiator
@@ -976,7 +1018,8 @@ class TransportManager:
                 (),
             )
             return TransportOpResult(ok=False, reason=error.reason, detail=error.detail)
-        outcome = self._sandbox.accept_confirmation(
+        # Route through the transport's OWNING sandbox (Blocker 2).
+        outcome = record.sandbox.accept_confirmation(
             now, transport_id, record.session_id, offer, record.acceptance, confirmation
         )
         if not outcome.ok:
@@ -1065,7 +1108,10 @@ class TransportManager:
             record = self._require_established(transport_id)
         except TransportError as error:
             return TransportOpResult(ok=False, reason=error.reason, detail=error.detail)
-        outcome = self._sandbox.protect(now, transport_id, record.session_id, payload)
+        # Route through the transport's OWNING sandbox (Blocker 2): a
+        # swapped default implementation never receives frames for a
+        # transport it has no state for.
+        outcome = record.sandbox.protect(now, transport_id, record.session_id, payload)
         if not outcome.ok:
             failure = outcome.failure
             return TransportOpResult(
@@ -1085,7 +1131,8 @@ class TransportManager:
             record = self._require_established(transport_id)
         except TransportError as error:
             return TransportOpResult(ok=False, reason=error.reason, detail=error.detail)
-        outcome = self._sandbox.unprotect(now, transport_id, record.session_id, frame)
+        # Route through the transport's OWNING sandbox (Blocker 2).
+        outcome = record.sandbox.unprotect(now, transport_id, record.session_id, frame)
         if not outcome.ok:
             failure = outcome.failure
             reason = failure.reason if failure else ""
@@ -1184,7 +1231,8 @@ class TransportManager:
                 (),
             )
             return TransportOpResult(ok=False, reason=error.reason, detail=error.detail)
-        outcome = self._sandbox.rekey(now, transport_id, record.session_id, cause)
+        # Route through the transport's OWNING sandbox (Blocker 2).
+        outcome = record.sandbox.rekey(now, transport_id, record.session_id, cause)
         if not outcome.ok:
             failure = outcome.failure
             return TransportOpResult(
@@ -1252,7 +1300,8 @@ class TransportManager:
             self._identity.active_credential(self._local_node(record), "operational", now)
         except TransportError as error:
             return TransportOpResult(ok=False, reason=error.reason, detail=error.detail)
-        outcome = self._sandbox.rekey(now, transport_id, record.session_id, cause)
+        # Route through the transport's OWNING sandbox (Blocker 2).
+        outcome = record.sandbox.rekey(now, transport_id, record.session_id, cause)
         if not outcome.ok:
             failure = outcome.failure
             return TransportOpResult(
@@ -1292,7 +1341,10 @@ class TransportManager:
                 reason=TransportReasonCode.TRANSPORT_CLOSED,
                 detail="transport %s is already closed (terminal)" % transport_id,
             )
-        outcome = self._sandbox.close(now, transport_id, record.session_id)
+        # Route through the transport's OWNING sandbox (Blocker 2): close
+        # destroys working key material in the engine that actually holds
+        # this transport's state, which may be a previous implementation.
+        outcome = record.sandbox.close(now, transport_id, record.session_id)
         if not outcome.ok:
             failure = outcome.failure
             return TransportOpResult(

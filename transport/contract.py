@@ -667,7 +667,17 @@ class ModeledTransportEngine(TransportContract):
                 "(stale or replayed across rekey)" % (view["generation"], state.generation),
             )
         sequence = view["sequence"]
-        if not state.recv_window.accept(sequence):
+        # Transactional replay admission (LOCK — replay-window
+        # poisoning, the WORK-017 acceptance criterion): pre-check
+        # admission WITHOUT mutating the window, authenticate the
+        # record, and commit the sequence ONLY on success.  A forged
+        # frame with a huge sequence number and an invalid tag can no
+        # longer advance ``highest`` and starve legitimate
+        # lower-sequence frames — unauthenticated network input cannot
+        # mutate security state.  (Mirrors the TLS 1.3 record /
+        # QUIC packet / IPsec ESP anti-replay discipline: the window
+        # bit/sequence is set only after the record is authenticated.)
+        if not state.recv_window.would_accept(sequence):
             raise TransportError(
                 TransportReasonCode.REPLAY_REJECTED,
                 "frame sequence %d is a replay or outside the anti-replay window" % sequence,
@@ -675,10 +685,16 @@ class ModeledTransportEngine(TransportContract):
         assert state.recv_key is not None
         # Delegation to the record-protection seam: the engine owns
         # generation/replay/sequence policy; the record model owns tag
-        # verification and payload extraction (fail closed).
-        return self._record_protection.unprotect_record(
+        # verification and payload extraction (fail closed).  This raises
+        # on any model/tag mismatch — and because the window has NOT
+        # been mutated yet, a failed verification leaves the window
+        # exactly as it was.
+        payload = self._record_protection.unprotect_record(
             state.recv_key, state.generation, sequence, view
         )
+        # Authentication succeeded: commit the sequence now.
+        state.recv_window.accept(sequence)
+        return payload
 
     def rekey(self, context: TransportContext, cause: str) -> Dict[str, object]:
         self._charge(context, "rekey")
