@@ -50,7 +50,7 @@ import hashlib
 import sys
 import threading
 from pathlib import Path
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
@@ -76,6 +76,7 @@ from policy import (  # noqa: E402
     Privileged,
     evaluate,
     evaluate_condition,
+    invocation_binding_from_context,
     policy_decision_canonical_bytes,
     policy_set_canonical_bytes,
     policy_set_from_mapping,
@@ -1829,6 +1830,237 @@ def case_72_malformed_intent_digest_cannot_authorize(results: List[Result]) -> N
         results.append(ok("case_72_malformed_intent_digest_cannot_authorize", "malformed digests rejected at construction/deserialization; valid digest authorizes ALLOW; empty digest does not"))
 
 
+def case_73_invocation_binding_born_bound(results: List[Result]) -> None:
+    """REGRESSION (Architect review of PR #26, remediation 2 -- the
+    WORK-025 service layer must never possess a binding-construction
+    capability): the WORK-010 evaluator itself binds the exact
+    invocation scope into every ``service.invoke`` decision it emits.
+
+    Trust chain (PR #26 review comment 5434924645):
+
+        WORK-010 policy authority / composition root
+                -> decision already bound to exact invocation context
+                -> services verification + extraction ONLY
+                -> execution
+
+    Discriminating legs:
+    - a service.invoke evaluation produces a decision whose OWN
+      digest-covered extensions carry exactly one invocation binding
+      equal to the context's descriptor (born bound -- ALLOW and DENY
+      alike);
+    - the decision_id digest covers the binding (mutating the binding
+      breaks sha256(canonical_bytes));
+    - a service.invoke context WITHOUT a valid descriptor fails closed
+      (ok=False, INVALID_POLICY, no decision) -- the engine never
+      emits an unbound service.invoke decision, so no downstream
+      consumer can be handed one to "convert";
+    - the descriptor schema is strict (exactly six keys, string
+      values, frozen operation) and MIRRORS the first-class context
+      facts (caller == requester, tenant == federation_domain), so the
+      authorized scope is exactly the evaluated scope;
+    - a descriptor riding a NON-service.invoke context is inert
+      opaque DATA: the decision carries no binding.
+    """
+    name = "case_73_invocation_binding_born_bound"
+    problems: List[str] = []
+    allow_rule = base_rule(
+        rule_id="svc-allow", domain=PolicyDomain.SERVICE,
+        effect=Effect.ALLOW, operation=Operation.SERVICE_INVOKE,
+    )
+    deny_rule = base_rule(
+        rule_id="svc-deny", domain=PolicyDomain.SERVICE,
+        effect=Effect.DENY, operation=Operation.SERVICE_INVOKE,
+    )
+    ps_allow = base_set(rules=(allow_rule,))
+    ps_deny = base_set(rules=(deny_rule,))
+    descriptor = {
+        "kind": "adcos.service-invocation",
+        "operation": Operation.SERVICE_INVOKE,
+        "service_ref": "services:service:" + "a" * 32,
+        "session_id": "sha256:" + "1" * 64,
+        "caller_node_id": _NODE_A,
+        "tenant_domain": "village-a",
+    }
+    good_kwargs: Dict[str, Any] = dict(
+        operation=Operation.SERVICE_INVOKE,
+        requester_node_id=_NODE_A,
+        evaluation_instant=_NOW,
+        federation_domain="village-a",
+        resource_refs=("services:service:" + "a" * 32,),
+        extensions=(dict(descriptor),),
+    )
+
+    def _descriptor_ctx(**overrides: Any) -> PolicyContext:
+        kwargs = dict(good_kwargs)
+        extensions = list(kwargs["extensions"])
+        for key, value in overrides.items():
+            if key == "extensions":
+                extensions = [dict(e) for e in value]
+            else:
+                kwargs[key] = value
+        kwargs["extensions"] = tuple(extensions)
+        return base_ctx(**kwargs)
+
+    # 1. Born bound: ALLOW decision carries exactly one binding equal
+    #    to the descriptor, digest-covered.
+    res = evaluate(ps_allow, _descriptor_ctx())
+    if not (res.ok and res.decision and res.code == DecisionCode.ALLOW):
+        problems.append("valid service.invoke context did not yield ALLOW: %r" % (res.code,))
+    else:
+        bindings = [
+            e for e in res.decision.extensions
+            if e.get("kind") == "adcos.service-invocation"
+        ]
+        if len(bindings) != 1:
+            problems.append("decision carries %d invocation bindings (expected 1)" % len(bindings))
+        elif dict(bindings[0]) != descriptor:
+            problems.append("binding != descriptor: %r" % (dict(bindings[0]),))
+        else:
+            import hashlib as _hashlib
+            if res.decision.decision_id != _hashlib.sha256(
+                res.decision.canonical_bytes()
+            ).hexdigest():
+                problems.append("decision_id does not bind canonical bytes")
+            # Mutating the binding breaks the digest (tamper-evidence).
+            mutated = PolicyDecision(
+                decision_id=res.decision.decision_id,
+                effect=res.decision.effect,
+                code=res.decision.code,
+                detail=res.decision.detail,
+                matched_rule_ids=res.decision.matched_rule_ids,
+                policy_set_id=res.decision.policy_set_id,
+                policy_set_version=res.decision.policy_set_version,
+                evaluation_instant=res.decision.evaluation_instant,
+                conflict_trace=res.decision.conflict_trace,
+                extensions=(
+                    dict(bindings[0], service_ref="services:service:" + "b" * 32),
+                ) + res.decision.extensions[1:],
+            )
+            if mutated.decision_id == _hashlib.sha256(
+                mutated.canonical_bytes()
+            ).hexdigest():
+                problems.append("mutated binding still satisfies the digest")
+    # 2. DENY decisions are born bound too (auditable artifacts).
+    res_deny = evaluate(ps_deny, _descriptor_ctx())
+    if not (res_deny.ok and res_deny.decision and res_deny.decision.effect == Effect.DENY):
+        problems.append("deny-rule service.invoke context did not yield DENY")
+    elif not any(
+        e.get("kind") == "adcos.service-invocation" for e in res_deny.decision.extensions
+    ):
+        problems.append("DENY decision not born bound")
+    # 3. Fail-closed matrix: each malformed/absent descriptor yields
+    #    ok=False INVALID_POLICY with NO decision (an unbound
+    #    service.invoke decision can never be obtained from the engine).
+    def _expect_invalid(label: str, ctx: PolicyContext) -> None:
+        outcome = evaluate(ps_allow, ctx)
+        if outcome.ok or outcome.decision is not None:
+            problems.append("%s: engine did not fail closed (%r)" % (label, outcome.code))
+        elif outcome.code != DecisionCode.INVALID_POLICY:
+            problems.append("%s: wrong code %r" % (label, outcome.code))
+
+    _expect_invalid(
+        "no descriptor",
+        base_ctx(
+            operation=Operation.SERVICE_INVOKE,
+            requester_node_id=_NODE_A,
+            evaluation_instant=_NOW,
+            federation_domain="village-a",
+        ),
+    )
+    _expect_invalid(
+        "double descriptor",
+        _descriptor_ctx(extensions=(dict(descriptor), dict(descriptor))),
+    )
+    _expect_invalid(
+        "unknown key",
+        _descriptor_ctx(extensions=({**descriptor, "extra": "x"},)),
+    )
+    _expect_invalid(
+        "missing key",
+        _descriptor_ctx(extensions=({k: v for k, v in descriptor.items() if k != "session_id"},)),
+    )
+    _expect_invalid(
+        "non-string value",
+        _descriptor_ctx(extensions=({**descriptor, "service_ref": 7},)),
+    )
+    _expect_invalid(
+        "foreign operation",
+        _descriptor_ctx(extensions=({**descriptor, "operation": Operation.RESOURCE_CONSUME},)),
+    )
+    _expect_invalid(
+        "empty service_ref",
+        _descriptor_ctx(extensions=({**descriptor, "service_ref": ""},)),
+    )
+    _expect_invalid(
+        "empty tenant",
+        _descriptor_ctx(extensions=({**descriptor, "tenant_domain": ""},)),
+    )
+    # Mirror violations: the descriptor disagrees with the first-class
+    # context facts the rules evaluated.
+    _expect_invalid(
+        "caller mirror mismatch",
+        _descriptor_ctx(extensions=({**descriptor, "caller_node_id": _NODE_B},)),
+    )
+    _expect_invalid(
+        "tenant mirror mismatch",
+        _descriptor_ctx(extensions=({**descriptor, "tenant_domain": "village-z"},)),
+    )
+    # 4. The derivation function itself self-defends against foreign
+    #    operations (direct call contract).
+    try:
+        invocation_binding_from_context(base_ctx(operation=Operation.RESOURCE_RESERVE))
+        problems.append("derivation accepted a non-service.invoke context")
+    except PolicyError as e:
+        if e.code != "invocation-binding":
+            problems.append("derivation wrong code %r" % e.code)
+    # 5. A descriptor riding a NON-service.invoke context is inert
+    #    opaque DATA: the decision carries no binding.
+    res_other = evaluate(
+        base_set(rules=(base_rule(rule_id="r-rr", effect=Effect.ALLOW),)),
+        base_ctx(
+            operation=Operation.RESOURCE_RESERVE,
+            requester_node_id=_NODE_A,
+            evaluation_instant=_NOW,
+            extensions=(dict(descriptor),),
+        ),
+    )
+    if not (res_other.ok and res_other.decision):
+        problems.append("descriptor on resource.reserve broke evaluation")
+    elif any(e.get("kind") == "adcos.service-invocation" for e in res_other.decision.extensions):
+        problems.append("non-service.invoke decision unexpectedly carries a binding")
+    # 6. Determinism + scope sensitivity: same context -> byte-identical
+    #    decision; a different scope -> a different decision_id.
+    again = evaluate(ps_allow, _descriptor_ctx())
+    if again.decision is None or res.decision is None:
+        problems.append("re-evaluation lost the decision")
+    elif again.decision.canonical_bytes() != res.decision.canonical_bytes():
+        problems.append("re-evaluation not byte-identical")
+    else:
+        other_scope = evaluate(
+            ps_allow,
+            _descriptor_ctx(
+                extensions=(
+                    {**descriptor, "service_ref": "services:service:" + "c" * 32},
+                ),
+                resource_refs=("services:service:" + "c" * 32,),
+            ),
+        )
+        if other_scope.decision is None:
+            problems.append("other-scope evaluation lost the decision")
+        elif other_scope.decision.decision_id == res.decision.decision_id:
+            problems.append("different invocation scopes produced the same decision_id")
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                name,
+                "service.invoke decisions born bound (digest-covered, mirror-checked); "
+                "missing/malformed descriptor fails closed; inert on other operations",
+            )
+        )
+
+
 def main() -> int:
     results: List[Result] = []
     # Required adversarial verification cases (1-41 from the prompt).
@@ -1906,6 +2138,9 @@ def main() -> int:
     case_70_issuer_mandatory(results)
     case_71_issuer_must_be_canonical_nodeid(results)
     case_72_malformed_intent_digest_cannot_authorize(results)
+    # Architect-review regression case (PR #26 correction cycle, the
+    # WORK-025 authority-boundary remediation).
+    case_73_invocation_binding_born_bound(results)
 
     print("ADCOS policy self-test (WORK-010)")
     print("=" * 72)

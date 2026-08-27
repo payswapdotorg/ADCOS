@@ -46,6 +46,11 @@ every WORK-025 handoff verification item to a discriminating case:
 - decision-bound invocation scope / anti-rebinding
   (PR #26 B2)                                       -> case_27, case_38
 - peer-claim fingerprint semantics (PR #26 B3)     -> case_39
+- NO services minting capability: a genuine UNBOUND
+  WORK-010 ALLOW cannot be converted into
+  authorization for an arbitrary scope (PR #26 B2,
+  remediation 2 -- comment 5434924645; the binding
+  is born at the WORK-010 evaluator)                -> case_38, case_40, case_21
 """
 
 from __future__ import annotations
@@ -95,7 +100,6 @@ from services import (  # noqa: E402
     SessionReader,
     SessionView,
     VisibilityScope,
-    bind_invocation_decision,
     derive_admission_ref,
     derive_advertisement_claim_digest,
     derive_decision_ref,
@@ -105,7 +109,16 @@ from services import (  # noqa: E402
     export_service_exposures,
     peer_claim_fingerprint,
 )
-from policy.model import PolicyDecision  # noqa: E402
+from policy.evaluation import PolicyEngine  # noqa: E402
+from policy.model import (  # noqa: E402
+    Condition,
+    Operation,
+    PolicyContext,
+    PolicyDecision,
+    PolicyDomain,
+    PolicyRule,
+    PolicySet,
+)
 from protocol.canonicalization import canonical_json_bytes  # noqa: E402
 
 Result = Tuple[str, bool, str]
@@ -221,9 +234,13 @@ def _allow_decision(
     effect: str = "allow",
     decision_id: Optional[str] = None,
 ) -> PolicyDecision:
-    """A genuine tamper-evident WORK-010 PolicyDecision (the probe
-    trick: construct once, re-construct with the content-derived id --
-    the sanctioned selftest path)."""
+    """A genuine tamper-evident WORK-010 PolicyDecision for the
+    WORK-012 session-composition leg (the probe trick: construct
+    once, re-construct with the content-derived id -- the sanctioned
+    selftest path).  NOTE: this is NOT the invocation-authorization
+    path -- a service.invoke decision must come from the REAL engine
+    (see _engine_invocation_decision), which binds the invocation
+    scope at evaluation time."""
     probe = PolicyDecision(
         decision_id="0" * 64,
         effect=effect,
@@ -247,6 +264,164 @@ def _allow_decision(
         policy_set_version=1,
         evaluation_instant=evaluation_instant,
     )
+
+
+# ----------------------------------------------------------------------
+# REAL WORK-010 engine fixtures (the born-bound composition recipe:
+# the invocation scope is declared in the evaluation context and the
+# WORK-010 evaluator binds it into the decision -- there is no
+# binding constructor anywhere in the services layer)
+# ----------------------------------------------------------------------
+
+_POLICY_ISSUER = "adcos:node:test.profile.v1:" + "0" * 64
+_POLICY_VALID_FROM = "2026-01-01T00:00:00Z"
+_POLICY_VALID_UNTIL = "2028-01-01T00:00:00Z"
+
+
+def _invocation_policy_set(
+    *, effect: str = "allow", domain_condition: bool = False,
+) -> PolicySet:
+    """A REAL WORK-010 PolicySet for service.invoke evaluations
+    (issuer-bearing, windowed; optionally conditioning on the
+    federation domain so rule evaluation is genuine)."""
+    conditions: Tuple[Condition, ...] = ()
+    if domain_condition:
+        conditions = (
+            Condition(
+                predicate="federation-domain",
+                arguments={"domain": "village-a"},
+            ),
+        )
+    rule = PolicyRule(
+        rule_id="svc-%s" % (effect,),
+        domain=PolicyDomain.SERVICE,
+        effect=effect,
+        operation=Operation.SERVICE_INVOKE,
+        conditions=conditions,
+    )
+    return PolicySet(
+        set_id="ps-w025-invocation",
+        version=1,
+        rules=(rule,),
+        issuer_node_id=_POLICY_ISSUER,
+        valid_from=_POLICY_VALID_FROM,
+        valid_until=_POLICY_VALID_UNTIL,
+    )
+
+
+def _invocation_descriptor(
+    service_ref: str,
+    *,
+    session_id: str = "",
+    caller_node_id: str = "",
+    tenant_domain: str = "village-a",
+) -> "dict[str, str]":
+    """The invocation descriptor the composition root declares inside
+    the evaluation context's extensions -- the exact (service,
+    session, caller, tenant) scope being authorized."""
+    return {
+        "kind": "adcos.service-invocation",
+        "operation": Operation.SERVICE_INVOKE,
+        "service_ref": service_ref,
+        "session_id": session_id,
+        "caller_node_id": caller_node_id,
+        "tenant_domain": tenant_domain,
+    }
+
+
+def _invocation_context(
+    service_ref: str,
+    *,
+    evaluation_instant: str = _NOW,
+    session_id: str = "",
+    caller_node_id: str = "",
+    tenant_domain: str = "village-a",
+    descriptor: Optional[Mapping[str, Any]] = None,
+) -> PolicyContext:
+    """A REAL WORK-010 service.invoke PolicyContext carrying the
+    invocation descriptor (the composition-root wiring: the first-class
+    fields mirror the descriptor, exactly as the engine's derivation
+    requires)."""
+    if descriptor is None:
+        descriptor = _invocation_descriptor(
+            service_ref,
+            session_id=session_id,
+            caller_node_id=caller_node_id,
+            tenant_domain=tenant_domain,
+        )
+    return PolicyContext(
+        operation=Operation.SERVICE_INVOKE,
+        requester_node_id=caller_node_id,
+        evaluation_instant=evaluation_instant,
+        federation_domain=tenant_domain,
+        resource_refs=(service_ref,),
+        extensions=(descriptor,),
+    )
+
+
+def _engine_invocation_decision(
+    service_ref: str,
+    *,
+    evaluation_instant: str = _NOW,
+    session_id: str = "",
+    caller_node_id: str = "",
+    tenant_domain: str = "village-a",
+    effect: str = "allow",
+    domain_condition: bool = False,
+) -> PolicyDecision:
+    """A GENUINE WORK-010 engine decision for a real service.invoke
+    context -- BORN BOUND to the exact invocation scope (the only way
+    a service.invoke decision can exist: the engine derives the
+    digest-covered binding from the context's own descriptor)."""
+    context = _invocation_context(
+        service_ref,
+        evaluation_instant=evaluation_instant,
+        session_id=session_id,
+        caller_node_id=caller_node_id,
+        tenant_domain=tenant_domain,
+    )
+    result = PolicyEngine().evaluate(
+        _invocation_policy_set(
+            effect=effect, domain_condition=domain_condition,
+        ),
+        context,
+    )
+    assert result.ok and result.decision is not None, result.detail
+    return result.decision
+
+
+def _unbound_allow(evaluation_instant: str = _NOW) -> PolicyDecision:
+    """A GENUINE WORK-010 engine ALLOW for a NON-service.invoke
+    operation (resource.consume) -- genuinely UNBOUND: the engine
+    binds invocation scopes only onto service.invoke decisions, so
+    this decision carries no invocation binding anywhere.  This is
+    the attacker's starting point for the no-minting regression
+    (case_38): an authorization that WORK-010 genuinely granted, for
+    a scope the services layer must never be able to re-target."""
+    policy_set = PolicySet(
+        set_id="ps-w025-unbound",
+        version=1,
+        rules=(
+            PolicyRule(
+                rule_id="res-allow",
+                domain=PolicyDomain.RESOURCE,
+                effect="allow",
+                operation=Operation.RESOURCE_CONSUME,
+            ),
+        ),
+        issuer_node_id=_POLICY_ISSUER,
+        valid_from=_POLICY_VALID_FROM,
+        valid_until=_POLICY_VALID_UNTIL,
+    )
+    context = PolicyContext(
+        operation=Operation.RESOURCE_CONSUME,
+        requester_node_id=_NODE_UE,
+        evaluation_instant=evaluation_instant,
+        resource_refs=("resources:account:" + "9" * 32,),
+    )
+    result = PolicyEngine().evaluate(policy_set, context)
+    assert result.ok and result.decision is not None, result.detail
+    return result.decision
 
 
 class _TestSessionReader(SessionReader):
@@ -349,18 +524,15 @@ def _decision_for(
     now: str = _T1,
     session_id: str = "",
     caller_node_id: str = "",
-    policy_decision: Optional[PolicyDecision] = None,
     tenant_domain: str = "village-a",
 ) -> str:
-    """Apply a BOUND invocation decision (the composition-root
-    recipe: a genuine engine ALLOW, bound to the exact invocation
-    scope via bind_invocation_decision -- the registry accepts no
-    scope parameters)."""
-    if policy_decision is None:
-        policy_decision = _allow_decision(evaluation_instant=now)
-    bound = bind_invocation_decision(
-        policy_decision,
-        service_ref=service_ref,
+    """Apply a GENUINE engine-evaluated (born-bound) invocation
+    decision (the composition recipe: evaluate a real service.invoke
+    context for the exact scope, then hand the born-bound decision to
+    the registry -- which accepts no scope parameters)."""
+    bound = _engine_invocation_decision(
+        service_ref,
+        evaluation_instant=now,
         session_id=session_id,
         caller_node_id=caller_node_id,
         tenant_domain=tenant_domain,
@@ -382,18 +554,19 @@ def _bound_decision(
     caller_node_id: str = "",
     tenant_domain: str = "village-a",
 ) -> PolicyDecision:
-    """A genuine engine decision BOUND to an invocation scope (the
-    composition-root recipe); ``decision_id`` may be overridden to
+    """A GENUINE engine-evaluated service.invoke decision, BORN BOUND
+    to the exact invocation scope (the scope is declared in the
+    evaluation context and the WORK-010 evaluator binds it into the
+    decision's digest-covered extensions -- there is no services-layer
+    binding constructor to call); ``decision_id`` may be overridden to
     simulate a tampered/rebound decision id."""
-    engine = _allow_decision(
-        evaluation_instant=evaluation_instant, effect=effect,
-    )
-    bound = bind_invocation_decision(
-        engine,
-        service_ref=service_ref,
+    bound = _engine_invocation_decision(
+        service_ref,
+        evaluation_instant=evaluation_instant,
         session_id=session_id,
         caller_node_id=caller_node_id,
         tenant_domain=tenant_domain,
+        effect=effect,
     )
     if decision_id is None:
         return bound
@@ -1808,6 +1981,12 @@ def case_21_no_second_authority_ast() -> Result:
                             name, "%s imports forbidden root %r"
                             % (module_name, alias.name),
                         )
+                    if alias.name.split(".")[:2] == ["policy", "evaluation"]:
+                        return fail(
+                            name, "%s imports the WORK-010 evaluation "
+                            "engine (the services layer never evaluates "
+                            "policy)" % (module_name,),
+                        )
             elif isinstance(node, ast.ImportFrom):
                 if node.level == 0:
                     root = (node.module or "").split(".")[0]
@@ -1816,6 +1995,30 @@ def case_21_no_second_authority_ast() -> Result:
                             name, "%s imports from forbidden root %r"
                             % (module_name, node.module),
                         )
+                    if (node.module or "").split(".")[:2] == ["policy", "evaluation"]:
+                        return fail(
+                            name, "%s imports from the WORK-010 evaluation "
+                            "engine (the services layer never evaluates "
+                            "policy)" % (module_name,),
+                        )
+            elif isinstance(node, ast.Call):
+                # PR #26 blocker 2 (remediation 2): the services layer
+                # must never CONSTRUCT a PolicyDecision -- it is a
+                # consumer (verification + extraction only).  Any
+                # construction site would be a decision-manufacturing
+                # capability.
+                func = node.func
+                target = (
+                    func.id if isinstance(func, ast.Name)
+                    else func.attr if isinstance(func, ast.Attribute)
+                    else None
+                )
+                if target == "PolicyDecision":
+                    return fail(
+                        name, "%s constructs a PolicyDecision (the "
+                        "services layer consumes decisions; it never "
+                        "manufactures them)" % (module_name,),
+                    )
         stripped = _strip_prose(source)
         match = forbidden_symbols.search(stripped)
         if match:
@@ -1839,7 +2042,19 @@ def case_21_no_second_authority_ast() -> Result:
         return fail(name, "policy import discipline broken")
     if "from intent.model import" not in registry_source:
         return fail(name, "intent import discipline broken")
-    return ok(name, "AST audit clean: no second authority, no vendor symbols")
+    # The authorization seam imports exactly the authority-owned
+    # discriminator constant (never defines its own, never touches the
+    # engine).
+    auth_source = _read_source(os.path.join(family_dir, "authorization.py"))
+    if "from policy.invocation import INVOCATION_BINDING_KIND" not in auth_source:
+        return fail(name, "binding-kind import discipline broken")
+    if "def bind" in auth_source or "bind_invocation_decision" in auth_source:
+        return fail(name, "authorization seam still carries a binding constructor")
+    return ok(
+        name,
+        "AST audit clean: no second authority, no vendor symbols, "
+        "no decision manufacturing, no engine import",
+    )
 
 
 def case_22_validate_commit_sequence_discipline() -> Result:
@@ -2023,15 +2238,36 @@ from services import (
     ServiceRegistry, ReferenceEdgeExecutor, ServiceAdvertisement,
     ServiceCapacity, ServiceDescriptor, AdvertisementEvidence,
     VisibilityScope, derive_advertisement_claim_digest,
-    bind_invocation_decision,
 )
-from policy.model import PolicyDecision
+from policy.evaluation import PolicyEngine
+from policy.model import Operation, PolicyContext, PolicyDomain, PolicyRule, PolicySet
 
 NOW = "2026-08-27T00:00:00Z"
 T1 = "2026-08-27T00:01:00Z"
 T2 = "2026-08-27T00:02:00Z"
 NODE_A = "adcos:node:test.profile.v1:" + "a" * 64
 NODE_B = "adcos:node:test.profile.v1:" + "b" * 64
+ISSUER = "adcos:node:test.profile.v1:" + "0" * 64
+
+def born_bound_decision(service_ref):
+    # The born-bound composition recipe: the exact invocation scope is
+    # declared in the evaluation context and the WORK-010 evaluator
+    # derives the digest-covered binding from it (there is no
+    # services-layer binding constructor).
+    ps = PolicySet(set_id="ps-w025-invocation", version=1,
+        rules=(PolicyRule(rule_id="svc-allow", domain=PolicyDomain.SERVICE,
+            effect="allow", operation=Operation.SERVICE_INVOKE),),
+        issuer_node_id=ISSUER, valid_from="2026-01-01T00:00:00Z",
+        valid_until="2028-01-01T00:00:00Z")
+    ctx = PolicyContext(operation=Operation.SERVICE_INVOKE,
+        evaluation_instant=NOW, federation_domain="village-a",
+        resource_refs=(service_ref,),
+        extensions=({"kind": "adcos.service-invocation",
+            "operation": Operation.SERVICE_INVOKE, "service_ref": service_ref,
+            "session_id": "", "caller_node_id": "", "tenant_domain": "village-a"},))
+    res = PolicyEngine().evaluate(ps, ctx)
+    assert res.ok and res.decision is not None, res.detail
+    return res.decision
 
 def build():
     reg = ServiceRegistry()
@@ -2047,14 +2283,8 @@ def build():
         source_class="direct-observation", observed_at=NOW,
         claim_digest=derive_advertisement_claim_digest(adv))
     reg.register_service(now=NOW, advertisement=adv, evidence=ev)
-    probe = PolicyDecision(decision_id="0"*64, effect="allow", code="allow", detail="d",
-        matched_rule_ids=("r1",), policy_set_id="ps", policy_set_version=1, evaluation_instant=NOW)
-    dec = PolicyDecision(decision_id=hashlib.sha256(probe.canonical_bytes()).hexdigest(),
-        effect="allow", code="allow", detail="d", matched_rule_ids=("r1",),
-        policy_set_id="ps", policy_set_version=1, evaluation_instant=NOW)
-    bound = bind_invocation_decision(dec, service_ref=adv.service_ref,
-        tenant_domain="village-a")
-    r = reg.apply_policy_decision(now=T1, policy_decision=bound)
+    dec = born_bound_decision(adv.service_ref)
+    r = reg.apply_policy_decision(now=T1, policy_decision=dec)
     assert r.ok
     a = reg.admit_execution(now=T1, service_ref=adv.service_ref, decision_ref=r.value)
     assert a.ok
@@ -2063,9 +2293,7 @@ def build():
     rl = reg.release_execution(now=T1, admission_ref=a.value.admission_ref)
     assert rl.ok
     reg.relocate_service(now=T2, service_ref=adv.service_ref, target_host_node_id=NODE_B)
-    bound2 = bind_invocation_decision(dec, service_ref=adv.service_ref,
-        tenant_domain="village-a")
-    d2 = reg.apply_policy_decision(now=T2, policy_decision=bound2)
+    d2 = reg.apply_policy_decision(now=T2, policy_decision=dec)
     assert d2.ok
     reg.withdraw_service(now=T2, service_ref=adv.service_ref, reason="done")
     return reg.content_digest()
@@ -2468,17 +2696,34 @@ def case_30_real_authority_composition() -> Result:
     )
     if not exposure.ok:
         return fail(name, "real-federation exposure failed: %s" % (exposure.detail,))
-    # Discovery through the REAL intent + the REAL policy decision:
-    # the composition root binds the engine ALLOW to the exact
-    # invocation scope (service, session, caller, tenant) and the
-    # registry extracts the scope from the decision itself.
-    bound_decision = bind_invocation_decision(
-        policy_decision,
-        service_ref=service_ref,
+    # Discovery through the REAL intent + a REAL WORK-010 engine
+    # evaluation of the exact invocation scope: the composition root
+    # declares the (service, session, caller, tenant) descriptor in
+    # the service.invoke PolicyContext, the evaluator binds it into
+    # the decision's digest-covered extensions (born bound -- there
+    # is no services-layer binding constructor), and the registry
+    # extracts the scope from the decision itself.
+    bound_decision = _engine_invocation_decision(
+        service_ref,
+        evaluation_instant=_T1,
         session_id=session_id,
         caller_node_id=_NODE_UE,
         tenant_domain=advertisement.descriptor.tenant_domain,
     )
+    # The REAL session-policy ALLOW (genuinely unbound for invocation
+    # purposes) must NOT be applicable as an invocation authorization
+    # -- there is no exported services API to convert it (case_40
+    # pins that absence structurally).
+    try:
+        registry.apply_policy_decision(
+            now=_T1, policy_decision=policy_decision,
+        )
+        return fail(
+            name, "session-policy ACCEPTED as invocation authorization"
+        )
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
+            return fail(name, "session-policy ALLOW: %s" % (exc.reason,))
     decision_ref = registry.apply_policy_decision(
         now=_T1, policy_decision=bound_decision,
     )
@@ -3131,6 +3376,158 @@ def case_39_peer_claim_fingerprint_semantics() -> Result:
     return ok(name, "peer-claim fingerprint is a pinned canonical content digest")
 
 
+def case_40_no_services_minting_capability() -> Result:
+    """PR #26 Architect review, blocker 2 (remediation 2 -- comment
+    5434924645), the REQUIRED regression: start with a GENUINE
+    UNBOUND WORK-010 ALLOW (a real PolicyEngine evaluation) and prove
+    there is NO exported ``services`` API capable of transforming it
+    into authorization for an arbitrary scope.
+
+    The invocation binding is born at the WORK-010 evaluator
+    (``policy.invocation``): the engine derives it from the
+    evaluation context's own descriptor -- mirror-checked against
+    the first-class facts the rules evaluated -- and NEVER emits an
+    unbound ``service.invoke`` decision (WORK-010 selftest case_73).
+    This case pins the downstream half of that trust chain: the
+    ``services`` package is verification + extraction ONLY."""
+    name = "case_40_no_services_minting_capability"
+    import services as services_module
+    from policy import invocation as policy_invocation
+
+    registry, _executor = _full_registry()
+    service_ref = _registered(registry)
+    attacker_ref = derive_service_ref("attacker-service", "compute", "village-a")
+
+    # 1. The attacker's starting point: a GENUINE WORK-010 engine
+    #    ALLOW (real PolicyEngine, real issuer-bearing PolicySet,
+    #    digest-valid) that carries NO invocation binding -- the
+    #    engine binds invocation scopes only onto service.invoke
+    #    decisions, so a resource.consume ALLOW is genuinely unbound.
+    unbound = _unbound_allow(_T1)
+    if hashlib.sha256(unbound.canonical_bytes()).hexdigest() != unbound.decision_id:
+        return fail(name, "starting ALLOW is not digest-valid")
+    if any(
+        ext.get("kind") == services_module.INVOCATION_BINDING_KIND
+        for ext in unbound.extensions
+    ):
+        return fail(name, "starting ALLOW unexpectedly carries a binding")
+    # 2. Extraction fails closed on it (it authorizes NO scope) ...
+    try:
+        services_module.extract_invocation_binding(unbound)
+        return fail(name, "extraction accepted an unbound ALLOW")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
+            return fail(name, "unbound extraction: %s" % (exc.reason,))
+    # 3. ... and the registry refuses it outright.
+    try:
+        registry.apply_policy_decision(now=_T1, policy_decision=unbound)
+        return fail(name, "registry accepted the unbound ALLOW")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
+            return fail(name, "unbound apply: %s" % (exc.reason,))
+    # 4. THE CAPABILITY-ABSENCE PROBE: enumerate the ENTIRE exported
+    #    services API surface and try every callable with the genuine
+    #    unbound ALLOW plus the attacker-selected scope.  NO call may
+    #    return a PolicyDecision (a transformed/bound ALLOW).  This
+    #    pins the absence of the CAPABILITY, not one blocked path,
+    #    and pairs with the AST pin (case_21: no PolicyDecision
+    #    construction site and no engine import anywhere in
+    #    services/) -- so there is no exported OR internal minting
+    #    path at all.
+    surface_names = sorted(
+        set(services_module.__all__)
+        | {n for n in dir(services_module) if not n.startswith("_")}
+    )
+    if "bind_invocation_decision" in surface_names:
+        return fail(name, "bind_invocation_decision is still exported")
+    minting_suspects: List[str] = []
+    attempted = 0
+    probed = 0
+    attack_kwargs = dict(
+        service_ref=attacker_ref,
+        session_id=_SESSION_ID,
+        caller_node_id=_NODE_UE,
+        tenant_domain="village-a",
+        policy_decision=unbound,
+        decision=unbound,
+    )
+    for export_name in surface_names:
+        export = getattr(services_module, export_name)
+        if export_name.lower().startswith("bind"):
+            minting_suspects.append(
+                "exported name %r looks like a binding constructor"
+                % (export_name,)
+            )
+        if not callable(export):
+            continue
+        for args in ((unbound,), (unbound, attacker_ref)):
+            for kwargs_set in ({}, dict(attack_kwargs)):
+                attempted += 1
+                try:
+                    returned = export(*args, **kwargs_set)
+                except Exception:  # noqa: BLE001 -- refusals are the point
+                    continue
+                probed += 1
+                if isinstance(returned, PolicyDecision):
+                    minting_suspects.append(
+                        "%s(unbound_ALLOW, ...) returned a PolicyDecision"
+                        % (export_name,)
+                    )
+    if minting_suspects:
+        return fail(name, "; ".join(minting_suspects[:4]))
+    if attempted < 200 or probed < 1:
+        return fail(
+            name,
+            "capability probe was too shallow (%d attempted / %d returned)"
+            % (attempted, probed),
+        )
+    # 5. The binding derivation lives at the policy authority and is
+    #    NOT reachable through the services surface (only the
+    #    discriminator constant is aliased, read-only).
+    if hasattr(services_module, "invocation_binding_from_context"):
+        return fail(name, "services re-exports the authority-side derivation")
+    if (
+        services_module.INVOCATION_BINDING_KIND
+        is not policy_invocation.INVOCATION_BINDING_KIND
+    ):
+        return fail(name, "binding-kind constant drifted from the authority")
+    # 6. The ONLY route to an authorizing decision is a REAL engine
+    #    evaluation of the EXACT scope (scope-sensitive decision
+    #    ids; born-bound semantics pinned by WORK-010 case_73).
+    genuine = _engine_invocation_decision(
+        service_ref, evaluation_instant=_T1, caller_node_id=_NODE_UE,
+    )
+    other_scope = _engine_invocation_decision(
+        attacker_ref, evaluation_instant=_T1, caller_node_id=_NODE_UE,
+    )
+    if genuine.decision_id == other_scope.decision_id:
+        return fail(name, "different scopes produced the same decision")
+    if (
+        services_module.extract_invocation_binding(other_scope).service_ref
+        != attacker_ref
+    ):
+        return fail(name, "engine decision is not scope-faithful")
+    applied = registry.apply_policy_decision(now=_T1, policy_decision=genuine)
+    if not applied.ok:
+        return fail(
+            name, "genuine engine decision rejected: %s" % (applied.detail,)
+        )
+    try:
+        registry.admit_execution(
+            now=_T1, service_ref=service_ref, decision_ref=applied.value,
+            caller_node_id=_NODE_UE,
+        )
+    except ServiceError as exc:
+        return fail(name, "genuine scope failed to admit: %s" % (exc,))
+    return ok(
+        name,
+        "genuine unbound ALLOW converted by NO exported services API "
+        "(%d attempted / %d returned calls across the whole surface + "
+        "AST pin); only engine-evaluated exact-scope decisions authorize"
+        % (attempted, probed),
+    )
+
+
 # --------------------------------------------------------------------------
 # Real-authority composition helpers
 # --------------------------------------------------------------------------
@@ -3331,6 +3728,7 @@ def main() -> int:
         case_37_ci_wiring,
         case_38_decision_bound_invocation_scope,
         case_39_peer_claim_fingerprint_semantics,
+        case_40_no_services_minting_capability,
     ]
     print("ADCOS service registry / edge compute self-test (WORK-025)")
     print("=" * 72)

@@ -35,6 +35,11 @@ from __future__ import annotations
 
 from .conflict import resolve_conflicts
 from .evaluation import PolicyEngine, evaluate
+from .invocation import (
+    INVOCATION_BINDING_KIND,
+    INVOCATION_BINDING_KEYS,
+    invocation_binding_from_context,
+)
 from .model import (
     Condition,
     DecisionCode,
@@ -89,6 +94,11 @@ __all__ = [
     "evaluate_condition",
     # Conflict resolution
     "resolve_conflicts",
+    # Invocation binding (the policy authority's born-bound scope
+    # derivation for service.invoke decisions; PR #26 blocker 2)
+    "INVOCATION_BINDING_KIND",
+    "INVOCATION_BINDING_KEYS",
+    "invocation_binding_from_context",
     # Validation
     "validate_context",
     "validate_policy_set",

@@ -43,7 +43,6 @@ from .authorization import (
     INVOCATION_BINDING_KIND,
     SERVICE_INVOKE_OPERATION,
     InvocationBinding,
-    bind_invocation_decision,
     extract_invocation_binding,
 )
 from .errors import (
@@ -124,11 +123,12 @@ __all__ = [
     "ServiceContext",
     "SessionReader",
     "SessionView",
-    # authorization consumption (WORK-010 seam)
+    # authorization consumption (WORK-010 seam; verification and
+    # extraction ONLY -- the binding itself is born at the policy
+    # authority, never minted here; PR #26 remediation 2)
     "INVOCATION_BINDING_KIND",
     "SERVICE_INVOKE_OPERATION",
     "InvocationBinding",
-    "bind_invocation_decision",
     "extract_invocation_binding",
     # errors
     "SERVICES_PREFIX",

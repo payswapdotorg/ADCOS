@@ -22,10 +22,13 @@ facts and composes every other authority through its public seams:
   trust, and never overrides a deny (denied decisions fail closed
   with DECISION_DENIED).  The authorized (service, session, caller,
   tenant) scope is EXTRACTED FROM THE DECISION'S OWN digest-covered
-  invocation binding -- apply accepts no scope parameters, so the
-  service layer can never wrap a valid ALLOW around a different
+  invocation binding -- apply accepts no scope parameters and the
+  services package possesses no binding-construction capability at
+  all, so a valid ALLOW can never be wrapped around a different
   authorization scope (the PR #26 Architect-review authority
-  boundary).  A discovered service is never implicitly authorized
+  boundary; the binding is BORN at the WORK-010 evaluator --
+  ``policy.invocation`` -- for every service.invoke evaluation).
+  A discovered service is never implicitly authorized
   to execute merely because it was advertised.
 - **Execution** -- :meth:`admit_execution` / :meth:`execute_request`
   / :meth:`release_execution` compose the provider-neutral edge
@@ -1047,14 +1050,20 @@ class ServiceRegistry:
         """Apply a REAL WORK-010 policy decision as the invocation
         authorization for the scope THE DECISION ITSELF authorizes.
 
-        Authority boundary (PR #26 review, blocker 2): this method
-        accepts NO scope parameters.  The authorized (service,
-        session, caller, tenant) scope is extracted from the
-        decision's OWN ``extensions`` invocation binding, which is
-        covered by the decision's content digest -- so a valid ALLOW
-        can never be re-wrapped around a different authorization
-        scope: rebinding the extension breaks the digest, and a
-        decision without a binding fails closed.
+        Authority boundary (PR #26 review, blocker 2, remediation 2):
+        this method accepts NO scope parameters, and the services
+        package possesses NO binding-construction capability -- the
+        invocation binding is BORN at the WORK-010 evaluator
+        (``policy.invocation.invocation_binding_from_context`` is
+        applied to every service.invoke evaluation, so the engine
+        never emits an unbound service.invoke decision).  The
+        authorized (service, session, caller, tenant) scope is
+        extracted from the decision's OWN ``extensions`` invocation
+        binding, which is covered by the decision's content digest
+        -- so a valid ALLOW can never be re-wrapped around a
+        different authorization scope: rebinding the extension
+        breaks the digest, and a decision without a binding fails
+        closed.
 
         Verification (fail closed, the WORK-024 discipline plus the
         PR #26 binding discipline):
