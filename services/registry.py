@@ -20,8 +20,13 @@ facts and composes every other authority through its public seams:
   tamper-evident ``policy.model.PolicyDecision`` (the WORK-010
   authority); the registry never evaluates policy, never invents
   trust, and never overrides a deny (denied decisions fail closed
-  with DECISION_DENIED).  A discovered service is never implicitly
-  authorized to execute merely because it was advertised.
+  with DECISION_DENIED).  The authorized (service, session, caller,
+  tenant) scope is EXTRACTED FROM THE DECISION'S OWN digest-covered
+  invocation binding -- apply accepts no scope parameters, so the
+  service layer can never wrap a valid ALLOW around a different
+  authorization scope (the PR #26 Architect-review authority
+  boundary).  A discovered service is never implicitly authorized
+  to execute merely because it was advertised.
 - **Execution** -- :meth:`admit_execution` / :meth:`execute_request`
   / :meth:`release_execution` compose the provider-neutral edge
   execution seam behind a sandboxed provider: authorization is
@@ -73,6 +78,9 @@ from .contract import (
     ExecutionProviderContract,
     FederationReader,
     SessionReader,
+)
+from .authorization import (
+    extract_invocation_binding,
 )
 from .errors import ServiceError, ServiceFailure, ServiceReasonCode
 from .execution import MAX_REQUEST_BYTES
@@ -330,11 +338,18 @@ class ServiceRegistry:
             )
         return entry.candidate
 
-    def _decision_scope(self, decision: InvocationDecision) -> Tuple[str, str, str]:
-        return (decision.service_ref, decision.session_id, decision.caller_node_id)
+    def _decision_scope(
+        self, decision: InvocationDecision
+    ) -> Tuple[str, str, str, str]:
+        return (
+            decision.service_ref,
+            decision.session_id,
+            decision.caller_node_id,
+            decision.tenant_domain,
+        )
 
     def _latest_decision_for_scope(
-        self, scope: Tuple[str, str, str]
+        self, scope: Tuple[str, str, str, str]
     ) -> Optional[InvocationDecision]:
         latest: Optional[InvocationDecision] = None
         for decision in self._decisions.values():
@@ -740,7 +755,7 @@ class ServiceRegistry:
         *,
         now: str,
         service_ref: str,
-        tenant_domain: str = "",
+        tenant_domain: str,
         session_id: str = "",
         caller_node_id: str = "",
         decision_ref: str = "",
@@ -750,14 +765,27 @@ class ServiceRegistry:
         state: unknown / withdrawn / stale / hidden (peer claim not
         federated) / tenant-isolated / unauthorized / eligible.
 
+        Tenant scope is REQUIRED and fail-closed (PR #26 review,
+        blocker 1): every queryable service record belongs to exactly
+        one tenant, so a caller must always state its tenant scope --
+        omitting it is a structural TypeError and an empty scope
+        fails closed with TENANT_ISOLATION.  There is no unscoped
+        query path.
+
         A policy-controlled service requires a CURRENT invocation
         decision: a discovered service is never implicitly authorized
         merely because it was advertised."""
         self._require_not_closed()
         self._require_now(now)
         validate_opaque_ref(service_ref, "service")
-        if tenant_domain:
-            validate_tenant_domain(tenant_domain)
+        if not isinstance(tenant_domain, str) or not tenant_domain:
+            raise ServiceError(
+                ServiceReasonCode.TENANT_ISOLATION,
+                "tenant scope is required and fail-closed: an empty or "
+                "omitted tenant_domain can never observe another "
+                "tenant's service records (WORK-025 invariant 12)",
+            )
+        validate_tenant_domain(tenant_domain)
         if session_id:
             validate_session_ref(session_id)
         if caller_node_id:
@@ -774,7 +802,7 @@ class ServiceRegistry:
                 "service %r is a peer claim visible only through "
                 "federated discovery" % (service_ref,),
             )
-        if tenant_domain and candidate.tenant_domain != tenant_domain:
+        if candidate.tenant_domain != tenant_domain:
             raise ServiceError(
                 ServiceReasonCode.TENANT_ISOLATION,
                 "service %r belongs to tenant %r; tenant/domain "
@@ -886,7 +914,7 @@ class ServiceRegistry:
         self,
         *,
         now: str,
-        tenant_domain: str = "",
+        tenant_domain: str,
         host_node_id: str = "",
         intent: Any = None,
         capability_ref: str = "",
@@ -902,6 +930,12 @@ class ServiceRegistry:
         WORK-024 connectivity.  This method NEVER computes, scores,
         or enumerates network routes.
 
+        Tenant scope is REQUIRED and fail-closed (PR #26 review,
+        blocker 1): discovery is always scoped to exactly one tenant
+        domain -- omitting the scope is a structural TypeError and an
+        empty scope fails closed with TENANT_ISOLATION.  There is no
+        cross-tenant or unscoped enumeration path.
+
         Local-first selection: candidates hosted by the discovering
         node come first (each group sorted by service_ref).  Local
         discovery never requires upstream connectivity; federated
@@ -909,8 +943,14 @@ class ServiceRegistry:
         scope-authorized relationship."""
         self._require_not_closed()
         self._require_now(now)
-        if tenant_domain:
-            validate_tenant_domain(tenant_domain)
+        if not isinstance(tenant_domain, str) or not tenant_domain:
+            raise ServiceError(
+                ServiceReasonCode.TENANT_ISOLATION,
+                "tenant scope is required and fail-closed: an empty or "
+                "omitted tenant_domain can never enumerate services "
+                "across tenants (WORK-025 invariant 12)",
+            )
+        validate_tenant_domain(tenant_domain)
         if host_node_id:
             validate_node_id(host_node_id, label="host node id")
         if capability_ref:
@@ -963,7 +1003,7 @@ class ServiceRegistry:
                 )
             ):
                 continue
-            if tenant_domain and record.tenant_domain != tenant_domain:
+            if record.tenant_domain != tenant_domain:
                 continue
             if (
                 record.visibility == VisibilityScope.LOCAL
@@ -1002,31 +1042,37 @@ class ServiceRegistry:
         self,
         *,
         now: str,
-        service_ref: str,
-        session_id: str = "",
-        caller_node_id: str = "",
         policy_decision: PolicyDecision,
     ) -> ServiceOpResult:
         """Apply a REAL WORK-010 policy decision as the invocation
-        authorization for one (service, session, caller) scope.
+        authorization for the scope THE DECISION ITSELF authorizes.
 
-        Verification (fail closed, the WORK-024 discipline):
+        Authority boundary (PR #26 review, blocker 2): this method
+        accepts NO scope parameters.  The authorized (service,
+        session, caller, tenant) scope is extracted from the
+        decision's OWN ``extensions`` invocation binding, which is
+        covered by the decision's content digest -- so a valid ALLOW
+        can never be re-wrapped around a different authorization
+        scope: rebinding the extension breaks the digest, and a
+        decision without a binding fails closed.
+
+        Verification (fail closed, the WORK-024 discipline plus the
+        PR #26 binding discipline):
         isinstance a genuine ``policy.model.PolicyDecision``; the
         decision id MUST bind to the decision's own canonical bytes
-        (tampered decision rejected); the effect MUST be ``allow``
-        (deny fails closed and never becomes authorization); the
-        decision MUST NOT be future-dated (stale fails closed); and
-        per-scope application instants MUST advance monotonically
-        (re-applying the identical decision fails with
+        (tampered -- or rebound -- decision rejected); the decision
+        MUST carry exactly one invocation binding for the frozen
+        WORK-010 ``service.invoke`` operation; the effect MUST be
+        ``allow`` (deny fails closed and never becomes
+        authorization); the decision MUST NOT be future-dated (stale
+        fails closed); the bound tenant MUST match the registered
+        service record's tenant (cross-tenant authorization fails
+        closed); and per-scope application instants MUST advance
+        monotonically (re-applying the identical decision fails with
         DECISION_EXISTS; the exact same derived ref is never
         re-minted)."""
         self._require_not_closed()
         self._require_now(now)
-        validate_opaque_ref(service_ref, "service")
-        if session_id:
-            validate_session_ref(session_id)
-        if caller_node_id:
-            validate_node_id(caller_node_id, label="caller node id")
         if not isinstance(policy_decision, PolicyDecision):
             raise ServiceError(
                 ServiceReasonCode.INVALID_INPUT,
@@ -1035,7 +1081,8 @@ class ServiceRegistry:
                 "never evaluates policy)",
             )
         # Tamper evidence: the decision id MUST equal the digest of
-        # the decision's own canonical bytes.
+        # the decision's own canonical bytes -- extensions included,
+        # so the invocation binding below is digest-covered.
         expected_id = hashlib.sha256(
             policy_decision.canonical_bytes()
         ).hexdigest()
@@ -1043,7 +1090,30 @@ class ServiceRegistry:
             raise ServiceError(
                 ServiceReasonCode.INVALID_INPUT,
                 "policy decision id does not bind to the decision's "
-                "canonical bytes (tampered decision rejected)",
+                "canonical bytes (tampered or rebound decision "
+                "rejected)",
+            )
+        # The authorized scope comes from the decision itself --
+        # never from separately supplied parameters.
+        binding = extract_invocation_binding(policy_decision)
+        service_ref = binding.service_ref
+        session_id = binding.session_id
+        caller_node_id = binding.caller_node_id
+        tenant_domain = binding.tenant_domain
+        # The authorized scope must reference THIS registry's state:
+        # an unknown service cannot be authorized, and the bound
+        # tenant must be the service record's tenant (fail closed --
+        # a tenant-A authorization can never reach a tenant-B
+        # service).
+        candidate = self._require_service_record(service_ref, now)
+        if candidate.tenant_domain != tenant_domain:
+            raise ServiceError(
+                ServiceReasonCode.TENANT_ISOLATION,
+                "invocation decision binds tenant %r but service %r "
+                "belongs to tenant %r (cross-tenant authorization "
+                "fails closed)" % (
+                    tenant_domain, service_ref, candidate.tenant_domain,
+                ),
             )
         if policy_decision.effect != "allow":
             raise ServiceError(
@@ -1066,7 +1136,7 @@ class ServiceRegistry:
                 "instant (stale decision fails closed)",
             )
         decision_ref = derive_decision_ref(
-            service_ref, session_id, caller_node_id,
+            service_ref, session_id, caller_node_id, tenant_domain,
             policy_decision.decision_id, now,
         )
         existing = self._decisions.get(decision_ref)
@@ -1077,7 +1147,7 @@ class ServiceRegistry:
                 "conflict behavior)" % (decision_ref,),
             )
         latest = self._latest_decision_for_scope(
-            (service_ref, session_id, caller_node_id)
+            (service_ref, session_id, caller_node_id, tenant_domain)
         )
         if latest is not None and now <= latest.applied_instant:
             raise ServiceError(
@@ -1091,6 +1161,7 @@ class ServiceRegistry:
             service_ref=service_ref,
             session_id=session_id,
             caller_node_id=caller_node_id,
+            tenant_domain=tenant_domain,
             policy_decision_id=policy_decision.decision_id,
             policy_effect=policy_decision.effect,
             matched_rule_ids=policy_decision.matched_rule_ids,
@@ -1157,6 +1228,20 @@ class ServiceRegistry:
                 ServiceReasonCode.DECISION_SCOPE_MISMATCH,
                 "invocation decision %r was issued for another "
                 "service/caller/session scope" % (decision_ref,),
+            )
+        # The decision's authorized tenant must still be the service
+        # record's tenant (belt-and-braces: the service_ref structurally
+        # fixes the tenant, so a mismatch means corrupted or rebound
+        # state -- fail closed either way).
+        if decision.tenant_domain != candidate.tenant_domain:
+            raise ServiceError(
+                ServiceReasonCode.TENANT_ISOLATION,
+                "invocation decision %r authorizes tenant %r but "
+                "service %r belongs to tenant %r (cross-tenant "
+                "authorization fails closed)" % (
+                    decision_ref, decision.tenant_domain,
+                    service_ref, candidate.tenant_domain,
+                ),
             )
         if not self._decision_is_current(decision):
             raise ServiceError(

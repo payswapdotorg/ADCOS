@@ -302,17 +302,21 @@ def derive_decision_ref(
     service_ref: str,
     session_id: str,
     caller_node_id: str,
+    tenant_domain: str,
     policy_decision_id: str,
     applied_instant: str,
 ) -> str:
     """Derive the invocation-decision ref, scoped by construction to
-    (service, session, caller); the WORK-010 policy decision id is a
-    HASH INPUT only, never ref TEXT."""
+    (service, session, caller, tenant).  The tenant domain is derivation
+    material (PR #26 review, blocker 1/2: tenant isolation is never
+    optional on the authorization path); the WORK-010 policy decision
+    id is a HASH INPUT only, never ref TEXT."""
     material = {
         "decision": {
             "service_ref": service_ref,
             "session_id": session_id,
             "caller_node_id": caller_node_id,
+            "tenant_domain": tenant_domain,
             "policy_decision_id": policy_decision_id,
             "applied_instant": applied_instant,
         }
@@ -793,12 +797,19 @@ class InvocationDecision:
     policy decision that ALLOWED an invocation (tamper-evident by
     construction: the decision_ref must equal the content-derived
     ref; the policy effect must be ``allow``; a DENY never becomes an
-    InvocationDecision -- it fails closed at apply time)."""
+    InvocationDecision -- it fails closed at apply time).
+
+    The scope (service, session, caller, tenant) is EXTRACTED FROM
+    THE DECISION'S OWN digest-covered invocation binding (PR #26
+    review, blocker 2): the registry never accepts scope parameters
+    on apply, so this record can only ever restate the scope the
+    WORK-010 decision itself authorized."""
 
     decision_ref: str
     service_ref: str
     session_id: str
     caller_node_id: str
+    tenant_domain: str
     policy_decision_id: str
     policy_effect: str
     matched_rule_ids: Tuple[str, ...]
@@ -818,6 +829,15 @@ class InvocationDecision:
         if self.caller_node_id:
             validate_node_id(
                 self.caller_node_id, label="caller node id"
+            )
+        object.__setattr__(
+            self, "tenant_domain", validate_tenant_domain(self.tenant_domain)
+        )
+        if not self.tenant_domain:
+            raise ServiceError(
+                ServiceReasonCode.TENANT_ISOLATION,
+                "an invocation decision must carry an explicit tenant "
+                "domain (tenant-scoped authorization is never optional)",
             )
         object.__setattr__(
             self, "policy_decision_id",
@@ -843,7 +863,8 @@ class InvocationDecision:
             assert_ref_session_separation(self.decision_ref, self.session_id)
         expected = derive_decision_ref(
             self.service_ref, self.session_id, self.caller_node_id,
-            self.policy_decision_id, self.applied_instant,
+            self.tenant_domain, self.policy_decision_id,
+            self.applied_instant,
         )
         if self.decision_ref != expected:
             raise ServiceError(
@@ -859,6 +880,7 @@ class InvocationDecision:
             "service_ref": self.service_ref,
             "session_id": self.session_id,
             "caller_node_id": self.caller_node_id,
+            "tenant_domain": self.tenant_domain,
             "policy_decision_id": self.policy_decision_id,
             "policy_effect": self.policy_effect,
             "matched_rule_ids": list(self.matched_rule_ids),

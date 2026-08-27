@@ -19,11 +19,14 @@ removing an exposure never deletes the local service record.
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any, Iterable, Mapping, Tuple
+
+from protocol.canonicalization import canonical_json_bytes
 
 from .errors import ServiceError, ServiceReasonCode
 from .model import FederationExposure, ServiceCandidate
-from .validation import validate_federation_ref, validate_label
+from .validation import validate_federation_ref, validate_label, validate_tenant_domain
 
 #: The frozen WORK-015 federation scope governing service discovery
 #: exposure (DATA; cross-checked against
@@ -105,23 +108,64 @@ def export_service_exposures(
 
 
 def peer_claim_fingerprint(claim: Mapping[str, Any]) -> str:
-    """A deterministic fingerprint over one exported peer claim (the
-    composition root may use it as provenance DATA)."""
+    """A deterministic content-derived fingerprint over one exported
+    peer claim: ``"sha256:" + hex64`` of the claim's canonical JSON
+    bytes (the frozen WORK-003 canonicalization profile -- sorted keys,
+    no whitespace, floats rejected).
+
+    Semantics (PR #26 review, blocker 3 -- pinned by the selftest
+    regression):
+
+    - the digest covers the WHOLE claim content, not just the
+      identity fields: any change to ANY field (host, labels,
+      validity window, endpoint, ...) changes the fingerprint, so
+      two claims with the same identity fields but different content
+      never collide;
+    - key-order independent: canonical key ordering makes the
+      fingerprint a function of content, not of mapping order;
+    - deterministic across runs and hash seeds;
+    - it is provenance DATA (duplicate detection / claim comparison
+      for the composition root), never an identity authority and
+      never ref text.
+    """
+    if not isinstance(claim, Mapping):
+        raise ServiceError(
+            ServiceReasonCode.INVALID_INPUT,
+            "peer claim must be a mapping (got %s)"
+            % (type(claim).__name__,),
+        )
+    for key in claim:
+        if not isinstance(key, str):
+            raise ServiceError(
+                ServiceReasonCode.INVALID_INPUT,
+                "peer claim keys must be strings (got %s)"
+                % (type(key).__name__,),
+            )
     for field_name in ("service_ref", "name", "service_kind", "tenant_domain"):
         if not isinstance(claim.get(field_name), str):
             raise ServiceError(
                 ServiceReasonCode.INVALID_INPUT,
                 "peer claim field %r must be a str" % (field_name,),
             )
-    validate_label(claim["name"], label="peer claim name")
-    return "|".join(
-        (
-            claim["service_ref"],
-            claim["name"],
-            claim["service_kind"],
-            claim["tenant_domain"],
-        )
+    from .validation import (
+        validate_opaque_ref as _vor,
+        validate_service_kind as _vsk,
     )
+
+    _vor(claim["service_ref"], "service")
+    _vsk(claim["service_kind"])
+    validate_tenant_domain(claim["tenant_domain"])
+    validate_label(claim["name"], label="peer claim name")
+    try:
+        canonical = canonical_json_bytes(dict(claim))
+    except BaseException as exc:  # noqa: BLE001
+        raise ServiceError(
+            ServiceReasonCode.INVALID_INPUT,
+            "peer claim is not canonically representable (%s); "
+            "non-canonical content fails closed"
+            % (type(exc).__name__,),
+        )
+    return "sha256:" + hashlib.sha256(canonical).hexdigest()
 
 
 __all__ = [

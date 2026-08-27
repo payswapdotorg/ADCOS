@@ -42,6 +42,10 @@ every WORK-025 handoff verification item to a discriminating case:
 - vocabulary cross-checks vs the authorities        -> case_35
 - registration conflict / host guard                -> case_36
 - CI wiring                                         -> case_37
+- tenant scope fail-closed on query (PR #26 B1)     -> case_18
+- decision-bound invocation scope / anti-rebinding
+  (PR #26 B2)                                       -> case_27, case_38
+- peer-claim fingerprint semantics (PR #26 B3)     -> case_39
 """
 
 from __future__ import annotations
@@ -91,6 +95,7 @@ from services import (  # noqa: E402
     SessionReader,
     SessionView,
     VisibilityScope,
+    bind_invocation_decision,
     derive_admission_ref,
     derive_advertisement_claim_digest,
     derive_decision_ref,
@@ -98,8 +103,10 @@ from services import (  # noqa: E402
     derive_exposure_ref,
     derive_service_ref,
     export_service_exposures,
+    peer_claim_fingerprint,
 )
 from policy.model import PolicyDecision  # noqa: E402
+from protocol.canonicalization import canonical_json_bytes  # noqa: E402
 
 Result = Tuple[str, bool, str]
 
@@ -343,15 +350,65 @@ def _decision_for(
     session_id: str = "",
     caller_node_id: str = "",
     policy_decision: Optional[PolicyDecision] = None,
+    tenant_domain: str = "village-a",
 ) -> str:
+    """Apply a BOUND invocation decision (the composition-root
+    recipe: a genuine engine ALLOW, bound to the exact invocation
+    scope via bind_invocation_decision -- the registry accepts no
+    scope parameters)."""
     if policy_decision is None:
         policy_decision = _allow_decision(evaluation_instant=now)
+    bound = bind_invocation_decision(
+        policy_decision,
+        service_ref=service_ref,
+        session_id=session_id,
+        caller_node_id=caller_node_id,
+        tenant_domain=tenant_domain,
+    )
     result = registry.apply_policy_decision(
-        now=now, service_ref=service_ref, session_id=session_id,
-        caller_node_id=caller_node_id, policy_decision=policy_decision,
+        now=now, policy_decision=bound,
     )
     assert result.ok, result.detail
     return result.value
+
+
+def _bound_decision(
+    evaluation_instant: str = _NOW,
+    *,
+    effect: str = "allow",
+    decision_id: Optional[str] = None,
+    service_ref: str = "services:service:" + "a" * 32,
+    session_id: str = "",
+    caller_node_id: str = "",
+    tenant_domain: str = "village-a",
+) -> PolicyDecision:
+    """A genuine engine decision BOUND to an invocation scope (the
+    composition-root recipe); ``decision_id`` may be overridden to
+    simulate a tampered/rebound decision id."""
+    engine = _allow_decision(
+        evaluation_instant=evaluation_instant, effect=effect,
+    )
+    bound = bind_invocation_decision(
+        engine,
+        service_ref=service_ref,
+        session_id=session_id,
+        caller_node_id=caller_node_id,
+        tenant_domain=tenant_domain,
+    )
+    if decision_id is None:
+        return bound
+    return PolicyDecision(
+        decision_id=decision_id,
+        effect=bound.effect,
+        code=bound.code,
+        detail=bound.detail,
+        matched_rule_ids=bound.matched_rule_ids,
+        policy_set_id=bound.policy_set_id,
+        policy_set_version=bound.policy_set_version,
+        evaluation_instant=bound.evaluation_instant,
+        conflict_trace=bound.conflict_trace,
+        extensions=bound.extensions,
+    )
 
 
 def _invoke(
@@ -419,7 +476,9 @@ def case_01_family_surface_frozen() -> Result:
     # The opaque kinds are frozen.
     for ref in (
         derive_service_ref("n", "cache", "t"),
-        derive_decision_ref("services:service:" + "0" * 32, "", "", "1" * 64, _NOW),
+        derive_decision_ref(
+            "services:service:" + "0" * 32, "", "", "t", "1" * 64, _NOW
+        ),
         derive_admission_ref("services:service:" + "0" * 32, 1),
         derive_execution_ref(
             "services:admission:" + "2" * 32, _NOW, "3" * 64
@@ -578,14 +637,20 @@ def case_05_lookup_state_matrix() -> Result:
     registry, _executor = _full_registry()
     # Unknown.
     try:
-        registry.lookup_service(now=_NOW, service_ref=derive_service_ref("ghost", "cache", "village-a"))
+        registry.lookup_service(
+            now=_NOW,
+            service_ref=derive_service_ref("ghost", "cache", "village-a"),
+            tenant_domain="village-a",
+        )
         return fail(name, "unknown service resolved")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.SERVICE_UNKNOWN:
             return fail(name, "unknown: %s" % (exc.reason,))
     # Eligible.
     fresh_ref = _registered(registry)
-    candidate = registry.lookup_service(now=_NOW, service_ref=fresh_ref)
+    candidate = registry.lookup_service(
+        now=_NOW, service_ref=fresh_ref, tenant_domain="village-a"
+    )
     if candidate.state != ServiceLifecycle.REGISTERED:
         return fail(name, "eligible lookup returned %r" % (candidate.state,))
     # Stale (expired advertisement).
@@ -596,7 +661,7 @@ def case_05_lookup_state_matrix() -> Result:
         )
     )
     try:
-        registry.lookup_service(now=_NOW, service_ref=stale_ref)
+        registry.lookup_service(now=_NOW, service_ref=stale_ref, tenant_domain="village-a")
         return fail(name, "stale advertisement resolved")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.SERVICE_STALE:
@@ -609,7 +674,9 @@ def case_05_lookup_state_matrix() -> Result:
     if not result.ok:
         return fail(name, "withdrawal failed: %s" % (result.detail,))
     try:
-        registry.lookup_service(now=_T2, service_ref=withdrawn_ref)
+        registry.lookup_service(
+            now=_T2, service_ref=withdrawn_ref, tenant_domain="village-a"
+        )
         return fail(name, "withdrawn service resolved")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.SERVICE_WITHDRAWN:
@@ -643,7 +710,8 @@ def case_06_discovery_capability_intent_aware_no_routes() -> Result:
     )
     # Capability filtering.
     found = registry.discover_services(
-        now=_NOW, capability_ref="capability.profile.service.weather-cache"
+        now=_NOW, tenant_domain="village-a",
+        capability_ref="capability.profile.service.weather-cache",
     )
     if {c.service_ref for c in found} != {weather}:
         return fail(name, "capability filtering failed")
@@ -657,7 +725,7 @@ def case_06_discovery_capability_intent_aware_no_routes() -> Result:
             ),
         ),
     )
-    found = registry.discover_services(now=_NOW, intent=intent)
+    found = registry.discover_services(now=_NOW, tenant_domain="village-a", intent=intent)
     if {c.service_ref for c in found} != {weather}:
         return fail(name, "service-label intent filtering failed")
     # Locality + privacy filtering.
@@ -670,7 +738,7 @@ def case_06_discovery_capability_intent_aware_no_routes() -> Result:
             ),
         ),
     )
-    found = registry.discover_services(now=_NOW, intent=intent)
+    found = registry.discover_services(now=_NOW, tenant_domain="village-a", intent=intent)
     if compute_ref in {c.service_ref for c in found}:
         return fail(name, "privacy filtering failed")
     # service_constraints bucket.
@@ -683,7 +751,7 @@ def case_06_discovery_capability_intent_aware_no_routes() -> Result:
             ),
         ),
     )
-    found = registry.discover_services(now=_NOW, intent=intent)
+    found = registry.discover_services(now=_NOW, tenant_domain="village-a", intent=intent)
     if {c.service_ref for c in found} != {compute_ref}:
         return fail(name, "service_constraints filtering failed")
     # Soft preferences never filter (selection is the caller's).
@@ -696,7 +764,7 @@ def case_06_discovery_capability_intent_aware_no_routes() -> Result:
             ),
         ),
     )
-    found = registry.discover_services(now=_NOW, intent=intent)
+    found = registry.discover_services(now=_NOW, tenant_domain="village-a", intent=intent)
     if len(found) != 2:
         return fail(name, "soft preference filtered candidates")
     # Numeric dimensions are connectivity concerns: pass through.
@@ -709,7 +777,7 @@ def case_06_discovery_capability_intent_aware_no_routes() -> Result:
             ),
         ),
     )
-    found = registry.discover_services(now=_NOW, intent=intent)
+    found = registry.discover_services(now=_NOW, tenant_domain="village-a", intent=intent)
     if len(found) != 2:
         return fail(name, "numeric dimension filtered service candidates")
     # Label-dimension ordering operators fail closed (not service
@@ -724,20 +792,22 @@ def case_06_discovery_capability_intent_aware_no_routes() -> Result:
         ),
     )
     try:
-        registry.discover_services(now=_NOW, intent=intent)
+        registry.discover_services(now=_NOW, tenant_domain="village-a", intent=intent)
         return fail(name, "ordering operator on a label dimension accepted")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.INVALID_INPUT:
             return fail(name, "operator discipline: %s" % (exc.reason,))
     # A second intent grammar is rejected outright.
     try:
-        registry.discover_services(now=_NOW, intent={"service": "weather"})
+        registry.discover_services(
+            now=_NOW, tenant_domain="village-a", intent={"service": "weather"}
+        )
         return fail(name, "non-genuine intent accepted")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.INVALID_INPUT:
             return fail(name, "intent type discipline: %s" % (exc.reason,))
     # Candidates carry locations, never routes.
-    for candidate in registry.discover_services(now=_NOW):
+    for candidate in registry.discover_services(now=_NOW, tenant_domain="village-a"):
         blob = str(sorted(vars(candidate).keys())) + str(candidate.to_dict())
         if "path" in blob.replace("path_", "").replace("_path", ""):
             return fail(name, "candidate carries path-like data")
@@ -780,7 +850,9 @@ def case_07_local_first_upstream_absent() -> Result:
     if not service:
         return fail(name, "upstream loss erased the local record")
     # Federated discovery is off (fail closed), local still on.
-    found = registry.discover_services(now=_T1, include_federated=True)
+    found = registry.discover_services(
+        now=_T1, tenant_domain="village-a", include_federated=True
+    )
     if local_ref not in {c.service_ref for c in found}:
         return fail(name, "federated switch disabled local discovery")
     registry.set_upstream_state(available=True)
@@ -865,11 +937,12 @@ def case_09_unauthorized_execution_before_provider_effects() -> Result:
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.DECISION_UNKNOWN:
             return fail(name, "no decision: %s" % (exc.reason,))
-    # A DENIED policy decision never becomes authorization.
-    denied = _allow_decision(effect="deny")
+    # A DENIED policy decision never becomes authorization (bound
+    # exactly like an allow would be -- deny still fails closed).
+    denied = _bound_decision(effect="deny", service_ref=service_ref)
     try:
         registry.apply_policy_decision(
-            now=_T1, service_ref=service_ref, policy_decision=denied
+            now=_T1, policy_decision=denied
         )
         return fail(name, "denied decision applied")
     except ServiceError as exc:
@@ -907,7 +980,9 @@ def case_09_unauthorized_execution_before_provider_effects() -> Result:
         )
     )
     try:
-        registry.lookup_service(now=_T2, service_ref=protected)
+        registry.lookup_service(
+            now=_T2, service_ref=protected, tenant_domain="village-a"
+        )
         return fail(name, "policy-controlled lookup without decision")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.DECISION_DENIED:
@@ -1186,14 +1261,18 @@ def case_13_placement_host_change_identity_stable() -> Result:
     name = "case_13_placement_host_change_identity_stable"
     registry, _executor = _full_registry()
     service_ref = _registered(registry)
-    before = registry.lookup_service(now=_NOW, service_ref=service_ref)
+    before = registry.lookup_service(
+        now=_NOW, service_ref=service_ref, tenant_domain="village-a"
+    )
     result = registry.relocate_service(
         now=_T1, service_ref=service_ref, target_host_node_id=_NODE_B,
         target_endpoint_ref="edge://slot-9",
     )
     if not result.ok:
         return fail(name, "relocation failed: %s" % (result.detail,))
-    after = registry.lookup_service(now=_T2, service_ref=service_ref)
+    after = registry.lookup_service(
+        now=_T2, service_ref=service_ref, tenant_domain="village-a"
+    )
     if after.service_ref != service_ref:
         return fail(name, "ServiceID changed across relocation")
     if after.host_node_id != _NODE_B:
@@ -1322,7 +1401,9 @@ def case_16_federation_scoped_visibility() -> Result:
     # A local-only service is never exported.
     local_only = _registered(registry)
     claims = export_service_exposures(
-        (registry.lookup_service(now=_T1, service_ref=r)
+        (registry.lookup_service(
+            now=_T1, service_ref=r, tenant_domain="village-a"
+        )
          for r in (federated_ref, local_only)),
         registry._exposures.values(),  # noqa: SLF001
         relationship_id=relationship_id,
@@ -1343,7 +1424,9 @@ def case_16_federation_scoped_visibility() -> Result:
     if not peer_result.ok:
         return fail(name, "peer import failed: %s" % (peer_result.detail,))
     # Scoped federated discovery on the peer side.
-    found = peer_registry.discover_services(now=_T2, include_federated=True)
+    found = peer_registry.discover_services(
+        now=_T2, tenant_domain="village-a", include_federated=True
+    )
     refs = {c.service_ref for c in found}
     if federated_ref not in refs:
         return fail(name, "federated discovery missed the exposed service")
@@ -1387,7 +1470,9 @@ def case_16_federation_scoped_visibility() -> Result:
             observer=_NODE_B, reporter=_NODE_B, observed_at=_T2,
         ),
     )
-    if blind_registry.discover_services(now=_T2, include_federated=True):
+    if blind_registry.discover_services(
+        now=_T2, tenant_domain="village-a", include_federated=True
+    ):
         return fail(name, "federated discovery without federation authority")
     return ok(name, "federation visibility scoped; no leaks; no universal trust")
 
@@ -1455,7 +1540,9 @@ def case_17_federation_removal_preserves_local() -> Result:
         return fail(name, "removal not audited")
     # The service remains locally discoverable.
     if federated_ref not in {
-        c.service_ref for c in registry.discover_services(now=_T2)
+        c.service_ref for c in registry.discover_services(
+            now=_T2, tenant_domain="village-a"
+        )
     }:
         return fail(name, "service not locally discoverable after removal")
     # Re-applying is idempotent.
@@ -1469,6 +1556,8 @@ def case_17_federation_removal_preserves_local() -> Result:
 
 def case_18_tenant_isolation() -> Result:
     name = "case_18_tenant_isolation"
+    import inspect
+
     registry, _executor = _full_registry()
     village_a = _registered(registry)
     village_b = _registered(
@@ -1476,28 +1565,80 @@ def case_18_tenant_isolation() -> Result:
             descriptor=_descriptor(name="village-b-cache", tenant="village-b")
         )
     )
+    # Structural: tenant_domain is a REQUIRED parameter of both query
+    # methods -- there is no unscoped call shape at all (PR #26
+    # review, blocker 1).
+    for method in (registry.lookup_service, registry.discover_services):
+        param = inspect.signature(method).parameters["tenant_domain"]
+        if param.default is not inspect.Parameter.empty:
+            return fail(
+                name, "%s.tenant_domain is optional" % (method.__name__,)
+            )
+    # Omitting the scope is a TypeError, not an implicit global view.
+    try:
+        registry.discover_services(now=_NOW)  # type: ignore[call-arg]
+        return fail(name, "scope-less discovery ran")
+    except TypeError:
+        pass
+    try:
+        registry.lookup_service(now=_NOW, service_ref=village_a)  # type: ignore[call-arg]
+        return fail(name, "scope-less lookup ran")
+    except TypeError:
+        pass
+    # An explicitly empty scope fails closed with TENANT_ISOLATION.
+    for caller in (
+        lambda: registry.discover_services(now=_NOW, tenant_domain=""),
+        lambda: registry.lookup_service(
+            now=_NOW, service_ref=village_b, tenant_domain=""
+        ),
+        lambda: registry.discover_services(now=_NOW, tenant_domain=None),  # type: ignore[arg-type]
+    ):
+        try:
+            caller()
+            return fail(name, "empty tenant scope accepted")
+        except ServiceError as exc:
+            if exc.reason != ServiceReasonCode.TENANT_ISOLATION:
+                return fail(name, "empty scope: %s" % (exc.reason,))
     # Cross-tenant lookup fails closed.
     try:
-        registry.lookup_service(now=_NOW, service_ref=village_b, tenant_domain="village-a")
+        registry.lookup_service(
+            now=_NOW, service_ref=village_b, tenant_domain="village-a"
+        )
         return fail(name, "cross-tenant lookup allowed")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.TENANT_ISOLATION:
             return fail(name, "cross-tenant lookup: %s" % (exc.reason,))
-    # Discovery is tenant-scoped.
+    # Discovery is strictly tenant-scoped: each scope sees exactly
+    # its own records and never the other tenant's.
     found = registry.discover_services(now=_NOW, tenant_domain="village-a")
     if {c.service_ref for c in found} != {village_a}:
         return fail(name, "tenant discovery leaked another tenant")
     found = registry.discover_services(now=_NOW, tenant_domain="village-b")
     if {c.service_ref for c in found} != {village_b}:
         return fail(name, "tenant discovery incomplete")
-    # Unscoped discovery (composition root) sees both.
-    if len(registry.discover_services(now=_NOW)) != 2:
-        return fail(name, "unscoped discovery wrong")
+    # Cross-tenant authorization fails closed too: an ALLOW bound to
+    # village-a's tenant can never authorize village-b's service.
+    try:
+        registry.apply_policy_decision(
+            now=_T1,
+            policy_decision=_bound_decision(
+                evaluation_instant=_T1, service_ref=village_b,
+                tenant_domain="village-a",
+            ),
+        )
+        return fail(name, "cross-tenant authorization accepted")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.TENANT_ISOLATION:
+            return fail(name, "cross-tenant auth: %s" % (exc.reason,))
     # Canonical state is tenant-labelled throughout.
     for record in registry.snapshot()["services"]:
         if not record["tenant_domain"]:
             return fail(name, "record without tenant label")
-    return ok(name, "tenant/domain isolation enforced for queryable state")
+    return ok(
+        name,
+        "tenant scope required + fail-closed on lookup/discovery/"
+        "authorization",
+    )
 
 
 def case_19_secrets_never_in_records() -> Result:
@@ -1882,6 +2023,7 @@ from services import (
     ServiceRegistry, ReferenceEdgeExecutor, ServiceAdvertisement,
     ServiceCapacity, ServiceDescriptor, AdvertisementEvidence,
     VisibilityScope, derive_advertisement_claim_digest,
+    bind_invocation_decision,
 )
 from policy.model import PolicyDecision
 
@@ -1910,7 +2052,9 @@ def build():
     dec = PolicyDecision(decision_id=hashlib.sha256(probe.canonical_bytes()).hexdigest(),
         effect="allow", code="allow", detail="d", matched_rule_ids=("r1",),
         policy_set_id="ps", policy_set_version=1, evaluation_instant=NOW)
-    r = reg.apply_policy_decision(now=T1, service_ref=adv.service_ref, policy_decision=dec)
+    bound = bind_invocation_decision(dec, service_ref=adv.service_ref,
+        tenant_domain="village-a")
+    r = reg.apply_policy_decision(now=T1, policy_decision=bound)
     assert r.ok
     a = reg.admit_execution(now=T1, service_ref=adv.service_ref, decision_ref=r.value)
     assert a.ok
@@ -1919,7 +2063,9 @@ def build():
     rl = reg.release_execution(now=T1, admission_ref=a.value.admission_ref)
     assert rl.ok
     reg.relocate_service(now=T2, service_ref=adv.service_ref, target_host_node_id=NODE_B)
-    d2 = reg.apply_policy_decision(now=T2, service_ref=adv.service_ref, policy_decision=dec)
+    bound2 = bind_invocation_decision(dec, service_ref=adv.service_ref,
+        tenant_domain="village-a")
+    d2 = reg.apply_policy_decision(now=T2, policy_decision=bound2)
     assert d2.ok
     reg.withdraw_service(now=T2, service_ref=adv.service_ref, reason="done")
     return reg.content_digest()
@@ -2007,39 +2153,130 @@ def case_27_policy_negative_matrix() -> Result:
     # Non-genuine decision object.
     try:
         registry.apply_policy_decision(
-            now=_T1, service_ref=service_ref,
+            now=_T1,
             policy_decision={"effect": "allow"},  # type: ignore[arg-type]
         )
         return fail(name, "non-genuine decision accepted")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.INVALID_INPUT:
             return fail(name, "non-genuine: %s" % (exc.reason,))
-    # Tampered decision DATA (id does not bind to canonical bytes).
-    tampered = _allow_decision(decision_id="f" * 64)
+    # An engine ALLOW with NO invocation binding: the authorized
+    # scope is not tied to the decision -- fail closed.
+    unbound = _allow_decision(evaluation_instant=_T1)
     try:
-        registry.apply_policy_decision(
-            now=_T1, service_ref=service_ref, policy_decision=tampered
-        )
+        registry.apply_policy_decision(now=_T1, policy_decision=unbound)
+        return fail(name, "unbound decision accepted")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
+            return fail(name, "unbound: %s" % (exc.reason,))
+    # Tampered decision DATA (id does not bind to canonical bytes).
+    tampered = _bound_decision(
+        evaluation_instant=_T1, decision_id="f" * 64,
+        service_ref=service_ref,
+    )
+    try:
+        registry.apply_policy_decision(now=_T1, policy_decision=tampered)
         return fail(name, "tampered decision accepted")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.INVALID_INPUT:
             return fail(name, "tampered: %s" % (exc.reason,))
-    # Future-dated decision (stale fails closed).
-    future = _allow_decision(evaluation_instant=_T3)
+    # REBOUND decision: a valid binding for service B re-stamped with
+    # service A's decision id -- the digest no longer binds, so the
+    # manufactured scope is rejected (the PR #26 blocker-2 attack).
+    rebound = _bound_decision(evaluation_instant=_T1, service_ref=service_ref)
+    rebound = PolicyDecision(
+        decision_id=rebound.decision_id,
+        effect=rebound.effect,
+        code=rebound.code,
+        detail=rebound.detail,
+        matched_rule_ids=rebound.matched_rule_ids,
+        policy_set_id=rebound.policy_set_id,
+        policy_set_version=rebound.policy_set_version,
+        evaluation_instant=rebound.evaluation_instant,
+        conflict_trace=rebound.conflict_trace,
+        extensions=(
+            dict(
+                rebound.extensions[0],
+                service_ref=_registered(
+                    registry,
+                    _advertisement(descriptor=_descriptor(name="rebind-target")),
+                ),
+            ),
+        ),
+    )
     try:
-        registry.apply_policy_decision(
-            now=_T1, service_ref=service_ref, policy_decision=future
-        )
+        registry.apply_policy_decision(now=_T1, policy_decision=rebound)
+        return fail(name, "rebound decision accepted")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.INVALID_INPUT:
+            return fail(name, "rebound: %s" % (exc.reason,))
+    # A binding for another OPERATION is a scope mismatch (the digest
+    # is VALID over the wrong-operation content -- the rejection comes
+    # from the binding itself, exactly as a composition root binding a
+    # route.compute decision would be rejected for invocation).
+    wrong_op = _bound_decision(
+        evaluation_instant=_T1, service_ref=service_ref,
+    )
+    wrong_op = PolicyDecision(
+        decision_id="0" * 64,
+        effect=wrong_op.effect,
+        code=wrong_op.code,
+        detail=wrong_op.detail,
+        matched_rule_ids=wrong_op.matched_rule_ids,
+        policy_set_id=wrong_op.policy_set_id,
+        policy_set_version=wrong_op.policy_set_version,
+        evaluation_instant=wrong_op.evaluation_instant,
+        conflict_trace=wrong_op.conflict_trace,
+        extensions=(
+            dict(wrong_op.extensions[0], operation="route.compute"),
+        ),
+    )
+    wrong_op = PolicyDecision(
+        decision_id=hashlib.sha256(wrong_op.canonical_bytes()).hexdigest(),
+        effect=wrong_op.effect,
+        code=wrong_op.code,
+        detail=wrong_op.detail,
+        matched_rule_ids=wrong_op.matched_rule_ids,
+        policy_set_id=wrong_op.policy_set_id,
+        policy_set_version=wrong_op.policy_set_version,
+        evaluation_instant=wrong_op.evaluation_instant,
+        conflict_trace=wrong_op.conflict_trace,
+        extensions=wrong_op.extensions,
+    )
+    try:
+        registry.apply_policy_decision(now=_T1, policy_decision=wrong_op)
+        return fail(name, "other-operation binding accepted")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
+            return fail(name, "other-operation: %s" % (exc.reason,))
+    # A binding whose tenant is not the service record's tenant:
+    # cross-tenant authorization fails closed.
+    cross_tenant = _bound_decision(
+        evaluation_instant=_T1, service_ref=service_ref,
+        tenant_domain="village-z",
+    )
+    try:
+        registry.apply_policy_decision(now=_T1, policy_decision=cross_tenant)
+        return fail(name, "cross-tenant authorization accepted")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.TENANT_ISOLATION:
+            return fail(name, "cross-tenant: %s" % (exc.reason,))
+    # Future-dated decision (stale fails closed).
+    future = _bound_decision(
+        evaluation_instant=_T3, service_ref=service_ref,
+    )
+    try:
+        registry.apply_policy_decision(now=_T1, policy_decision=future)
         return fail(name, "future-dated decision accepted")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.DECISION_STALE:
             return fail(name, "future-dated: %s" % (exc.reason,))
     # Denied effect.
-    denied = _allow_decision(effect="deny")
+    denied = _bound_decision(
+        evaluation_instant=_T1, effect="deny", service_ref=service_ref,
+    )
     try:
-        registry.apply_policy_decision(
-            now=_T1, service_ref=service_ref, policy_decision=denied
-        )
+        registry.apply_policy_decision(now=_T1, policy_decision=denied)
         return fail(name, "denied decision applied")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.DECISION_DENIED:
@@ -2051,19 +2288,24 @@ def case_27_policy_negative_matrix() -> Result:
     # ref.
     try:
         registry.apply_policy_decision(
-            now=_T1, service_ref=service_ref,
-            policy_decision=_allow_decision(evaluation_instant=_T1),
+            now=_T1,
+            policy_decision=_bound_decision(
+                evaluation_instant=_T1, service_ref=service_ref,
+            ),
         )
         return fail(name, "exact re-application accepted")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.DECISION_EXISTS:
             return fail(name, "re-application: %s" % (exc.reason,))
-    # A different decision at a non-advancing instant fails.
-    later_same_instant = _allow_decision(evaluation_instant=_NOW)
+    # A different decision at a non-advancing instant fails (same
+    # scope as the applied decision above -- the session-scoped
+    # negative comes further below).
+    later_same_instant = _bound_decision(
+        evaluation_instant=_NOW, service_ref=service_ref,
+    )
     try:
         registry.apply_policy_decision(
-            now=_T1, service_ref=service_ref,
-            policy_decision=later_same_instant,
+            now=_T1, policy_decision=later_same_instant,
         )
         return fail(name, "non-advancing instant accepted")
     except ServiceError as exc:
@@ -2097,8 +2339,7 @@ def case_27_policy_negative_matrix() -> Result:
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.SESSION_NOT_SECUREABLE:
             return fail(name, "no authority: %s" % (exc.reason,))
-    return ok(name, "denied/stale/future/tampered/scope/session all fail closed")
-
+    return ok(name, "denied/stale/future/tampered/rebound/scope/session all fail closed")
 
 def case_28_policy_change_between_discovery_execution() -> Result:
     name = "case_28_policy_change_between_discovery_execution"
@@ -2111,11 +2352,13 @@ def case_28_policy_change_between_discovery_execution() -> Result:
     )
     first = _decision_for(registry, service_ref, now=_T1)
     # Discovery WITH the authorization: the service is visible.
-    found = registry.discover_services(now=_T1, decision_refs=(first,))
+    found = registry.discover_services(
+        now=_T1, tenant_domain="village-a", decision_refs=(first,)
+    )
     if service_ref not in {c.service_ref for c in found}:
         return fail(name, "authorized discovery hid the service")
     # Without the authorization: hidden.
-    found = registry.discover_services(now=_T1)
+    found = registry.discover_services(now=_T1, tenant_domain="village-a")
     if service_ref in {c.service_ref for c in found}:
         return fail(name, "unauthorized discovery exposed the service")
     # Policy changes between discovery and execution: a NEWER
@@ -2225,15 +2468,24 @@ def case_30_real_authority_composition() -> Result:
     )
     if not exposure.ok:
         return fail(name, "real-federation exposure failed: %s" % (exposure.detail,))
-    # Discovery through the REAL intent + the REAL policy decision.
+    # Discovery through the REAL intent + the REAL policy decision:
+    # the composition root binds the engine ALLOW to the exact
+    # invocation scope (service, session, caller, tenant) and the
+    # registry extracts the scope from the decision itself.
+    bound_decision = bind_invocation_decision(
+        policy_decision,
+        service_ref=service_ref,
+        session_id=session_id,
+        caller_node_id=_NODE_UE,
+        tenant_domain=advertisement.descriptor.tenant_domain,
+    )
     decision_ref = registry.apply_policy_decision(
-        now=_T1, service_ref=service_ref, session_id=session_id,
-        caller_node_id=_NODE_UE, policy_decision=policy_decision,
+        now=_T1, policy_decision=bound_decision,
     )
     if not decision_ref.ok:
         return fail(name, "real policy decision rejected: %s" % (decision_ref.detail,))
     found = registry.discover_services(
-        now=_T1, intent=intent, host_node_id=_NODE_A,
+        now=_T1, tenant_domain="village-a", intent=intent, host_node_id=_NODE_A,
         decision_refs=(decision_ref.value,),
     )
     if {c.service_ref for c in found} != {service_ref}:
@@ -2251,7 +2503,9 @@ def case_30_real_authority_composition() -> Result:
     # service through its own registry.
     peer_registry, _peer_executor = _full_registry(federation_reader=reader)
     claims = export_service_exposures(
-        (registry.lookup_service(now=_T1, service_ref=service_ref),),
+        (registry.lookup_service(
+        now=_T1, service_ref=service_ref, tenant_domain="village-a"
+    ),),
         registry._exposures.values(),  # noqa: SLF001
         relationship_id=relationship_id,
     )
@@ -2266,7 +2520,9 @@ def case_30_real_authority_composition() -> Result:
     )
     if not imported.ok:
         return fail(name, "peer import failed: %s" % (imported.detail,))
-    peer_found = peer_registry.discover_services(now=_T2, include_federated=True)
+    peer_found = peer_registry.discover_services(
+        now=_T2, tenant_domain="village-a", include_federated=True
+    )
     if service_ref not in {c.service_ref for c in peer_found}:
         return fail(name, "peer federated discovery failed")
     # All composed authorities are REAL objects.
@@ -2410,7 +2666,9 @@ def case_33_unavailable_at_execution() -> Result:
     if admit.ok or admit.reason != ServiceReasonCode.SERVICE_UNAVAILABLE:
         return fail(name, "partitioned executor: %s" % (admit.reason,))
     # Lookup still succeeds (the record is fine).
-    registry.lookup_service(now=_T1, service_ref=service_ref)
+    registry.lookup_service(
+        now=_T1, service_ref=service_ref, tenant_domain="village-a"
+    )
     # Strict toggling discipline.
     try:
         executor.set_executor_state(available=False)
@@ -2478,6 +2736,18 @@ def case_35_vocabulary_cross_checks() -> Result:
     from services import SERVICE_INVOKE_SCOPE
     if SERVICE_INVOKE_SCOPE != Scope.SERVICE_INVOKE:
         return fail(name, "service.invoke scope drifted from WORK-015")
+    # The invocation-binding operation constant is the frozen WORK-010
+    # Operation value (PR #26 blocker 2: the binding authorizes exactly
+    # the frozen policy operation; no second operation vocabulary).
+    from policy.model import Operation
+    from services import (
+        SERVICE_INVOKE_OPERATION as _OP,
+        INVOCATION_BINDING_KIND as _KIND,
+    )
+    if _OP != Operation.SERVICE_INVOKE:
+        return fail(name, "binding operation drifted from WORK-010")
+    if _KIND != "adcos.service-invocation":
+        return fail(name, "binding kind discriminator drifted")
     # Capability grammar agrees with the WORK-002 classifier.
     sample = "capability.profile.service.weather-cache"
     if classify_capability_id(sample) != "unknown_but_well_formed":
@@ -2523,7 +2793,9 @@ def case_36_registration_conflict_and_host_guard() -> Result:
     events = [e["event_type"] for e in registry.snapshot()["events"]]
     if ServiceEventType.SERVICE_UPDATED not in events:
         return fail(name, "update not audited: %s" % (events,))
-    record = registry.lookup_service(now=_T1, service_ref=service_ref)
+    record = registry.lookup_service(
+        now=_T1, service_ref=service_ref, tenant_domain="village-a"
+    )
     if record.expires_at != "2027-06-01T00:00:00Z":
         return fail(name, "update not applied")
     if registry.registered_count != 1:
@@ -2579,6 +2851,284 @@ def case_37_ci_wiring() -> Result:
     if not any("python3 tools/spec_check.py" in run for run in runs):
         return fail(name, "spec_check step lost")
     return ok(name, "CI executes the service suite alongside all prior tools")
+
+
+def case_38_decision_bound_invocation_scope() -> Result:
+    """PR #26 Architect review, blocker 2: the service layer must not
+    be able to take a valid ALLOW decision and manufacture a different
+    authorization scope around it.  The scope may come ONLY from the
+    decision's own digest-covered invocation binding."""
+    name = "case_38_decision_bound_invocation_scope"
+    import inspect
+
+    registry, _executor = _full_registry()
+    service_ref = _registered(registry)
+    other_ref = _registered(
+        registry, _advertisement(descriptor=_descriptor(name="ledger-sync"))
+    )
+    # Structural: apply_policy_decision accepts EXACTLY (now,
+    # policy_decision) -- no scope parameters exist to supply.
+    params = inspect.signature(
+        registry.apply_policy_decision
+    ).parameters
+    if set(params) != {"now", "policy_decision"}:
+        return fail(name, "apply signature carries scope params: %s" % (sorted(params),))
+    # A genuine ALLOW bound to (A, sess-1, caller-N, village-a).
+    decision_ref = _decision_for(
+        registry, service_ref, now=_T1,
+        session_id=_SESSION_ID, caller_node_id=_NODE_UE,
+    )
+    stored = registry._decisions[decision_ref]  # noqa: SLF001
+    if (
+        stored.service_ref != service_ref
+        or stored.session_id != _SESSION_ID
+        or stored.caller_node_id != _NODE_UE
+        or stored.tenant_domain != "village-a"
+    ):
+        return fail(name, "stored scope does not match the decision binding")
+    # The stored record restates ONLY the decision's own scope.
+    if stored.policy_decision_id != hashlib.sha256(
+        _bound_decision(
+            evaluation_instant=_T1, service_ref=service_ref,
+            session_id=_SESSION_ID, caller_node_id=_NODE_UE,
+        ).canonical_bytes()
+    ).hexdigest():
+        return fail(name, "stored decision id drifted from the binding")
+    # THE ATTACK, attempt 1: cite the decision for ANOTHER service.
+    try:
+        registry.admit_execution(
+            now=_T2, service_ref=other_ref, decision_ref=decision_ref,
+            session_id=_SESSION_ID, caller_node_id=_NODE_UE,
+        )
+        return fail(name, "decision re-scoped to another service")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
+            return fail(name, "other-service: %s" % (exc.reason,))
+    # THE ATTACK, attempt 2: cite the decision for another session.
+    try:
+        registry.admit_execution(
+            now=_T2, service_ref=service_ref, decision_ref=decision_ref,
+            session_id=_OTHER_SESSION_ID, caller_node_id=_NODE_UE,
+        )
+        return fail(name, "decision re-scoped to another session")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
+            return fail(name, "other-session: %s" % (exc.reason,))
+    # THE ATTACK, attempt 3: cite the decision for another caller.
+    try:
+        registry.admit_execution(
+            now=_T2, service_ref=service_ref, decision_ref=decision_ref,
+            session_id=_SESSION_ID, caller_node_id=_NODE_B,
+        )
+        return fail(name, "decision re-scoped to another caller")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
+            return fail(name, "other-caller: %s" % (exc.reason,))
+    # THE ATTACK, attempt 4: re-stamp the binding extension with a
+    # different service while KEEPING the valid decision id -- the
+    # digest check rejects the manufactured scope outright.
+    genuine = _bound_decision(
+        evaluation_instant=_T1, service_ref=service_ref,
+        session_id=_SESSION_ID, caller_node_id=_NODE_UE,
+    )
+    forged = PolicyDecision(
+        decision_id=genuine.decision_id,
+        effect=genuine.effect,
+        code=genuine.code,
+        detail=genuine.detail,
+        matched_rule_ids=genuine.matched_rule_ids,
+        policy_set_id=genuine.policy_set_id,
+        policy_set_version=genuine.policy_set_version,
+        evaluation_instant=genuine.evaluation_instant,
+        conflict_trace=genuine.conflict_trace,
+        extensions=(dict(genuine.extensions[0], service_ref=other_ref),),
+    )
+    try:
+        registry.apply_policy_decision(now=_T2, policy_decision=forged)
+        return fail(name, "forged binding accepted")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.INVALID_INPUT:
+            return fail(name, "forged binding: %s" % (exc.reason,))
+    # The binding extension travels inside the decision's canonical
+    # content (that is what makes it tamper-evident).
+    blob = genuine.canonical_bytes().decode("ascii")
+    if "adcos.service-invocation" not in blob or other_ref[:20] in blob:
+        return fail(name, "binding not carried in canonical decision bytes")
+    # A second binding on one decision is ambiguous and fails closed.
+    double = PolicyDecision(
+        decision_id="0" * 64,
+        effect=genuine.effect,
+        code=genuine.code,
+        detail=genuine.detail,
+        matched_rule_ids=genuine.matched_rule_ids,
+        policy_set_id=genuine.policy_set_id,
+        policy_set_version=genuine.policy_set_version,
+        evaluation_instant=genuine.evaluation_instant,
+        conflict_trace=genuine.conflict_trace,
+        extensions=genuine.extensions + (genuine.extensions[0],),
+    )
+    real_double = PolicyDecision(
+        decision_id=hashlib.sha256(double.canonical_bytes()).hexdigest(),
+        effect=double.effect,
+        code=double.code,
+        detail=double.detail,
+        matched_rule_ids=double.matched_rule_ids,
+        policy_set_id=double.policy_set_id,
+        policy_set_version=double.policy_set_version,
+        evaluation_instant=double.evaluation_instant,
+        conflict_trace=double.conflict_trace,
+        extensions=double.extensions,
+    )
+    try:
+        registry.apply_policy_decision(now=_T2, policy_decision=real_double)
+        return fail(name, "double binding accepted")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
+            return fail(name, "double binding: %s" % (exc.reason,))
+    # The authorized scope still WORKS end-to-end for its own scope
+    # (a sessionless binding for the same caller executes cleanly).
+    sessionless = _decision_for(
+        registry, service_ref, now=_T2, caller_node_id=_NODE_UE,
+    )
+    execute, _admission = _invoke(
+        registry, service_ref, sessionless,
+        now=_T2, caller_node_id=_NODE_UE,
+    )
+    if not execute.ok:
+        return fail(name, "bound-scope execution failed: %s" % (execute.detail,))
+    return ok(name, "invocation scope is decision-bound; rebinding fails closed")
+
+
+def case_39_peer_claim_fingerprint_semantics() -> Result:
+    """PR #26 Architect review, blocker 3: peer_claim_fingerprint is a
+    real content-derived digest with pinned, unambiguous semantics."""
+    name = "case_39_peer_claim_fingerprint_semantics"
+    service_ref = derive_service_ref("weather-cache", "cache", "village-a")
+    base_claim = {
+        "service_ref": service_ref,
+        "name": "weather-cache",
+        "service_kind": "cache",
+        "tenant_domain": "village-a",
+        "host_node_id": _NODE_A,
+        "capability_refs": ["capability.profile.service.weather-cache"],
+        "service_labels": ["weather"],
+        "locality_labels": ["village-a"],
+        "privacy_labels": ["public"],
+        "registered_at": _NOW,
+        "expires_at": _FRESH,
+        "endpoint_ref": "edge://slot-3",
+        "policy_controlled": False,
+    }
+    fp = peer_claim_fingerprint(base_claim)
+    # Form: a genuine sha256 content digest, not a join of fields.
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", fp):
+        return fail(name, "fingerprint is not a sha256 digest: %r" % (fp[:32],))
+    if "|" in fp:
+        return fail(name, "fingerprint is still a joined string")
+    # GOLDEN VALUE (semantics pin): the exact digest for this fixed
+    # claim.  Any change to the derivation changes this pin.
+    expected = "sha256:" + hashlib.sha256(
+        canonical_json_bytes(dict(base_claim))
+    ).hexdigest()
+    if fp != expected:
+        return fail(name, "fingerprint does not match the canonical digest")
+    # Sensitivity: ANY field change changes the fingerprint.
+    variants = []
+    for mutation in (
+        {"name": "weather-cache-2"},
+        {"service_kind": "compute"},
+        {"tenant_domain": "village-b"},
+        {"host_node_id": _NODE_B},
+        {"endpoint_ref": "edge://slot-4"},
+        {"expires_at": "2028-01-01T00:00:00Z"},
+        {"service_labels": ["weather", "telemetry"]},
+        {"policy_controlled": True},
+        {"capability_refs": ["capability.profile.service.other"]},
+    ):
+        variant = dict(base_claim)
+        variant.update(mutation)
+        variants.append(peer_claim_fingerprint(variant))
+    if len(set(variants)) != len(variants) or fp in variants:
+        return fail(name, "fingerprint is insensitive to content changes")
+    # A claim with the same identity fields but different content
+    # never collides with the identity-only join (the old semantics).
+    if fp == peer_claim_fingerprint(
+        dict(base_claim, host_node_id=_NODE_B)
+    ):
+        return fail(name, "fingerprint ignores non-identity fields")
+    # Extra content changes the digest (whole-content coverage).
+    extended = dict(base_claim)
+    extended["extra_observation"] = "seen-on-relationship-1"
+    if peer_claim_fingerprint(extended) == fp:
+        return fail(name, "fingerprint ignores extra keys")
+    # Key-order independence: same content, different mapping order.
+    reordered = dict(reversed(list(base_claim.items())))
+    if peer_claim_fingerprint(reordered) != fp:
+        return fail(name, "fingerprint depends on key order")
+    # Determinism: repeated calls are byte-identical.
+    if tuple(peer_claim_fingerprint(base_claim) for _ in range(3)) != (fp, fp, fp):
+        return fail(name, "fingerprint is not deterministic")
+    # Fail closed: malformed claims are rejected, never digested.
+    for bad in (
+        {"service_ref": "not-a-service-ref", "name": "x",
+         "service_kind": "cache", "tenant_domain": "village-a"},
+        {"service_ref": service_ref, "name": "x",
+         "service_kind": "bogus-kind", "tenant_domain": "village-a"},
+        {"service_ref": service_ref, "name": "x",
+         "service_kind": "cache", "tenant_domain": ""},
+        {"service_ref": service_ref, "name": "shared-secret",
+         "service_kind": "cache", "tenant_domain": "village-a"},
+        {"service_ref": service_ref, "name": "x",
+         "service_kind": "cache", "tenant_domain": "village-a",
+         "latency_hint": 3.5},
+        "not-a-mapping",
+    ):
+        try:
+            peer_claim_fingerprint(bad)  # type: ignore[arg-type]
+            return fail(name, "malformed claim accepted: %r" % (bad,))
+        except ServiceError as exc:
+            if exc.reason != ServiceReasonCode.INVALID_INPUT:
+                return fail(name, "malformed claim: %s" % (exc.reason,))
+    # The fingerprint of a REAL exported claim (real WORK-015
+    # exposure path) is stable provenance DATA on the composition-root
+    # side.
+    fed_store, relationship_id, _domain = _compose_real_federation()
+    registry, _executor = _full_registry(
+        federation_reader=_StoreFederationReader(fed_store)
+    )
+    federated = _registered(
+        registry, _advertisement(
+            visibility=VisibilityScope.FEDERATED, endpoint="edge://slot-9",
+        )
+    )
+    _registered(
+        registry, _advertisement(
+            descriptor=_descriptor(name="local-only-cache")
+        )
+    )
+    exposure = registry.apply_federation_exposure(
+        now=_T1, service_ref=federated, relationship_id=relationship_id
+    )
+    if not exposure.ok:
+        return fail(name, "exposure failed: %s" % (exposure.detail,))
+    claims = export_service_exposures(
+        (registry.lookup_service(
+            now=_T1, service_ref=r, tenant_domain="village-a"
+        ) for r in (
+            federated,
+            derive_service_ref("local-only-cache", "cache", "village-a"),
+        )),
+        registry._exposures.values(),  # noqa: SLF001
+        relationship_id=relationship_id,
+    )
+    if len(claims) != 1 or claims[0]["service_ref"] != federated:
+        return fail(name, "export did not isolate the exposed claim")
+    exported_fp = peer_claim_fingerprint(claims[0])
+    if exported_fp != peer_claim_fingerprint(dict(claims[0])):
+        return fail(name, "exported-claim fingerprint unstable")
+    if exported_fp == fp:
+        return fail(name, "exported claim collided with the fixture claim")
+    return ok(name, "peer-claim fingerprint is a pinned canonical content digest")
 
 
 # --------------------------------------------------------------------------
@@ -2779,6 +3329,8 @@ def main() -> int:
         case_35_vocabulary_cross_checks,
         case_36_registration_conflict_and_host_guard,
         case_37_ci_wiring,
+        case_38_decision_bound_invocation_scope,
+        case_39_peer_claim_fingerprint_semantics,
     ]
     print("ADCOS service registry / edge compute self-test (WORK-025)")
     print("=" * 72)

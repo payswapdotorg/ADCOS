@@ -39,6 +39,13 @@ from .contract import (
     SessionReader,
     SessionView,
 )
+from .authorization import (
+    INVOCATION_BINDING_KIND,
+    SERVICE_INVOKE_OPERATION,
+    InvocationBinding,
+    bind_invocation_decision,
+    extract_invocation_binding,
+)
 from .errors import (
     SERVICES_PREFIX,
     ServiceError,
@@ -117,6 +124,12 @@ __all__ = [
     "ServiceContext",
     "SessionReader",
     "SessionView",
+    # authorization consumption (WORK-010 seam)
+    "INVOCATION_BINDING_KIND",
+    "SERVICE_INVOKE_OPERATION",
+    "InvocationBinding",
+    "bind_invocation_decision",
+    "extract_invocation_binding",
     # errors
     "SERVICES_PREFIX",
     "ServiceError",
