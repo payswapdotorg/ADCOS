@@ -90,3 +90,5 @@ jobs:
 
       - name: Run distributed-core adapter family tests
         run: python3 tools/distcore_selftest.py
+      - name: Run service registry/edge compute tests
+        run: python3 tools/service_selftest.py
