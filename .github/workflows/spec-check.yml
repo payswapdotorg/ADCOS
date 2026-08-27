@@ -87,3 +87,6 @@ jobs:
 
       - name: Run mesh/relay adapter family tests
         run: python3 tools/mesh_selftest.py
+
+      - name: Run distributed-core adapter family tests
+        run: python3 tools/distcore_selftest.py
