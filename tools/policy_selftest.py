@@ -1148,6 +1148,9 @@ def case_45_frozen_vocabularies_present(results: List[Result]) -> None:
         "federation.join", "federation.accept-peer",
         "federation.resource-export", "federation.resource-import",
         "service.invoke", "privacy.requirement-override", "emergency.preempt",
+        # WORK-026 deliberate vocabulary extension ("policy-controlled
+        # authority"): the telemetry topology-promotion operation.
+        "telemetry.topology-promote",
     }
     expected_preds = {
         "subject-equals", "credential-active", "resource-owner",
@@ -1171,10 +1174,11 @@ def case_45_frozen_vocabularies_present(results: List[Result]) -> None:
 
 
 def case_46_privileged_classification_structural(results: List[Result]) -> None:
-    """Privileged classification is structural -- all 13 frozen operations
+    """Privileged classification is structural -- all 14 frozen operations
+    (13 at WORK-010 + the WORK-026 telemetry.topology-promote extension)
     are privileged; NON_PRIVILEGED is empty."""
-    if len(Privileged.PRIVILEGED) != 13:
-        results.append(fail("case_46_privileged_classification_structural", "expected 13 privileged ops, got %d" % len(Privileged.PRIVILEGED)))
+    if len(Privileged.PRIVILEGED) != 14:
+        results.append(fail("case_46_privileged_classification_structural", "expected 14 privileged ops, got %d" % len(Privileged.PRIVILEGED)))
         return
     if Privileged.NON_PRIVILEGED:
         results.append(fail("case_46_privileged_classification_structural", "NON_PRIVILEGED should be empty in WORK-010"))
@@ -1183,7 +1187,7 @@ def case_46_privileged_classification_structural(results: List[Result]) -> None:
         if not Privileged.is_privileged(op):
             results.append(fail("case_46_privileged_classification_structural", "op %r not privileged" % op))
             return
-    results.append(ok("case_46_privileged_classification_structural", "all 13 ops privileged; classification structural"))
+    results.append(ok("case_46_privileged_classification_structural", "all 14 ops privileged; classification structural"))
 
 
 def case_47_decision_no_forbidden_fields(results: List[Result]) -> None:
@@ -2061,6 +2065,256 @@ def case_73_invocation_binding_born_bound(results: List[Result]) -> None:
         )
 
 
+def case_74_promotion_binding_born_bound(results: List[Result]) -> None:
+    """REGRESSION (WORK-026 "policy-controlled authority"): the frozen
+    ``telemetry.topology-promote`` operation is PRIVILEGED
+    (deny-by-default) and its decisions are BORN bound to the exact
+    promotion scope (observation, subject kind, subject ref) AND the
+    privacy disclosure authorization (privacy_scope,
+    source_disclosure) -- the same trust chain case_73 pins for
+    service.invoke, applied to the telemetry topology-promotion seam
+    (privacy axes added by the PR #27 Architect review, blocker 2).
+    Without an explicit rule ALLOW the promotion is denied by
+    default, so telemetry can never silently become topology
+    authority.
+
+    Discriminating legs:
+    - deny-by-default: no applicable rule -> DEFAULT_DENY (privileged
+      operation), and even that denial is born bound;
+    - an explicit ALLOW rule yields a decision whose digest-covered
+      extensions carry exactly one promotion binding equal to the
+      context's descriptor;
+    - a promotion context WITHOUT a valid descriptor fails closed
+      (ok=False, INVALID_POLICY, no decision);
+    - the descriptor schema is strict (seven keys, strings, frozen
+      operation) and its (observation, subject) scope EQUALS the
+      context's first-class resource_refs scope EXACTLY (scope
+      equality: membership is not authorization -- cross-pairing,
+      subset pairing, and any third ref beside the authorized pair
+      fail closed; PR #27 Architect review, remediation 2);
+    - the privacy disclosure authorization keys (privacy_scope,
+      source_disclosure) are REQUIRED, non-empty strings -- a
+      promotion decision without an explicit privacy boundary can
+      never exist (structural schema only: the VALUE vocabularies are
+      owned by the telemetry family and validated at its consumption
+      seam);
+    - a promotion descriptor riding a non-promotion context is inert
+      opaque DATA.
+    """
+    name = "case_74_promotion_binding_born_bound"
+    problems: List[str] = []
+    from policy.promotion import (
+        PROMOTION_BINDING_KIND as _KIND,
+        promotion_binding_from_context as _derive,
+    )
+
+    obs_id = "telemetry:observation:" + "d" * 64
+    subject_ref = "adcos:link:" + "e" * 32
+    descriptor = {
+        "kind": _KIND,
+        "operation": Operation.TELEMETRY_TOPOLOGY_PROMOTE,
+        "observation_id": obs_id,
+        "subject_kind": "link",
+        "subject_ref": subject_ref,
+        "privacy_scope": "operational",
+        "source_disclosure": "identity",
+    }
+    good_kwargs: Dict[str, Any] = dict(
+        operation=Operation.TELEMETRY_TOPOLOGY_PROMOTE,
+        requester_node_id=_NODE_A,
+        evaluation_instant=_NOW,
+        resource_refs=(obs_id, subject_ref),
+        extensions=(dict(descriptor),),
+    )
+
+    def _ctx(**overrides: Any) -> PolicyContext:
+        kwargs = dict(good_kwargs)
+        extensions = list(kwargs["extensions"])
+        for key, value in overrides.items():
+            if key == "extensions":
+                extensions = [dict(e) for e in value]
+            else:
+                kwargs[key] = value
+        kwargs["extensions"] = tuple(extensions)
+        return base_ctx(**kwargs)
+
+    # 1. Deny-by-default (privileged): no applicable promotion rule.
+    res_default = evaluate(base_set(rules=()), _ctx())
+    if not (res_default.ok and res_default.decision):
+        problems.append("default evaluation lost the decision")
+    elif res_default.decision.effect != Effect.DENY or res_default.code != DecisionCode.DEFAULT_DENY:
+        problems.append(
+            "no-rule promotion not deny-by-default (%r/%r)"
+            % (res_default.decision.effect, res_default.code)
+        )
+    elif not any(e.get("kind") == _KIND for e in res_default.decision.extensions):
+        problems.append("DEFAULT_DENY promotion decision not born bound")
+    # 2. Explicit ALLOW rule -> born-bound ALLOW.
+    allow_rule = base_rule(
+        rule_id="promo-allow", domain=PolicyDomain.IDENTITY,
+        effect=Effect.ALLOW, operation=Operation.TELEMETRY_TOPOLOGY_PROMOTE,
+    )
+    ps_allow = base_set(rules=(allow_rule,))
+    res = evaluate(ps_allow, _ctx())
+    if not (res.ok and res.decision and res.code == DecisionCode.ALLOW):
+        problems.append("valid promotion context did not yield ALLOW: %r" % (res.code,))
+    else:
+        bindings = [e for e in res.decision.extensions if e.get("kind") == _KIND]
+        if len(bindings) != 1:
+            problems.append("decision carries %d promotion bindings (expected 1)" % len(bindings))
+        elif dict(bindings[0]) != descriptor:
+            problems.append("binding != descriptor: %r" % (dict(bindings[0]),))
+        else:
+            import hashlib as _hashlib
+            if res.decision.decision_id != _hashlib.sha256(
+                res.decision.canonical_bytes()
+            ).hexdigest():
+                problems.append("decision_id does not bind canonical bytes")
+    # 3. Fail-closed matrix: malformed/absent descriptor.
+    def _expect_invalid(label: str, ctx: PolicyContext) -> None:
+        outcome = evaluate(ps_allow, ctx)
+        if outcome.ok or outcome.decision is not None:
+            problems.append("%s: engine did not fail closed (%r)" % (label, outcome.code))
+        elif outcome.code != DecisionCode.INVALID_POLICY:
+            problems.append("%s: wrong code %r" % (label, outcome.code))
+
+    _expect_invalid("no descriptor", _ctx(extensions=()))
+    _expect_invalid(
+        "double descriptor",
+        _ctx(extensions=(dict(descriptor), dict(descriptor))),
+    )
+    _expect_invalid(
+        "unknown key", _ctx(extensions=({**descriptor, "extra": "x"},)),
+    )
+    _expect_invalid(
+        "missing key",
+        _ctx(extensions=({k: v for k, v in descriptor.items() if k != "subject_kind"},)),
+    )
+    _expect_invalid(
+        "non-string value", _ctx(extensions=({**descriptor, "subject_ref": 7},)),
+    )
+    _expect_invalid(
+        "foreign operation",
+        _ctx(extensions=({**descriptor, "operation": Operation.RESOURCE_CONSUME},)),
+    )
+    _expect_invalid(
+        "empty observation_id", _ctx(extensions=({**descriptor, "observation_id": ""},)),
+    )
+    # Privacy disclosure authorization keys are REQUIRED (PR #27
+    # review, blocker 2): a promotion decision without an explicit
+    # privacy boundary can never be born.
+    _expect_invalid(
+        "missing privacy_scope",
+        _ctx(extensions=({k: v for k, v in descriptor.items() if k != "privacy_scope"},)),
+    )
+    _expect_invalid(
+        "missing source_disclosure",
+        _ctx(extensions=({k: v for k, v in descriptor.items() if k != "source_disclosure"},)),
+    )
+    _expect_invalid(
+        "empty privacy_scope", _ctx(extensions=({**descriptor, "privacy_scope": ""},)),
+    )
+    _expect_invalid(
+        "empty source_disclosure",
+        _ctx(extensions=({**descriptor, "source_disclosure": ""},)),
+    )
+    _expect_invalid(
+        "non-string privacy_scope",
+        _ctx(extensions=({**descriptor, "privacy_scope": 3},)),
+    )
+    _expect_invalid(
+        "non-string source_disclosure",
+        _ctx(extensions=({**descriptor, "source_disclosure": True},)),
+    )
+    # Mirror violations: subject/observation not among the evaluated
+    # first-class resource_refs.
+    _expect_invalid(
+        "subject not evaluated",
+        _ctx(
+            extensions=(dict(descriptor),),
+            resource_refs=(obs_id,),  # subject_ref dropped
+        ),
+    )
+    _expect_invalid(
+        "observation not evaluated",
+        _ctx(
+            extensions=(dict(descriptor),),
+            resource_refs=(subject_ref,),  # observation dropped
+        ),
+    )
+    # Scope EQUALITY (PR #27 Architect review, remediation 2 -- the
+    # pinned invariant): membership is not authorization.  The
+    # born-bound promotion scope must BE the complete evaluated
+    # scope exactly: the descriptor's (observation, subject) pair
+    # equals the context's resource_refs set.  In a context that
+    # evaluated [observation-A, subject-A, observation-B, subject-B]
+    # neither the cross-pairing observation-A + subject-B nor the
+    # subset pairing observation-A + subject-A is an exact-scope
+    # promotion -- each pairing requires its own decision born into
+    # exactly that scope.
+    obs_b = "telemetry:observation:" + "1" * 64
+    subj_b = "adcos:link:" + "2" * 32
+    broad_refs = (obs_id, subject_ref, obs_b, subj_b)
+    _expect_invalid(
+        "cross-pairing in broader scope",
+        _ctx(
+            extensions=({**descriptor, "subject_ref": subj_b},),
+            resource_refs=broad_refs,
+        ),
+    )
+    _expect_invalid(
+        "subset pairing in broader scope",
+        _ctx(
+            extensions=(dict(descriptor),),
+            resource_refs=broad_refs,
+        ),
+    )
+    _expect_invalid(
+        "third ref beside the pair",
+        _ctx(
+            extensions=(dict(descriptor),),
+            resource_refs=(obs_id, subject_ref, _NODE_B),
+        ),
+    )
+    # 4. The derivation function self-defends against foreign
+    #    operations (direct call contract).
+    try:
+        _derive(base_ctx(operation=Operation.RESOURCE_RESERVE))
+        problems.append("derivation accepted a non-promotion context")
+    except PolicyError as e:
+        if e.code != "promotion-binding":
+            problems.append("derivation wrong code %r" % e.code)
+    # 5. A promotion descriptor riding a NON-promotion context is
+    #    inert opaque DATA: the decision carries no binding.
+    res_other = evaluate(
+        base_set(rules=(base_rule(rule_id="r-rr", effect=Effect.ALLOW),)),
+        base_ctx(
+            operation=Operation.RESOURCE_RESERVE,
+            requester_node_id=_NODE_A,
+            evaluation_instant=_NOW,
+            resource_refs=(obs_id, subject_ref),
+            extensions=(dict(descriptor),),
+        ),
+    )
+    if not (res_other.ok and res_other.decision):
+        problems.append("descriptor on resource.reserve broke evaluation")
+    elif any(e.get("kind") == _KIND for e in res_other.decision.extensions):
+        problems.append("non-promotion decision unexpectedly carries a binding")
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                name,
+                "telemetry.topology-promote is deny-by-default privileged and born "
+                "bound (digest-covered, scope-EQUAL to the evaluated "
+                "resource_refs, privacy disclosure authorization required); "
+                "malformed/absent descriptor and non-exact scopes fail "
+                "closed; inert on other operations",
+            )
+        )
+
+
 def main() -> int:
     results: List[Result] = []
     # Required adversarial verification cases (1-41 from the prompt).
@@ -2141,6 +2395,9 @@ def main() -> int:
     # Architect-review regression case (PR #26 correction cycle, the
     # WORK-025 authority-boundary remediation).
     case_73_invocation_binding_born_bound(results)
+    # WORK-026 ("policy-controlled authority") regression case: the
+    # telemetry topology-promotion operation and its born binding.
+    case_74_promotion_binding_born_bound(results)
 
     print("ADCOS policy self-test (WORK-010)")
     print("=" * 72)
