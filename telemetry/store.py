@@ -180,6 +180,52 @@ class TelemetryStore:
         return observation
 
     # ------------------------------------------------------------------
+    # Provenance resolution (read-only)
+    # ------------------------------------------------------------------
+
+    def is_recorded(self, observation: TelemetryObservation) -> bool:
+        """True iff this EXACT observation is recorded here.
+
+        The provenance-resolution surface for dependency-graph-sanctioned
+        downstream consumers (spec/dependency-graph.md: WORK-026 -->
+        WORK-029 upgrade/rollback/compatibility; PR #31 Architect review
+        blocker 1): the store is the authority on what it has actually
+        recorded, so a downstream consumer that must never mistake a
+        caller-fabricated object for authoritative evidence resolves
+        provenance here.  A complete-content observation id is
+        INTEGRITY (content binds the id); recordedness is AUTHORITY
+        PROVENANCE (the telemetry authority actually emitted the
+        record) -- this method answers the second question, which only
+        the store can.
+
+        Fail-closed semantics:
+
+        - the input must be a genuine (constructor-validated)
+          :class:`TelemetryObservation` -- anything else raises
+          (duck-typed fakes are never provenance-checked, they are
+          rejected outright);
+        - an id never recorded here answers ``False``;
+        - a recorded id whose stored canonical bytes differ from the
+          supplied object's (a tampered variant of a genuine record)
+          answers ``False`` -- only the exact recorded content is
+          recorded evidence;
+        - the answer is a BOOLEAN about content the caller already
+          holds in full: it discloses no observation content, no
+          privacy state, and no promotion state (spec/architecture 20
+          minimization), and it confers no write path.
+        """
+        if not isinstance(observation, TelemetryObservation):
+            raise TelemetryError(
+                TelemetryReasonCode.INVALID_INPUT,
+                "observation must be a genuine telemetry.model."
+                "TelemetryObservation (constructor-validated DATA)",
+            )
+        existing = self._observations.get(observation.observation_id)
+        return existing is not None and (
+            existing.canonical_bytes() == observation.canonical_bytes()
+        )
+
+    # ------------------------------------------------------------------
     # Privacy-fenced query
     # ------------------------------------------------------------------
 
