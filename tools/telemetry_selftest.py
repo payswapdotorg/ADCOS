@@ -924,6 +924,15 @@ def case_19_no_core_leakage() -> Result:
         # additionally pinned below to the DATA surface only.
         if entry == "energy":
             continue
+        # WORK-029 amendment (deliberate, flagged in its PR): the
+        # upgrade/rollback/compatibility family is likewise a
+        # dependency-graph-sanctioned DOWNSTREAM consumer of telemetry
+        # (spec/work-items.md: WORK-029 declares WORK-026 among its
+        # frozen dependencies).  Its telemetry usage is pinned below
+        # to the DATA surface only (telemetry.model records and the
+        # frozen metric registry -- upgrade health-gate evidence).
+        if entry == "upgrade":
+            continue
         for base, _dirs, files in os.walk(os.path.join(_ROOT, entry)):
             for filename in sorted(files):
                 if not filename.endswith(".py"):
@@ -939,22 +948,28 @@ def case_19_no_core_leakage() -> Result:
     # telemetry DATA surface (telemetry.model records + the
     # telemetry.store replay target for deferred synchronization) --
     # never the validation/authorization/serialization internals.
-    for filename in sorted(os.listdir(os.path.join(_ROOT, "energy"))):
-        if not filename.endswith(".py"):
-            continue
-        path = os.path.join(_ROOT, "energy", filename)
-        with open(path, "r", encoding="utf-8") as handle:
-            source = handle.read()
-        for match in re.finditer(r"^\s*from\s+telemetry(\.[a-z_]+)?\s+import", source, re.MULTILINE):
-            module = match.group(1) or ""
-            if module not in ("", ".model", ".store", ".model.", ".store."):
-                if module.lstrip(".") not in ("model", "store"):
-                    return fail(
-                        name,
-                        "energy/%s imports telemetry internals %r (data surface only)"
-                        % (filename, module),
-                    )
-    return ok(name, "no core family imports telemetry; energy consumes the data surface only")
+    for family in ("energy", "upgrade"):
+        for filename in sorted(os.listdir(os.path.join(_ROOT, family))):
+            if not filename.endswith(".py"):
+                continue
+            path = os.path.join(_ROOT, family, filename)
+            with open(path, "r", encoding="utf-8") as handle:
+                source = handle.read()
+            for match in re.finditer(
+                r"^\s*from\s+telemetry(\.[a-z_]+)?\s+import", source, re.MULTILINE
+            ):
+                module = match.group(1) or ""
+                if module not in ("", ".model", ".store", ".model.", ".store."):
+                    if module.lstrip(".") not in ("model", "store"):
+                        return fail(
+                            name,
+                            "%s/%s imports telemetry internals %r (data surface only)"
+                            % (family, filename, module),
+                        )
+    return ok(
+        name,
+        "no core family imports telemetry; energy/upgrade consume the data surface only",
+    )
 
 
 def case_20_promotion_deny_by_default() -> Result:
