@@ -101,6 +101,7 @@ from services import (  # noqa: E402
     FederationReader,
     InvocationDecision,
     ReferenceEdgeExecutor,
+    RegistryLifecycle,
     SandboxedExecutionProvider,
     ServiceAdmission,
     ServiceAdvertisement,
@@ -612,10 +613,14 @@ def _invoke(
     caller_node_id: str = "",
     payload: bytes = _PAYLOAD,
 ) -> Tuple[Any, Any]:
+    """Admit -> execute -> release through the seam.  The admission
+    carries the scope of the stored decision ONLY (PR #26 fourth
+    review, finding B2): no scope is passed at the execution boundary;
+    ``session_id`` / ``caller_node_id`` remain as documentation of the
+    decision's own born-bound scope (they are never forwarded -- the
+    decision is the only authority input)."""
     admit = registry.admit_execution(
-        now=now, service_ref=service_ref, decision_ref=decision_ref,
-        session_id=session_id, caller_node_id=caller_node_id,
-    )
+        now=now, decision_ref=decision_ref)
     if not admit.ok:
         return admit, None
     execute = registry.execute_request(
@@ -1071,7 +1076,7 @@ def case_08_local_execution_seam() -> Result:
     decision_ref = _decision_for(registry, service_ref)
     # Granular surface: admit -> execute -> release.
     admit = registry.admit_execution(
-        now=_T1, service_ref=service_ref, decision_ref=decision_ref
+        now=_T1, decision_ref=decision_ref
     )
     if not admit.ok:
         return fail(name, "admit failed: %s" % (admit.detail,))
@@ -1122,7 +1127,7 @@ def case_09_unauthorized_execution_before_provider_effects() -> Result:
     # No decision at all: fails closed before the provider runs.
     try:
         registry.admit_execution(
-            now=_T1, service_ref=service_ref, decision_ref="services:decision:" + "0" * 32
+            now=_T1, decision_ref="services:decision:" + "0" * 32
         )
         return fail(name, "unknown decision accepted")
     except ServiceError as exc:
@@ -1143,35 +1148,52 @@ def case_09_unauthorized_execution_before_provider_effects() -> Result:
         return fail(name, "deny not recorded as a revocation")
     try:
         registry.admit_execution(
-            now=_T1, service_ref=service_ref, decision_ref=revoked.value
+            now=_T1, decision_ref=revoked.value
         )
         return fail(name, "denied decision authorized execution")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.DECISION_UNKNOWN:
             return fail(name, "denied ref: %s" % (exc.reason,))
-    # Decision for another service: scope mismatch, before provider.
+    # Cross-service scope is now STRUCTURALLY impossible to express
+    # (PR #26 fourth review, finding B2): admit_execution accepts no
+    # service/session/caller input at all, so a decision can only ever
+    # admit ITS OWN scope.  Citing the other service's decision admits
+    # the OTHER service's scope (never a re-scoped admission of the
+    # first service) -- and the session-bound decision below simply
+    # fails closed on its own unsecureable session.
     other_ref = _registered(
         registry, _advertisement(descriptor=_descriptor(name="other-cache"))
     )
     other_decision = _decision_for(registry, other_ref, now=_T1)
+    other_admit = registry.admit_execution(
+        now=_T2, decision_ref=other_decision
+    )
+    if not other_admit.ok:
+        return fail(name, "other-scope admit failed: %s" % (other_admit.detail,))
+    if other_admit.value.service_ref != other_ref:
+        return fail(name, "admission did not follow the decision's own service")
+    registry.release_execution(
+        now=_T2, admission_ref=other_admit.value.admission_ref
+    )
     try:
         registry.admit_execution(
-            now=_T2, service_ref=service_ref, decision_ref=other_decision
+            now=_T2, decision_ref=other_decision,
+            service_ref=service_ref,  # type: ignore[call-arg]
         )
-        return fail(name, "cross-service decision accepted")
-    except ServiceError as exc:
-        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
-            return fail(name, "cross-service: %s" % (exc.reason,))
-    # Decision for another session/caller.
+        return fail(name, "execution API still accepts a scope restatement")
+    except TypeError:
+        pass
+    except ServiceError as exc:  # pragma: no cover -- old API shape
+        return fail(name, "scope restatement became a ServiceError: %s" % (exc.reason,))
+    # Decision bound to another (unsecureable) session fails closed on
+    # the decision's OWN session, before any provider effect.
     decision = _decision_for(registry, service_ref, now=_T1, session_id=_SESSION_ID)
     try:
         registry.admit_execution(
-            now=_T2, service_ref=service_ref, decision_ref=decision,
-            session_id=_OTHER_SESSION_ID,
-        )
-        return fail(name, "cross-session decision accepted")
+            now=_T2, decision_ref=decision)
+        return fail(name, "unsecureable-session decision admitted")
     except ServiceError as exc:
-        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
+        if exc.reason != ServiceReasonCode.SESSION_NOT_SECUREABLE:
             return fail(name, "cross-session: %s" % (exc.reason,))
     # Policy-controlled lookup without a decision is unauthorized.
     protected = _registered(
@@ -1237,7 +1259,7 @@ def case_10_execution_failures_isolated_typed() -> Result:
     service_ref = _registered(registry)
     decision_ref = _decision_for(registry, service_ref)
     admit = registry.admit_execution(
-        now=_T1, service_ref=service_ref, decision_ref=decision_ref
+        now=_T1, decision_ref=decision_ref
     )
     if not admit.ok:
         return fail(name, "admit failed: %s" % (admit.detail,))
@@ -1330,18 +1352,17 @@ def case_11_capacity_work008_data() -> Result:
     service_ref = _registered(registry)
     decision_ref = _decision_for(registry, service_ref)
     first = registry.admit_execution(
-        now=_T1, service_ref=service_ref, decision_ref=decision_ref
+        now=_T1, decision_ref=decision_ref
     )
     second = registry.admit_execution(
-        now=_T1, service_ref=service_ref, decision_ref=decision_ref
+        now=_T1, decision_ref=decision_ref
     )
     if not (first.ok and second.ok):
         return fail(name, "declared capacity did not admit two executions")
     # The third standing admission exhausts the DECLARED capacity.
     problem = _admit_fails_with(
         registry, reason=ServiceReasonCode.CAPACITY_EXHAUSTED,
-        now=_T1, service_ref=service_ref, decision_ref=decision_ref,
-    )
+        now=_T1, decision_ref=decision_ref)
     if problem:
         return fail(name, "exhaustion: %s" % (problem,))
     # Advertisement != reservation: a service with NO declared
@@ -1355,8 +1376,7 @@ def case_11_capacity_work008_data() -> Result:
     zero_decision = _decision_for(registry, no_capacity_ref, now=_T1)
     problem = _admit_fails_with(
         registry, reason=ServiceReasonCode.CAPACITY_EXHAUSTED,
-        now=_T2, service_ref=no_capacity_ref, decision_ref=zero_decision,
-    )
+        now=_T2, decision_ref=zero_decision)
     if problem:
         return fail(name, "zero-capacity admission: %s" % (problem,))
     zero_qty_ref = _registered(
@@ -1368,8 +1388,7 @@ def case_11_capacity_work008_data() -> Result:
     zero_qty_decision = _decision_for(registry, zero_qty_ref, now=_T1)
     problem = _admit_fails_with(
         registry, reason=ServiceReasonCode.CAPACITY_EXHAUSTED,
-        now=_T2, service_ref=zero_qty_ref, decision_ref=zero_qty_decision,
-    )
+        now=_T2, decision_ref=zero_qty_decision)
     if problem:
         return fail(name, "zero-quantity admission: %s" % (problem,))
     # Unknown kinds fail closed (no second vocabulary).
@@ -1419,7 +1438,7 @@ def case_12_capacity_exhaustion_state_unchanged() -> Result:
     )
     decision_ref = _decision_for(registry, service_ref)
     first = registry.admit_execution(
-        now=_T1, service_ref=service_ref, decision_ref=decision_ref
+        now=_T1, decision_ref=decision_ref
     )
     if not first.ok:
         return fail(name, "first admission failed")
@@ -1427,8 +1446,7 @@ def case_12_capacity_exhaustion_state_unchanged() -> Result:
     # Exhausted admission fails closed...
     problem = _admit_fails_with(
         registry, reason=ServiceReasonCode.CAPACITY_EXHAUSTED,
-        now=_T1, service_ref=service_ref, decision_ref=decision_ref,
-    )
+        now=_T1, decision_ref=decision_ref)
     if problem:
         return fail(name, "exhaustion: %s" % (problem,))
     # ...leaving authoritative state byte-identical.
@@ -1444,7 +1462,7 @@ def case_12_capacity_exhaustion_state_unchanged() -> Result:
     service_ref2 = _registered(registry2)
     decision_ref2 = _decision_for(registry2, service_ref2)
     admit2 = registry2.admit_execution(
-        now=_T1, service_ref=service_ref2, decision_ref=decision_ref2
+        now=_T1, decision_ref=decision_ref2
     )
     bytes_before2 = registry2.to_canonical_bytes()
     execute2 = registry2.execute_request(
@@ -1553,9 +1571,7 @@ def case_15_session_identity_stable_across_relocation() -> Result:
     # current policy is required.
     try:
         registry.admit_execution(
-            now=_T3, service_ref=service_ref, decision_ref=first_decision,
-            session_id=session_id,
-        )
+            now=_T3, decision_ref=first_decision)
         return fail(name, "pre-relocation decision survived relocation")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.REAUTHORIZATION_REQUIRED:
@@ -1958,7 +1974,7 @@ def case_20_least_authority_context() -> Result:
     service_ref = _registered(registry)
     decision_ref = _decision_for(registry, service_ref)
     registry.admit_execution(
-        now=_T1, service_ref=service_ref, decision_ref=decision_ref
+        now=_T1, decision_ref=decision_ref
     )
     if not seen or not isinstance(seen[0], ServiceContext):
         return fail(name, "provider did not receive a ServiceContext")
@@ -2108,7 +2124,7 @@ def case_22_validate_commit_sequence_discipline() -> Result:
     decision_ref = _decision_for(registry, service_ref)
     bytes_before = registry.to_canonical_bytes()
     admit = registry.admit_execution(
-        now=_T1, service_ref=service_ref, decision_ref=decision_ref
+        now=_T1, decision_ref=decision_ref
     )
     if admit.ok:
         return fail(name, "commit fault not surfaced")
@@ -2124,10 +2140,10 @@ def case_22_validate_commit_sequence_discipline() -> Result:
     clean_ref = _registered(clean_registry)
     clean_decision = _decision_for(clean_registry, clean_ref)
     clean_admit = clean_registry.admit_execution(
-        now=_T1, service_ref=clean_ref, decision_ref=clean_decision
+        now=_T1, decision_ref=clean_decision
     )
     retry = registry.admit_execution(
-        now=_T1, service_ref=service_ref, decision_ref=decision_ref
+        now=_T1, decision_ref=decision_ref
     )
     if not retry.ok or not clean_admit.ok:
         return fail(name, "retry or clean admit failed")
@@ -2191,7 +2207,7 @@ def case_22_validate_commit_sequence_discipline() -> Result:
     decision_ref3 = _decision_for(registry3, service_ref3)
     try:
         registry3.admit_execution(
-            now=_T1, service_ref=service_ref3, decision_ref="services:decision:" + "0" * 32
+            now=_T1, decision_ref="services:decision:" + "0" * 32
         )
         return fail(name, "validate fault not surfaced")
     except ServiceError:
@@ -2230,8 +2246,8 @@ def case_23_canonical_state_clean() -> Result:
     if sorted(snapshot.keys()) != [
         "admission_count", "admissions", "allocations", "closed",
         "decision_revocations", "decisions", "events", "exposures",
-        "integration_id", "placements", "registered_count", "services",
-        "tombstones",
+        "integration_id", "lifecycle", "placements", "registered_count",
+        "services", "tombstones",
     ]:
         return fail(name, "snapshot shape drifted: %s" % (sorted(snapshot.keys()),))
     # No diagnostics cross into canonical state.
@@ -2315,7 +2331,7 @@ def build():
     dec = born_bound_decision(adv.service_ref)
     r = reg.apply_policy_decision(now=T1, policy_decision=dec)
     assert r.ok
-    a = reg.admit_execution(now=T1, service_ref=adv.service_ref, decision_ref=r.value)
+    a = reg.admit_execution(now=T1, decision_ref=r.value)
     assert a.ok
     e = reg.execute_request(now=T1, admission_ref=a.value.admission_ref, request_payload=b"determinism")
     assert e.ok
@@ -2572,7 +2588,7 @@ def case_27_policy_negative_matrix() -> Result:
         return fail(name, "genuine deny rejected: %s" % (revoked.detail,))
     try:
         registry.admit_execution(
-            now=_T3, service_ref=service_ref, decision_ref=revoked.value
+            now=_T3, decision_ref=revoked.value
         )
         return fail(name, "deny ref authorized execution")
     except ServiceError as exc:
@@ -2580,7 +2596,7 @@ def case_27_policy_negative_matrix() -> Result:
             return fail(name, "deny ref: %s" % (exc.reason,))
     try:
         registry.admit_execution(
-            now=_T3, service_ref=service_ref, decision_ref=decision_ref
+            now=_T3, decision_ref=decision_ref
         )
         return fail(name, "earlier ALLOW survived a later DENY")
     except ServiceError as exc:
@@ -2592,9 +2608,7 @@ def case_27_policy_negative_matrix() -> Result:
     )
     try:
         registry.admit_execution(
-            now=_T2, service_ref=service_ref, decision_ref=session_decision,
-            session_id=_OTHER_SESSION_ID,
-        )
+            now=_T2, decision_ref=session_decision)
         return fail(name, "unsecureable session admitted")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.SESSION_NOT_SECUREABLE:
@@ -2607,9 +2621,7 @@ def case_27_policy_negative_matrix() -> Result:
     )
     try:
         bare_registry.admit_execution(
-            now=_T1, service_ref=bare_ref, decision_ref=bare_decision,
-            session_id=_SESSION_ID,
-        )
+            now=_T1, decision_ref=bare_decision)
         return fail(name, "execution without session authority")
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.SESSION_NOT_SECUREABLE:
@@ -2641,7 +2653,7 @@ def case_28_policy_change_between_discovery_execution() -> Result:
     second = _decision_for(registry, service_ref, now=_T2)
     try:
         registry.admit_execution(
-            now=_T2, service_ref=service_ref, decision_ref=first
+            now=_T2, decision_ref=first
         )
         return fail(name, "superseded decision admitted execution")
     except ServiceError as exc:
@@ -2954,7 +2966,7 @@ def case_33_unavailable_at_execution() -> Result:
     # value, distinct from unknown/stale/withdrawn.
     executor.set_executor_state(available=False)
     admit = registry.admit_execution(
-        now=_T1, service_ref=service_ref, decision_ref=decision_ref
+        now=_T1, decision_ref=decision_ref
     )
     if admit.ok or admit.reason != ServiceReasonCode.SERVICE_UNAVAILABLE:
         return fail(name, "partitioned executor: %s" % (admit.reason,))
@@ -2986,7 +2998,7 @@ def case_34_budget_isolation() -> Result:
     service_ref = _registered(registry)
     decision_ref = _decision_for(registry, service_ref)
     admit = registry.admit_execution(
-        now=_T1, service_ref=service_ref, decision_ref=decision_ref
+        now=_T1, decision_ref=decision_ref
     )
     if admit.ok or admit.reason != ServiceReasonCode.BUDGET_EXHAUSTED:
         return fail(name, "budget exhaustion: %r ok=%s" % (admit.reason, admit.ok))
@@ -3193,36 +3205,46 @@ def case_38_decision_bound_invocation_scope() -> Result:
         ).canonical_bytes()
     ).hexdigest():
         return fail(name, "stored decision id drifted from the binding")
-    # THE ATTACK, attempt 1: cite the decision for ANOTHER service.
+    # THE ATTACK, attempts 1-3 (re-scoping at the execution boundary)
+    # are now STRUCTURALLY impossible (PR #26 fourth review, finding
+    # B2): admit_execution consumes the scope exclusively from the
+    # stored decision -- there is no service/session/caller input for
+    # the composition caller to restate, so the old
+    # supply-a-different-scope attacks have no API surface left.  The
+    # decision_ref is a pure lookup selector, and the signature pin
+    # above plus the TypeError probes below prove the duplicated
+    # authority inputs are GONE rather than merely checked.
+    params = inspect.signature(registry.admit_execution).parameters
+    if set(params) != {"now", "decision_ref", "requirements", "label"}:
+        return fail(
+            name, "admit_execution signature still carries scope params: %s"
+            % (sorted(params),),
+        )
+    for smuggled in (
+        dict(service_ref=other_ref),
+        dict(session_id=_OTHER_SESSION_ID),
+        dict(caller_node_id=_NODE_B),
+    ):
+        try:
+            registry.admit_execution(
+                now=_T2, decision_ref=decision_ref, **smuggled)
+            return fail(
+                name, "execution accepted a restated scope: %s"
+                % (sorted(smuggled),),
+            )
+        except TypeError:
+            pass
+    # Scope FAITHFULNESS: citing the session-bound decision admits
+    # exactly the decision's own scope and nothing else -- the session
+    # it carries is unsecureable under this (reader-less) registry, so
+    # the decision's own scope fails closed before any provider effect.
     try:
         registry.admit_execution(
-            now=_T2, service_ref=other_ref, decision_ref=decision_ref,
-            session_id=_SESSION_ID, caller_node_id=_NODE_UE,
-        )
-        return fail(name, "decision re-scoped to another service")
+            now=_T2, decision_ref=decision_ref)
+        return fail(name, "session-bound scope admitted without a session authority")
     except ServiceError as exc:
-        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
-            return fail(name, "other-service: %s" % (exc.reason,))
-    # THE ATTACK, attempt 2: cite the decision for another session.
-    try:
-        registry.admit_execution(
-            now=_T2, service_ref=service_ref, decision_ref=decision_ref,
-            session_id=_OTHER_SESSION_ID, caller_node_id=_NODE_UE,
-        )
-        return fail(name, "decision re-scoped to another session")
-    except ServiceError as exc:
-        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
-            return fail(name, "other-session: %s" % (exc.reason,))
-    # THE ATTACK, attempt 3: cite the decision for another caller.
-    try:
-        registry.admit_execution(
-            now=_T2, service_ref=service_ref, decision_ref=decision_ref,
-            session_id=_SESSION_ID, caller_node_id=_NODE_B,
-        )
-        return fail(name, "decision re-scoped to another caller")
-    except ServiceError as exc:
-        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
-            return fail(name, "other-caller: %s" % (exc.reason,))
+        if exc.reason != ServiceReasonCode.SESSION_NOT_SECUREABLE:
+            return fail(name, "bound-scope admit: %s" % (exc.reason,))
     # THE ATTACK, attempt 4: re-stamp the binding extension with a
     # different service while KEEPING the valid decision id -- the
     # digest check rejects the manufactured scope outright.
@@ -3568,9 +3590,7 @@ def case_40_no_services_minting_capability() -> Result:
         )
     try:
         registry.admit_execution(
-            now=_T1, service_ref=service_ref, decision_ref=applied.value,
-            caller_node_id=_NODE_UE,
-        )
+            now=_T1, decision_ref=applied.value)
     except ServiceError as exc:
         return fail(name, "genuine scope failed to admit: %s" % (exc,))
     return ok(
@@ -3831,7 +3851,7 @@ def case_43_deny_revocation_invalidates_standing_allow() -> Result:
             return fail(name, "revoked lookup: %s" % (exc.reason,))
     try:
         registry.admit_execution(
-            now=_T2, service_ref=service_ref, decision_ref=allow_ref
+            now=_T2, decision_ref=allow_ref
         )
         return fail(name, "revoked ALLOW admitted execution")
     except ServiceError as exc:
@@ -3903,7 +3923,7 @@ def case_44_explicit_cleanup_outcomes() -> Result:
     service_ref = _registered(registry)
     decision_ref = _decision_for(registry, service_ref, now=_T1)
     admit = registry.admit_execution(
-        now=_T1, service_ref=service_ref, decision_ref=decision_ref
+        now=_T1, decision_ref=decision_ref
     )
     if not admit.ok:
         return fail(name, "admit failed: %s" % (admit.detail,))
@@ -3968,7 +3988,7 @@ def case_44_explicit_cleanup_outcomes() -> Result:
     service_ref2 = _registered(registry2)
     decision_ref2 = _decision_for(registry2, service_ref2, now=_T1)
     admit2 = registry2.admit_execution(
-        now=_T1, service_ref=service_ref2, decision_ref=decision_ref2
+        now=_T1, decision_ref=decision_ref2
     )
     if not admit2.ok:
         return fail(name, "relocate-leg admit failed")
@@ -4008,7 +4028,7 @@ def case_44_explicit_cleanup_outcomes() -> Result:
     compensation_text = ""
     try:
         broken.admit_execution(
-            now=_T1, service_ref=broken_ref, decision_ref=broken_decision
+            now=_T1, decision_ref=broken_decision
         )
         return fail(name, "compensation failure not surfaced")
     except ServiceError as exc:
@@ -4024,15 +4044,19 @@ def case_44_explicit_cleanup_outcomes() -> Result:
         a["service_ref"] == broken_ref for a in broken.snapshot()["admissions"]
     ):
         return fail(name, "failed admit committed registry state")
-    # 7. close() is explicit: terminal closure with a provider that
-    #    still holds an active admission raises, naming the provider.
+    # 7. close() is explicit AND recoverable (PR #26 fourth review,
+    #    finding B1): a provider that still holds an active admission
+    #    makes close raise naming the provider -- and the registry
+    #    parks in the explicit close-pending state (NOT terminal):
+    #    cleanup stays available, the provider is cleaned, and the
+    #    close RETRY then reaches terminal closure.
     registry4 = ServiceRegistry()
     executor4 = ReferenceEdgeExecutor()
     registry4.register_execution_provider(executor4, label="busy", now=_NOW)
     service_ref4 = _registered(registry4)
     decision_ref4 = _decision_for(registry4, service_ref4, now=_T1)
     admit4 = registry4.admit_execution(
-        now=_T1, service_ref=service_ref4, decision_ref=decision_ref4
+        now=_T1, decision_ref=decision_ref4
     )
     if not admit4.ok:
         return fail(name, "close-leg admit failed")
@@ -4044,10 +4068,35 @@ def case_44_explicit_cleanup_outcomes() -> Result:
             return fail(name, "degraded close: %s" % (exc.reason,))
         if "busy" not in str(exc):
             return fail(name, "degraded close does not name the provider")
-    if not registry4.closed:
-        return fail(name, "closure must still be terminal")
+    if registry4.closed:
+        return fail(name, "unproven close claimed TERMINAL closure")
+    if registry4.lifecycle != RegistryLifecycle.CLOSE_PENDING:
+        return fail(name, "degraded close state: %r" % (registry4.lifecycle,))
+    if not any(
+        e["event_type"] == ServiceEventType.REGISTRY_CLOSE_PENDING
+        for e in registry4.snapshot()["events"]
+    ):
+        return fail(name, "close-pending not audited")
     if executor4.health() != "HEALTHY":
         return fail(name, "provider fact lost after degraded closure")
+    # Cleanup remains AVAILABLE in the degraded state, the provider
+    # becomes clean, and the close retry reaches the terminal state.
+    cleanup = registry4.release_execution(
+        now=_T3, admission_ref=admit4.value.admission_ref
+    )
+    if not cleanup.ok:
+        return fail(name, "cleanup blocked in close-pending: %s" % (cleanup.detail,))
+    try:
+        registry4.close(now=_T4)
+    except ServiceError as exc:
+        return fail(name, "close retry after cleanup failed: %s" % (exc,))
+    if not registry4.closed or registry4.lifecycle != RegistryLifecycle.CLOSED:
+        return fail(name, "close retry did not reach terminal closure")
+    if not any(
+        e["event_type"] == ServiceEventType.REGISTRY_CLOSED
+        for e in registry4.snapshot()["events"]
+    ):
+        return fail(name, "terminal close not audited")
     # A clean registry closes quietly with the REAL injected instant.
     clean_registry, _clean_executor = _full_registry()
     try:
@@ -4060,6 +4109,294 @@ def case_44_explicit_cleanup_outcomes() -> Result:
         name,
         "cleanup-pending state machine + provable retry + explicit "
         "compensation and terminal closure",
+    )
+
+
+# --------------------------------------------------------------------------
+# PR #26 fourth Architect review regressions (findings B1/B2)
+# --------------------------------------------------------------------------
+
+def case_45_close_pending_recoverable_lifecycle() -> Result:
+    """PR #26 fourth Architect review, finding B1: close() must never
+    create an unrecoverable terminal state above a potentially active
+    provider.  Required protocol:
+
+        busy provider -> close fails EXPLICITLY
+                      -> registry remains RECOVERABLE (close-pending)
+                      -> provider becomes clean
+                      -> close succeeds (terminal)
+
+    plus: non-cleanup operations fail closed by name in the degraded
+    state, a cleanup-pending admission is retryable DURING
+    close-pending, and a proven provider close is never re-attempted
+    by the retry."""
+    name = "case_45_close_pending_recoverable_lifecycle"
+
+    # -- Leg 1: busy provider -> explicit failure -> recoverable -----
+    registry = ServiceRegistry()
+    busy = ReferenceEdgeExecutor()
+    registry.register_execution_provider(busy, label="busy", now=_NOW)
+    # A SECOND, already-clean provider: its close is proven on the
+    # first attempt and must never be re-attempted by the retry.
+    registry.register_execution_provider(
+        ReferenceEdgeExecutor(), label="quiet", now=_NOW
+    )
+    service_ref = _registered(registry, _advertisement(capacity=(
+        ServiceCapacity("edge-service-capacity", 2),
+    )))
+    decision_ref = _decision_for(registry, service_ref, now=_T1)
+    admit = registry.admit_execution(now=_T1, decision_ref=decision_ref)
+    if not admit.ok:
+        return fail(name, "admit failed: %s" % (admit.detail,))
+    close_error = ""
+    try:
+        registry.close(now=_T2)
+        return fail(name, "busy provider closed silently")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.ILLEGAL_STATE:
+            return fail(name, "busy close: %s" % (exc.reason,))
+        close_error = str(exc)
+    if "busy" not in close_error:
+        return fail(name, "busy close does not name the provider")
+    # NOT terminal: the registry is explicitly degraded and recoverable.
+    if registry.closed:
+        return fail(name, "unproven close claimed TERMINAL closure")
+    if registry.lifecycle != RegistryLifecycle.CLOSE_PENDING:
+        return fail(name, "degraded state: %r" % (registry.lifecycle,))
+    if registry.snapshot()["lifecycle"] != RegistryLifecycle.CLOSE_PENDING:
+        return fail(name, "lifecycle missing from canonical snapshot")
+    if registry.diagnostic_state()["close_pending_providers"] != ["busy"]:
+        return fail(
+            name, "unproven providers: %s"
+            % (registry.diagnostic_state()["close_pending_providers"],),
+        )
+    if not any(
+        e["event_type"] == ServiceEventType.REGISTRY_CLOSE_PENDING
+        for e in registry.snapshot()["events"]
+    ):
+        return fail(name, "close-pending transition not audited")
+    # Non-cleanup operations fail closed, naming the degraded state.
+    degraded_error = ""
+    try:
+        _registered(registry, _advertisement(
+            descriptor=_descriptor(name="during-close"),
+        ), now=_T3)
+        return fail(name, "registration accepted while close-pending")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.ILLEGAL_STATE:
+            return fail(name, "close-pending op: %s" % (exc.reason,))
+        degraded_error = str(exc)
+    if "close-pending" not in degraded_error:
+        return fail(name, "degraded refusal does not name the state")
+    try:
+        registry.admit_execution(now=_T3, decision_ref=decision_ref)
+        return fail(name, "admission accepted while close-pending")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.ILLEGAL_STATE:
+            return fail(name, "close-pending admit: %s" % (exc.reason,))
+    # -- Recovery: cleanup stays available, then close succeeds ------
+    release = registry.release_execution(
+        now=_T3, admission_ref=admit.value.admission_ref
+    )
+    if not release.ok:
+        return fail(
+            name, "cleanup BLOCKED while close-pending: %s" % (release.detail,)
+        )
+    try:
+        registry.close(now=_T4)
+    except ServiceError as exc:
+        return fail(name, "close retry after cleanup failed: %s" % (exc,))
+    if not registry.closed or registry.lifecycle != RegistryLifecycle.CLOSED:
+        return fail(name, "close retry did not reach terminal closure")
+    if not any(
+        e["event_type"] == ServiceEventType.REGISTRY_CLOSED
+        for e in registry.snapshot()["events"]
+    ):
+        return fail(name, "terminal close not audited")
+    # Terminal: close is idempotent-guarded and cleanup ops are done.
+    try:
+        registry.close(now=_T5)
+        return fail(name, "terminal close re-entered")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.ILLEGAL_STATE:
+            return fail(name, "terminal re-close: %s" % (exc.reason,))
+    try:
+        registry.release_execution(
+            now=_T5, admission_ref="services:admission:" + "0" * 32
+        )
+        return fail(name, "cleanup op accepted after terminal closure")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.ILLEGAL_STATE:
+            return fail(name, "post-terminal op: %s" % (exc.reason,))
+
+    # -- Leg 2: cleanup-pending admission recoverable DURING close ---
+    class _FlakyReleaseExecutor(ReferenceEdgeExecutor):
+        def __init__(self) -> None:
+            super().__init__()
+            self._failed = False
+
+        def release(self, context, *, admission_ref):
+            if not self._failed:
+                self._failed = True
+                raise RuntimeError("partitioned during release")
+            super().release(context, admission_ref=admission_ref)
+
+    registry2 = ServiceRegistry()
+    flaky = _FlakyReleaseExecutor()
+    registry2.register_execution_provider(flaky, label="flaky", now=_NOW)
+    service_ref2 = _registered(registry2)
+    decision_ref2 = _decision_for(registry2, service_ref2, now=_T1)
+    admit2 = registry2.admit_execution(now=_T1, decision_ref=decision_ref2)
+    if not admit2.ok:
+        return fail(name, "leg-2 admit failed")
+    withdrawn = registry2.withdraw_service(
+        now=_T2, service_ref=service_ref2, reason="decommissioned"
+    )
+    if not withdrawn.ok or withdrawn.cleanup_pending != (
+        admit2.value.admission_ref,
+    ):
+        return fail(name, "leg-2 withdraw did not park cleanup-pending")
+    try:
+        registry2.close(now=_T3)
+        return fail(name, "close succeeded above an unproven cleanup")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.ILLEGAL_STATE:
+            return fail(name, "leg-2 close: %s" % (exc.reason,))
+    if registry2.closed or registry2.lifecycle != RegistryLifecycle.CLOSE_PENDING:
+        return fail(name, "leg-2 degraded state wrong")
+    # The cleanup retry is available IN the degraded state and PROVES
+    # the provider cleanup; the close retry then terminates.
+    retry = registry2.retry_admission_cleanup(
+        now=_T4, admission_ref=admit2.value.admission_ref
+    )
+    if not retry.ok:
+        return fail(
+            name, "cleanup retry blocked while close-pending: %s"
+            % (retry.detail,)
+        )
+    try:
+        registry2.close(now=_T5)
+    except ServiceError as exc:
+        return fail(name, "leg-2 close retry failed: %s" % (exc,))
+    if not registry2.closed:
+        return fail(name, "leg-2 did not reach terminal closure")
+    return ok(
+        name,
+        "busy/unproven close -> explicit close-pending (recoverable) -> "
+        "cleanup + close retry -> terminal CLOSED",
+    )
+
+
+def case_46_execution_scope_decision_only() -> Result:
+    """PR #26 fourth Architect review, finding B2: the ONLY
+    authoritative scope used by execution admission is the STORED
+    decision's own scope.  admit_execution accepts (now, decision_ref,
+    requirements, label) -- no service/session/caller input exists at
+    the execution boundary, and every admission (registry- and
+    provider-side) carries exactly the cited decision's born-bound
+    (service, session, caller, tenant) scope."""
+    name = "case_46_execution_scope_decision_only"
+    import inspect
+
+    registry, executor = _full_registry()
+    # 1. Structural: no duplicated authorization inputs exist at all.
+    params = inspect.signature(registry.admit_execution).parameters
+    if set(params) != {"now", "decision_ref", "requirements", "label"}:
+        return fail(
+            name, "admit_execution still accepts scope inputs: %s"
+            % (sorted(params),),
+        )
+    other_ref = _registered(
+        registry, _advertisement(descriptor=_descriptor(name="scope-twin"))
+    )
+    store, session_id, _decision, _path = _compose_real_session()
+    session_registry, _ = _full_registry(
+        session_reader=_StoreSessionReader(store)
+    )
+    # 2. Scope faithfulness: each decision admits EXACTLY its own
+    #    born-bound scope, on both sides of the seam.
+    first_service = _registered(registry)
+    decision_a = _decision_for(registry, first_service, now=_T1)
+    admission_a = registry.admit_execution(now=_T1, decision_ref=decision_a)
+    if not admission_a.ok:
+        return fail(name, "decision-only admit failed: %s" % (admission_a.detail,))
+    stored_a = registry._decisions[decision_a]  # noqa: SLF001
+    value_a = admission_a.value
+    if (
+        value_a.service_ref != stored_a.service_ref
+        or value_a.session_id != stored_a.session_id
+        or value_a.decision_ref != decision_a
+        or value_a.tenant_domain != stored_a.tenant_domain
+    ):
+        return fail(name, "admission scope drifted from the decision's scope")
+    provider_a = executor._admissions[  # noqa: SLF001
+        value_a.admission_ref
+    ].admission
+    if (
+        provider_a.service_ref != stored_a.service_ref
+        or provider_a.session_id != stored_a.session_id
+    ):
+        return fail(name, "provider-side scope drifted from the decision")
+    registry.release_execution(now=_T1, admission_ref=value_a.admission_ref)
+    # 3. A SECOND decision with a DIFFERENT scope admits that other
+    #    scope -- there is no input that could steer it elsewhere.
+    decision_b = _decision_for(registry, other_ref, now=_T1)
+    admission_b = registry.admit_execution(now=_T1, decision_ref=decision_b)
+    if not admission_b.ok:
+        return fail(name, "second-scope admit failed")
+    if admission_b.value.service_ref != other_ref:
+        return fail(name, "second admission did not follow its own decision")
+    registry.release_execution(
+        now=_T1, admission_ref=admission_b.value.admission_ref
+    )
+    # 4. Session-scoped decision under a REAL session authority: the
+    #    session in the admission is the decision's own session.
+    session_service = _registered(session_registry)
+    session_decision = _decision_for(
+        session_registry, session_service, now=_T1, session_id=session_id,
+        caller_node_id=_NODE_UE,
+    )
+    session_admission = session_registry.admit_execution(
+        now=_T1, decision_ref=session_decision
+    )
+    if not session_admission.ok:
+        return fail(
+            name, "session-scope admit failed: %s" % (session_admission.detail,)
+        )
+    if session_admission.value.session_id != session_id:
+        return fail(name, "admission session is not the decision's session")
+    if session_admission.value.decision_ref != session_decision:
+        return fail(name, "admission lost the governing decision ref")
+    # 5. Negative: a decision whose service was withdrawn authorizes
+    #    nothing at the execution boundary (the decision's own scope
+    #    no longer resolves), and an unknown ref is DECISION_UNKNOWN.
+    registry.withdraw_service(now=_T2, service_ref=other_ref, reason="gone")
+    try:
+        registry.admit_execution(now=_T2, decision_ref=decision_b)
+        return fail(name, "withdrawn-scope decision admitted execution")
+    except ServiceError as exc:
+        if exc.reason not in (
+            ServiceReasonCode.SERVICE_WITHDRAWN,
+            ServiceReasonCode.REAUTHORIZATION_REQUIRED,
+        ):
+            return fail(name, "withdrawn scope: %s" % (exc.reason,))
+    try:
+        registry.admit_execution(
+            now=_T2, decision_ref="services:decision:" + "0" * 32
+        )
+        return fail(name, "unknown decision admitted")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_UNKNOWN:
+            return fail(name, "unknown decision: %s" % (exc.reason,))
+    # 6. The provider executed NOTHING outside decision-derived scope.
+    for ref in _executor_refs(executor):
+        payloads = executor.executed_payloads(ref)
+        if payloads:
+            return fail(name, "provider executed payloads during the case")
+    return ok(
+        name,
+        "admit_execution consumes scope exclusively from the stored "
+        "decision (no service/session/caller execution inputs exist)",
     )
 
 
@@ -4268,6 +4605,8 @@ def main() -> int:
         case_42_discovery_decision_scope_binding,
         case_43_deny_revocation_invalidates_standing_allow,
         case_44_explicit_cleanup_outcomes,
+        case_45_close_pending_recoverable_lifecycle,
+        case_46_execution_scope_decision_only,
     ]
     print("ADCOS service registry / edge compute self-test (WORK-025)")
     print("=" * 72)

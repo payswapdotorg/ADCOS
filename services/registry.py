@@ -53,7 +53,22 @@ facts and composes every other authority through its public seams:
   execution seam behind a sandboxed provider: authorization is
   verified BEFORE any provider-side effect; provider faults are
   isolated typed failure values; data-path executions append no
-  canonical events.
+  canonical events.  The execution boundary accepts NO restated
+  authorization scope (PR #26 fourth review, finding B2): the
+  effective (service, session, caller, tenant) invocation scope is
+  derived EXCLUSIVELY from the stored ``InvocationDecision`` the
+  caller cites -- the same consumes-the-authorized-scope rule
+  ``apply_policy_decision`` follows, carried through the whole
+  execution seam.
+- **Registry lifecycle** -- a terminal-close protocol that cannot
+  strand provider state (PR #26 fourth review, finding B1): terminal
+  ``closed`` is claimed ONLY once every registered provider's close
+  is PROVEN; a close that cannot be proven parks the registry in the
+  explicit, RECOVERABLE ``close-pending`` state in which ONLY
+  admission cleanup (``release_execution`` /
+  ``retry_admission_cleanup``) and the close retry are legal -- never
+  a terminal-closed registry above a still-active provider with no
+  recovery path.
 - **Capacity** -- advertisement capacity is WORK-008 DATA (an
   offer); the explicit resource-admission path (admission and
   allocation ledgers) is the reservation; exhaustion fails closed
@@ -116,6 +131,7 @@ from .model import (
     ExecutionOutcome,
     FederationExposure,
     InvocationDecision,
+    RegistryLifecycle,
     PlacementTransition,
     ServiceAdmission,
     ServiceAdvertisement,
@@ -183,13 +199,20 @@ class _ServiceEntry:
 
 class _ProviderRegistration:
     """Internal provider registration bookkeeping (diagnostics only --
-    labels and sandboxes never enter canonical state)."""
+    labels and sandboxes never enter canonical state).
 
-    __slots__ = ("label", "sandbox")
+    ``closed_proven`` (PR #26 fourth review, finding B1) records that
+    THIS registry has PROVEN this provider's close: it flips exactly
+    once, on a sandbox close that returned ok, and a proven provider is
+    never re-attempted by a later close retry (so an already-closed
+    provider can never be miscounted as an unproven one)."""
+
+    __slots__ = ("label", "sandbox", "closed_proven")
 
     def __init__(self, label: str, sandbox: SandboxedExecutionProvider) -> None:
         self.label = label
         self.sandbox = sandbox
+        self.closed_proven = False
 
 
 class _AdmissionEntry:
@@ -288,17 +311,41 @@ class ServiceRegistry:
         # never committed; PR #26 third review, finding 4: partial
         # failures are explicit, never swallowed).
         self._dangling_provider_admissions: List[Dict[str, str]] = []
-        self._closed = False
+        # Registry lifecycle (PR #26 fourth review, finding B1): OPEN
+        # -> CLOSE_PENDING (explicit, recoverable degraded closure)
+        # -> CLOSED (terminal, claimed ONLY once every registered
+        # provider's close is proven).
+        self._lifecycle = RegistryLifecycle.OPEN
 
     # ------------------------------------------------------------------ #
     # Guards and helpers
     # ------------------------------------------------------------------ #
 
     def _require_not_closed(self) -> None:
-        if self._closed:
+        """Reject only TERMINAL closure.  The explicit degraded
+        close-pending state deliberately does NOT raise here: admission
+        cleanup (release / cleanup retry) and the close retry itself
+        remain available while provider cleanup is unproven (PR #26
+        fourth review, finding B1 -- a degraded closure must remain
+        RECOVERABLE, never stranded)."""
+        if self._lifecycle == RegistryLifecycle.CLOSED:
             raise ServiceError(
                 ServiceReasonCode.ILLEGAL_STATE,
-                "service registry is closed",
+                "service registry is closed (terminal)",
+            )
+
+    def _require_fully_open(self) -> None:
+        """Reject BOTH degraded states: while the registry is
+        close-pending, every non-cleanup operation fails closed with
+        the degraded state named explicitly."""
+        self._require_not_closed()
+        if self._lifecycle == RegistryLifecycle.CLOSE_PENDING:
+            raise ServiceError(
+                ServiceReasonCode.ILLEGAL_STATE,
+                "service registry is close-pending (explicit degraded "
+                "closure: a provider close is not yet proven; only "
+                "release_execution / retry_admission_cleanup / close "
+                "are available)",
             )
 
     def _require_now(self, now: object) -> str:
@@ -498,7 +545,7 @@ class ServiceRegistry:
         """Register (and open) an execution provider behind the
         sandbox.  The label is diagnostic only and never enters
         canonical state."""
-        self._require_not_closed()
+        self._require_fully_open()
         self._require_now(now)
         if not isinstance(implementation, ExecutionProviderContract):
             raise ServiceError(
@@ -555,7 +602,7 @@ class ServiceRegistry:
         return self._default_sandbox.computed_health()
 
     def health(self, *, now: str) -> ServiceOpResult:
-        self._require_not_closed()
+        self._require_fully_open()
         self._require_now(now)
         return self._require_default().health(now=now)
 
@@ -595,7 +642,7 @@ class ServiceRegistry:
         changes must use :meth:`relocate_service` (never a silent
         host mutation).
         """
-        self._require_not_closed()
+        self._require_fully_open()
         self._require_now(now)
         if not isinstance(advertisement, ServiceAdvertisement):
             raise ServiceError(
@@ -766,7 +813,7 @@ class ServiceRegistry:
         result -- never swallowed), and standing decisions stop being
         current.  Local service state is never erased by anything but
         this explicit owner operation."""
-        self._require_not_closed()
+        self._require_fully_open()
         self._require_now(now)
         validate_opaque_ref(service_ref, "service")
         reject_credential_like_text(reason, label="withdrawal reason")
@@ -816,7 +863,7 @@ class ServiceRegistry:
         standing decisions stop being current -- authorization is
         re-evaluated under current policy (a new invocation decision
         is required after the transition)."""
-        self._require_not_closed()
+        self._require_fully_open()
         self._require_now(now)
         validate_opaque_ref(service_ref, "service")
         validate_node_id(target_host_node_id, label="target host node id")
@@ -896,7 +943,7 @@ class ServiceRegistry:
         A policy-controlled service requires a CURRENT invocation
         decision: a discovered service is never implicitly authorized
         merely because it was advertised."""
-        self._require_not_closed()
+        self._require_fully_open()
         self._require_now(now)
         validate_opaque_ref(service_ref, "service")
         if not isinstance(tenant_domain, str) or not tenant_domain:
@@ -1076,7 +1123,7 @@ class ServiceRegistry:
         discovery never requires upstream connectivity; federated
         (peer-claim) visibility requires it AND a currently
         scope-authorized relationship."""
-        self._require_not_closed()
+        self._require_fully_open()
         self._require_now(now)
         if not isinstance(tenant_domain, str) or not tenant_domain:
             raise ServiceError(
@@ -1251,7 +1298,7 @@ class ServiceRegistry:
         authorization), its ref resolves to no authorizing decision
         at lookup/admission time, and a subsequent ALLOW at a later
         applied instant legitimately re-authorizes the scope."""
-        self._require_not_closed()
+        self._require_fully_open()
         self._require_now(now)
         if not isinstance(policy_decision, PolicyDecision):
             raise ServiceError(
@@ -1411,36 +1458,32 @@ class ServiceRegistry:
         self,
         *,
         now: str,
-        service_ref: str,
         decision_ref: str,
-        session_id: str,
-        caller_node_id: str,
         requirements: Any,
-    ) -> ServiceCandidate:
-        validate_opaque_ref(service_ref, "service")
+    ) -> Tuple[ServiceCandidate, InvocationDecision]:
+        """Verify one execution admission against the STORED decision
+        only (PR #26 fourth Architect review, finding B2).
+
+        The effective invocation scope -- service, session, caller,
+        tenant -- is EXTRACTED exclusively from the stored
+        :class:`InvocationDecision` (whose content was born at the
+        WORK-010 evaluator and digest-covered there).  The caller
+        supplies NO scope at the execution boundary: there is no
+        service/session/caller input to mismatch, restate, or construct
+        -- the downstream layer consumes the scope the policy
+        authority authorized (the remediation-2 authority rule,
+        carried through the execution seam)."""
         validate_opaque_ref(decision_ref, "decision")
-        if session_id:
-            validate_session_ref(session_id)
-        if caller_node_id:
-            validate_node_id(caller_node_id, label="caller node id")
         self._reject_identity_smuggling(requirements)
-        candidate = self._require_service_record(service_ref, now)
         decision = self._decisions.get(decision_ref)
         if decision is None:
             raise ServiceError(
                 ServiceReasonCode.DECISION_UNKNOWN,
                 "invocation decision %r is unknown" % (decision_ref,),
             )
-        if (
-            decision.service_ref != service_ref
-            or decision.session_id != session_id
-            or decision.caller_node_id != caller_node_id
-        ):
-            raise ServiceError(
-                ServiceReasonCode.DECISION_SCOPE_MISMATCH,
-                "invocation decision %r was issued for another "
-                "service/caller/session scope" % (decision_ref,),
-            )
+        # The service record is resolved THROUGH the decision's own
+        # service scope (never an independently supplied selector).
+        candidate = self._require_service_record(decision.service_ref, now)
         # The decision's authorized tenant must still be the service
         # record's tenant (belt-and-braces: the service_ref structurally
         # fixes the tenant, so a mismatch means corrupted or rebound
@@ -1452,7 +1495,7 @@ class ServiceRegistry:
                 "service %r belongs to tenant %r (cross-tenant "
                 "authorization fails closed)" % (
                     decision_ref, decision.tenant_domain,
-                    service_ref, candidate.tenant_domain,
+                    decision.service_ref, candidate.tenant_domain,
                 ),
             )
         if not self._decision_is_current(decision):
@@ -1462,7 +1505,7 @@ class ServiceRegistry:
                 "(re-authorization under current policy is required)"
                 % (decision_ref,),
             )
-        self._require_secureable_session(session_id)
+        self._require_secureable_session(decision.session_id)
         # Capacity admission over WORK-008 DATA: an execution
         # admission consumes one base unit of edge-service-capacity
         # from the service's DECLARED capacity.  An advertisement is
@@ -1470,61 +1513,65 @@ class ServiceRegistry:
         # (or zero) edge-service-capacity contributes NO allocatable
         # capacity and admission fails closed (the WORK-022 lesson).
         declared = self._declared_capacity(
-            service_ref, "edge-service-capacity", now=now
+            decision.service_ref, "edge-service-capacity", now=now
         )
-        active = self._active_admission_count(service_ref)
+        active = self._active_admission_count(decision.service_ref)
         if declared - active < 1:
             raise ServiceError(
                 ServiceReasonCode.CAPACITY_EXHAUSTED,
                 "declared edge-service-capacity for %r is exhausted "
                 "(declared %d, active admissions %d) -- advertisement is "
                 "an offer, admission is the reservation"
-                % (service_ref, declared, active),
+                % (decision.service_ref, declared, active),
             )
-        return candidate
+        return candidate, decision
 
     def admit_execution(
         self,
         *,
         now: str,
-        service_ref: str,
         decision_ref: str,
-        session_id: str = "",
-        caller_node_id: str = "",
         requirements: Any = None,
         label: Optional[str] = None,
     ) -> ServiceOpResult:
-        """Admit one standing execution (the prepare/admit hook):
-        authorization is verified BEFORE any provider-side effect, and
-        the provider confirms externally before the registry commits
-        the admission record (external-confirm-then-commit with
-        compensation -- the WORK-024 failover discipline)."""
-        self._require_not_closed()
+        """Admit one standing execution (the prepare/admit hook).
+
+        The effective invocation scope (service, session, caller,
+        tenant) is DERIVED EXCLUSIVELY from the stored
+        ``InvocationDecision`` named by ``decision_ref`` -- the API
+        accepts no restated authorization scope at the execution
+        boundary (PR #26 fourth Architect review, finding B2: the
+        downstream layer consumes the scope the policy authority
+        authorized; it does not construct or restate authorization
+        scope -- the same rule ``apply_policy_decision`` already
+        follows).  Authorization is verified BEFORE any provider-side
+        effect, and the provider confirms externally before the
+        registry commits the admission record
+        (external-confirm-then-commit with compensation -- the
+        WORK-024 failover discipline)."""
+        self._require_fully_open()
         self._require_now(now)
         if label is not None:
             reject_credential_like_text(label, label="label")
-        candidate = self._validate_admit_execution(
+        candidate, decision = self._validate_admit_execution(
             now=now,
-            service_ref=service_ref,
             decision_ref=decision_ref,
-            session_id=session_id,
-            caller_node_id=caller_node_id,
             requirements=requirements,
         )
         sandbox = self._require_default()
         result = sandbox.admit(
             now=now,
-            service_ref=service_ref,
+            service_ref=decision.service_ref,
             host_node_id=candidate.host_node_id,
             tenant_domain=candidate.tenant_domain,
-            session_id=session_id,
+            session_id=decision.session_id,
             decision_ref=decision_ref,
             requirements=requirements,
         )
         if not result.ok:
             return result
         admission = result.value
-        if admission.service_ref != service_ref:
+        if admission.service_ref != decision.service_ref:
             return ServiceOpResult(
                 ok=False,
                 failure=ServiceFailure(
@@ -1604,7 +1651,7 @@ class ServiceRegistry:
         execute hook).  Data-path: no canonical mutation, no events
         (the WORK-024 egress discipline); provider faults are
         returned as typed failure values."""
-        self._require_not_closed()
+        self._require_fully_open()
         self._require_now(now)
         if label is not None:
             reject_credential_like_text(label, label="label")
@@ -1827,7 +1874,7 @@ class ServiceRegistry:
         """Reserve declared service capacity explicitly (WORK-008
         DATA kinds and base units; the advertisement is the offer,
         this is the reservation)."""
-        self._require_not_closed()
+        self._require_fully_open()
         self._require_now(now)
         if label is not None:
             reject_credential_like_text(label, label="label")
@@ -1848,7 +1895,7 @@ class ServiceRegistry:
         allocation_ref: str,
         label: Optional[str] = None,
     ) -> ServiceOpResult:
-        self._require_not_closed()
+        self._require_fully_open()
         self._require_now(now)
         if label is not None:
             reject_credential_like_text(label, label="label")
@@ -1894,7 +1941,7 @@ class ServiceRegistry:
         instant (federation authority remains WORK-015; the service
         layer carries the result as DATA).  Re-application is
         idempotent (same exposure identity -> no state change)."""
-        self._require_not_closed()
+        self._require_fully_open()
         self._require_now(now)
         validate_opaque_ref(service_ref, "service")
         validate_federation_scope(scope)
@@ -1969,7 +2016,7 @@ class ServiceRegistry:
         """Remove one federation exposure.  The LOCAL SERVICE RECORD
         IS NEVER DELETED (WORK-025 invariant: removing federation
         exposure preserves local service state)."""
-        self._require_not_closed()
+        self._require_fully_open()
         self._require_now(now)
         validate_opaque_ref(service_ref, "service")
         validate_federation_scope(scope)
@@ -2001,7 +2048,7 @@ class ServiceRegistry:
         declared remote-service-loss-as-local-corruption: local
         records stay registered and locally discoverable regardless
         of upstream state (LOCK-012)."""
-        self._require_not_closed()
+        self._require_fully_open()
         self._require_now(now)
         if label is not None:
             reject_credential_like_text(label, label="label")
@@ -2065,11 +2112,12 @@ class ServiceRegistry:
         """ACCESS-STATE-IN canonical snapshot: authoritative service
         facts only.  Provider labels, sandboxes, health ladders,
         upstream reference state, step budgets, execution counters,
-        dangling provider admissions, and derivation nonces are
-        ACCESS-STATE-OUT (never canonical)."""
+        dangling provider admissions, proven-closure flags, and
+        derivation nonces are ACCESS-STATE-OUT (never canonical)."""
         return {
             "integration_id": self._integration_id,
-            "closed": self._closed,
+            "lifecycle": self._lifecycle,
+            "closed": self._lifecycle == RegistryLifecycle.CLOSED,
             "registered_count": len(self._services),
             "admission_count": self._active_admission_count_all(),
             "services": [
@@ -2110,11 +2158,18 @@ class ServiceRegistry:
     def diagnostic_state(self) -> dict:
         return {
             "integration_id": self._integration_id,
-            "closed": self._closed,
+            "lifecycle": self._lifecycle,
+            "closed": self._lifecycle == RegistryLifecycle.CLOSED,
             "providers": [
                 {"label": registration.label,
-                 "health": registration.sandbox.computed_health()}
+                 "health": registration.sandbox.computed_health(),
+                 "closed_proven": registration.closed_proven}
                 for registration in self._providers
+            ],
+            "close_pending_providers": [
+                registration.label
+                for registration in self._providers
+                if not registration.closed_proven
             ],
             "default_health": self.computed_health(),
             "upstream_available": self._upstream_available,
@@ -2133,34 +2188,72 @@ class ServiceRegistry:
         }
 
     def close(self, *, now: str) -> None:
-        """Close the registry TERMINALLY with EXPLICIT provider
-        outcomes (PR #26 third review, finding 4 + the close
-        observation): the injected instant is validated BEFORE any
-        state change, the closed flag flips first (terminal,
-        idempotent-guarded), every provider is closed with the REAL
-        injected instant, and a provider that could not be proven
-        closed is raised as a typed error naming its label -- the
-        registry never claims a clean terminal closure while an
-        execution provider may still be active."""
-        self._require_not_closed()
-        self._require_now(now)
-        self._closed = True
-        failed_labels: List[str] = []
-        for registration in self._providers:
-            try:
-                result = registration.sandbox.close(now=now)
-            except BaseException:  # noqa: BLE001 -- surfaced, not swallowed
-                result = None
-            if result is None or not result.ok:
-                failed_labels.append(registration.label)
-        if failed_labels:
+        """TERMINAL-close protocol that cannot strand provider state
+        (PR #26 fourth Architect review, finding B1):
+
+            close requested
+                ->
+            attempt EVERY unproven provider close
+                ->
+            all proven closed?
+                |- yes -> CLOSED (terminal)
+                '- no  -> explicit CLOSE_PENDING state (recoverable)
+                          + retryable cleanup + close retry
+
+        The injected instant is validated BEFORE any state change; a
+        provider counts as closed ONLY when its sandbox close returned
+        ok (recorded per registration, so a proven provider is never
+        re-attempted by a retry); and terminal closure is claimed ONLY
+        when every registered provider's close is proven.  A close
+        that cannot be proven parks the registry in the explicit,
+        RECOVERABLE ``close-pending`` lifecycle state -- in which
+        ``release_execution`` / ``retry_admission_cleanup`` and this
+        close retry remain the only legal operations -- and raises a
+        typed error naming the unproven providers.  The registry
+        therefore NEVER enters a terminal-closed / provider-still-
+        active combination with no recovery path."""
+        if self._lifecycle == RegistryLifecycle.CLOSED:
             raise ServiceError(
                 ServiceReasonCode.ILLEGAL_STATE,
-                "registry closed, but provider close could not be proven "
-                "for: %s (providers may still be active -- explicit "
-                "degraded closure, never a silent one)"
-                % (", ".join(sorted(failed_labels)),),
+                "service registry is already closed (terminal)",
             )
+        self._require_now(now)
+        unproven: List[str] = []
+        for registration in self._providers:
+            if registration.closed_proven:
+                continue
+            try:
+                result = registration.sandbox.close(now=now)
+            except BaseException:  # noqa: BLE001 -- accounted, not swallowed
+                result = None
+            if result is not None and result.ok:
+                registration.closed_proven = True
+            else:
+                unproven.append(registration.label)
+        if not unproven:
+            self._lifecycle = RegistryLifecycle.CLOSED
+            self._append_event(
+                ServiceEventType.REGISTRY_CLOSED, now,
+                detail="terminal close: every provider close proven",
+            )
+            return
+        if self._lifecycle == RegistryLifecycle.OPEN:
+            self._lifecycle = RegistryLifecycle.CLOSE_PENDING
+            self._append_event(
+                ServiceEventType.REGISTRY_CLOSE_PENDING, now,
+                detail="provider close unproven for: %s"
+                       % (", ".join(sorted(unproven)),),
+            )
+        raise ServiceError(
+            ServiceReasonCode.ILLEGAL_STATE,
+            "provider close could not be proven for: %s -- the registry "
+            "is CLOSE_PENDING (explicit degraded closure, recoverable): "
+            "release outstanding admissions via release_execution / "
+            "retry_admission_cleanup, then retry close(); terminal "
+            "closure is claimed only once every provider close is "
+            "proven (never a stranded closed-registry/active-provider "
+            "state)" % (", ".join(sorted(unproven)),),
+        )
 
     # ---- # properties --------------------------------------------------- #
 
@@ -2173,8 +2266,14 @@ class ServiceRegistry:
         return len(self._services)
 
     @property
+    def lifecycle(self) -> str:
+        """The frozen lifecycle state (``open`` / ``close-pending`` /
+        ``closed``); ``closed`` below is the terminal-only projection."""
+        return self._lifecycle
+
+    @property
     def closed(self) -> bool:
-        return self._closed
+        return self._lifecycle == RegistryLifecycle.CLOSED
 
 
 # ---------------------------------------------------------------------- #

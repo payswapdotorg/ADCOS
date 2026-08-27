@@ -180,6 +180,29 @@ class AllocationState:
         return (cls.RESERVED, cls.RELEASED)
 
 
+class RegistryLifecycle:
+    """Service-registry lifecycle states (frozen; PR #26 fourth
+    Architect review, finding B1).
+
+    Terminal closure is claimed ONLY once every registered provider's
+    close has been PROVEN.  A close attempt whose provider closes
+    cannot all be proven parks the registry in the explicit,
+    RECOVERABLE ``close-pending`` state -- never a stranded
+    registry-closed / provider-still-active combination.  While
+    close-pending, ONLY the cleanup operations
+    (``release_execution`` / ``retry_admission_cleanup``) and the
+    close retry itself are legal; every other operation fails closed
+    with the degraded state named explicitly."""
+
+    OPEN = "open"
+    CLOSE_PENDING = "close-pending"
+    CLOSED = "closed"
+
+    @classmethod
+    def values(cls) -> Tuple[str, ...]:
+        return (cls.OPEN, cls.CLOSE_PENDING, cls.CLOSED)
+
+
 class ExecutionStatus:
     """Execution outcome statuses (frozen; partial failures are
     explicit -- a completed run may still report ``failed`` with a
@@ -248,6 +271,8 @@ class ServiceEventType:
     ADMISSION_CLEANUP_PENDING = "admission-cleanup-pending"
     ALLOCATION_RESERVED = "allocation-reserved"
     ALLOCATION_RELEASED = "allocation-released"
+    REGISTRY_CLOSE_PENDING = "registry-close-pending"
+    REGISTRY_CLOSED = "registry-closed"
 
     @classmethod
     def values(cls) -> Tuple[str, ...]:
@@ -261,6 +286,7 @@ class ServiceEventType:
             cls.ADMISSION_RELEASED, cls.ADMISSION_SUPERSEDED,
             cls.ADMISSION_CLEANUP_PENDING,
             cls.ALLOCATION_RESERVED, cls.ALLOCATION_RELEASED,
+            cls.REGISTRY_CLOSE_PENDING, cls.REGISTRY_CLOSED,
         )
 
 
@@ -1474,6 +1500,7 @@ __all__ = [
     "EvidenceSourceClass",
     "AdmissionState",
     "AllocationState",
+    "RegistryLifecycle",
     "ExecutionStatus",
     "ExposureState",
     "ServiceMetricName",
