@@ -19,8 +19,15 @@ node-local lifecycle state):
 - capability negotiation stays WORK-005 (mixed-version coexistence is
   answered in ``upgrade.compatibility`` by delegation);
 - gate evidence stays WORK-026: gates consume REAL telemetry
-  observations read-only as DATA -- no observation or stale
-  observation means INSUFFICIENT_EVIDENCE and the gate FAILS CLOSED
+  observations read-only as DATA -- and the node's own genuine
+  WORK-026 ``TelemetryStore`` is the provenance oracle: every
+  supplied observation must be a genuine ``TelemetryObservation``
+  that the store has actually RECORDED (caller-fabricated objects,
+  duck-typed fakes, and valid-but-unrecorded observations are
+  rejected outright; PR #31 Architect review blocker 1 -- a
+  complete-content observation id is integrity, recordedness is
+  authority provenance).  A recorded-but-absent or stale observation
+  still means INSUFFICIENT_EVIDENCE and the gate FAILS CLOSED
   (health is never assumed);
 - schema evolution is the migration registry's (:mod:`upgrade
   .migrations`) verdict -- the manager only walks registered,
@@ -45,6 +52,17 @@ Fail-closed invariants enforced here:
    (:class:`upgrade.population.RolloutCoordinator`).
 5. **Plans are upgrades by construction** (``UpgradePlan`` rejects
    ``to <= from``): an in-band downgrade does not exist.
+6. **Live migration application is transactional** (PR #31
+   Architect review blocker 2): the PREPARED->CANARY transition
+   executes the COMPLETE forward chain for EVERY artifact on
+   isolated deep copies and swaps the live schema state/versions
+   only after the entire chain succeeds -- a mutating, raising, or
+   invalid-returning migration callable can never leave live state
+   partially modified (migration purity is a documented
+   requirement, but the registry accepts arbitrary callables, so
+   the manager does not rely on it).  The rollback path applies
+   the same isolation to its reverse proof-walk; its authoritative
+   restore is the byte-identical pre-plan snapshot.
 
 Determinism: injected instants only (never a wall clock), sorted
 iteration everywhere, deep copies through canonical JSON round-trips
@@ -73,6 +91,12 @@ from .model import (
 )
 from .validation import validate_instant, validate_opaque_ref
 
+# The WORK-026 telemetry authority's recorded-evidence boundary (PR
+# #31 Architect review blocker 1): the manager never accepts
+# caller-supplied observation objects on faith -- provenance is
+# resolved against the node's own genuine TelemetryStore.
+from telemetry.store import TelemetryStore
+
 
 def _deep_copy_state(state: Mapping[str, Any]) -> Dict[str, Any]:
     """A deterministic deep copy of canonical-JSON schema state DATA."""
@@ -97,6 +121,7 @@ class UpgradeManager:
         schema_versions: Mapping[str, str],
         schema_state: Mapping[str, Mapping[str, Any]],
         migration_registry: MigrationRegistry,
+        telemetry_store: TelemetryStore,
         minimum_version_floor: Optional[SoftwareVersion] = None,
     ) -> None:
         validate_opaque_ref(node_id, "manager node_id")
@@ -114,6 +139,14 @@ class UpgradeManager:
             raise UpgradeError(
                 UpgradeReasonCode.INVALID_INPUT,
                 "migration_registry must be a MigrationRegistry",
+            )
+        if not isinstance(telemetry_store, TelemetryStore):
+            raise UpgradeError(
+                UpgradeReasonCode.INVALID_INPUT,
+                "telemetry_store must be the node's genuine WORK-026 "
+                "TelemetryStore (gate-evidence provenance is resolved "
+                "against the telemetry authority's recorded set, never "
+                "against caller-supplied objects)",
             )
         if set(schema_versions) != set(schema_state):
             raise UpgradeError(
@@ -145,6 +178,7 @@ class UpgradeManager:
             schema_id: _deep_copy_state(state) for schema_id, state in schema_state.items()
         }
         self._registry = migration_registry
+        self._telemetry_store = telemetry_store
         self._floor = floor
         self._plan: Optional[UpgradePlan] = None
         self._stage: Optional[str] = None
@@ -408,6 +442,18 @@ class UpgradeManager:
         statement about this node is a claim by the reporting node,
         never this node's state, so only observations whose
         ``source_node_id`` is this node count as gate evidence.
+
+        Evidence is PROVENANCE-VERIFIED against the node's own genuine
+        WORK-026 ``TelemetryStore`` (PR #31 Architect review blocker
+        1): every supplied observation must be a genuine
+        (constructor-validated) ``TelemetryObservation`` that the
+        telemetry authority has actually RECORDED -- the store is the
+        only origin of gate evidence.  A duck-typed fake (however
+        completely populated), a valid observation that was never
+        recorded, or a tampered variant of a recorded id is rejected
+        outright with INVALID_INPUT: a complete-content observation
+        id is INTEGRITY, not authority provenance, and caller-supplied
+        DATA is never turned into authoritative evidence.
         """
         if not isinstance(spec, HealthGateSpec):
             raise UpgradeError(
@@ -415,20 +461,31 @@ class UpgradeManager:
                 "gate spec must be a HealthGateSpec",
             )
         validate_instant(at, "evaluate_gate at")
+        from telemetry.model import TelemetryObservation
+
         matching = []
         stale = 0
         foreign = 0
         for observation in observations:
-            required = ("subject_kind", "subject_ref", "metric", "value",
-                        "observed_at", "freshness_until", "sequence",
-                        "observation_id", "source_node_id")
-            for attribute in required:
-                if not hasattr(observation, attribute):
-                    raise UpgradeError(
-                        UpgradeReasonCode.INVALID_INPUT,
-                        "gate evidence must be REAL telemetry observations "
-                        "(missing attribute %r)" % (attribute,),
-                    )
+            if not isinstance(observation, TelemetryObservation):
+                raise UpgradeError(
+                    UpgradeReasonCode.INVALID_INPUT,
+                    "gate evidence must be a genuine WORK-026 "
+                    "TelemetryObservation (got %s): attribute-shaped "
+                    "fakes are never telemetry, however completely "
+                    "populated" % (type(observation).__name__,),
+                )
+            if not self._telemetry_store.is_recorded(observation):
+                raise UpgradeError(
+                    UpgradeReasonCode.INVALID_INPUT,
+                    "gate evidence %s was never recorded by the "
+                    "telemetry authority (the store is the only origin "
+                    "of gate evidence: a caller-injected observation "
+                    "with internally valid content and id is still not "
+                    "authoritative -- record it through the WORK-026 "
+                    "ingest discipline first)"
+                    % (observation.observation_id[:56],),
+                )
             if (
                 observation.subject_kind == spec.subject_kind
                 and observation.subject_ref == spec.subject_ref
@@ -539,18 +596,31 @@ class UpgradeManager:
             "gate %r: %s" % (gate.label, result.detail),
         )
         if self._stage == UpgradeStage.PREPARED:
-            # Canary goes live: apply the rehearsed migrations and
-            # switch the node's version truth to the plan targets.
+            # Canary goes live -- TRANSACTIONALLY (PR #31 Architect
+            # review blocker 2): the COMPLETE forward chain for EVERY
+            # artifact runs on isolated deep copies first, and the
+            # live schema state/versions are swapped only after the
+            # entire chain succeeds.  A migration callable that
+            # mutates its input and raises, or returns invalid DATA,
+            # can never leave live state partially modified with stale
+            # version metadata: the registry accepts arbitrary
+            # callables, so the manager never hands it live state.
+            new_state: Dict[str, Dict[str, Any]] = {}
+            new_versions: Dict[str, str] = {}
             for schema_id in sorted(self._schema_versions):
                 source = self._schema_versions[schema_id]
                 target = dict(plan.target_schema_versions)[schema_id]
                 if source == target:
-                    continue
+                    continue  # unchanged artifact: nothing to migrate
                 migrated = self._registry.migrate_forward(
-                    self._schema_state[schema_id], schema_id, source, target,
+                    _deep_copy_state(self._schema_state[schema_id]),
+                    schema_id, source, target,
                 )
-                self._schema_state[schema_id] = _deep_copy_state(migrated)
-                self._schema_versions[schema_id] = target
+                new_state[schema_id] = _deep_copy_state(migrated)
+                new_versions[schema_id] = target
+            # The entire chain succeeded: swap live state atomically.
+            self._schema_state = {**self._schema_state, **new_state}
+            self._schema_versions = {**self._schema_versions, **new_versions}
             self._software_version = plan.to_version
             self._protocol_profile = plan.target_protocol_profile
             self._stage = UpgradeStage.CANARY
@@ -628,17 +698,30 @@ class UpgradeManager:
                 "exit)" % self._node_id,
             )
         if self._stage in (UpgradeStage.CANARY, UpgradeStage.ROLLING):
-            # Live at the target: reverse-migrate every changed artifact.
+            # Live at the plan target: prove the reverse chain runs
+            # from the LIVE version back to the PRE-PLAN ORIGIN -- on
+            # ISOLATED COPIES (PR #31 Architect review blocker 2: the
+            # registry accepts arbitrary callables, so a mutating or
+            # raising backward migration must never corrupt live
+            # state mid-rollback).  The walk is the reversibility
+            # proof; the authoritative restore below is the
+            # byte-identical pre-plan snapshot.  (Surfaced by the PR
+            # #31 isolation regression: the previous walk compared
+            # the live version against the plan TARGET -- equal by
+            # construction once the canary is live -- so the
+            # "reverse-migrate" loop never actually executed; the
+            # proof now genuinely walks live -> origin.)
+            assert self._pre_plan is not None
+            origin_versions = self._pre_plan[2]
             for schema_id in sorted(self._schema_versions):
-                source = dict(plan.target_schema_versions)[schema_id]
-                target = self._schema_versions[schema_id]
-                if target == source:
+                live = self._schema_versions[schema_id]
+                origin = origin_versions[schema_id]
+                if live == origin:
                     continue
-                restored = self._registry.migrate_backward(
-                    self._schema_state[schema_id], schema_id, target, source,
+                self._registry.migrate_backward(
+                    _deep_copy_state(self._schema_state[schema_id]),
+                    schema_id, live, origin,
                 )
-                self._schema_state[schema_id] = _deep_copy_state(restored)
-                self._schema_versions[schema_id] = source
         assert self._pre_plan is not None
         (software, profile, versions, state) = self._pre_plan
         self._software_version = software

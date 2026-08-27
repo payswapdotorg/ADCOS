@@ -27,9 +27,18 @@ authority:
 - **Adapter health and observations stay WORK-016/W026.** Upgrade
   health gates are (subject kind, subject ref, metric, threshold)
   quads validated against the frozen WORK-026 metric registry, and
-  their evidence is REAL telemetry observations consumed read-only.
-  No observation or stale observation is INSUFFICIENT_EVIDENCE: the
-  gate fails closed — health is never assumed.
+  their evidence is REAL telemetry observations consumed read-only —
+  PROVENANCE-VERIFIED against the node's own WORK-026
+  `TelemetryStore` (PR #31 review): every supplied observation must
+  be a genuine `TelemetryObservation` the telemetry authority has
+  actually RECORDED (`TelemetryStore.is_recorded`, the additive
+  WORK-026 provenance-resolution surface). Duck-typed fakes (however
+  completely populated), valid-but-unrecorded observations,
+  cross-store injections, and tampered variants of recorded ids are
+  rejected outright: a complete-content observation id is
+  integrity, not authority provenance. No observation or stale
+  observation is INSUFFICIENT_EVIDENCE: the gate fails closed —
+  health is never assumed.
 - **Upgrade state is node-local lifecycle state**
   (spec/architecture.md 5.6). The manager owns exactly one node's
   staged plan, stage, gate verdicts, rollback window, and
@@ -73,6 +82,18 @@ honest terminal exits `ROLLED_BACK` and `ABORTED`:
    `to <= from`: an in-band downgrade does not exist — downgrades
    are rollbacks of staged plans (bounded by the floor), never new
    plans.
+6. **Live migration application is transactional** (PR #31 review).
+   The PREPARED→CANARY transition runs the COMPLETE forward chain
+   for EVERY artifact on isolated deep copies and swaps the live
+   schema state and version metadata only after the entire chain
+   succeeds — a mutating, raising, or invalid-returning migration
+   callable (the registry accepts arbitrary callables, and the
+   `begin()` rehearsal proves nothing about the later live call)
+   leaves live state byte-identical to the pre-transition state.
+   `rollback()` applies the same isolation to its reversibility
+   proof-walk (live version back to the pre-plan origin, on copies);
+   the authoritative restore is the byte-identical pre-plan
+   snapshot.
 
 ## Rolling upgrades (the population coordinator)
 

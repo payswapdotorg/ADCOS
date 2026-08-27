@@ -39,9 +39,12 @@ Frozen `spec/work-items.md` defines WORK-029 as:
    consumed read-only); capability negotiation stays WORK-005
    (delegated to its `negotiate()`, never re-implemented); gate
    evidence stays WORK-026 (real telemetry observations, consumed
-   read-only as DATA — self-sourced only, LOCK-008); upgrade state is
-   node-local lifecycle state (`spec/architecture.md` §5.6), never
-   topology/session/routing/policy state.
+   read-only as DATA — self-sourced only, LOCK-008 — and
+   provenance-verified against the node's own TelemetryStore: only
+   observations the telemetry authority actually RECORDED count as
+   gate evidence); upgrade state is node-local lifecycle state
+   (`spec/architecture.md` §5.6), never topology/session/routing/
+   policy state.
 3. The four governance version kinds (`spec/governance.md` §3) are
    never conflated or collapsed: Architecture (not a dimension of
    this family at all — ACR-governed), Protocol, Schema,

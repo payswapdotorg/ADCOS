@@ -929,8 +929,11 @@ def case_19_no_core_leakage() -> Result:
         # dependency-graph-sanctioned DOWNSTREAM consumer of telemetry
         # (spec/work-items.md: WORK-029 declares WORK-026 among its
         # frozen dependencies).  Its telemetry usage is pinned below
-        # to the DATA surface only (telemetry.model records and the
-        # frozen metric registry -- upgrade health-gate evidence).
+        # to the DATA surface only (telemetry.model records, the
+        # frozen metric registry, and -- the PR #31 Architect review
+        # blocker 1 correction -- telemetry.store's is_recorded
+        # provenance-resolution surface for upgrade health-gate
+        # evidence: the store is the only origin of gate evidence).
         if entry == "upgrade":
             continue
         for base, _dirs, files in os.walk(os.path.join(_ROOT, entry)):

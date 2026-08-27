@@ -48,9 +48,13 @@ cases:
   audited                                            -> case_17
 - the staged ladder happy path with exact event
   order and floor ratchet                            -> case_18
-- gates require REAL SELF-SOURCED telemetry evidence
-  (non-telemetry rejected; absent -> fail closed;
-  foreign-sourced claims never count -- LOCK-008)    -> case_19
+- gates require REAL SELF-SOURCED RECORDED telemetry
+  evidence (duck-typed fakes rejected however
+  complete; unrecorded/cross-store/tampered
+  injections rejected -- provenance is the
+  WORK-026 store's verdict; absent -> fail
+  closed; foreign-sourced claims never count --
+  LOCK-008)                                          -> case_19
 - stale evidence fails closed (stage unchanged)      -> case_20
 - gate thresholds enforced; the deterministic LATEST
   observation decides                                -> case_21
@@ -96,6 +100,12 @@ cases:
 - schema-state isolation: state handed out is a copy;
   internal state byte-identical after a full staged
   cycle                                              -> case_40
+- live migration application is TRANSACTIONALLY
+  isolated: raising / invalid-returning / partially-
+  applying migration chains (arbitrary callables,
+  honest in rehearsal, hostile live) leave live
+  state byte-identical; the rollback proof-walk is
+  isolated too (PR #31 review blocker 2)            -> case_41
 
 Run: python3 tools/upgrade_selftest.py   (exit 0 = PASS)
 """
@@ -103,6 +113,7 @@ Run: python3 tools/upgrade_selftest.py   (exit 0 = PASS)
 from __future__ import annotations
 
 import ast
+import copy
 import hashlib
 import json
 import os
@@ -173,6 +184,7 @@ from telemetry.model import (  # noqa: E402
     TelemetrySourceClass,
     derive_observation_id,
 )
+from telemetry.store import TelemetryStore  # noqa: E402
 
 Result = Tuple[str, bool, str]
 
@@ -248,14 +260,25 @@ def _manager(
     schema: str = "1.1",
     floor: Optional[str] = None,
     registry: Optional[MigrationRegistry] = None,
+    schemas: Optional[Dict[str, str]] = None,
+    state: Optional[Dict[str, Dict[str, Any]]] = None,
+    store: Optional[TelemetryStore] = None,
 ) -> UpgradeManager:
+    # Every manager owns its node's genuine WORK-026 telemetry store:
+    # gate-evidence provenance is resolved against the recorded set
+    # (PR #31 Architect review blocker 1).  The fixture registers the
+    # store per node so observation builders record evidence into the
+    # store of the manager under test.
+    telemetry_store = store if store is not None else TelemetryStore()
+    _STORES[node_id] = telemetry_store
     return UpgradeManager(
         node_id=node_id,
         software_version=SoftwareVersion.parse(software),
         protocol_profile=ProtocolProfile(major=profile[0], max_minor=profile[1]),
-        schema_versions={"node.config": schema},
-        schema_state={"node.config": dict(_STATE_1_1)},
+        schema_versions=schemas if schemas is not None else {"node.config": schema},
+        schema_state=state if state is not None else {"node.config": dict(_STATE_1_1)},
         migration_registry=registry if registry is not None else _registry(),
+        telemetry_store=telemetry_store,
         minimum_version_floor=SoftwareVersion.parse(floor) if floor else None,
     )
 
@@ -285,6 +308,14 @@ def _template(
     )
 
 
+# The per-node telemetry stores of the managers under test (the
+# provenance oracle every gate now verifies against; PR #31
+# Architect review blocker 1), and the per-(store, stream) monotone
+# sequence allocator mirroring the store's ingest ledger discipline.
+_STORES: Dict[str, TelemetryStore] = {}
+_SEQ: Dict[Tuple[int, str, str, str, str], int] = {}
+
+
 def _observation(
     node: str,
     subject_kind: str,
@@ -293,19 +324,40 @@ def _observation(
     value: int,
     *,
     at: str = _NOW,
-    seq: int = 1,
+    seq: Optional[int] = None,
     fresh_for_seconds: int = 3600,
     source: Optional[str] = None,
+    record: bool = True,
 ) -> TelemetryObservation:
     """A REAL WORK-026 telemetry observation (self-advertised by
     default; ``source`` lets the battery build foreign-sourced
-    claims for the LOCK-008 regression)."""
+    claims for the LOCK-008 regression).
+
+    The fixture RECORDS the observation into the consuming node's
+    telemetry store (``node`` is the manager under test; a foreign
+    source is a claim ABOUT that node's subject, recorded in its
+    store and still excluded as foreign evidence): gates now verify
+    provenance against the recorded set, so unrecorded evidence is
+    only ever built deliberately (``record=False``) for the
+    provenance-boundary red tests.  Sequences auto-advance per
+    (store, subject, source, metric) stream, mirroring the store's
+    ingest ledger."""
     observed = datetime.strptime(at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
     fresh = (
         observed + timedelta(seconds=fresh_for_seconds)
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
     source_node = source if source is not None else node
-    return TelemetryObservation(
+    store = _STORES.get(node)
+    if seq is None:
+        if store is None:
+            raise AssertionError(
+                "fixture discipline: build the manager for %r before its "
+                "observations (the store is the provenance oracle)" % (node,)
+            )
+        key = (id(store), subject_kind, subject_ref, source_node, metric)
+        seq = _SEQ.get(key, 0) + 1
+        _SEQ[key] = seq
+    observation = TelemetryObservation(
         observation_id=derive_observation_id(
             subject_kind, subject_ref, source_node,
             TelemetrySourceClass.SELF_ADVERTISED, metric, value, 9_000,
@@ -322,14 +374,22 @@ def _observation(
         freshness_until=fresh,
         sequence=seq,
     )
+    if record:
+        if store is None:
+            raise AssertionError(
+                "fixture discipline: no telemetry store registered for %r" % (node,)
+            )
+        store.record_observation(observation, now=at)
+    return observation
 
 
 def _healthy_observations(node: str, *, at: str = _NOW) -> Tuple[Any, ...]:
-    """Self-sourced evidence that passes every template gate."""
+    """Self-sourced evidence that passes every template gate (recorded
+    in the consuming node's store: recorded evidence only)."""
     return (
-        _observation(node, "adapter-health", ADAPTER_REF, "health-state", 0, at=at, seq=1),
-        _observation(node, "path", UPLINK_REF, "loss-bp", 120, at=at, seq=1),
-        _observation(node, "adapter-health", ADAPTER_REF, "consecutive-failures", 0, at=at, seq=2),
+        _observation(node, "adapter-health", ADAPTER_REF, "health-state", 0, at=at),
+        _observation(node, "path", UPLINK_REF, "loss-bp", 120, at=at),
+        _observation(node, "adapter-health", ADAPTER_REF, "consecutive-failures", 0, at=at),
     )
 
 
@@ -1155,6 +1215,77 @@ def case_19_gate_requires_real_self_telemetry() -> Result:
         UpgradeReasonCode.INVALID_INPUT,
         "non-telemetry evidence",
     )
+    # PR #31 Architect review blocker 1, red test (a): a FULLY
+    # POPULATED attribute-shaped fake is still not telemetry --
+    # duck typing never establishes provenance, no matter how
+    # complete the shape is.
+    class CompleteFakeObservation:
+        subject_kind = "adapter-health"
+        subject_ref = ADAPTER_REF
+        metric = "health-state"
+        value = 0
+        observed_at = _NOW
+        freshness_until = "2026-09-01T13:00:00Z"
+        sequence = 1
+        observation_id = "telemetry:observation:forged"
+        source_node_id = NODE_A
+        source_class = "self-advertised"
+        confidence_basis_points = 9000
+        privacy_class = "internal"
+
+    _expect_reject(
+        name, [],
+        lambda: manager.evaluate_gate(
+            template.canary_gate, [CompleteFakeObservation()], _NOW,  # type: ignore[list-item]
+        ),
+        UpgradeReasonCode.INVALID_INPUT,
+        "fully populated fake observation",
+    )
+    # PR #31 Architect review blocker 1, red test (b): a VALID,
+    # constructor-genuine TelemetryObservation (complete-content id
+    # and all) that was NEVER RECORDED by the telemetry authority is
+    # caller-injected evidence -- integrity is not provenance -- and
+    # is rejected even though every field is internally valid.
+    unrecorded = _observation(
+        NODE_A, "adapter-health", ADAPTER_REF, "health-state", 0,
+        record=False,
+    )
+    _expect_reject(
+        name, [],
+        lambda: manager.evaluate_gate(template.canary_gate, [unrecorded], _NOW),
+        UpgradeReasonCode.INVALID_INPUT,
+        "unrecorded genuine observation",
+    )
+    # Recorded in ANOTHER node's store, supplied to this node's
+    # manager: provenance is resolved against THIS node's telemetry
+    # authority, so cross-store injection is rejected too.
+    _manager(NODE_B)  # registers NODE_B's own provenance oracle
+    cross_store = _observation(
+        NODE_B, "adapter-health", ADAPTER_REF, "health-state", 0,
+    )
+    _expect_reject(
+        name, [],
+        lambda: manager.evaluate_gate(template.canary_gate, [cross_store], _NOW),
+        UpgradeReasonCode.INVALID_INPUT,
+        "cross-store observation",
+    )
+    # A TAMPERED VARIANT of a genuinely recorded observation (same
+    # recorded id, mutated content): only the exact recorded bytes
+    # are evidence, so the forgery is rejected outright.
+    recorded = _observation(
+        NODE_A, "adapter-health", ADAPTER_REF, "health-state", 0,
+    )
+    tampered = copy.copy(recorded)
+    object.__setattr__(tampered, "value", 1)  # same id, different content
+    _expect_reject(
+        name, [],
+        lambda: manager.evaluate_gate(template.canary_gate, [tampered], _NOW),
+        UpgradeReasonCode.INVALID_INPUT,
+        "tampered variant of a recorded observation",
+    )
+    # Every provenance rejection left the stage untouched.
+    if manager.stage != UpgradeStage.PREPARED:
+        return fail(name, "provenance rejections must leave the stage unchanged")
     # No evidence at all -> INSUFFICIENT_EVIDENCE, stage unchanged.
     try:
         manager.advance(_NOW, [])
@@ -1164,10 +1295,11 @@ def case_19_gate_requires_real_self_telemetry() -> Result:
             return fail(name, "expected GATE_INSUFFICIENT_EVIDENCE, got %r" % error.reason)
     if manager.stage != UpgradeStage.PREPARED:
         return fail(name, "stage must be unchanged after insufficient evidence")
-    # A FOREIGN-sourced healthy observation is a claim by another
-    # node (LOCK-008) -- it can never satisfy this node's gate.
+    # A FOREIGN-sourced healthy observation (genuinely RECORDED in
+    # this node's store) is a claim by another node (LOCK-008) -- it
+    # passes provenance but can still never satisfy this node's gate.
     foreign = _observation(
-        NODE_B, "adapter-health", ADAPTER_REF, "health-state", 0,
+        NODE_A, "adapter-health", ADAPTER_REF, "health-state", 0,
         source=NODE_B,
     )
     try:
@@ -1178,11 +1310,16 @@ def case_19_gate_requires_real_self_telemetry() -> Result:
             return fail(name, "foreign evidence must yield GATE_INSUFFICIENT_EVIDENCE, got %r" % error.reason)
         if "foreign" not in error.detail:
             return fail(name, "the foreign-evidence detail must say so: %r" % error.detail)
-    # Real SELF-sourced evidence passes and advances.
+    # Real SELF-sourced RECORDED evidence passes and advances.
     manager.advance(_NOW, _healthy_observations(NODE_A))
     if manager.stage != UpgradeStage.CANARY:
         return fail(name, "self-sourced evidence must advance to CANARY")
-    return ok(name, "gates demand real self-sourced telemetry; claims and absences fail closed")
+    return ok(
+        name,
+        "gates demand recorded self-sourced telemetry: fakes (complete or "
+        "not), unrecorded/cross-store/tampered injections, foreign claims, "
+        "and absences all fail closed",
+    )
 
 
 def case_20_stale_evidence_fails_closed() -> Result:
@@ -1227,19 +1364,21 @@ def case_21_gate_threshold_and_latest_evidence() -> Result:
     if manager.stage != UpgradeStage.PREPARED:
         return fail(name, "stage must be unchanged after a gate failure")
     # The deterministic LATEST observation decides: an older healthy
-    # sample cannot rescue a newer degraded one...
-    older_ok = _observation(NODE_A, "adapter-health", ADAPTER_REF, "health-state", 0, at=_EARLIER, seq=1)
-    newer_bad = _observation(NODE_A, "adapter-health", ADAPTER_REF, "health-state", 1, at=_NOW, seq=2)
+    # sample cannot rescue a newer degraded one...  (sequences
+    # auto-advance per stream in build order, mirroring the store's
+    # ingest ledger)
+    older_ok = _observation(NODE_A, "adapter-health", ADAPTER_REF, "health-state", 0, at=_EARLIER)
+    newer_bad = _observation(NODE_A, "adapter-health", ADAPTER_REF, "health-state", 1, at=_NOW)
     verdict = manager.evaluate_gate(template.canary_gate, [older_ok, newer_bad], _NOW)
     if verdict.verdict != GateVerdict.PASS or verdict.observed_value != 1:
         return fail(name, "latest=1 within threshold 1 must PASS: %r" % (verdict,))
-    newest_bad = _observation(NODE_A, "adapter-health", ADAPTER_REF, "health-state", 2, at=_NOW, seq=3)
+    newest_bad = _observation(NODE_A, "adapter-health", ADAPTER_REF, "health-state", 2, at=_NOW)
     verdict2 = manager.evaluate_gate(template.canary_gate, [older_ok, newest_bad], _NOW)
     if verdict2.verdict != GateVerdict.FAIL or verdict2.observed_value != 2:
         return fail(name, "latest=2 must FAIL: %r" % (verdict2,))
     # ...and an older degraded sample cannot block a newer healthy one.
-    older_bad = _observation(NODE_A, "adapter-health", ADAPTER_REF, "health-state", 2, at=_EARLIER, seq=1)
-    newer_ok = _observation(NODE_A, "adapter-health", ADAPTER_REF, "health-state", 0, at=_NOW, seq=2)
+    older_bad = _observation(NODE_A, "adapter-health", ADAPTER_REF, "health-state", 2, at=_EARLIER)
+    newer_ok = _observation(NODE_A, "adapter-health", ADAPTER_REF, "health-state", 0, at=_NOW)
     verdict3 = manager.evaluate_gate(template.canary_gate, [older_bad, newer_ok], _NOW)
     if verdict3.verdict != GateVerdict.PASS or verdict3.observed_value != 0:
         return fail(name, "latest=0 must PASS: %r" % (verdict3,))
@@ -1538,7 +1677,7 @@ def case_29_canary_failure_halts_rollout() -> Result:
     degraded = (
         _observation(NODE_A, "adapter-health", ADAPTER_REF, "health-state", 0),
         _observation(NODE_A, "path", UPLINK_REF, "loss-bp", 9_000),  # >> 500
-        _observation(NODE_A, "adapter-health", ADAPTER_REF, "consecutive-failures", 0, seq=2),
+        _observation(NODE_A, "adapter-health", ADAPTER_REF, "consecutive-failures", 0),
     )
     try:
         coordinator.stage_remaining(
@@ -1569,7 +1708,7 @@ def case_30_per_node_failure_rolls_back_all() -> Result:
     broken_c = (
         _observation(NODE_C, "adapter-health", ADAPTER_REF, "health-state", 2),  # FAILED
         _observation(NODE_C, "path", UPLINK_REF, "loss-bp", 100),
-        _observation(NODE_C, "adapter-health", ADAPTER_REF, "consecutive-failures", 5, seq=2),
+        _observation(NODE_C, "adapter-health", ADAPTER_REF, "consecutive-failures", 5),
     )
     observations = {node: _healthy_observations(node) for node in (NODE_A, NODE_B, NODE_D)}
     observations[NODE_C] = broken_c
@@ -1617,7 +1756,7 @@ def case_31_commit_failure_leaves_committed_windows_closed() -> Result:
         _observation(NODE_D, "path", UPLINK_REF, "loss-bp", 80, at=_LATER),
         _observation(
             NODE_D, "adapter-health", ADAPTER_REF, "consecutive-failures", 4,
-            at=_LATER, seq=2,
+            at=_LATER,
         ),
     )
     try:
@@ -1719,20 +1858,39 @@ def case_33_authority_boundaries_imports() -> Result:
                     offenders.append("%s imports %s" % (filename, root))
     if offenders:
         return fail(name, "; ".join(offenders))
-    # The family never touches the engines/stores of the composed
-    # authorities: only model/versioning/negotiation DATA surfaces.
+    # The family never touches the engines of the composed
+    # authorities: only model/versioning/negotiation DATA surfaces,
+    # plus -- the PR #31 Architect review blocker 1 correction,
+    # deliberate and flagged -- the WORK-026 TelemetryStore's
+    # recorded-observation PROVENANCE boundary (telemetry.store
+    # is_recorded: the store is the only origin of gate evidence;
+    # upgrade never calls any other store surface).
     for filename in sorted(os.listdir(upgrade_dir)):
         if not filename.endswith(".py"):
             continue
         with open(os.path.join(upgrade_dir, filename), encoding="utf-8") as handle:
             source = handle.read()
         for forbidden in (
-            "from telemetry.store", "from policy.evaluation", "from routing.engine",
+            "from policy.evaluation", "from routing.engine",
             "from sessions.", "from topology.", "from identity.", "from energy.",
             "from adapters.", "import adapters", "import sessions", "import topology",
         ):
             if forbidden in source:
                 return fail(name, "%s reaches into a foreign authority (%s)" % (filename, forbidden))
+        # telemetry.store usage is pinned to the provenance surface
+        # ONLY: the manager imports the store class and calls
+        # is_recorded() -- never record/query/promotion ingest paths.
+        if "from telemetry.store" in source:
+            for banned in (
+                ".record_observation(", ".query_observations(",
+                ".authorize_topology_promotion(", ".snapshot()",
+            ):
+                if banned in source:
+                    return fail(
+                        name,
+                        "%s uses a non-provenance telemetry.store surface "
+                        "(%s) -- data-boundary discipline" % (filename, banned),
+                    )
     # The family never writes files (no open-for-write anywhere).
     for filename in sorted(os.listdir(upgrade_dir)):
         if not filename.endswith(".py"):
@@ -2012,6 +2170,203 @@ def case_40_schema_state_isolation() -> Result:
     return ok(name, "state handed out is a copy; internal truth invariant across the cycle")
 
 
+def case_41_live_migration_transactional_isolation() -> Result:
+    """PR #31 Architect review blocker 2: the live PREPARED->CANARY
+    migration application must be transactionally isolated.
+
+    The registry accepts ARBITRARY migration callables, and
+    ``begin()``'s rehearsal proves nothing about the later LIVE call
+    (a callable is free to behave differently once it is handed live
+    state).  The manager therefore never hands live state to a
+    migration: the complete chain runs on isolated deep copies and
+    live schema state / version metadata swap only after the entire
+    chain succeeds.  Every sub-case here uses a callable that is
+    HONEST during the ``begin()`` rehearsal and HOSTILE during the
+    live transition -- the exact hazard class the review flagged
+    (a mutating migration that raises or returns invalid data must
+    never leave live state partially modified before version
+    metadata advances)."""
+    name = "case_41_live_migration_transactional_isolation"
+    problems: List[str] = []
+    template = _template()
+
+    def _flaky(hostile):
+        """A migration callable that behaves honestly on the first
+        call (the begin() rehearsal) and runs ``hostile`` on every
+        later call (the live application)."""
+        calls = {"count": 0}
+
+        def forward(state: Any) -> Any:
+            calls["count"] += 1
+            if calls["count"] > 1:
+                return hostile(state)
+            return dict(state, label="node")  # honest rehearsal
+
+        return forward
+
+    def _mutate_and_raise(state: Any) -> Any:
+        state["injected"] = True  # mutate the RECEIVED mapping in place
+        raise RuntimeError("impure migration explodes on live state")
+
+    def _mutate_and_return_invalid(state: Any) -> Any:
+        state["injected"] = True  # mutate the RECEIVED mapping in place
+        return ["not", "a", "mapping"]
+
+    def _armed_registry(forward: Any) -> MigrationRegistry:
+        registry = MigrationRegistry()
+        registry.register_step(
+            "node.config", "1.1", "1.2", reversible=True, breaking=False,
+            forward=forward,
+            backward=lambda s: {k: v for k, v in s.items() if k != "label"},
+        )
+        return registry
+
+    def _armed_manager(registry: MigrationRegistry) -> UpgradeManager:
+        manager = _manager(NODE_A, registry=registry)
+        manager.submit_plan(template.plan_for(NODE_A, SoftwareVersion.parse("2.0.0")), _NOW)
+        manager.begin(_NOW)  # rehearsal: the callable is still honest
+        if manager.stage != UpgradeStage.PREPARED:
+            raise AssertionError("fixture sanity: begin() must reach PREPARED")
+        return manager
+
+    # (1) mutate-and-RAISE during the live transition: live state
+    # byte-identical, version truth unmoved, stage unchanged.
+    manager = _armed_manager(_armed_registry(_flaky(_mutate_and_raise)))
+    live_before = json.dumps(manager.schema_state("node.config"), sort_keys=True)
+    inventory_before = manager.inventory().to_dict()
+    try:
+        manager.advance(_NOW, _healthy_observations(NODE_A))
+        problems.append("mutating+raising live migration must abort the transition")
+    except RuntimeError:
+        pass  # the callable's own error surfaces; nothing may be applied
+    if json.dumps(manager.schema_state("node.config"), sort_keys=True) != live_before:
+        problems.append("live schema state corrupted by mutate-and-raise")
+    if manager.inventory().to_dict() != inventory_before:
+        problems.append("version truth moved despite the aborted transition")
+    if manager.stage != UpgradeStage.PREPARED:
+        problems.append("stage advanced despite the aborted transition")
+
+    # (2) mutate-and-return-INVALID-DATA during the live transition:
+    # same isolation (MIGRATION_INVALID_STEP, nothing applied).
+    manager2 = _armed_manager(_armed_registry(_flaky(_mutate_and_return_invalid)))
+    live2_before = json.dumps(manager2.schema_state("node.config"), sort_keys=True)
+    inventory2_before = manager2.inventory().to_dict()
+    try:
+        manager2.advance(_NOW, _healthy_observations(NODE_A))
+        problems.append("invalid-returning live migration must abort the transition")
+    except UpgradeError as error:
+        if error.reason != UpgradeReasonCode.MIGRATION_INVALID_STEP:
+            problems.append("expected MIGRATION_INVALID_STEP, got %r" % error.reason)
+    if json.dumps(manager2.schema_state("node.config"), sort_keys=True) != live2_before:
+        problems.append("live schema state corrupted by mutate-and-invalid-return")
+    if manager2.inventory().to_dict() != inventory2_before:
+        problems.append("version truth moved despite the invalid return")
+    if manager2.stage != UpgradeStage.PREPARED:
+        problems.append("stage advanced despite the invalid return")
+
+    # (3) MULTI-ARTIFACT partial application: the first artifact
+    # migrates honestly during the live transition, the second is
+    # hostile -- NEITHER may be applied (no partial live
+    # modification before version metadata advances).
+    calls_metrics = {"count": 0}
+
+    def flaky_metrics(state: Any) -> Any:
+        calls_metrics["count"] += 1
+        if calls_metrics["count"] > 1:
+            return _mutate_and_raise(state)
+        return dict(state, precision=2)  # honest rehearsal
+
+    two_artifacts = MigrationRegistry()
+    two_artifacts.register_step(
+        "node.config", "1.1", "1.2", reversible=True, breaking=False,
+        forward=lambda s: dict(s, label="node"),
+        backward=lambda s: {k: v for k, v in s.items() if k != "label"},
+    )
+    two_artifacts.register_step(
+        "node.metrics", "1.0", "1.1", reversible=True, breaking=False,
+        forward=flaky_metrics,
+        backward=lambda s: {k: v for k, v in s.items() if k != "precision"},
+    )
+    two_template = RolloutTemplate(
+        to_version=SoftwareVersion.parse("2.1.0"),
+        target_protocol_profile=ProtocolProfile(major=1, max_minor=1),
+        target_schema_versions=(("node.config", "1.2"), ("node.metrics", "1.1")),
+        minimum_version_floor=SoftwareVersion.parse("2.0.0"),
+        canary_gate=HealthGateSpec(
+            "canary-adapter-health", "adapter-health", ADAPTER_REF, "health-state", 1,
+        ),
+        rollout_gate=HealthGateSpec(
+            "rollout-path-loss", "path", UPLINK_REF, "loss-bp", 500,
+        ),
+        final_gate=HealthGateSpec(
+            "final-adapter-failures", "adapter-health", ADAPTER_REF,
+            "consecutive-failures", 0,
+        ),
+    )
+    manager3 = _manager(
+        NODE_A, registry=two_artifacts,
+        schemas={"node.config": "1.1", "node.metrics": "1.0"},
+        state={"node.config": dict(_STATE_1_1), "node.metrics": {"window": 10}},
+    )
+    manager3.submit_plan(
+        two_template.plan_for(NODE_A, SoftwareVersion.parse("2.0.0")), _NOW,
+    )
+    manager3.begin(_NOW)  # both rehearsals honest
+    config_before = json.dumps(manager3.schema_state("node.config"), sort_keys=True)
+    metrics_before = json.dumps(manager3.schema_state("node.metrics"), sort_keys=True)
+    inventory3_before = manager3.inventory().to_dict()
+    try:
+        manager3.advance(_NOW, _healthy_observations(NODE_A))
+        problems.append("the hostile second artifact must abort the transition")
+    except RuntimeError:
+        pass
+    if json.dumps(manager3.schema_state("node.config"), sort_keys=True) != config_before:
+        problems.append("PARTIAL APPLICATION: the honest first artifact went live")
+    if json.dumps(manager3.schema_state("node.metrics"), sort_keys=True) != metrics_before:
+        problems.append("live metrics state corrupted by the hostile artifact")
+    if manager3.inventory().to_dict() != inventory3_before:
+        problems.append("version truth moved despite the aborted multi-artifact chain")
+    if manager3.stage != UpgradeStage.PREPARED:
+        problems.append("stage advanced despite the aborted multi-artifact chain")
+
+    # (4) ROLLBACK isolation: a backward migration that mutates and
+    # raises during the reverse proof-walk must never corrupt the
+    # live (canary-live) state; the rollback simply fails with the
+    # stage and live truth unchanged.
+    rollback_hostile = MigrationRegistry()
+    rollback_hostile.register_step(
+        "node.config", "1.1", "1.2", reversible=True, breaking=False,
+        forward=lambda s: dict(s, label="node"),  # honest, always
+        backward=_mutate_and_raise,  # hostile at rollback time
+    )
+    manager4 = _manager(NODE_A, registry=rollback_hostile)
+    manager4.submit_plan(template.plan_for(NODE_A, SoftwareVersion.parse("2.0.0")), _NOW)
+    manager4.begin(_NOW)
+    manager4.advance(_NOW, _healthy_observations(NODE_A))  # -> CANARY (live)
+    canary_state = json.dumps(manager4.schema_state("node.config"), sort_keys=True)
+    canary_inventory = manager4.inventory().to_dict()
+    try:
+        manager4.rollback(_LATER)
+        problems.append("a hostile backward migration must abort the rollback")
+    except RuntimeError:
+        pass
+    if json.dumps(manager4.schema_state("node.config"), sort_keys=True) != canary_state:
+        problems.append("live canary state corrupted by the hostile backward walk")
+    if manager4.inventory().to_dict() != canary_inventory:
+        problems.append("version truth moved despite the aborted rollback")
+    if manager4.stage != UpgradeStage.CANARY:
+        problems.append("stage changed despite the aborted rollback")
+
+    if problems:
+        return fail(name, "; ".join(problems))
+    return ok(
+        name,
+        "live migration application is transactionally isolated: raising, "
+        "invalid-returning, and partially-applying chains leave live state "
+        "byte-identical; the rollback proof-walk is isolated too",
+    )
+
+
 # --------------------------------------------------------------------------
 # The battery registry
 # --------------------------------------------------------------------------
@@ -2057,6 +2412,7 @@ CASES = (
     case_38_ci_wiring,
     case_39_serialization_round_trips,
     case_40_schema_state_isolation,
+    case_41_live_migration_transactional_isolation,
 )
 
 
