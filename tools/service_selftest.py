@@ -51,6 +51,23 @@ every WORK-025 handoff verification item to a discriminating case:
   authorization for an arbitrary scope (PR #26 B2,
   remediation 2 -- comment 5434924645; the binding
   is born at the WORK-010 evaluator)                -> case_38, case_40, case_21
+- MONOTONIC advertisement lineage: older claims
+  rejected, equal-time different-content claims
+  conflict explicitly (PR #26 review 3, finding 1) -> case_41
+- discovery authorization bound to the discovering
+  caller/session/tenant with EXACT scope equality
+  (PR #26 review 3, finding 2; negative coverage
+  for a decision belonging to another
+  caller/session)                                    -> case_42
+- a later DENY invalidates an earlier standing
+  ALLOW for the same scope (decision-lineage
+  revocations; PR #26 review 3, finding 3)          -> case_27, case_43
+- EXPLICIT cleanup outcomes: provider release
+  failures become deterministic cleanup-pending
+  admissions, surfaced on results, provable by
+  retry; compensation failures and degraded
+  terminal closure are explicit (PR #26 review 3,
+  finding 4 + close observation)                     -> case_44
 """
 
 from __future__ import annotations
@@ -78,6 +95,7 @@ from services import (  # noqa: E402
     SERVICE_CAPACITY_KINDS,
     SERVICE_DISCOVER_SCOPE,
     STEP_CHARGES,
+    AdmissionState,
     AdvertisementEvidence,
     ExecutionProviderContract,
     FederationReader,
@@ -1110,17 +1128,27 @@ def case_09_unauthorized_execution_before_provider_effects() -> Result:
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.DECISION_UNKNOWN:
             return fail(name, "no decision: %s" % (exc.reason,))
-    # A DENIED policy decision never becomes authorization (bound
-    # exactly like an allow would be -- deny still fails closed).
+    # A DENIED policy decision never becomes authorization: it
+    # applies ONLY as a per-scope revocation lineage marker (PR #26
+    # third review, finding 3), and its ref authorizes NOTHING.
     denied = _bound_decision(effect="deny", service_ref=service_ref)
-    try:
-        registry.apply_policy_decision(
-            now=_T1, policy_decision=denied
+    revoked = registry.apply_policy_decision(
+        now=_T1, policy_decision=denied
+    )
+    if not revoked.ok:
+        return fail(
+            name, "genuine deny rejected: %s" % (revoked.detail,)
         )
-        return fail(name, "denied decision applied")
+    if len(registry.snapshot()["decision_revocations"]) != 1:
+        return fail(name, "deny not recorded as a revocation")
+    try:
+        registry.admit_execution(
+            now=_T1, service_ref=service_ref, decision_ref=revoked.value
+        )
+        return fail(name, "denied decision authorized execution")
     except ServiceError as exc:
-        if exc.reason != ServiceReasonCode.DECISION_DENIED:
-            return fail(name, "denied: %s" % (exc.reason,))
+        if exc.reason != ServiceReasonCode.DECISION_UNKNOWN:
+            return fail(name, "denied ref: %s" % (exc.reason,))
     # Decision for another service: scope mismatch, before provider.
     other_ref = _registered(
         registry, _advertisement(descriptor=_descriptor(name="other-cache"))
@@ -2201,8 +2229,9 @@ def case_23_canonical_state_clean() -> Result:
     # Shape is frozen.
     if sorted(snapshot.keys()) != [
         "admission_count", "admissions", "allocations", "closed",
-        "decisions", "events", "exposures", "integration_id",
-        "placements", "registered_count", "services", "tombstones",
+        "decision_revocations", "decisions", "events", "exposures",
+        "integration_id", "placements", "registered_count", "services",
+        "tombstones",
     ]:
         return fail(name, "snapshot shape drifted: %s" % (sorted(snapshot.keys()),))
     # No diagnostics cross into canonical state.
@@ -2499,16 +2528,6 @@ def case_27_policy_negative_matrix() -> Result:
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.DECISION_STALE:
             return fail(name, "future-dated: %s" % (exc.reason,))
-    # Denied effect.
-    denied = _bound_decision(
-        evaluation_instant=_T1, effect="deny", service_ref=service_ref,
-    )
-    try:
-        registry.apply_policy_decision(now=_T1, policy_decision=denied)
-        return fail(name, "denied decision applied")
-    except ServiceError as exc:
-        if exc.reason != ServiceReasonCode.DECISION_DENIED:
-            return fail(name, "denied: %s" % (exc.reason,))
     # Applied decision + negative follow-ups.
     decision_ref = _decision_for(registry, service_ref, now=_T1)
     # Exact re-application fails (deterministic conflict): the SAME
@@ -2539,6 +2558,34 @@ def case_27_policy_negative_matrix() -> Result:
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.DECISION_STALE:
             return fail(name, "non-advancing: %s" % (exc.reason,))
+    # Denied effect (PR #26 third review, finding 3): a genuine
+    # engine DENY applies at a LATER instant ONLY as a per-scope
+    # revocation lineage marker -- never as authorization -- and it
+    # INVALIDATES the earlier standing allow for the same scope.
+    denied = _bound_decision(
+        evaluation_instant=_T3, effect="deny", service_ref=service_ref,
+    )
+    revoked = registry.apply_policy_decision(
+        now=_T3, policy_decision=denied
+    )
+    if not revoked.ok:
+        return fail(name, "genuine deny rejected: %s" % (revoked.detail,))
+    try:
+        registry.admit_execution(
+            now=_T3, service_ref=service_ref, decision_ref=revoked.value
+        )
+        return fail(name, "deny ref authorized execution")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_UNKNOWN:
+            return fail(name, "deny ref: %s" % (exc.reason,))
+    try:
+        registry.admit_execution(
+            now=_T3, service_ref=service_ref, decision_ref=decision_ref
+        )
+        return fail(name, "earlier ALLOW survived a later DENY")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.REAUTHORIZATION_REQUIRED:
+            return fail(name, "revoked allow: %s" % (exc.reason,))
     # Session-bound execution requires a secureable session.
     session_decision = _decision_for(
         registry, service_ref, now=_T2, session_id=_OTHER_SESSION_ID
@@ -2731,6 +2778,7 @@ def case_30_real_authority_composition() -> Result:
         return fail(name, "real policy decision rejected: %s" % (decision_ref.detail,))
     found = registry.discover_services(
         now=_T1, tenant_domain="village-a", intent=intent, host_node_id=_NODE_A,
+        session_id=session_id, caller_node_id=_NODE_UE,
         decision_refs=(decision_ref.value,),
     )
     if {c.service_ref for c in found} != {service_ref}:
@@ -3027,8 +3075,14 @@ def case_36_registration_conflict_and_host_guard() -> Result:
     except ServiceError as exc:
         if exc.reason != ServiceReasonCode.SERVICE_CONFLICT:
             return fail(name, "host guard: %s" % (exc.reason,))
-    # A non-host content update is an explicit, auditable update.
-    refreshed = _advertisement(expires_at="2027-06-01T00:00:00Z")
+    # A non-host content update with a STRICTLY LATER registered_at is
+    # an explicit, auditable, forward-in-time update (PR #26 third
+    # review, finding 1: equal-time different-content claims are an
+    # explicit conflict -- see case_41 -- so a refresh must advance
+    # registered_at).
+    refreshed = _advertisement(
+        registered_at=_T1, expires_at="2027-06-01T00:00:00Z"
+    )
     result = registry.register_service(
         now=_T1, advertisement=refreshed,
         evidence=_evidence(refreshed, observed_at=_T1),
@@ -3529,6 +3583,487 @@ def case_40_no_services_minting_capability() -> Result:
 
 
 # --------------------------------------------------------------------------
+# PR #26 third Architect review regressions (findings 1-4)
+# --------------------------------------------------------------------------
+
+def case_41_monotonic_advertisement_lineage() -> Result:
+    """PR #26 third Architect review, finding 1: service advertisements
+    must only move FORWARD in time.  An older claim overwriting a newer
+    advertisement violates deterministic replay/freshness semantics;
+    equal-time different-content claims must conflict explicitly."""
+    name = "case_41_monotonic_advertisement_lineage"
+    registry, _executor = _full_registry()
+    # The current advertisement: registered_at=_T1.
+    current = _advertisement(registered_at=_T1)
+    service_ref = _registered(registry, current)
+    before = registry.to_canonical_bytes()
+    # An OLDER different claim (registered_at=_NOW < _T1): rejected as
+    # a backward-in-time replay, state unchanged.
+    older = _advertisement(
+        registered_at=_NOW, expires_at="2027-02-01T00:00:00Z"
+    )
+    try:
+        registry.register_service(
+            now=_T2, advertisement=older, evidence=_evidence(older, observed_at=_T2)
+        )
+        return fail(name, "older claim overwrote a newer advertisement")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.ADVERTISEMENT_REPLAY:
+            return fail(name, "older claim: %s" % (exc.reason,))
+    if registry.to_canonical_bytes() != before:
+        return fail(name, "rejected older claim mutated canonical state")
+    record = registry.lookup_service(
+        now=_T2, service_ref=service_ref, tenant_domain="village-a"
+    )
+    if record.expires_at != current.expires_at:
+        return fail(name, "registry kept the older claim")
+    # An EQUAL-TIME different-content claim: explicit conflict (the
+    # digest covers the WHOLE claim).
+    equal_time = _advertisement(
+        registered_at=_T1, expires_at="2027-03-01T00:00:00Z"
+    )
+    try:
+        registry.register_service(
+            now=_T2, advertisement=equal_time,
+            evidence=_evidence(equal_time, observed_at=_T2),
+        )
+        return fail(name, "equal-time different-content claim accepted")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.SERVICE_CONFLICT:
+            return fail(name, "equal-time conflict: %s" % (exc.reason,))
+    # The IDENTICAL claim replay stays repeat-safe (no state change).
+    replay = registry.register_service(
+        now=_T2, advertisement=current, evidence=_evidence(current, observed_at=_T2)
+    )
+    if not replay.ok:
+        return fail(name, "identical replay rejected: %s" % (replay.detail,))
+    if registry.to_canonical_bytes() != before:
+        return fail(name, "identical replay mutated canonical state")
+    # A STRICTLY NEWER claim updates the record (auditable).
+    newer = _advertisement(
+        registered_at=_T2, expires_at="2027-06-01T00:00:00Z"
+    )
+    updated = registry.register_service(
+        now=_T2, advertisement=newer, evidence=_evidence(newer, observed_at=_T2)
+    )
+    if not updated.ok:
+        return fail(name, "newer claim rejected: %s" % (updated.detail,))
+    events = [e["event_type"] for e in registry.snapshot()["events"]]
+    if events.count(ServiceEventType.SERVICE_UPDATED) != 1:
+        return fail(name, "forward update not audited: %s" % (events,))
+    record = registry.lookup_service(
+        now=_T2, service_ref=service_ref, tenant_domain="village-a"
+    )
+    if record.expires_at != "2027-06-01T00:00:00Z":
+        return fail(name, "forward update not applied")
+    if registry.registered_count != 1:
+        return fail(name, "update duplicated the record")
+    # And after the forward update, backdating to _T1 is STILL a
+    # replay (the lineage never moves backward).
+    try:
+        registry.register_service(
+            now=_T3, advertisement=equal_time,
+            evidence=_evidence(equal_time, observed_at=_T3),
+        )
+        return fail(name, "backdated claim accepted after forward update")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.ADVERTISEMENT_REPLAY:
+            return fail(name, "backdate: %s" % (exc.reason,))
+    return ok(name, "advertisements only move forward; equal-time conflicts explicit")
+
+
+def case_42_discovery_decision_scope_binding() -> Result:
+    """PR #26 third Architect review, finding 2 (the handoff-required
+    negative coverage): a decision belonging to another caller/session
+    must NEVER make a service eligible in a discovery performed for a
+    different caller/session.  Discovery authorization is bound to the
+    discovering scope with EXACT equality -- never a silent partial
+    authorization."""
+    name = "case_42_discovery_decision_scope_binding"
+    registry, _executor = _full_registry()
+    service_ref = _registered(
+        registry, _advertisement(
+            descriptor=_descriptor(name="scoped-billing"),
+            policy_controlled=True,
+        )
+    )
+    # A decision genuinely issued for caller X / session X1.
+    decision_ref = _decision_for(
+        registry, service_ref, now=_T1,
+        session_id=_SESSION_ID, caller_node_id=_NODE_UE,
+    )
+    # Positive: the EXACT scope discovers the service.
+    found = registry.discover_services(
+        now=_T1, tenant_domain="village-a",
+        session_id=_SESSION_ID, caller_node_id=_NODE_UE,
+        decision_refs=(decision_ref,),
+    )
+    if service_ref not in {c.service_ref for c in found}:
+        return fail(name, "exact-scope discovery hid the service")
+    # NEGATIVE (the review-required case): the SAME decision used by
+    # another session fails closed.
+    try:
+        registry.discover_services(
+            now=_T1, tenant_domain="village-a",
+            session_id=_OTHER_SESSION_ID, caller_node_id=_NODE_UE,
+            decision_refs=(decision_ref,),
+        )
+        return fail(name, "another session's discovery accepted a foreign decision")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
+            return fail(name, "foreign session: %s" % (exc.reason,))
+    # Another CALLER fails closed too.
+    try:
+        registry.discover_services(
+            now=_T1, tenant_domain="village-a",
+            session_id=_SESSION_ID, caller_node_id=_NODE_B,
+            decision_refs=(decision_ref,),
+        )
+        return fail(name, "another caller's discovery accepted a foreign decision")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
+            return fail(name, "foreign caller: %s" % (exc.reason,))
+    # Cross-tenant discovery with the decision fails closed as well.
+    try:
+        registry.discover_services(
+            now=_T1, tenant_domain="village-b",
+            session_id=_SESSION_ID, caller_node_id=_NODE_UE,
+            decision_refs=(decision_ref,),
+        )
+        return fail(name, "cross-tenant discovery accepted a foreign decision")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
+            return fail(name, "foreign tenant: %s" % (exc.reason,))
+    # An UNSCoped discovery (no caller/session stated) can never be
+    # authorized by a scoped decision: empty scope != the decision's.
+    try:
+        registry.discover_services(
+            now=_T1, tenant_domain="village-a",
+            decision_refs=(decision_ref,),
+        )
+        return fail(name, "unscoped discovery authorized by a scoped decision")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_SCOPE_MISMATCH:
+            return fail(name, "unscoped: %s" % (exc.reason,))
+    # Without supplying the decision the service is simply not
+    # eligible for anyone else.
+    found = registry.discover_services(
+        now=_T1, tenant_domain="village-a",
+        session_id=_OTHER_SESSION_ID, caller_node_id=_NODE_B,
+    )
+    if service_ref in {c.service_ref for c in found}:
+        return fail(name, "policy-controlled service eligible without its decision")
+    # An unknown decision ref fails closed (never silently skipped).
+    try:
+        registry.discover_services(
+            now=_T1, tenant_domain="village-a",
+            session_id=_SESSION_ID, caller_node_id=_NODE_UE,
+            decision_refs=("services:decision:" + "0" * 32,),
+        )
+        return fail(name, "unknown decision ref skipped")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_UNKNOWN:
+            return fail(name, "unknown ref: %s" % (exc.reason,))
+    return ok(
+        name,
+        "discovery authorization bound to the exact caller/session/tenant",
+    )
+
+
+def case_43_deny_revocation_invalidates_standing_allow() -> Result:
+    """PR #26 third Architect review, finding 3: a previous ALLOW must
+    not survive a subsequent policy DENY/change for the same scope.
+    The decision lineage is per-scope and moves forward in applied
+    time: a later DENY is recorded as an explicit revocation that
+    invalidates the earlier ALLOW everywhere (lookup, discovery,
+    admission) and never authorizes anything itself."""
+    name = "case_43_deny_revocation_invalidates_standing_allow"
+    registry, _executor = _full_registry()
+    service_ref = _registered(
+        registry, _advertisement(
+            descriptor=_descriptor(name="revocable-service"),
+            policy_controlled=True,
+        )
+    )
+    allow_ref = _decision_for(registry, service_ref, now=_T1)
+    # The ALLOW is live at _T1.
+    found = registry.discover_services(
+        now=_T1, tenant_domain="village-a", decision_refs=(allow_ref,)
+    )
+    if service_ref not in {c.service_ref for c in found}:
+        return fail(name, "standing ALLOW did not authorize discovery")
+    registry.lookup_service(
+        now=_T1, service_ref=service_ref, tenant_domain="village-a",
+        decision_ref=allow_ref,
+    )
+    # Policy changes to DENY at _T2 (genuine engine deny, born bound).
+    deny = _engine_invocation_decision(
+        service_ref, evaluation_instant=_T2, effect="deny",
+    )
+    revoked = registry.apply_policy_decision(now=_T2, policy_decision=deny)
+    if not revoked.ok:
+        return fail(name, "later DENY not applicable: %s" % (revoked.detail,))
+    snapshot = registry.snapshot()
+    if len(snapshot["decision_revocations"]) != 1:
+        return fail(name, "deny not recorded as a revocation")
+    events = [e["event_type"] for e in snapshot["events"]]
+    if events.count(ServiceEventType.DECISION_REVOKED) != 1:
+        return fail(name, "revocation not audited")
+    # The DENY ref itself authorizes NOTHING.
+    try:
+        registry.lookup_service(
+            now=_T2, service_ref=service_ref, tenant_domain="village-a",
+            decision_ref=revoked.value,
+        )
+        return fail(name, "deny ref authorized lookup")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_UNKNOWN:
+            return fail(name, "deny ref lookup: %s" % (exc.reason,))
+    # The earlier ALLOW is invalidated everywhere.
+    try:
+        registry.lookup_service(
+            now=_T2, service_ref=service_ref, tenant_domain="village-a",
+            decision_ref=allow_ref,
+        )
+        return fail(name, "revoked ALLOW survived lookup")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.REAUTHORIZATION_REQUIRED:
+            return fail(name, "revoked lookup: %s" % (exc.reason,))
+    try:
+        registry.admit_execution(
+            now=_T2, service_ref=service_ref, decision_ref=allow_ref
+        )
+        return fail(name, "revoked ALLOW admitted execution")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.REAUTHORIZATION_REQUIRED:
+            return fail(name, "revoked admit: %s" % (exc.reason,))
+    found = registry.discover_services(
+        now=_T2, tenant_domain="village-a", decision_refs=(allow_ref,)
+    )
+    if service_ref in {c.service_ref for c in found}:
+        return fail(name, "revoked ALLOW still authorized discovery")
+    # Re-applying the identical deny at the same instant: DECISION_EXISTS.
+    try:
+        registry.apply_policy_decision(now=_T2, policy_decision=deny)
+        return fail(name, "identical deny re-applied")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_EXISTS:
+            return fail(name, "deny re-apply: %s" % (exc.reason,))
+    # A different deny outcome at a NON-ADVANCING instant: stale.
+    other_deny = _engine_invocation_decision(
+        service_ref, evaluation_instant=_T1, effect="deny",
+    )
+    try:
+        registry.apply_policy_decision(now=_T2, policy_decision=other_deny)
+        return fail(name, "non-advancing deny accepted")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_STALE:
+            return fail(name, "non-advancing deny: %s" % (exc.reason,))
+    # The lineage moves forward: a LATER ALLOW re-authorizes the scope.
+    reallow_ref = _decision_for(registry, service_ref, now=_T3)
+    found = registry.discover_services(
+        now=_T3, tenant_domain="village-a", decision_refs=(reallow_ref,)
+    )
+    if service_ref not in {c.service_ref for c in found}:
+        return fail(name, "forward ALLOW did not re-authorize discovery")
+    execute, _admission = _invoke(registry, service_ref, reallow_ref, now=_T3)
+    if not execute.ok:
+        return fail(name, "forward ALLOW failed to execute: %s" % (execute.detail,))
+    return ok(name, "later DENY invalidates earlier ALLOW; lineage moves forward")
+
+
+def case_44_explicit_cleanup_outcomes() -> Result:
+    """PR #26 third Architect review, finding 4 + the close
+    observation: provider cleanup failures must be represented
+    explicitly -- never swallowed behind a successful operation
+    result.  A deterministic cleanup-pending state machine with a
+    provable retry, an explicit compensation failure for admission
+    commit, and an explicit (never silent) degraded terminal closure."""
+    name = "case_44_explicit_cleanup_outcomes"
+
+    class _FlakyReleaseExecutor(ReferenceEdgeExecutor):
+        """Release raises for the first N attempts, then behaves."""
+
+        def __init__(self, fail_times: int = 1) -> None:
+            super().__init__()
+            self._fail_times = fail_times
+            self.release_attempts = 0
+
+        def release(self, context, *, admission_ref):
+            self.release_attempts += 1
+            if self.release_attempts <= self._fail_times:
+                raise RuntimeError("provider partitioned during release")
+            super().release(context, admission_ref=admission_ref)
+
+    # 1. withdraw_service: registry-authoritative success with an
+    #    EXPLICIT cleanup-pending outcome (never a plain success).
+    registry = ServiceRegistry()
+    flaky = _FlakyReleaseExecutor(fail_times=2)
+    registry.register_execution_provider(flaky, label="flaky", now=_NOW)
+    service_ref = _registered(registry)
+    decision_ref = _decision_for(registry, service_ref, now=_T1)
+    admit = registry.admit_execution(
+        now=_T1, service_ref=service_ref, decision_ref=decision_ref
+    )
+    if not admit.ok:
+        return fail(name, "admit failed: %s" % (admit.detail,))
+    admission_ref = admit.value.admission_ref
+    withdraw = registry.withdraw_service(
+        now=_T2, service_ref=service_ref, reason="decommissioned"
+    )
+    if not withdraw.ok:
+        return fail(name, "withdraw must succeed authoritatively")
+    if withdraw.cleanup_pending != (admission_ref,):
+        return fail(name, "cleanup failure not surfaced on the result")
+    snapshot = registry.snapshot()
+    states = {a["admission_ref"]: a["state"] for a in snapshot["admissions"]}
+    if states.get(admission_ref) != AdmissionState.CLEANUP_PENDING:
+        return fail(name, "admission not parked cleanup-pending: %s" % (states,))
+    events = [e["event_type"] for e in snapshot["events"]]
+    if events.count(ServiceEventType.ADMISSION_CLEANUP_PENDING) != 1:
+        return fail(name, "cleanup-pending not audited: %s" % (events,))
+    if ServiceEventType.SERVICE_WITHDRAWN not in events:
+        return fail(name, "tombstone event missing")
+    if not any(
+        t["service_ref"] == service_ref for t in snapshot["tombstones"]
+    ):
+        return fail(name, "tombstone missing")
+    if registry.diagnostic_state()["cleanup_pending_admissions"] != [admission_ref]:
+        return fail(name, "diagnostics do not carry the pending cleanup")
+    # 2. retry while the provider still fails: explicit failure, the
+    #    admission STAYS cleanup-pending.
+    retry = registry.retry_admission_cleanup(
+        now=_T3, admission_ref=admission_ref
+    )
+    if retry.ok:
+        return fail(name, "unproven cleanup reported proven")
+    states = {
+        a["admission_ref"]: a["state"] for a in registry.snapshot()["admissions"]
+    }
+    if states.get(admission_ref) != AdmissionState.CLEANUP_PENDING:
+        return fail(name, "pending state lost on failed retry")
+    # 3. retry after provider recovery PROVES the cleanup.
+    retry2 = registry.retry_admission_cleanup(
+        now=_T4, admission_ref=admission_ref
+    )
+    if not retry2.ok:
+        return fail(name, "proven cleanup not accepted: %s" % (retry2.detail,))
+    states = {
+        a["admission_ref"]: a["state"] for a in registry.snapshot()["admissions"]
+    }
+    if states.get(admission_ref) != AdmissionState.SUPERSEDED:
+        return fail(name, "proven cleanup did not supersede")
+    # 4. retrying a non-pending admission is an explicit state error.
+    try:
+        registry.retry_admission_cleanup(now=_T5, admission_ref=admission_ref)
+        return fail(name, "non-pending cleanup retried")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.ADMISSION_STATE:
+            return fail(name, "non-pending retry: %s" % (exc.reason,))
+    # 5. relocate_service surfaces cleanup the same way, and the
+    #    placement transition is still recorded.
+    registry2 = ServiceRegistry()
+    flaky2 = _FlakyReleaseExecutor(fail_times=1)
+    registry2.register_execution_provider(flaky2, label="flaky2", now=_NOW)
+    service_ref2 = _registered(registry2)
+    decision_ref2 = _decision_for(registry2, service_ref2, now=_T1)
+    admit2 = registry2.admit_execution(
+        now=_T1, service_ref=service_ref2, decision_ref=decision_ref2
+    )
+    if not admit2.ok:
+        return fail(name, "relocate-leg admit failed")
+    relocated = registry2.relocate_service(
+        now=_T2, service_ref=service_ref2, target_host_node_id=_NODE_B
+    )
+    if not relocated.ok:
+        return fail(name, "relocate must succeed authoritatively")
+    if relocated.cleanup_pending != (admit2.value.admission_ref,):
+        return fail(name, "relocate cleanup failure not surfaced")
+    if registry2.lookup_service(
+        now=_T3, service_ref=service_ref2, tenant_domain="village-a"
+    ).host_node_id != _NODE_B:
+        return fail(name, "relocation not applied")
+    retry3 = registry2.retry_admission_cleanup(
+        now=_T3, admission_ref=admit2.value.admission_ref
+    )
+    if not retry3.ok:
+        return fail(name, "relocate cleanup retry failed: %s" % (retry3.detail,))
+    # 6. admission-commit compensation failure is EXPLICIT: a typed
+    #    error naming the dangling provider admission + a ledger.
+    class _FailingCommitRegistry(ServiceRegistry):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.commit_failed = False
+
+        def _commit_admission(self, admission, sandbox, *, now):
+            self.commit_failed = True
+            raise RuntimeError("commit fault")
+
+    broken = _FailingCommitRegistry()
+    broken.register_execution_provider(
+        _FlakyReleaseExecutor(fail_times=99), label="broken", now=_NOW
+    )
+    broken_ref = _registered(broken)
+    broken_decision = _decision_for(broken, broken_ref, now=_T1)
+    compensation_text = ""
+    try:
+        broken.admit_execution(
+            now=_T1, service_ref=broken_ref, decision_ref=broken_decision
+        )
+        return fail(name, "compensation failure not surfaced")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.ILLEGAL_STATE:
+            return fail(name, "compensation: %s" % (exc.reason,))
+        compensation_text = str(exc)
+    dangling = broken.diagnostic_state()["dangling_provider_admissions"]
+    if not dangling or not any(
+        d["admission_ref"] in compensation_text for d in dangling
+    ):
+        return fail(name, "dangling provider admission vanished: %s" % (dangling,))
+    if any(
+        a["service_ref"] == broken_ref for a in broken.snapshot()["admissions"]
+    ):
+        return fail(name, "failed admit committed registry state")
+    # 7. close() is explicit: terminal closure with a provider that
+    #    still holds an active admission raises, naming the provider.
+    registry4 = ServiceRegistry()
+    executor4 = ReferenceEdgeExecutor()
+    registry4.register_execution_provider(executor4, label="busy", now=_NOW)
+    service_ref4 = _registered(registry4)
+    decision_ref4 = _decision_for(registry4, service_ref4, now=_T1)
+    admit4 = registry4.admit_execution(
+        now=_T1, service_ref=service_ref4, decision_ref=decision_ref4
+    )
+    if not admit4.ok:
+        return fail(name, "close-leg admit failed")
+    try:
+        registry4.close(now=_T2)
+        return fail(name, "silent terminal closure with an active provider")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.ILLEGAL_STATE:
+            return fail(name, "degraded close: %s" % (exc.reason,))
+        if "busy" not in str(exc):
+            return fail(name, "degraded close does not name the provider")
+    if not registry4.closed:
+        return fail(name, "closure must still be terminal")
+    if executor4.health() != "HEALTHY":
+        return fail(name, "provider fact lost after degraded closure")
+    # A clean registry closes quietly with the REAL injected instant.
+    clean_registry, _clean_executor = _full_registry()
+    try:
+        clean_registry.close(now=_T5)
+    except ServiceError as exc:
+        return fail(name, "clean close raised: %s" % (exc,))
+    if not clean_registry.closed:
+        return fail(name, "clean close did not close")
+    return ok(
+        name,
+        "cleanup-pending state machine + provable retry + explicit "
+        "compensation and terminal closure",
+    )
+
+
+# --------------------------------------------------------------------------
 # Real-authority composition helpers
 # --------------------------------------------------------------------------
 
@@ -3729,6 +4264,10 @@ def main() -> int:
         case_38_decision_bound_invocation_scope,
         case_39_peer_claim_fingerprint_semantics,
         case_40_no_services_minting_capability,
+        case_41_monotonic_advertisement_lineage,
+        case_42_discovery_decision_scope_binding,
+        case_43_deny_revocation_invalidates_standing_allow,
+        case_44_explicit_cleanup_outcomes,
     ]
     print("ADCOS service registry / edge compute self-test (WORK-025)")
     print("=" * 72)

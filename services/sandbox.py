@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Callable, Mapping, Optional, Tuple
 
 from .contract import (
     _BudgetExhausted,
@@ -91,12 +91,20 @@ class _ContractViolation(Exception):
 class ServiceOpResult:
     """The mediated operation result: either ``ok=True`` with the
     contract-validated ``value``, or ``ok=False`` with a typed
-    ``failure`` (never both, never neither)."""
+    ``failure`` (never both, never neither).
+
+    ``cleanup_pending`` (PR #26 third Architect review, finding 4)
+    makes a degraded cleanup outcome EXPLICIT on an otherwise
+    successful operation: when the registry authoritatively ended an
+    operation but a provider-side cleanup (admission release) could
+    NOT be proven, the refs still needing cleanup are carried here --
+    a cleanup failure never disappears behind a plain success value."""
 
     ok: bool
     value: Any = None
     failure: Optional[ServiceFailure] = None
     detail: str = ""
+    cleanup_pending: Tuple[str, ...] = ()
 
     @property
     def reason(self) -> str:

@@ -6,9 +6,17 @@ frozen WORK-025 handoff diagram.  It owns EXACTLY the service-layer
 facts and composes every other authority through its public seams:
 
 - **Advertisement lifecycle** -- evidence-verified, deterministic,
-  repeat-safe registration; withdrawal tombstones with replay
+  repeat-safe registration with MONOTONIC update lineage (PR #26
+  third review, finding 1: advertisements only move forward in
+  time -- older claims are rejected, equal-time different-content
+  claims conflict explicitly); withdrawal tombstones with replay
   protection; explicit, auditable placement transitions (the
-  ServiceID stays stable while the host changes).
+  ServiceID stays stable while the host changes).  Provider cleanup
+  during withdrawal/relocation is EXPLICIT (PR #26 third review,
+  finding 4): a failed provider release parks the admission in the
+  deterministic ``cleanup-pending`` state, appends an audit event,
+  and surfaces the pending refs on the operation result -- a cleanup
+  failure never disappears behind a successful operation value.
 - **Discovery** -- local-first lookup/claim mechanism: freshness,
   visibility, tenant isolation, policy filtering, capability /
   intent compatibility.  Discovery returns candidate service
@@ -19,8 +27,13 @@ facts and composes every other authority through its public seams:
 - **Policy** -- :meth:`apply_policy_decision` consumes a REAL
   tamper-evident ``policy.model.PolicyDecision`` (the WORK-010
   authority); the registry never evaluates policy, never invents
-  trust, and never overrides a deny (denied decisions fail closed
-  with DECISION_DENIED).  The authorized (service, session, caller,
+  trust, and never overrides a deny.  A non-allow effect is recorded
+  as a per-scope :class:`DecisionRevocation` lineage marker (PR #26
+  third review, finding 3): a later DENY for the same (service,
+  session, caller, tenant) scope INVALIDATES every earlier standing
+  ALLOW -- the authorization lineage moves forward in applied time
+  and "current" means current under the LATEST applied policy
+  outcome, allow or not.  The authorized (service, session, caller,
   tenant) scope is EXTRACTED FROM THE DECISION'S OWN digest-covered
   invocation binding -- apply accepts no scope parameters and the
   services package possesses no binding-construction capability at
@@ -29,7 +42,12 @@ facts and composes every other authority through its public seams:
   boundary; the binding is BORN at the WORK-010 evaluator --
   ``policy.invocation`` -- for every service.invoke evaluation).
   A discovered service is never implicitly authorized
-  to execute merely because it was advertised.
+  to execute merely because it was advertised.  Discovery-time
+  decision filtering is bound to the discovering
+  caller/session/tenant with EXACT scope equality (PR #26 third
+  review, finding 2): a decision belonging to another
+  caller/session never makes a service eligible for someone else's
+  discovery.
 - **Execution** -- :meth:`admit_execution` / :meth:`execute_request`
   / :meth:`release_execution` compose the provider-neutral edge
   execution seam behind a sandboxed provider: authorization is
@@ -93,6 +111,7 @@ from .model import (
     AdvertisementEvidence,
     AllocationState,
     CapacityAllocation,
+    DecisionRevocation,
     EvidenceSourceClass,
     ExecutionOutcome,
     FederationExposure,
@@ -248,6 +267,9 @@ class ServiceRegistry:
         self._tombstones: List[ServiceTombstone] = []
         self._placements: List[PlacementTransition] = []
         self._decisions: Dict[str, InvocationDecision] = {}
+        # Per-scope decision-lineage revocations (PR #26 third review,
+        # finding 3): a later DENY invalidates earlier standing ALLOWs.
+        self._revocations: Dict[str, DecisionRevocation] = {}
         self._exposures: Dict[str, FederationExposure] = {}
         self._admissions: Dict[str, _AdmissionEntry] = {}
         self._allocations: Dict[str, _AllocationEntry] = {}
@@ -261,6 +283,11 @@ class ServiceRegistry:
         # Data-path counters (observation only, never canonical).
         self._executed_total = 0
         self._execution_failures = 0
+        # Provider admissions whose compensation release could NOT be
+        # proven (diagnostics only -- a provider-side fact the registry
+        # never committed; PR #26 third review, finding 4: partial
+        # failures are explicit, never swallowed).
+        self._dangling_provider_admissions: List[Dict[str, str]] = []
         self._closed = False
 
     # ------------------------------------------------------------------ #
@@ -351,6 +378,16 @@ class ServiceRegistry:
             decision.tenant_domain,
         )
 
+    def _revocation_scope(
+        self, revocation: DecisionRevocation
+    ) -> Tuple[str, str, str, str]:
+        return (
+            revocation.service_ref,
+            revocation.session_id,
+            revocation.caller_node_id,
+            revocation.tenant_domain,
+        )
+
     def _latest_decision_for_scope(
         self, scope: Tuple[str, str, str, str]
     ) -> Optional[InvocationDecision]:
@@ -360,6 +397,20 @@ class ServiceRegistry:
                 continue
             if latest is None or decision.applied_instant > latest.applied_instant:
                 latest = decision
+        return latest
+
+    def _latest_revocation_for_scope(
+        self, scope: Tuple[str, str, str, str]
+    ) -> Optional[DecisionRevocation]:
+        latest: Optional[DecisionRevocation] = None
+        for revocation in self._revocations.values():
+            if self._revocation_scope(revocation) != scope:
+                continue
+            if (
+                latest is None
+                or revocation.applied_instant > latest.applied_instant
+            ):
+                latest = revocation
         return latest
 
     def _latest_placement_for_service(
@@ -375,12 +426,24 @@ class ServiceRegistry:
 
     def _decision_is_current(self, decision: InvocationDecision) -> bool:
         """A decision is current iff it is the latest applied decision
-        for its scope AND no placement transition for the service
-        occurred at or after its applied instant (relocation forces
-        re-authorization under current policy -- WORK-025
-        'Authorization is re-evaluated under current policy')."""
-        latest = self._latest_decision_for_scope(self._decision_scope(decision))
+        for its scope AND no revocation was applied for the same scope
+        at or after its applied instant AND no placement transition
+        for the service occurred at or after its applied instant
+        (relocation forces re-authorization under current policy --
+        WORK-025 'Authorization is re-evaluated under current policy';
+        PR #26 third review, finding 3: a later applied policy DENY
+        for the same scope INVALIDATES an earlier standing ALLOW --
+        the authorization lineage is per-scope and moves forward in
+        applied time)."""
+        scope = self._decision_scope(decision)
+        latest = self._latest_decision_for_scope(scope)
         if latest is None or latest.decision_ref != decision.decision_ref:
+            return False
+        revocation = self._latest_revocation_for_scope(scope)
+        if (
+            revocation is not None
+            and revocation.applied_instant >= decision.applied_instant
+        ):
             return False
         placement = self._latest_placement_for_service(decision.service_ref)
         if placement is not None and placement.transitioned_at >= decision.applied_instant:
@@ -603,6 +666,33 @@ class ServiceRegistry:
                     "record; placement changes must use relocate_service "
                     "(never a silent host mutation)",
                 )
+            # MONOTONIC advertisement lineage (PR #26 third review,
+            # finding 1): advertisements only move FORWARD in time.
+            # A claim that predates the current advertisement is a
+            # backward-in-time replay -- rejected deterministically,
+            # never applied over fresher state.
+            if advertisement.registered_at < existing.candidate.registered_at:
+                raise ServiceError(
+                    ServiceReasonCode.ADVERTISEMENT_REPLAY,
+                    "advertisement registered_at %s predates the current "
+                    "advertisement for %r (registered_at %s) -- "
+                    "advertisements only move forward in time (stale "
+                    "claims fail closed and leave authoritative state "
+                    "unchanged)" % (
+                        advertisement.registered_at, service_ref,
+                        existing.candidate.registered_at,
+                    ),
+                )
+            if advertisement.registered_at == existing.candidate.registered_at:
+                # Equal-time different-content claim (the digest covers
+                # the WHOLE claim): deterministic explicit conflict.
+                raise ServiceError(
+                    ServiceReasonCode.SERVICE_CONFLICT,
+                    "advertisement for %r conflicts with the registered "
+                    "claim at the same registered_at %s (equal-time "
+                    "different-content claims are an explicit conflict)"
+                    % (service_ref, advertisement.registered_at),
+                )
             candidate = _candidate_from(advertisement, evidence)
             self._services[service_ref] = _ServiceEntry(candidate, claim_digest)
             event_type = (
@@ -622,14 +712,60 @@ class ServiceRegistry:
         self._append_event(event_type, now, service_ref=service_ref)
         return ServiceOpResult(ok=True, value=service_ref)
 
+    def _supersede_admissions_for_service(
+        self, service_ref: str, *, now: str
+    ) -> Tuple[str, ...]:
+        """End every ACTIVE admission of one service EXPLICITLY (PR
+        #26 third review, finding 4): provider release FIRST (external
+        confirm), then the registry commits the authoritative state --
+        ``SUPERSEDED`` only when the provider release was PROVEN,
+        ``CLEANUP_PENDING`` (with an audit event) when it was not.
+        Returns the refs still needing cleanup; a cleanup failure
+        never disappears behind the operation result."""
+        pending: List[str] = []
+        for admission_ref in sorted(self._admissions):
+            adm_entry = self._admissions[admission_ref]
+            if adm_entry.admission.service_ref != service_ref:
+                continue
+            if adm_entry.admission.state != AdmissionState.ACTIVE:
+                continue
+            try:
+                released = adm_entry.sandbox.release(
+                    now=now, admission_ref=admission_ref
+                )
+            except BaseException:  # noqa: BLE001 -- never swallowed: parked
+                released = None
+            if released is not None and released.ok:
+                adm_entry.admission = _replace_admission_state(
+                    adm_entry.admission, AdmissionState.SUPERSEDED
+                )
+                self._append_event(
+                    ServiceEventType.ADMISSION_SUPERSEDED, now,
+                    service_ref=service_ref, admission_ref=admission_ref,
+                )
+            else:
+                adm_entry.admission = _replace_admission_state(
+                    adm_entry.admission, AdmissionState.CLEANUP_PENDING
+                )
+                self._append_event(
+                    ServiceEventType.ADMISSION_CLEANUP_PENDING, now,
+                    service_ref=service_ref, admission_ref=admission_ref,
+                    detail="provider release unproven -- explicit cleanup "
+                           "pending (retry_admission_cleanup required)",
+                )
+                pending.append(admission_ref)
+        return tuple(pending)
+
     def withdraw_service(
         self, *, now: str, service_ref: str, reason: str = ""
     ) -> ServiceOpResult:
         """Withdraw a service: the record is tombstoned (explicit,
-        ordered, replay protecting), active admissions are superseded,
-        and standing decisions stop being current.  Local service
-        state is never erased by anything but this explicit owner
-        operation."""
+        ordered, replay protecting), active admissions are ended with
+        EXPLICIT cleanup outcomes (a failed provider release parks the
+        admission in ``cleanup-pending`` and is surfaced on the
+        result -- never swallowed), and standing decisions stop being
+        current.  Local service state is never erased by anything but
+        this explicit owner operation."""
         self._require_not_closed()
         self._require_now(now)
         validate_opaque_ref(service_ref, "service")
@@ -645,26 +781,9 @@ class ServiceRegistry:
                 ServiceReasonCode.SERVICE_UNKNOWN,
                 "service %r is not registered" % (service_ref,),
             )
-        # Supersede active admissions (best-effort provider release,
-        # exactly the WORK-024 post-commit discipline).
-        for admission_ref in sorted(self._admissions):
-            adm_entry = self._admissions[admission_ref]
-            if adm_entry.admission.service_ref != service_ref:
-                continue
-            if adm_entry.admission.state != AdmissionState.ACTIVE:
-                continue
-            superseded = _replace_admission_state(
-                adm_entry.admission, AdmissionState.SUPERSEDED
-            )
-            adm_entry.admission = superseded
-            self._append_event(
-                ServiceEventType.ADMISSION_SUPERSEDED, now,
-                service_ref=service_ref, admission_ref=admission_ref,
-            )
-            try:
-                adm_entry.sandbox.release(now=now, admission_ref=admission_ref)
-            except BaseException:  # noqa: BLE001
-                pass
+        cleanup_pending = self._supersede_admissions_for_service(
+            service_ref, now=now
+        )
         self._tombstones.append(
             ServiceTombstone(
                 service_ref=service_ref, withdrawn_at=now, reason=reason
@@ -673,7 +792,13 @@ class ServiceRegistry:
         self._append_event(
             ServiceEventType.SERVICE_WITHDRAWN, now, service_ref=service_ref
         )
-        return ServiceOpResult(ok=True, value=service_ref)
+        return ServiceOpResult(
+            ok=True, value=service_ref, cleanup_pending=cleanup_pending,
+            detail=(
+                "provider cleanup pending for %d admission(s)"
+                % (len(cleanup_pending),)
+            ) if cleanup_pending else "",
+        )
 
     def relocate_service(
         self,
@@ -725,29 +850,22 @@ class ServiceRegistry:
         )
         entry.candidate = candidate
         self._placements.append(transition)
-        # Supersede active admissions (best-effort provider release).
-        for admission_ref in sorted(self._admissions):
-            adm_entry = self._admissions[admission_ref]
-            if adm_entry.admission.service_ref != service_ref:
-                continue
-            if adm_entry.admission.state != AdmissionState.ACTIVE:
-                continue
-            superseded = _replace_admission_state(
-                adm_entry.admission, AdmissionState.SUPERSEDED
-            )
-            adm_entry.admission = superseded
-            self._append_event(
-                ServiceEventType.ADMISSION_SUPERSEDED, now,
-                service_ref=service_ref, admission_ref=admission_ref,
-            )
-            try:
-                adm_entry.sandbox.release(now=now, admission_ref=admission_ref)
-            except BaseException:  # noqa: BLE001
-                pass
+        # End active admissions with EXPLICIT cleanup outcomes (a
+        # failed provider release parks the admission in
+        # cleanup-pending and is surfaced on the result).
+        cleanup_pending = self._supersede_admissions_for_service(
+            service_ref, now=now
+        )
         self._append_event(
             ServiceEventType.SERVICE_RELOCATED, now, service_ref=service_ref
         )
-        return ServiceOpResult(ok=True, value=service_ref)
+        return ServiceOpResult(
+            ok=True, value=service_ref, cleanup_pending=cleanup_pending,
+            detail=(
+                "provider cleanup pending for %d admission(s)"
+                % (len(cleanup_pending),)
+            ) if cleanup_pending else "",
+        )
 
     # ------------------------------------------------------------------ #
     # Lookup and discovery
@@ -919,6 +1037,8 @@ class ServiceRegistry:
         now: str,
         tenant_domain: str,
         host_node_id: str = "",
+        session_id: str = "",
+        caller_node_id: str = "",
         intent: Any = None,
         capability_ref: str = "",
         include_federated: bool = False,
@@ -939,6 +1059,18 @@ class ServiceRegistry:
         empty scope fails closed with TENANT_ISOLATION.  There is no
         cross-tenant or unscoped enumeration path.
 
+        Decision-based eligibility is bound to the DISCOVERING scope
+        (PR #26 third review, finding 2): when ``decision_refs`` are
+        supplied, every ref must resolve to a CURRENT applied decision
+        whose (session, caller, tenant) scope EXACTLY equals the
+        discovering (``session_id``, ``caller_node_id``,
+        ``tenant_domain``) scope -- a decision belonging to another
+        caller/session fails closed with DECISION_SCOPE_MISMATCH and
+        NEVER makes a service eligible for someone else's discovery.
+        Discovery performs NO silent partial authorization: without a
+        scope-exact current decision a policy-controlled service is
+        simply not eligible.
+
         Local-first selection: candidates hosted by the discovering
         node come first (each group sorted by service_ref).  Local
         discovery never requires upstream connectivity; federated
@@ -956,6 +1088,10 @@ class ServiceRegistry:
         validate_tenant_domain(tenant_domain)
         if host_node_id:
             validate_node_id(host_node_id, label="host node id")
+        if session_id:
+            validate_session_ref(session_id)
+        if caller_node_id:
+            validate_node_id(caller_node_id, label="caller node id")
         if capability_ref:
             from .validation import validate_capability_ref as _vcr
 
@@ -975,6 +1111,31 @@ class ServiceRegistry:
             )
         for ref in decision_refs:
             validate_opaque_ref(ref, "decision")
+        # Bind EVERY supplied decision to the discovering caller/
+        # session/tenant scope with EXACT equality (fail closed BEFORE
+        # any filtering -- never a silent partial authorization).
+        authorized_decisions: List[InvocationDecision] = []
+        for ref in decision_refs:
+            decision = self._decisions.get(ref)
+            if decision is None:
+                raise ServiceError(
+                    ServiceReasonCode.DECISION_UNKNOWN,
+                    "invocation decision %r is unknown" % (ref,),
+                )
+            if (
+                decision.session_id != session_id
+                or decision.caller_node_id != caller_node_id
+                or decision.tenant_domain != tenant_domain
+            ):
+                raise ServiceError(
+                    ServiceReasonCode.DECISION_SCOPE_MISMATCH,
+                    "invocation decision %r belongs to another "
+                    "caller/session/tenant scope -- discovery "
+                    "authorization is bound to the discovering scope "
+                    "with exact equality (no partial authorization)"
+                    % (ref,),
+                )
+            authorized_decisions.append(decision)
         # Pre-validate label-dimension operators once (fail closed on
         # non-service-layer semantics before any filtering).
         if intent is not None:
@@ -1019,16 +1180,14 @@ class ServiceRegistry:
             if intent is not None and not self._intent_allows(record, intent):
                 continue
             if record.policy_controlled:
-                authorized = False
-                for ref in decision_refs:
-                    decision = self._decisions.get(ref)
-                    if decision is None:
-                        continue
-                    if decision.service_ref != service_ref:
-                        continue
-                    if self._decision_is_current(decision):
-                        authorized = True
-                        break
+                # Eligibility requires a CURRENT decision that is
+                # already scope-bound to THIS discovery (exact
+                # caller/session/tenant equality was proven above).
+                authorized = any(
+                    decision.service_ref == service_ref
+                    and self._decision_is_current(decision)
+                    for decision in authorized_decisions
+                )
                 if not authorized:
                     continue
             if host_node_id and record.host_node_id == host_node_id:
@@ -1071,15 +1230,27 @@ class ServiceRegistry:
         decision id MUST bind to the decision's own canonical bytes
         (tampered -- or rebound -- decision rejected); the decision
         MUST carry exactly one invocation binding for the frozen
-        WORK-010 ``service.invoke`` operation; the effect MUST be
-        ``allow`` (deny fails closed and never becomes
-        authorization); the decision MUST NOT be future-dated (stale
-        fails closed); the bound tenant MUST match the registered
-        service record's tenant (cross-tenant authorization fails
-        closed); and per-scope application instants MUST advance
-        monotonically (re-applying the identical decision fails with
-        DECISION_EXISTS; the exact same derived ref is never
-        re-minted)."""
+        WORK-010 ``service.invoke`` operation; the decision MUST NOT
+        be future-dated (stale fails closed); the bound tenant MUST
+        match the registered service record's tenant (cross-tenant
+        authorization fails closed); and per-scope application
+        instants MUST advance monotonically across the WHOLE lineage
+        -- decisions AND revocations (re-applying the identical
+        outcome fails with DECISION_EXISTS; the exact same derived
+        ref is never re-minted).
+
+        Decision lineage (PR #26 third review, finding 3): an ALLOW
+        effect becomes the standing :class:`InvocationDecision` for
+        the scope; a NON-ALLOW effect (deny) becomes a
+        :class:`DecisionRevocation` -- a lineage marker that
+        INVALIDATES every earlier standing ALLOW for the same scope
+        (a later DENY must be capable of ending an earlier
+        authorization).  A revocation NEVER authorizes anything: the
+        deny outcome is not an InvocationDecision (WORK-025
+        invariant 3 -- deny never becomes service-layer
+        authorization), its ref resolves to no authorizing decision
+        at lookup/admission time, and a subsequent ALLOW at a later
+        applied instant legitimately re-authorizes the scope."""
         self._require_not_closed()
         self._require_now(now)
         if not isinstance(policy_decision, PolicyDecision):
@@ -1124,12 +1295,6 @@ class ServiceRegistry:
                     tenant_domain, service_ref, candidate.tenant_domain,
                 ),
             )
-        if policy_decision.effect != "allow":
-            raise ServiceError(
-                ServiceReasonCode.DECISION_DENIED,
-                "policy DENIED the invocation -- deny never becomes "
-                "service-layer authorization (fail closed)",
-            )
         try:
             evaluated_at = parse_instant(policy_decision.evaluation_instant)
             applied_at = parse_instant(now)
@@ -1148,16 +1313,20 @@ class ServiceRegistry:
             service_ref, session_id, caller_node_id, tenant_domain,
             policy_decision.decision_id, now,
         )
-        existing = self._decisions.get(decision_ref)
-        if existing is not None:
+        # Belt-and-braces: the derivation input is the decision's own
+        # digest-covered content, and the effect is NOT derivation
+        # material -- but a genuine ALLOW and a genuine DENY always
+        # carry distinct WORK-010 decision ids, so refs can never
+        # collide; collisions are still checked across BOTH lineage
+        # legs (deterministic conflict behavior).
+        if decision_ref in self._decisions or decision_ref in self._revocations:
             raise ServiceError(
                 ServiceReasonCode.DECISION_EXISTS,
-                "invocation decision %r was already applied (deterministic "
+                "invocation outcome %r was already applied (deterministic "
                 "conflict behavior)" % (decision_ref,),
             )
-        latest = self._latest_decision_for_scope(
-            (service_ref, session_id, caller_node_id, tenant_domain)
-        )
+        scope = (service_ref, session_id, caller_node_id, tenant_domain)
+        latest = self._latest_decision_for_scope(scope)
         if latest is not None and now <= latest.applied_instant:
             raise ServiceError(
                 ServiceReasonCode.DECISION_STALE,
@@ -1165,20 +1334,54 @@ class ServiceRegistry:
                 "per scope (latest applied instant is %s)"
                 % (latest.applied_instant,),
             )
-        decision = InvocationDecision(
-            decision_ref=decision_ref,
+        latest_revocation = self._latest_revocation_for_scope(scope)
+        if (
+            latest_revocation is not None
+            and now <= latest_revocation.applied_instant
+        ):
+            raise ServiceError(
+                ServiceReasonCode.DECISION_STALE,
+                "decision application instants must advance monotonically "
+                "per scope across the whole lineage (latest revocation "
+                "instant is %s)" % (latest_revocation.applied_instant,),
+            )
+        if policy_decision.effect == "allow":
+            decision = InvocationDecision(
+                decision_ref=decision_ref,
+                service_ref=service_ref,
+                session_id=session_id,
+                caller_node_id=caller_node_id,
+                tenant_domain=tenant_domain,
+                policy_decision_id=policy_decision.decision_id,
+                policy_effect=policy_decision.effect,
+                matched_rule_ids=policy_decision.matched_rule_ids,
+                applied_instant=now,
+            )
+            self._decisions[decision_ref] = decision
+            self._append_event(
+                ServiceEventType.DECISION_APPLIED, now, service_ref=service_ref
+            )
+            return ServiceOpResult(ok=True, value=decision_ref)
+        # Non-allow effect: a per-scope REVOCATION lineage marker (a
+        # later DENY invalidates earlier standing ALLOWs).  It never
+        # authorizes anything -- there is no InvocationDecision and
+        # no authorizing ref; lookup/admission fail closed with
+        # DECISION_UNKNOWN / REAUTHORIZATION_REQUIRED.
+        revocation = DecisionRevocation(
+            revocation_ref=decision_ref,
             service_ref=service_ref,
             session_id=session_id,
             caller_node_id=caller_node_id,
             tenant_domain=tenant_domain,
             policy_decision_id=policy_decision.decision_id,
-            policy_effect=policy_decision.effect,
             matched_rule_ids=policy_decision.matched_rule_ids,
             applied_instant=now,
         )
-        self._decisions[decision_ref] = decision
+        self._revocations[decision_ref] = revocation
         self._append_event(
-            ServiceEventType.DECISION_APPLIED, now, service_ref=service_ref
+            ServiceEventType.DECISION_REVOKED, now, service_ref=service_ref,
+            detail="standing authorization for the scope revoked (a "
+                   "later DENY invalidates earlier ALLOWs)",
         )
         return ServiceOpResult(ok=True, value=decision_ref)
 
@@ -1333,14 +1536,37 @@ class ServiceRegistry:
             )
         try:
             self._commit_admission(admission, sandbox, now=now)
-        except BaseException:
-            # Compensation: release the provider-side admission
-            # best-effort, then re-raise (authoritative state was
-            # never mutated).
+        except BaseException as commit_exc:
+            # Compensation (PR #26 third review, finding 4: partial
+            # failures are EXPLICIT): release the provider-side
+            # admission, then re-raise (authoritative state was never
+            # mutated).  If the compensation release CANNOT be proven,
+            # the dangling provider admission is raised as a typed
+            # explicit error naming the ref and recorded in the
+            # diagnostics ledger -- it never disappears.
             try:
-                sandbox.release(now=now, admission_ref=admission.admission_ref)
-            except BaseException:  # noqa: BLE001
-                pass
+                compensation = sandbox.release(
+                    now=now, admission_ref=admission.admission_ref
+                )
+            except BaseException:  # noqa: BLE001 -- converted, not swallowed
+                compensation = None
+            if compensation is None or not compensation.ok:
+                self._dangling_provider_admissions.append(
+                    {
+                        "admission_ref": admission.admission_ref,
+                        "instant": now,
+                        "detail": "admission commit failed and provider "
+                                  "compensation release unproven",
+                    }
+                )
+                raise ServiceError(
+                    ServiceReasonCode.ILLEGAL_STATE,
+                    "admission commit failed AND the provider "
+                    "compensation release could not be proven: provider "
+                    "admission %r may still be active (explicit partial "
+                    "failure -- cleanup required; see "
+                    "diagnostic_state)" % (admission.admission_ref,),
+                ) from commit_exc
             raise
         return ServiceOpResult(ok=True, value=admission)
 
@@ -1467,6 +1693,66 @@ class ServiceRegistry:
             ServiceEventType.ADMISSION_RELEASED, now,
             service_ref=entry.admission.service_ref,
             admission_ref=admission_ref,
+        )
+        return ServiceOpResult(ok=True, value=admission_ref)
+
+    def retry_admission_cleanup(
+        self, *, now: str, admission_ref: str
+    ) -> ServiceOpResult:
+        """Retry the provider-side cleanup of one ``cleanup-pending``
+        admission (PR #26 third review, finding 4: the compensation
+        protocol that PROVES cleanup completed).  Only a
+        cleanup-pending admission can be retried; a PROVEN release
+        transitions the admission to ``SUPERSEDED`` (auditable), a
+        still-failing release keeps it cleanup-pending and returns
+        the typed provider failure EXPLICITLY."""
+        self._require_not_closed()
+        self._require_now(now)
+        validate_opaque_ref(admission_ref, "admission")
+        entry = self._admissions.get(admission_ref)
+        if entry is None:
+            raise ServiceError(
+                ServiceReasonCode.ADMISSION_UNKNOWN,
+                "admission %r is unknown" % (admission_ref,),
+            )
+        if entry.admission.state != AdmissionState.CLEANUP_PENDING:
+            raise ServiceError(
+                ServiceReasonCode.ADMISSION_STATE,
+                "admission %r is %r, not cleanup-pending (cleanup retry "
+                "applies only to unproven cleanups)" % (
+                    admission_ref, entry.admission.state,
+                ),
+            )
+        try:
+            result = entry.sandbox.release(
+                now=now, admission_ref=admission_ref
+            )
+        except BaseException:  # noqa: BLE001 -- returned as a typed value
+            return ServiceOpResult(
+                ok=False,
+                failure=ServiceFailure(
+                    reason_code=ServiceReasonCode.SERVICES_FAILURE,
+                    integration_id=self._integration_id,
+                    operation="retry_admission_cleanup",
+                ),
+                detail="provider cleanup retry fault isolated (admission "
+                       "remains cleanup-pending)",
+            )
+        if not result.ok:
+            return ServiceOpResult(
+                ok=False,
+                failure=result.failure,
+                detail="provider cleanup still unproven (admission "
+                       "remains cleanup-pending): %s" % (result.detail,),
+            )
+        entry.admission = _replace_admission_state(
+            entry.admission, AdmissionState.SUPERSEDED
+        )
+        self._append_event(
+            ServiceEventType.ADMISSION_SUPERSEDED, now,
+            service_ref=entry.admission.service_ref,
+            admission_ref=admission_ref,
+            detail="cleanup proven by retry",
         )
         return ServiceOpResult(ok=True, value=admission_ref)
 
@@ -1779,8 +2065,8 @@ class ServiceRegistry:
         """ACCESS-STATE-IN canonical snapshot: authoritative service
         facts only.  Provider labels, sandboxes, health ladders,
         upstream reference state, step budgets, execution counters,
-        and derivation nonces are ACCESS-STATE-OUT (never
-        canonical)."""
+        dangling provider admissions, and derivation nonces are
+        ACCESS-STATE-OUT (never canonical)."""
         return {
             "integration_id": self._integration_id,
             "closed": self._closed,
@@ -1795,6 +2081,10 @@ class ServiceRegistry:
             "decisions": [
                 self._decisions[decision_ref].to_dict()
                 for decision_ref in sorted(self._decisions)
+            ],
+            "decision_revocations": [
+                self._revocations[revocation_ref].to_dict()
+                for revocation_ref in sorted(self._revocations)
             ],
             "exposures": [
                 self._exposures[exposure_ref].to_dict()
@@ -1831,17 +2121,46 @@ class ServiceRegistry:
             "sequence": self._sequence,
             "executed_total": self._executed_total,
             "execution_failures": self._execution_failures,
+            "cleanup_pending_admissions": [
+                admission_ref
+                for admission_ref in sorted(self._admissions)
+                if self._admissions[admission_ref].admission.state
+                == AdmissionState.CLEANUP_PENDING
+            ],
+            "dangling_provider_admissions": list(
+                self._dangling_provider_admissions
+            ),
         }
 
-    def close(self) -> None:
-        """Close the registry (best-effort provider close)."""
+    def close(self, *, now: str) -> None:
+        """Close the registry TERMINALLY with EXPLICIT provider
+        outcomes (PR #26 third review, finding 4 + the close
+        observation): the injected instant is validated BEFORE any
+        state change, the closed flag flips first (terminal,
+        idempotent-guarded), every provider is closed with the REAL
+        injected instant, and a provider that could not be proven
+        closed is raised as a typed error naming its label -- the
+        registry never claims a clean terminal closure while an
+        execution provider may still be active."""
         self._require_not_closed()
+        self._require_now(now)
         self._closed = True
+        failed_labels: List[str] = []
         for registration in self._providers:
             try:
-                registration.sandbox.close(now="1970-01-01T00:00:00Z")
-            except BaseException:  # noqa: BLE001
-                pass
+                result = registration.sandbox.close(now=now)
+            except BaseException:  # noqa: BLE001 -- surfaced, not swallowed
+                result = None
+            if result is None or not result.ok:
+                failed_labels.append(registration.label)
+        if failed_labels:
+            raise ServiceError(
+                ServiceReasonCode.ILLEGAL_STATE,
+                "registry closed, but provider close could not be proven "
+                "for: %s (providers may still be active -- explicit "
+                "degraded closure, never a silent one)"
+                % (", ".join(sorted(failed_labels)),),
+            )
 
     # ---- # properties --------------------------------------------------- #
 

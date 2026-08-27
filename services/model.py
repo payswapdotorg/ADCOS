@@ -146,15 +146,27 @@ class EvidenceSourceClass:
 
 
 class AdmissionState:
-    """Execution admission states (frozen)."""
+    """Execution admission states (frozen).
+
+    ``CLEANUP_PENDING`` is the deterministic degraded outcome demanded
+    by the PR #26 third Architect review (finding 4): when the
+    registry has authoritatively ended an admission but the
+    provider-side release FAILED, the admission is NOT silently
+    superseded -- it is parked in an explicit, auditable
+    cleanup-pending state that only a proven provider release
+    (``retry_admission_cleanup``) can transition to ``SUPERSEDED``.
+    """
 
     ACTIVE = "active"
     RELEASED = "released"
     SUPERSEDED = "superseded"
+    CLEANUP_PENDING = "cleanup-pending"
 
     @classmethod
     def values(cls) -> Tuple[str, ...]:
-        return (cls.ACTIVE, cls.RELEASED, cls.SUPERSEDED)
+        return (
+            cls.ACTIVE, cls.RELEASED, cls.SUPERSEDED, cls.CLEANUP_PENDING,
+        )
 
 
 class AllocationState:
@@ -226,12 +238,14 @@ class ServiceEventType:
     SERVICE_RELOCATED = "service-relocated"
     PEER_SERVICE_REGISTERED = "peer-service-registered"
     DECISION_APPLIED = "decision-applied"
+    DECISION_REVOKED = "decision-revoked"
     EXPOSURE_APPLIED = "exposure-applied"
     EXPOSURE_REMOVED = "exposure-removed"
     PROVIDER_REGISTERED = "provider-registered"
     ADMISSION_ESTABLISHED = "admission-established"
     ADMISSION_RELEASED = "admission-released"
     ADMISSION_SUPERSEDED = "admission-superseded"
+    ADMISSION_CLEANUP_PENDING = "admission-cleanup-pending"
     ALLOCATION_RESERVED = "allocation-reserved"
     ALLOCATION_RELEASED = "allocation-released"
 
@@ -241,9 +255,11 @@ class ServiceEventType:
             cls.SERVICE_REGISTERED, cls.SERVICE_UPDATED,
             cls.SERVICE_WITHDRAWN, cls.SERVICE_RELOCATED,
             cls.PEER_SERVICE_REGISTERED, cls.DECISION_APPLIED,
+            cls.DECISION_REVOKED,
             cls.EXPOSURE_APPLIED, cls.EXPOSURE_REMOVED,
             cls.PROVIDER_REGISTERED, cls.ADMISSION_ESTABLISHED,
             cls.ADMISSION_RELEASED, cls.ADMISSION_SUPERSEDED,
+            cls.ADMISSION_CLEANUP_PENDING,
             cls.ALLOCATION_RESERVED, cls.ALLOCATION_RELEASED,
         )
 
@@ -883,6 +899,101 @@ class InvocationDecision:
             "tenant_domain": self.tenant_domain,
             "policy_decision_id": self.policy_decision_id,
             "policy_effect": self.policy_effect,
+            "matched_rule_ids": list(self.matched_rule_ids),
+            "applied_instant": self.applied_instant,
+        }
+
+
+@dataclass(frozen=True)
+class DecisionRevocation:
+    """The decision-lineage record of a REAL WORK-010 policy decision
+    that did NOT allow an invocation (a DENY or any non-allow effect).
+
+    PR #26 third Architect review (finding 3): a later policy change
+    to DENY for the same (service, session, caller, tenant) scope must
+    be CAPABLE OF INVALIDATING an earlier standing ALLOW -- the
+    authorization lineage is per-scope and moves forward in applied
+    time.  A revocation is that lineage marker: it is authoritative
+    canonical DATA, it NEVER authorizes anything (an
+    :class:`InvocationDecision` still records ALLOW effects only --
+    WORK-25 invariant 3 is untouched), and any earlier ALLOW for the
+    same scope stops being current the moment a revocation is applied
+    at or after its applied instant.
+
+    Like :class:`InvocationDecision`, the scope is EXTRACTED FROM THE
+    DECISION'S OWN digest-covered invocation binding at apply time --
+    the registry accepts no scope parameters, so a revocation can only
+    ever restate the scope the WORK-010 decision itself evaluated."""
+
+    revocation_ref: str
+    service_ref: str
+    session_id: str
+    caller_node_id: str
+    tenant_domain: str
+    policy_decision_id: str
+    matched_rule_ids: Tuple[str, ...]
+    applied_instant: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "revocation_ref",
+            validate_opaque_ref(self.revocation_ref, "decision"),
+        )
+        object.__setattr__(
+            self, "service_ref",
+            validate_opaque_ref(self.service_ref, "service"),
+        )
+        if self.session_id:
+            validate_session_ref(self.session_id)
+        if self.caller_node_id:
+            validate_node_id(
+                self.caller_node_id, label="caller node id"
+            )
+        object.__setattr__(
+            self, "tenant_domain", validate_tenant_domain(self.tenant_domain)
+        )
+        if not self.tenant_domain:
+            raise ServiceError(
+                ServiceReasonCode.TENANT_ISOLATION,
+                "a decision revocation must carry an explicit tenant "
+                "domain (tenant-scoped authorization is never optional)",
+            )
+        object.__setattr__(
+            self, "policy_decision_id",
+            validate_policy_decision_id(self.policy_decision_id),
+        )
+        rules = _string_tuple(
+            self.matched_rule_ids, label="matched_rule_ids"
+        )
+        object.__setattr__(self, "matched_rule_ids", rules)
+        object.__setattr__(
+            self, "applied_instant", validate_instant(
+                self.applied_instant, label="applied_instant"
+            )
+        )
+        if self.session_id:
+            assert_ref_session_separation(self.revocation_ref, self.session_id)
+        expected = derive_decision_ref(
+            self.service_ref, self.session_id, self.caller_node_id,
+            self.tenant_domain, self.policy_decision_id,
+            self.applied_instant,
+        )
+        if self.revocation_ref != expected:
+            raise ServiceError(
+                ServiceReasonCode.INVALID_INPUT,
+                "revocation_ref must equal the content-derived "
+                "derive_decision_ref(...) -- a tampered or miscomputed "
+                "ref is rejected (the revocation is attributable DATA)",
+            )
+
+    def to_dict(self) -> dict:
+        return {
+            "revocation_ref": self.revocation_ref,
+            "service_ref": self.service_ref,
+            "session_id": self.session_id,
+            "caller_node_id": self.caller_node_id,
+            "tenant_domain": self.tenant_domain,
+            "policy_decision_id": self.policy_decision_id,
             "matched_rule_ids": list(self.matched_rule_ids),
             "applied_instant": self.applied_instant,
         }
