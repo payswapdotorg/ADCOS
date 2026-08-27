@@ -1151,6 +1151,10 @@ def case_45_frozen_vocabularies_present(results: List[Result]) -> None:
         # WORK-026 deliberate vocabulary extension ("policy-controlled
         # authority"): the telemetry topology-promotion operation.
         "telemetry.topology-promote",
+        # WORK-030 deliberate vocabulary extension ("privileged actions
+        # require explicit policy"): the management role-assignment
+        # administration operation.
+        "management.role-assign",
     }
     expected_preds = {
         "subject-equals", "credential-active", "resource-owner",
@@ -1174,11 +1178,12 @@ def case_45_frozen_vocabularies_present(results: List[Result]) -> None:
 
 
 def case_46_privileged_classification_structural(results: List[Result]) -> None:
-    """Privileged classification is structural -- all 14 frozen operations
-    (13 at WORK-010 + the WORK-026 telemetry.topology-promote extension)
-    are privileged; NON_PRIVILEGED is empty."""
-    if len(Privileged.PRIVILEGED) != 14:
-        results.append(fail("case_46_privileged_classification_structural", "expected 14 privileged ops, got %d" % len(Privileged.PRIVILEGED)))
+    """Privileged classification is structural -- all 15 frozen operations
+    (13 at WORK-010 + the WORK-026 telemetry.topology-promote extension +
+    the WORK-030 management.role-assign extension) are privileged;
+    NON_PRIVILEGED is empty."""
+    if len(Privileged.PRIVILEGED) != 15:
+        results.append(fail("case_46_privileged_classification_structural", "expected 15 privileged ops, got %d" % len(Privileged.PRIVILEGED)))
         return
     if Privileged.NON_PRIVILEGED:
         results.append(fail("case_46_privileged_classification_structural", "NON_PRIVILEGED should be empty in WORK-010"))
@@ -1187,7 +1192,7 @@ def case_46_privileged_classification_structural(results: List[Result]) -> None:
         if not Privileged.is_privileged(op):
             results.append(fail("case_46_privileged_classification_structural", "op %r not privileged" % op))
             return
-    results.append(ok("case_46_privileged_classification_structural", "all 14 ops privileged; classification structural"))
+    results.append(ok("case_46_privileged_classification_structural", "all 15 ops privileged; classification structural"))
 
 
 def case_47_decision_no_forbidden_fields(results: List[Result]) -> None:

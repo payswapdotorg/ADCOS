@@ -936,6 +936,22 @@ def case_19_no_core_leakage() -> Result:
         # evidence: the store is the only origin of gate evidence).
         if entry == "upgrade":
             continue
+        # WORK-030 amendment (deliberate, flagged in its PR): the
+        # management API family is likewise a dependency-graph-
+        # sanctioned DOWNSTREAM consumer of telemetry
+        # (spec/work-items.md: WORK-030 declares WORK-026 among its
+        # frozen dependencies).  Its telemetry usage is pinned below
+        # to the DATA surface only: telemetry.store (privacy-fenced
+        # queries + the born-bound policy-gated topology-promotion
+        # authorization -- both consumed read-only through the genuine
+        # store), telemetry.model (the frozen subject-kind/privacy/
+        # disclosure vocabularies for the promotion descriptor), and
+        # telemetry.errors (the public fail-closed error vocabulary,
+        # so authority rejections surface explainably in results and
+        # audit records).  It never touches the validation or
+        # authorization internals.
+        if entry == "management":
+            continue
         for base, _dirs, files in os.walk(os.path.join(_ROOT, entry)):
             for filename in sorted(files):
                 if not filename.endswith(".py"):
@@ -951,7 +967,15 @@ def case_19_no_core_leakage() -> Result:
     # telemetry DATA surface (telemetry.model records + the
     # telemetry.store replay target for deferred synchronization) --
     # never the validation/authorization/serialization internals.
-    for family in ("energy", "upgrade"):
+    # WORK-030: management may touch telemetry.store / telemetry.model
+    # plus the public telemetry.errors vocabulary (see the amendment
+    # comment above).
+    _ALLOWED = {
+        "energy": ("model", "store"),
+        "upgrade": ("model", "store"),
+        "management": ("model", "store", "errors"),
+    }
+    for family, allowed_modules in _ALLOWED.items():
         for filename in sorted(os.listdir(os.path.join(_ROOT, family))):
             if not filename.endswith(".py"):
                 continue
@@ -962,16 +986,16 @@ def case_19_no_core_leakage() -> Result:
                 r"^\s*from\s+telemetry(\.[a-z_]+)?\s+import", source, re.MULTILINE
             ):
                 module = match.group(1) or ""
-                if module not in ("", ".model", ".store", ".model.", ".store."):
-                    if module.lstrip(".") not in ("model", "store"):
-                        return fail(
-                            name,
-                            "%s/%s imports telemetry internals %r (data surface only)"
-                            % (family, filename, module),
-                        )
+                if module.lstrip(".") not in allowed_modules and module != "":
+                    return fail(
+                        name,
+                        "%s/%s imports telemetry internals %r (data surface only)"
+                        % (family, filename, module),
+                    )
     return ok(
         name,
-        "no core family imports telemetry; energy/upgrade consume the data surface only",
+        "no core family imports telemetry; energy/upgrade/management "
+        "consume the pinned data surface only",
     )
 
 

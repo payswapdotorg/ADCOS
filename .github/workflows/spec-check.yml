@@ -105,3 +105,6 @@ jobs:
 
       - name: Run upgrade/rollback/compatibility manager tests
         run: python3 tools/upgrade_selftest.py
+
+      - name: Run management API tests
+        run: python3 tools/management_selftest.py
