@@ -1297,7 +1297,35 @@ class ServiceRegistry:
         invariant 3 -- deny never becomes service-layer
         authorization), its ref resolves to no authorizing decision
         at lookup/admission time, and a subsequent ALLOW at a later
-        applied instant legitimately re-authorizes the scope."""
+        applied instant legitimately re-authorizes the scope.
+
+        Authority dependency (PR #26 fifth review, finding B3): the
+        two policy effects have DIFFERENT service-record
+        dependencies, because they are different authority acts.
+
+        - ALLOW *grants* standing authorization, so it requires a
+          currently live, tenant-consistent service record
+          (``_require_service_record`` -- unknown/withdrawn/stale
+          fail closed; an authorization cannot attach to a dead
+          advertisement).
+        - A NON-ALLOW effect *revokes* previously granted
+          authorization.  Recording that the WORK-010 authority has
+          ended an authorization MUST NOT depend on the current
+          advertisement lifecycle: the intended sequence
+          ALLOW@T1 -> service expires/withdrawn -> DENY@T2 ->
+          DecisionRevocation must land even though no live record
+          remains.  The deny path therefore has NO freshness or
+          registration requirement; it retains only an identity
+          CONSISTENCY check -- if a record is still known (even a
+          stale, expired one), the bound tenant must match it
+          (cross-tenant revocation fails closed; a withdrawn or
+          never-registered service has no known identity to
+          contradict, and the revocation's scope is digest-covered
+          WORK-010 DATA in any case).
+
+        Policy authority is independent of advertisement lifecycle:
+        the registry must never need a live advertisement merely to
+        record that WORK-010 has revoked an authorization."""
         self._require_fully_open()
         self._require_now(now)
         if not isinstance(policy_decision, PolicyDecision):
@@ -1327,21 +1355,11 @@ class ServiceRegistry:
         session_id = binding.session_id
         caller_node_id = binding.caller_node_id
         tenant_domain = binding.tenant_domain
-        # The authorized scope must reference THIS registry's state:
-        # an unknown service cannot be authorized, and the bound
-        # tenant must be the service record's tenant (fail closed --
-        # a tenant-A authorization can never reach a tenant-B
-        # service).
-        candidate = self._require_service_record(service_ref, now)
-        if candidate.tenant_domain != tenant_domain:
-            raise ServiceError(
-                ServiceReasonCode.TENANT_ISOLATION,
-                "invocation decision binds tenant %r but service %r "
-                "belongs to tenant %r (cross-tenant authorization "
-                "fails closed)" % (
-                    tenant_domain, service_ref, candidate.tenant_domain,
-                ),
-            )
+        # The service-record dependency is effect-SPECIFIC (PR #26
+        # fifth review, finding B3): both paths share every
+        # decision-verification and lineage check above, but only
+        # the ALLOW path below demands a live advertisement -- the
+        # revocation path must stay reachable after expiry/withdrawal.
         try:
             evaluated_at = parse_instant(policy_decision.evaluation_instant)
             applied_at = parse_instant(now)
@@ -1393,6 +1411,22 @@ class ServiceRegistry:
                 "instant is %s)" % (latest_revocation.applied_instant,),
             )
         if policy_decision.effect == "allow":
+            # ALLOW path: granting standing authorization requires a
+            # currently live service record, and the bound tenant
+            # must be that record's tenant (fail closed -- an unknown,
+            # withdrawn, or stale advertisement cannot be authorized,
+            # and a tenant-A authorization can never reach a
+            # tenant-B service).
+            candidate = self._require_service_record(service_ref, now)
+            if candidate.tenant_domain != tenant_domain:
+                raise ServiceError(
+                    ServiceReasonCode.TENANT_ISOLATION,
+                    "invocation decision binds tenant %r but service %r "
+                    "belongs to tenant %r (cross-tenant authorization "
+                    "fails closed)" % (
+                        tenant_domain, service_ref, candidate.tenant_domain,
+                    ),
+                )
             decision = InvocationDecision(
                 decision_ref=decision_ref,
                 service_ref=service_ref,
@@ -1413,7 +1447,27 @@ class ServiceRegistry:
         # later DENY invalidates earlier standing ALLOWs).  It never
         # authorizes anything -- there is no InvocationDecision and
         # no authorizing ref; lookup/admission fail closed with
-        # DECISION_UNKNOWN / REAUTHORIZATION_REQUIRED.
+        # DECISION_UNKNOWN / REAUTHORIZATION_REQUIRED.  Recording the
+        # revocation requires NO live service record (PR #26 fifth
+        # review, finding B3): the policy authority ends
+        # authorizations independently of the advertisement
+        # lifecycle, so an expired, withdrawn, or never-registered
+        # service still receives its revocation.  Identity
+        # consistency only: when a record IS still known (even a
+        # stale one), the bound tenant must match it.
+        known = self._services.get(service_ref)
+        if known is not None and known.candidate.tenant_domain != tenant_domain:
+            raise ServiceError(
+                ServiceReasonCode.TENANT_ISOLATION,
+                "revocation decision binds tenant %r but the known "
+                "record for service %r belongs to tenant %r (identity "
+                "consistency on the deny path -- no freshness is "
+                "required, but a known identity cannot be "
+                "contradicted)" % (
+                    tenant_domain, service_ref,
+                    known.candidate.tenant_domain,
+                ),
+            )
         revocation = DecisionRevocation(
             revocation_ref=decision_ref,
             service_ref=service_ref,
@@ -1481,8 +1535,22 @@ class ServiceRegistry:
                 ServiceReasonCode.DECISION_UNKNOWN,
                 "invocation decision %r is unknown" % (decision_ref,),
             )
-        # The service record is resolved THROUGH the decision's own
-        # service scope (never an independently supplied selector).
+        # Policy-lineage precedence (PR #26 fifth review, finding B3):
+        # a REVOKED authorization is dead by policy-authority verdict,
+        # and that verdict must not be masked behind advertisement
+        # lifecycle state -- the caller is told REAUTHORIZATION_REQUIRED
+        # whether the advertisement is live, expired, or withdrawn.
+        # Every other ordering is unchanged: a CURRENT decision still
+        # resolves the service record THROUGH its own service scope
+        # (never an independently supplied selector) and fails closed
+        # on unknown/withdrawn/stale records exactly as before.
+        if not self._decision_is_current(decision):
+            raise ServiceError(
+                ServiceReasonCode.REAUTHORIZATION_REQUIRED,
+                "invocation decision %r is no longer current "
+                "(re-authorization under current policy is required)"
+                % (decision_ref,),
+            )
         candidate = self._require_service_record(decision.service_ref, now)
         # The decision's authorized tenant must still be the service
         # record's tenant (belt-and-braces: the service_ref structurally
@@ -1497,13 +1565,6 @@ class ServiceRegistry:
                     decision_ref, decision.tenant_domain,
                     decision.service_ref, candidate.tenant_domain,
                 ),
-            )
-        if not self._decision_is_current(decision):
-            raise ServiceError(
-                ServiceReasonCode.REAUTHORIZATION_REQUIRED,
-                "invocation decision %r is no longer current "
-                "(re-authorization under current policy is required)"
-                % (decision_ref,),
             )
         self._require_secureable_session(decision.session_id)
         # Capacity admission over WORK-008 DATA: an execution

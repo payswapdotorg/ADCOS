@@ -68,6 +68,19 @@ every WORK-025 handoff verification item to a discriminating case:
   retry; compensation failures and degraded
   terminal closure are explicit (PR #26 review 3,
   finding 4 + close observation)                     -> case_44
+- recoverable terminal-close lifecycle and
+  decision-only execution scope (PR #26 fourth
+  review, B1/B2)                        -> case_45, case_46
+- REVOCATION is independent of the advertisement
+  lifecycle: a genuine later DENY lands as a
+  DecisionRevocation even after the service
+  EXPIRES or is WITHDRAWN (an ALLOW still
+  requires a live record); the revoked ALLOW
+  fails REAUTHORIZATION_REQUIRED -- the
+  policy-lineage verdict, never masked behind
+  advertisement state -- and stays dead across
+  refresh and re-registration (PR #26 fifth
+  review, finding B3)                   -> case_47
 """
 
 from __future__ import annotations
@@ -159,6 +172,7 @@ _NOW = "2026-08-27T00:00:00Z"
 _T1 = "2026-08-27T00:01:00Z"
 _T2 = "2026-08-27T00:02:00Z"
 _T3 = "2026-08-27T00:03:00Z"
+_T1H = "2026-08-27T00:01:30Z"  # expiry/withdrawal boundary between _T1 and _T2
 _T4 = "2026-08-27T00:04:00Z"
 _T5 = "2026-08-27T00:05:00Z"
 _T6 = "2026-08-27T00:06:00Z"
@@ -4400,6 +4414,224 @@ def case_46_execution_scope_decision_only() -> Result:
     )
 
 
+def case_47_revocation_independent_of_advertisement_lifecycle() -> Result:
+    """PR #26 fifth Architect review, finding B3: policy authority must
+    be able to revoke previously granted authorization independently
+    of the current advertisement lifecycle.  The intended sequence
+
+        ALLOW@T1 -> service expires / is withdrawn -> DENY@T2
+                 -> DecisionRevocation
+
+    must land: the deny path of apply_policy_decision has NO freshness
+    or registration requirement (an ALLOW still does).  The revoked
+    ALLOW then fails with REAUTHORIZATION_REQUIRED -- the
+    policy-lineage verdict, never masked behind SERVICE_STALE /
+    SERVICE_WITHDRAWN -- and stays dead across advertisement refresh
+    and re-registration, while a LATER genuine ALLOW re-authorizes
+    (the lineage keeps moving forward).  Leg 1: natural expiry.  Leg 2:
+    explicit withdrawal (withdraw_service deliberately removes the
+    active record, leaving only a tombstone)."""
+    name = "case_47_revocation_independent_of_advertisement_lifecycle"
+    # ---- leg 1: the advertisement EXPIRES between the ALLOW and DENY
+    registry, _executor = _full_registry()
+    service_ref = _registered(
+        registry, _advertisement(
+            descriptor=_descriptor(name="expiring-service"),
+            expires_at=_T1H,  # fresh at _T1, stale from _T1H on
+            policy_controlled=True,
+        )
+    )
+    allow_ref = _decision_for(registry, service_ref, now=_T1)
+    registry.lookup_service(  # the standing ALLOW is live at _T1
+        now=_T1, service_ref=service_ref, tenant_domain="village-a",
+        decision_ref=allow_ref,
+    )
+    # Pre-revocation, at the expiry boundary, the advertisement verdict
+    # is the operative fact (no revocation exists yet to report).
+    try:
+        registry.admit_execution(now=_T1H, decision_ref=allow_ref)
+        return fail(name, "expired advertisement admitted")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.SERVICE_STALE:
+            return fail(name, "expiry boundary admit: %s" % (exc.reason,))
+    # THE B3 SEQUENCE: genuine bound DENY at _T2 while the record is
+    # stale -- the revocation MUST land (0bd7614 rejected it with
+    # SERVICE_STALE and recorded nothing).
+    deny = _engine_invocation_decision(
+        service_ref, evaluation_instant=_T2, effect="deny",
+    )
+    revoked = registry.apply_policy_decision(now=_T2, policy_decision=deny)
+    if not revoked.ok:
+        return fail(name, "DENY not applicable after expiry: %s"
+                    % (revoked.detail,))
+    snapshot = registry.snapshot()
+    if len(snapshot["decision_revocations"]) != 1:
+        return fail(name, "post-expiry deny not recorded as a revocation")
+    events = [e["event_type"] for e in snapshot["events"]]
+    if events.count(ServiceEventType.DECISION_REVOKED) != 1:
+        return fail(name, "post-expiry revocation not audited")
+    # The deny ref authorizes NOTHING.
+    try:
+        registry.admit_execution(now=_T2, decision_ref=revoked.value)
+        return fail(name, "deny ref authorized execution")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.DECISION_UNKNOWN:
+            return fail(name, "deny ref admit: %s" % (exc.reason,))
+    # The revoked ALLOW is dead BY POLICY VERDICT while the record is
+    # still stale -- REAUTHORIZATION_REQUIRED, not SERVICE_STALE.
+    try:
+        registry.admit_execution(now=_T2, decision_ref=allow_ref)
+        return fail(name, "revoked ALLOW admitted while stale")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.REAUTHORIZATION_REQUIRED:
+            return fail(name, "revoked-while-stale admit: %s" % (exc.reason,))
+    # Identity consistency WITHOUT freshness on the deny path: a known
+    # (stale) record still cannot be contradicted cross-tenant.
+    cross = _engine_invocation_decision(
+        service_ref, evaluation_instant=_T2, effect="deny",
+        tenant_domain="village-z",
+    )
+    try:
+        registry.apply_policy_decision(now=_T2, policy_decision=cross)
+        return fail(name, "cross-tenant revocation accepted")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.TENANT_ISOLATION:
+            return fail(name, "cross-tenant deny: %s" % (exc.reason,))
+    # The revocation OUTLIVES advertisement refresh: the old ALLOW is
+    # still dead once the record is live again.
+    refreshed = _advertisement(
+        descriptor=_descriptor(name="expiring-service"),
+        registered_at=_T3,  # strictly newer claim -> audited update
+        expires_at=_FRESH,
+        policy_controlled=True,
+    )
+    result = registry.register_service(
+        now=_T3, advertisement=refreshed,
+        evidence=_evidence(refreshed, observed_at=_T3),
+    )
+    if not result.ok:
+        return fail(name, "refresh failed: %s" % (result.detail,))
+    try:
+        registry.lookup_service(
+            now=_T3, service_ref=service_ref, tenant_domain="village-a",
+            decision_ref=allow_ref,
+        )
+        return fail(name, "revoked ALLOW survived lookup after refresh")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.REAUTHORIZATION_REQUIRED:
+            return fail(name, "revoked lookup after refresh: %s" % (exc.reason,))
+    try:
+        registry.admit_execution(now=_T3, decision_ref=allow_ref)
+        return fail(name, "revoked ALLOW admitted after refresh")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.REAUTHORIZATION_REQUIRED:
+            return fail(name, "revoked admit after refresh: %s" % (exc.reason,))
+    # The lineage still moves FORWARD: a later genuine ALLOW
+    # re-authorizes the scope end-to-end.
+    reallow_ref = _decision_for(registry, service_ref, now=_T3)
+    execute, _admission = _invoke(registry, service_ref, reallow_ref, now=_T3)
+    if not execute.ok:
+        return fail(name, "forward ALLOW failed after refresh: %s"
+                    % (execute.detail,))
+    # ---- leg 2: the advertisement is explicitly WITHDRAWN (the
+    # active record is removed; only a tombstone remains)
+    registry2, _executor2 = _full_registry()
+    service_ref2 = _registered(
+        registry2, _advertisement(
+            descriptor=_descriptor(name="withdrawn-service"),
+            policy_controlled=True,
+        )
+    )
+    allow_ref2 = _decision_for(registry2, service_ref2, now=_T1)
+    registry2.lookup_service(
+        now=_T1, service_ref=service_ref2, tenant_domain="village-a",
+        decision_ref=allow_ref2,
+    )
+    withdrawn = registry2.withdraw_service(
+        now=_T1H, service_ref=service_ref2, reason="decommissioned",
+    )
+    if not withdrawn.ok:
+        return fail(name, "withdrawal failed: %s" % (withdrawn.detail,))
+    # Pre-revocation, the withdrawn record is the operative fact.
+    try:
+        registry2.admit_execution(now=_T1H, decision_ref=allow_ref2)
+        return fail(name, "withdrawn service admitted")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.SERVICE_WITHDRAWN:
+            return fail(name, "withdrawn admit: %s" % (exc.reason,))
+    # THE B3 SEQUENCE for withdrawal: the deny MUST land with no
+    # active record at all (0bd7614 rejected it with
+    # SERVICE_WITHDRAWN).
+    deny2 = _engine_invocation_decision(
+        service_ref2, evaluation_instant=_T2, effect="deny",
+    )
+    revoked2 = registry2.apply_policy_decision(now=_T2, policy_decision=deny2)
+    if not revoked2.ok:
+        return fail(name, "DENY not applicable after withdrawal: %s"
+                    % (revoked2.detail,))
+    snapshot2 = registry2.snapshot()
+    if len(snapshot2["decision_revocations"]) != 1:
+        return fail(name, "post-withdrawal deny not recorded as a revocation")
+    events2 = [e["event_type"] for e in snapshot2["events"]]
+    if events2.count(ServiceEventType.DECISION_REVOKED) != 1:
+        return fail(name, "post-withdrawal revocation not audited")
+    # The revoked ALLOW is dead by policy verdict while the record is
+    # still withdrawn.
+    try:
+        registry2.admit_execution(now=_T2, decision_ref=allow_ref2)
+        return fail(name, "revoked ALLOW admitted while withdrawn")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.REAUTHORIZATION_REQUIRED:
+            return fail(name, "revoked-while-withdrawn admit: %s" % (exc.reason,))
+    # Re-registration (a strictly later claim than the tombstone): the
+    # revocation STILL outlives the advertisement lifecycle.
+    reborn = _advertisement(
+        descriptor=_descriptor(name="withdrawn-service"),
+        registered_at=_T3,  # strictly after the tombstone instant
+        policy_controlled=True,
+    )
+    result2 = registry2.register_service(
+        now=_T3, advertisement=reborn,
+        evidence=_evidence(reborn, observed_at=_T3),
+    )
+    if not result2.ok:
+        return fail(name, "re-registration failed: %s" % (result2.detail,))
+    try:
+        registry2.lookup_service(
+            now=_T3, service_ref=service_ref2, tenant_domain="village-a",
+            decision_ref=allow_ref2,
+        )
+        return fail(name, "revoked ALLOW survived lookup after re-registration")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.REAUTHORIZATION_REQUIRED:
+            return fail(
+                name, "revoked lookup after re-registration: %s" % (exc.reason,)
+            )
+    try:
+        registry2.admit_execution(now=_T3, decision_ref=allow_ref2)
+        return fail(name, "revoked ALLOW admitted after re-registration")
+    except ServiceError as exc:
+        if exc.reason != ServiceReasonCode.REAUTHORIZATION_REQUIRED:
+            return fail(
+                name, "revoked admit after re-registration: %s" % (exc.reason,)
+            )
+    # Forward lineage: a later genuine ALLOW re-authorizes the reborn
+    # service end-to-end.
+    reallow_ref2 = _decision_for(registry2, service_ref2, now=_T3)
+    execute2, _admission2 = _invoke(
+        registry2, service_ref2, reallow_ref2, now=_T3
+    )
+    if not execute2.ok:
+        return fail(name, "forward ALLOW failed after re-registration: %s"
+                    % (execute2.detail,))
+    return ok(
+        name,
+        "revocation lands after expiry AND withdrawal; the revoked ALLOW "
+        "fails REAUTHORIZATION_REQUIRED and stays dead across "
+        "refresh/re-registration; a later ALLOW re-authorizes",
+    )
+
+
 # --------------------------------------------------------------------------
 # Real-authority composition helpers
 # --------------------------------------------------------------------------
@@ -4607,6 +4839,7 @@ def main() -> int:
         case_44_explicit_cleanup_outcomes,
         case_45_close_pending_recoverable_lifecycle,
         case_46_execution_scope_decision_only,
+        case_47_revocation_independent_of_advertisement_lifecycle,
     ]
     print("ADCOS service registry / edge compute self-test (WORK-025)")
     print("=" * 72)
