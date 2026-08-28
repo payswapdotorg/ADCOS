@@ -147,7 +147,7 @@ _EXPECTED_TOOLS = [
     "service_selftest.py", "telemetry_selftest.py", "energy_selftest.py",
     "security_selftest.py", "upgrade_selftest.py", "management_selftest.py",
     "simulator_selftest.py", "conformance_selftest.py",
-    "agent_selftest.py", "edge_selftest.py",
+    "agent_selftest.py", "edge_selftest.py", "mobile_selftest.py",
 ]
 
 #: The frozen edge public API surface (case_45).
@@ -2324,11 +2324,16 @@ def case_47_pr_delta_shape(results: List[Result]) -> None:
         # the telemetry DATA surface through the agent dependency):
         "tools/telemetry_selftest.py",
         "docs/WORK-034-handoff.md",
+        # DAG-sanctioned allowlist amendment (W034 -> W035): the
+        # mobile battery follows this one in work-item order, and its
+        # PR delta shape must admit the successor's files.
+        "tools/mobile_selftest.py",
+        "docs/WORK-035-evidence.md",
     }
     unexpected = [
         c for c in changed
-        if not c.startswith("edge/") and c not in allowed_exact
-        and not c.startswith(".github/")
+        if not c.startswith("edge/") and not c.startswith("mobile/")
+        and c not in allowed_exact and not c.startswith(".github/")
     ]
     if unexpected:
         results.append(fail(name, "delta beyond the sanctioned shape: %s" % unexpected))

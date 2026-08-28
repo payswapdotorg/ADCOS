@@ -136,3 +136,6 @@ jobs:
 
       - name: Run Raspberry Pi edge gateway tests
         run: python3 tools/edge_selftest.py
+
+      - name: Run Android mobile agent tests
+        run: python3 tools/mobile_selftest.py

@@ -121,7 +121,8 @@ _EXPECTED_TOOLS = [
     "mesh_selftest.py", "distcore_selftest.py", "service_selftest.py",
     "telemetry_selftest.py", "energy_selftest.py", "security_selftest.py",
     "upgrade_selftest.py", "management_selftest.py", "simulator_selftest.py",
-    "conformance_selftest.py", "agent_selftest.py",
+    "conformance_selftest.py", "agent_selftest.py", "edge_selftest.py",
+    "mobile_selftest.py",
 ]
 
 #: The frozen agent public API surface (case_39).
@@ -1954,6 +1955,9 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
         # DAG-sanctioned amendment (W033 -> W034): the edge-gateway
         # work item builds directly on this agent battery's subject.
         "docs/WORK-034-handoff.md",
+        # DAG-sanctioned amendment (W033 -> W035): the mobile-agent
+        # work item builds directly on this agent battery's subject.
+        "docs/WORK-035-evidence.md",
     }
     docs_changed = {c for c in changed if c.startswith("docs/")}
     if not docs_changed <= allowed_docs:
@@ -1965,9 +1969,18 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
         ["git", "diff", "origin/main", "--", ".github/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
-    if "agent_selftest.py" not in workflow_delta.stdout:
+    # The wiring change must be additive for the agent step: the agent
+    # CI step stays present and no delta line removes it.  (A successor
+    # work item may append its own step further down the workflow, so
+    # the agent step need not appear inside the diff context -- only
+    # never be weakened.  W033 -> W035 amendment.)
+    removed_agent_step = any(
+        line.startswith("-") and "agent_selftest.py" in line
+        for line in workflow_delta.stdout.splitlines()
+    )
+    if removed_agent_step or "python3 tools/agent_selftest.py" not in workflow:
         results.append(fail(
-            name, ".github delta does not include the agent CI step"
+            name, ".github delta weakens or drops the agent CI step"
         ))
         return
     allowed_tools = {
@@ -1979,6 +1992,9 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
         # DAG-sanctioned allowlist amendment (W033 -> W034): the edge
         # battery extends this one (work-item order in CI).
         "tools/edge_selftest.py",
+        # DAG-sanctioned allowlist amendment (W033 -> W035): the mobile
+        # battery extends this one (work-item order in CI).
+        "tools/mobile_selftest.py",
     }
     tools_changed = {c for c in changed if c.startswith("tools/")}
     if not tools_changed <= allowed_tools:
