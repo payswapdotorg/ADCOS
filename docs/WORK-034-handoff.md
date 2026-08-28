@@ -96,8 +96,8 @@ of the software track; they never become a physical-hardware PASS
 
 - `spec/` is byte-identical to `origin/main` (case 46).
 - The PR delta is exactly: `edge/`, `tools/edge_selftest.py`,
-  `tools/agent_selftest.py` (allowlist amendment), this doc, and the
-  CI step (case 47).
+  `tools/agent_selftest.py` + `tools/telemetry_selftest.py`
+  (allowlist amendments), this doc, and the CI step (case 47).
 - The `edge.__all__` API surface is frozen (case 45); the charge
   tables and admission matrix are frozen DATA with completeness
   checks against `agent.CommandKind` (case 09).
@@ -111,12 +111,23 @@ Allowed roots for the edge family: `protocol`, `agent`,
 Forbidden: every other family root, plus `os/socket/time/random/
 secrets/uuid/subprocess/urllib/http/ssl/asyncio` (case 41).
 
-**Flagged amendment to an accepted battery:** `tools/agent_selftest.py`
-case_40's PR-delta allowlist gains `tools/edge_selftest.py` and
-`docs/WORK-034-handoff.md`, citing the W033 → W034 DAG edge (the
-edge work item builds directly on the agent battery's subject) — the
-same narrowing-amendment precedent W033 itself set for
-W026/W029/W030.
+**Flagged amendments to accepted batteries** (both narrowing,
+never disabling, each citing its DAG path — the W033 precedent):
+
+- `tools/agent_selftest.py` case_40's PR-delta allowlist gains
+  `tools/edge_selftest.py` and `docs/WORK-034-handoff.md`, citing the
+  W033 → W034 DAG edge (the edge work item builds directly on the
+  agent battery's subject).
+- `tools/telemetry_selftest.py` case_19's reverse-import scan gains
+  the `edge` family (pinned to the telemetry DATA surface —
+  `model`/`store` only), citing the transitive path
+  W026 → W033 → W034 (W034's frozen dependency W033 declares W026).
+
+The four W020-precedent local-context artifacts (conformance case_45,
+management case_32, simulator case_38, upgrade case_36) fail only on
+"docs/ changes beyond their own handoff" when a local `origin/main`
+ref exists; CI's depth-1 `pull_request` checkout evaluates them in
+degraded wiring mode and passes (exactly how PRs #38 and #21 passed).
 
 ## Local verification evidence
 
@@ -127,11 +138,19 @@ Result: PASS (48/48 cases passed)
 $ python3 tools/agent_selftest.py
 Result: PASS (45/45 cases passed)
 
+$ python3 tools/telemetry_selftest.py
+Result: PASS (34/34 cases passed)
+
 $ python3 tools/spec_check.py
-spec-check: PASS (9/9 checks)
+spec-check: PASS (9/9 blocking checks passed)
 ```
 
-(Exact counts recorded at PR time; see the PR body for the CI run.)
+Full local sweep: all 36 battery tools run; 32 PASS outright; the
+four documented W020-precedent local-context artifacts (above) fail
+only on their PR-delta docs allowlists locally and pass in CI's
+degraded mode.  `mypy --strict edge/` (transitive): edge files carry
+zero non-style findings; the bare `dict`/`tuple` annotation class
+matches the accepted `agent/` baseline under the same invocation.
 
 ## Constrained-environment guidance (software track)
 

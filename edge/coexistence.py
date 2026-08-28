@@ -194,9 +194,9 @@ def build_access_views(
         by_interface[interface_name] = {"adapter_id": adapter_id}
     health_by_adapter: Dict[str, Mapping[str, object]] = {}
     for view in adapter_views:
-        adapter_id = view.get("adapter_id", "")
-        if adapter_id:
-            health_by_adapter[adapter_id] = view
+        view_adapter_id = str(view.get("adapter_id", ""))
+        if view_adapter_id:
+            health_by_adapter[view_adapter_id] = view
     views: List[AccessView] = []
     for snapshot in snapshots:
         interface_info = by_interface.get(snapshot.name)

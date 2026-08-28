@@ -2301,8 +2301,12 @@ def case_47_pr_delta_shape(results: List[Result]) -> None:
         return
     allowed_exact = {
         "tools/edge_selftest.py",
-        # DAG-sanctioned allowlist amendment (W033 -> W034):
+        # DAG-sanctioned allowlist amendments:
+        # W033 -> W034 (the edge battery extends the agent battery):
         "tools/agent_selftest.py",
+        # W026 -> W033 -> W034 (transitive: the edge family consumes
+        # the telemetry DATA surface through the agent dependency):
+        "tools/telemetry_selftest.py",
         "docs/WORK-034-handoff.md",
     }
     unexpected = [

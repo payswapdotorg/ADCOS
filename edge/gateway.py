@@ -74,6 +74,7 @@ from .hardware import (
     HardwareInventorySource,
 )
 from .model import (
+    CommandPriority,
     ConnectivityPosture,
     EdgeEvent,
     EdgeEventType,
@@ -94,7 +95,7 @@ from .pressure import (
     command_storage_estimate,
     compute_pressure,
 )
-from .scheduler import CommandPriority, decide_command, priority_for_kind
+from .scheduler import decide_command, priority_for_kind
 
 #: Forwarding requires a DIRECTLY observed claim; a remote-claim
 #: entry may sit in the table but never satisfies forwarding (no
