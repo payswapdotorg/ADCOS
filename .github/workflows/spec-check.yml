@@ -108,3 +108,6 @@ jobs:
 
       - name: Run management API tests
         run: python3 tools/management_selftest.py
+
+      - name: Run network/behavior simulator tests
+        run: python3 tools/simulator_selftest.py

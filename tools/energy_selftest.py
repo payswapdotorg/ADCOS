@@ -2066,11 +2066,20 @@ def case_30_import_discipline() -> Result:
                     return fail(name, "%s eagerly imports the telemetry store" % (filename,))
     # Nothing imports energy except the tools (the selftest is the
     # composition root; energy is the composer, never the composed).
+    # WORK-031 amendment (deliberate, flagged in its PR): the
+    # network/behavior simulator family is a dependency-graph-
+    # sanctioned DOWNSTREAM consumer of energy (spec/dependency-graph.md:
+    # the DIRECT edge W027 --> W031; spec/work-items.md: WORK-031
+    # declares WORK-027 among its frozen hard dependencies).  The
+    # simulator composes the real PowerSimulator, EnergyGovernor,
+    # NodeRejoinLedger, and their vocabularies through their public
+    # surfaces only -- it never mutates energy authority state outside
+    # the owner contracts and never reimplements energy semantics.
     for family in sorted(os.listdir(_ROOT)):
         family_path = os.path.join(_ROOT, family)
         if (
             not os.path.isdir(family_path)
-            or family in ("energy", "tools")
+            or family in ("energy", "tools", "simulator")
             or family.startswith(".")
         ):
             continue
