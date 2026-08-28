@@ -12,16 +12,16 @@ rejection, R4 per-binding sandbox ownership across
 register_implementation swaps, and honest health/resource/capability/
 topology mapping as adapter DATA.
 
-The full battery (32 cases) has two parts.  The deterministic
-reference battery (cases 01-29) runs fully in-process against the
-ReferenceRanEngine through the RanManager/SandboxedRan seam: no wall
-clock, no randomness, no network -- every instant is injected, every
-reference is content-derived, every assertion is honest (no faked
-success).  Part 2 (W020-b2) extends it with the R5/R6
-standards-boundary + frozen-spec-intact + no-core-RAN-leakage audits,
-the WORK-016 SDK bridge (the sanctioned ``..contract`` import),
-determinism (byte-identical snapshots + DIRECT cross-impl canonical
-equality with implementation_label excluded), and failure isolation
+The battery has three parts.  The deterministic reference battery
+(cases 01-29) runs fully in-process against the ReferenceRanEngine
+through the RanManager/SandboxedRan seam: no wall clock, no
+randomness, no network -- every instant is injected, every reference
+is content-derived, every assertion is honest (no faked success).
+Part 2 (W020-b2) extends it with the R5/R6 standards-boundary +
+frozen-spec-intact + no-core-RAN-leakage audits, the WORK-016 SDK
+bridge (the sanctioned ``..contract`` import), determinism
+(byte-identical snapshots + DIRECT cross-impl canonical equality
+with implementation_label excluded), and failure isolation
 (BaseException, contract violation, budget exhaustion, no secret leak
 through diagnostics).
 
@@ -39,6 +39,20 @@ RAN_INTEROP_RUNBOOK in adapters/ran/interop_env_probe.py).  When the
 gate is disabled or the lab is unreachable those cases SKIP with a
 transparent verification-environment disclosure and NEVER fake
 success with the in-repo conformance peer.
+
+The RF-simulation cases (33-46) implement the Architect-authorized
+RF-simulation validation phase (PR #21 work order): an INDEPENDENT
+OAI-RFsim-style environment (``adapters/ran/rfsim.py`` --
+RfSimRanPeer/RfSimScenario/RfSimEnvironment, a real loopback HTTP
+RAN control-plane peer whose admission/PRB/health/decode behavior is
+derived from a deterministic TR 38.901/TS 38.214 integer channel
+model) exercises the SAME production adapter boundary.  Evidence
+classification (recorded in docs/WORK-020-rf-simulation-evidence.md):
+architecture conformance PASS, automated verification PASS,
+RF-simulation interoperability PASS, physical-SDR lab evidence OPEN
+-- RF simulation is NEVER promoted to satisfy the frozen SDR
+criterion (``rf_simulation``/``rfsim`` are FORBIDDEN peer kinds in
+the interop gate, case_42).
 """
 
 from __future__ import annotations
@@ -46,6 +60,8 @@ from __future__ import annotations
 import ast
 import dataclasses
 import hashlib
+import http.client as _http_client
+import json as _json
 import os
 import re
 import socket as _socket
@@ -94,6 +110,8 @@ from adapters.ran import (  # noqa: E402
     RanTechnologyAdapter,
     ReferenceRanConformanceServer,
     ReferenceRanEngine,
+    RfSimRanPeer,
+    RfSimScenario,
     RuElement,
     SandboxedRan,
     validate_opaque_ref,
@@ -1113,19 +1131,25 @@ def case_20_r5_standards_boundary_audit() -> Result:
     }
     sanctioned_core_roots = {"protocol"}
     # (d) Real-network stdlib (http/socket/urllib/json) is allowed ONLY
-    # in the env-aware gate surface: conformance.py (the real-socket
-    # reference RAN control-plane peer), openran.py (the
-    # production-shaped real-HTTP adapter), openran_interop.py (the B4
-    # real-SDR-lab interop gate -- it legitimately drives a real HTTP
-    # control peer, no in-repo simulator fallback), and
-    # interop_env_probe.py (the Architect-approved NON-SEMANTIC gate
-    # hardening: it probes environment capabilities and enforces the
-    # anti-faking RAN_PEER_KIND guard -- gate SURFACE, a sibling of
-    # openran_interop.py).  Mirrors the fivegc case_19 allowlist
-    # mechanism.
+    # in the env-aware gate surface + the real-socket peers:
+    # conformance.py (the real-socket reference RAN control-plane
+    # peer), openran.py (the production-shaped real-HTTP adapter),
+    # openran_interop.py (the B4 real-SDR-lab interop gate -- it
+    # legitimately drives a real HTTP control peer, no in-repo
+    # simulator fallback), interop_env_probe.py (the
+    # Architect-approved NON-SEMANTIC gate hardening: it probes
+    # environment capabilities and enforces the anti-faking
+    # RAN_PEER_KIND guard -- gate SURFACE, a sibling of
+    # openran_interop.py), and rfsim.py (the Architect-authorized
+    # RF-simulation validation environment, PR #21 work order -- a
+    # real loopback-HTTP RAN control-plane peer exactly like the
+    # conformance peer, independently implemented with a channel
+    # model; NEVER SDR evidence -- rf_simulation/rfsim are FORBIDDEN
+    # peer kinds in the interop gate).  Mirrors the fivegc case_19
+    # allowlist mechanism.
     real_network_allowed = {
         "conformance.py", "openran.py", "openran_interop.py",
-        "interop_env_probe.py",
+        "interop_env_probe.py", "rfsim.py",
     }
     # (e) os.environ is read ONLY in the env-aware gate surface:
     # interop_env_probe.py + openran_interop.py (RAN_INTEROP /
@@ -1282,13 +1306,23 @@ def case_20_r5_standards_boundary_audit() -> Result:
     ).read().lower()
     if "ts 38.413" not in interop_src or "o-ran.wg4" not in interop_src:
         return fail(name, "openran_interop.py missing TS 38.413/O-RAN.WG4 citations")
+    # rfsim.py (the independent RF-simulation environment) cites the
+    # channel-model standards: TR 38.901 (propagation) + TS 38.214
+    # (CQI/MCS ladder) -- the RF-simulation phase's own pins.
+    rfsim_src = open(
+        os.path.join(pkg_dir, "rfsim.py"), encoding="utf-8"
+    ).read().lower()
+    if "tr 38.901" not in rfsim_src:
+        return fail(name, "rfsim.py missing TR 38.901 citation")
+    if "ts 38.214" not in rfsim_src:
+        return fail(name, "rfsim.py missing TS 38.214 citation")
     return ok(
         name,
         "no forbidden imports (stdlib + family + sanctioned protocol.canonicalization "
         "+ bridge.py's ..contract pair only); no secret tokens; TS 38.300/38.401/38.473/"
-        "38.331/38.321/38.413/23.501 + O-RAN.WG4 cited; real-network stdlib only in "
-        "conformance/openran/openran_interop/interop_env_probe; os.environ only in the "
-        "env-aware gate surface",
+        "38.331/38.321/38.413/23.501 + O-RAN.WG4 cited; TR 38.901/TS 38.214 cited in rfsim.py; "
+        "real-network stdlib only in conformance/openran/openran_interop/"
+        "interop_env_probe/rfsim; os.environ only in the env-aware gate surface",
     )
 
 
@@ -1765,14 +1799,25 @@ def case_31_b4_real_sdr_lab_interop_gate() -> Result:
             return fail(name, "SKIP detail must name the conformance suite")
         if "referenceranconformanceserver" not in detail:
             return fail(name, "SKIP detail must name the in-repo ReferenceRanConformanceServer")
+        if "rf-simulation" not in detail:
+            return fail(name, "SKIP detail must name the RF-simulation validation environment")
+        if "rfsimranpeer" not in detail:
+            return fail(name, "SKIP detail must name RfSimRanPeer (the OAI-RFsim-style peer)")
+        if "neither can satisfy" not in detail:
+            return fail(
+                name,
+                "SKIP detail must state that NEITHER in-sandbox path can satisfy "
+                "the frozen SDR criterion",
+            )
         return ok(
             name,
             "SKIP (environment-gated RAN_INTEROP!=1): the B4 real-SDR-lab interop "
-            "gate is not run; the conformance suite (case_30) remains the strongest "
-            "honest in-sandbox evidence. Set RAN_INTEROP=1 with RAN_PEER_KIND=real_oai "
-            "and a reachable real OpenAirInterface/O-RAN SDR lab control endpoint "
-            "(RAN_CONTROL_URL) to run the frozen acceptance gate; NO PASSED is "
-            "possible from the disabled path",
+            "gate is not run; the conformance suite (case_30) plus the RF-simulation "
+            "validation environment (cases 33-46) remain the strongest honest "
+            "in-sandbox evidence -- neither can satisfy the frozen SDR criterion. Set "
+            "RAN_INTEROP=1 with RAN_PEER_KIND=real_oai and a reachable real "
+            "OpenAirInterface/O-RAN SDR lab control endpoint (RAN_CONTROL_URL) to run "
+            "the frozen acceptance gate; NO PASSED is possible from the disabled path",
         )
     finally:
         for k, v in saved.items():
@@ -1953,6 +1998,880 @@ def case_32_b4_gate_hardening_matrix_and_anti_faking() -> Result:
 
 
 # ==========================================================================
+# RF-simulation validation phase (Architect work order, PR #21):
+# the independent OAI-RFsim-style environment (cases 33-46)
+# ==========================================================================
+
+
+def _rfsim_scenario(
+    seed: str = "rfsim-nominal",
+    ue_positions: Tuple[Tuple[int, int], ...] = ((80, 60),),
+    cell_positions: Optional[Mapping[str, Tuple[int, int]]] = None,
+) -> RfSimScenario:
+    """The standard RF-simulation scenario builder (pure DATA)."""
+    return RfSimScenario(
+        seed=seed,
+        ue_positions=ue_positions,
+        cell_positions=dict(cell_positions or {"c1": (0, 0)}),
+    )
+
+
+def _rfsim_manager(peer: RfSimRanPeer, *, integration_id: str, label: str) -> RanManager:
+    """A manager with the production OpenRanAdapter pointed at the
+    RF-simulation peer (the SAME adapter the conformance suite and the
+    real SDR-lab gate use -- peer independence across one seam)."""
+    mgr = RanManager(ran_integration_id=integration_id)
+    r = mgr.register_implementation(
+        OpenRanAdapter(control_url=peer.base_url), label=label, make_default=True, now=_T(0)
+    )
+    assert r.ok, "register_implementation failed: %s" % r.detail
+    return mgr
+
+
+def _wire_get(port: int, path: str) -> Tuple[int, bytes]:
+    """A raw wire-level GET against the peer (battery-side diagnostic;
+    asserts what actually crosses the REST surface)."""
+    conn = _http_client.HTTPConnection("127.0.0.1", port, timeout=10)
+    try:
+        conn.request("GET", path)
+        response = conn.getresponse()
+        return response.status, response.read()
+    finally:
+        conn.close()
+
+
+def _wire_post(port: int, path: str, body: str) -> Tuple[int, bytes]:
+    conn = _http_client.HTTPConnection("127.0.0.1", port, timeout=10)
+    try:
+        conn.request(
+            "POST", path, body=body.encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        response = conn.getresponse()
+        return response.status, response.read()
+    finally:
+        conn.close()
+
+
+class _SessionCollapsingRfSimPeer(RfSimRanPeer):
+    """A misbehaving RF-sim peer that returns the caller's session_id
+    AS the bearer_ref (an implementation trying to collapse the RAN
+    bearer identity onto the ADCOS session identity -- the R1 seam
+    check must reject it through the real adapter path)."""
+
+    def _handle_bind(self, body: bytes) -> Tuple[int, bytes]:
+        status, payload = super()._handle_bind(body)
+        if status != 201:
+            return status, payload
+        request = _json.loads(body.decode("utf-8"))
+        parsed = _json.loads(payload)
+        parsed["bearer_ref"] = request["session_id"]
+        return status, _json.dumps(parsed).encode("utf-8")
+
+
+def case_33_rfsim_environment_deterministic() -> Result:
+    name = "case_33_rfsim_environment_deterministic"
+    scenario = _rfsim_scenario(
+        seed="rfsim-det", ue_positions=((80, 60), (300, 400))
+    )
+    peer_a = RfSimRanPeer(scenario)
+    peer_b = RfSimRanPeer(scenario)
+    try:
+        digests = []
+        states = []
+        radios = []
+        for peer in (peer_a, peer_b):
+            mgr = _rfsim_manager(
+                peer, integration_id="adcos:ran:rfsim-det", label="rfsim-peer"
+            )
+            r = mgr.provision_gnb(now=_T(1), request=_canonical_gnb_request())
+            if not r.ok:
+                return fail(name, "provision failed: %s" % r.detail)
+            gnb_ref = str(r.value)
+            if not mgr.activate_cell(now=_T(2), gnb_ref=gnb_ref, cell_id="c1").ok:
+                return fail(name, "activate failed")
+            token_one = _bind(mgr, "sess-det-a", gnb_ref, 3)
+            token_two = _bind(mgr, "sess-det-b", gnb_ref, 4)
+            for token in (token_one, token_two):
+                r = mgr.egress_data(now=_T(5), binding_ref=token, payload=PAYLOAD)
+                if not r.ok or r.value != PAYLOAD:
+                    return fail(name, "egress not byte-identical: %s" % r.detail)
+            digests.append(mgr.content_digest())
+            radios.append(peer.radio_report_bytes())
+            status, state_body = _wire_get(peer.port, "/state")
+            if status != 200:
+                return fail(name, "raw /state status %d" % status)
+            states.append(state_body)
+        if digests[0] != digests[1]:
+            return fail(name, "manager canonical digest differs across identical scenarios")
+        if radios[0] != radios[1]:
+            return fail(name, "radio report bytes differ across identical scenarios")
+        if states[0] != states[1]:
+            return fail(name, "raw /state bodies differ across identical scenarios")
+        # Shadowing is STABLE across repeated queries (a pure function
+        # of seed + cell + UE -- never a mutating stream).
+        if peer_a.environment.shadowing_mdb("c1", 0) != peer_a.environment.shadowing_mdb("c1", 0):
+            return fail(name, "shadowing draw is not stable across queries")
+        return ok(
+            name,
+            "two peers from the same scenario+seed, same op history -> identical manager "
+            "digests, identical radio-report bytes, identical raw /state bodies; shadowing "
+            "stable across queries",
+        )
+    finally:
+        peer_a.close()
+        peer_b.close()
+
+
+def case_34_rfsim_nominal_end_to_end() -> Result:
+    name = "case_34_rfsim_nominal_end_to_end"
+    peer = RfSimRanPeer(_rfsim_scenario())
+    try:
+        mgr = _rfsim_manager(peer, integration_id="adcos:ran:rfsim-e2e", label="rfsim-peer")
+        r = mgr.provision_gnb(now=_T(1), request=_canonical_gnb_request())
+        if not r.ok:
+            return fail(name, "provision failed: %s" % r.detail)
+        gnb_ref = str(r.value)
+        if not mgr.activate_cell(now=_T(2), gnb_ref=gnb_ref, cell_id="c1").ok:
+            return fail(name, "activate failed")
+        r = mgr.access_path_session(now=_T(3), session_id="sess-rfsim-e2e")
+        if not r.ok:
+            return fail(name, "access_path_session failed: %s" % r.detail)
+        session = r.value
+        session.connect("internet")
+        if session.send(PAYLOAD) != len(PAYLOAD):
+            return fail(name, "send returned wrong length")
+        echo = session.recv()
+        if echo != PAYLOAD:
+            return fail(name, "recv != payload byte-identical: %r" % (echo,))
+        # A SECOND transmission (a second seeded fading draw) must
+        # also deliver byte-identically.
+        if session.send(PAYLOAD) != len(PAYLOAD):
+            return fail(name, "second send returned wrong length")
+        if session.recv() != PAYLOAD:
+            return fail(name, "second recv (second fading draw) != payload")
+        observation = _observe(mgr, 6)
+        if observation.resources.rrc_connected_ue_count < 1:
+            return fail(name, "no RRC-connected UE after bind")
+        if observation.resources.active_drb_count < 1:
+            return fail(name, "no active DRB after bind")
+        if observation.health.gnb_state != HealthState.HEALTHY:
+            return fail(name, "nominal RF health %r != HEALTHY" % observation.health.gnb_state)
+        if observation.resources.prb_total <= 0 or observation.resources.prb_used < 1:
+            return fail(name, "channel-derived PRB accounting wrong: %r" % observation.resources.to_dict())
+        payload_sha = hashlib.sha256(PAYLOAD).hexdigest()
+        return ok(
+            name,
+            "AccessPathSession->RanManager->SandboxedRan->OpenRanAdapter->RfSimRanPeer "
+            "(real HTTP loopback, TR 38.901 channel model)->recv byte-identical x2; "
+            "UE/DRB established (rrc>=1, drb>=1); HEALTHY; channel-derived PRB accounting; "
+            "payload sha256=%s" % payload_sha,
+        )
+    finally:
+        peer.close()
+
+
+def case_35_rfsim_r1_identity_separation() -> Result:
+    name = "case_35_rfsim_r1_identity_separation"
+    # Two UEs: the manager-level bind attaches UE 0; the wire-level
+    # bind (below) attaches UE 1.
+    peer = RfSimRanPeer(_rfsim_scenario(ue_positions=((80, 60), (90, 60))))
+    try:
+        mgr = _rfsim_manager(peer, integration_id="adcos:ran:rfsim-r1", label="rfsim-peer")
+        r = mgr.provision_gnb(now=_T(1), request=_canonical_gnb_request())
+        gnb_ref = str(r.value)
+        mgr.activate_cell(now=_T(2), gnb_ref=gnb_ref, cell_id="c1")
+        session_id = "sess-rfsim-r1"
+        token = _bind(mgr, session_id, gnb_ref, 3)
+        snapshot = mgr.snapshot()
+        canonical = mgr.to_canonical_bytes()
+        # session_id stored EXACTLY (byte-identical, JSON-quoted form).
+        if b'"%s"' % session_id.encode("utf-8") not in canonical:
+            return fail(name, "session_id not stored byte-identical in canonical state")
+        record = None
+        for binding in snapshot["bindings"]:
+            if binding.get("binding_token") == token:
+                record = binding
+        if record is None:
+            return fail(name, "binding token not registered")
+        bearer_ref = str(record.get("bearer_ref", ""))
+        if not bearer_ref.startswith("ran:bearer:"):
+            return fail(name, "bearer ref grammar broken: %r" % bearer_ref)
+        if session_id in bearer_ref or bearer_ref in session_id:
+            return fail(name, "session_id/bearer_ref substring collapse (R1)")
+        if hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:32] in bearer_ref:
+            return fail(name, "session_id digest smuggled into bearer ref (R1)")
+        # Recursive key walk: no RAN-internal identity keys anywhere.
+        def _walk(node: Any) -> List[str]:
+            keys: List[str] = []
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    keys.append(str(key))
+                    keys.extend(_walk(value))
+            elif isinstance(node, (list, tuple)):
+                for item in node:
+                    keys.extend(_walk(item))
+            return keys
+
+        for key in _walk(snapshot):
+            if key.lower() in ("rnti", "drb", "drbs", "drb_id", "qfi", "ue_ref", "ue_context"):
+                return fail(name, "RAN-internal identity key %r in public snapshot" % key)
+        # Wire level: the bind response carries ONLY the opaque ref +
+        # the serving cell; /state carries no RAN-internal identity
+        # (the mapped vocabulary COUNTERS -- rrc_connected_ue_count /
+        # active_drb_count -- are public family fields, not identity
+        # material: the check walks KEYS exactly, not substrings).
+        status, body = _wire_post(
+            peer.port, "/bearers", '{"session_id": "sess-wire-r1"}'
+        )
+        if status != 201:
+            return fail(name, "wire bind status %d" % status)
+        parsed = _json.loads(body)
+        if set(parsed.keys()) != {"bearer_ref", "cell_id"}:
+            return fail(name, "wire bind response keys %r != {bearer_ref, cell_id}" % sorted(parsed))
+        status, state_body = _wire_get(peer.port, "/state")
+        for key in _walk(_json.loads(state_body)):
+            if key.lower() in ("rnti", "drb", "drbs", "drb_id", "qfi", "ue_ref", "ue_context"):
+                return fail(name, "RAN-internal identity key %r in /state" % key)
+        return ok(
+            name,
+            "session_id stored byte-identical; bearer ref grammar + no substring/digest "
+            "collapse; no rnti/drb/qfi/ue_ref/ue_context identity keys in snapshot or on "
+            "the wire (mapped vocabulary counters like active_drb_count are public "
+            "family fields); bind response keys == {bearer_ref, cell_id}",
+        )
+    finally:
+        peer.close()
+
+
+def case_36_rfsim_control_plane_lifecycle() -> Result:
+    name = "case_36_rfsim_control_plane_lifecycle"
+    peer = RfSimRanPeer(_rfsim_scenario())
+    try:
+        mgr = _rfsim_manager(peer, integration_id="adcos:ran:rfsim-life", label="rfsim-peer")
+        gnb_ref = str(mgr.provision_gnb(now=_T(1), request=_canonical_gnb_request()).value)
+        if not mgr.activate_cell(now=_T(2), gnb_ref=gnb_ref, cell_id="c1").ok:
+            return fail(name, "activate failed")
+        # Double-activate is a strict-state violation.
+        r = mgr.activate_cell(now=_T(3), gnb_ref=gnb_ref, cell_id="c1")
+        if r.ok or r.reason != RanReasonCode.INVALID_INPUT:
+            return fail(name, "double-activate must be invalid-input; got %s" % r.reason)
+        token = _bind(mgr, "sess-life", gnb_ref, 4)
+        if not mgr.egress_data(now=_T(5), binding_ref=token, payload=PAYLOAD).ok:
+            return fail(name, "nominal egress failed")
+        # Deactivate under a live bearer: the bearer survives, health
+        # degrades, and egress fails CLOSED until reactivation.
+        if not mgr.deactivate_cell(now=_T(6), gnb_ref=gnb_ref, cell_id="c1").ok:
+            return fail(name, "deactivate failed")
+        if mgr.binding_count != 1:
+            return fail(name, "binding did not survive cell deactivation")
+        observation = _observe(mgr, 7)
+        if observation.health.gnb_state != HealthState.DEGRADED:
+            return fail(name, "health under deactivated cell %r != DEGRADED" % observation.health.gnb_state)
+        r = mgr.egress_data(now=_T(8), binding_ref=token, payload=PAYLOAD)
+        if r.ok or r.reason != RanReasonCode.RAN_UNAVAILABLE:
+            return fail(name, "egress on INACTIVE cell must fail closed; got %s" % r.reason)
+        if not mgr.activate_cell(now=_T(9), gnb_ref=gnb_ref, cell_id="c1").ok:
+            return fail(name, "re-activate failed")
+        r = mgr.egress_data(now=_T(10), binding_ref=token, payload=PAYLOAD)
+        if not r.ok or r.value != PAYLOAD:
+            return fail(name, "egress after reactivation not byte-identical")
+        # Decommission under a live bearer is binding-exists.
+        r = mgr.decommission_gnb(now=_T(11), gnb_ref=gnb_ref)
+        if r.ok or r.reason != RanReasonCode.BINDING_EXISTS:
+            return fail(name, "decommission under live bearer must be binding-exists; got %s" % r.reason)
+        if not mgr.close_binding(now=_T(12), binding_ref=token).ok:
+            return fail(name, "unbind failed")
+        if not mgr.decommission_gnb(now=_T(13), gnb_ref=gnb_ref).ok:
+            return fail(name, "decommission after unbind failed")
+        return ok(
+            name,
+            "strict cell transitions (double-activate invalid-input); bearer survives "
+            "deactivation with DEGRADED health and fail-closed egress; recovery after "
+            "reactivation byte-identical; decommission-under-live-bearer binding-exists; "
+            "unbind then decommission clean",
+        )
+    finally:
+        peer.close()
+
+
+def case_37_rfsim_geometry_based_cell_selection() -> Result:
+    name = "case_37_rfsim_geometry_based_cell_selection"
+    # Two cells: c1 at the origin, c2 at (900, 0).  UE 0 sits NEXT TO
+    # c2 (890, 0); UE 1 sits next to c1 (80, 60).  The reference
+    # engine's documented bind choice is the FIRST active cell with a
+    # free PRB in insertion order (c1) -- the RF-sim environment must
+    # instead select the GEOMETRICALLY strongest serving cell.
+    scenario = _rfsim_scenario(
+        seed="rfsim-geo",
+        ue_positions=((890, 0), (80, 60)),
+        cell_positions={"c1": (0, 0), "c2": (900, 0)},
+    )
+    peer = RfSimRanPeer(scenario)
+    try:
+        request = GnbProvisionRequest(
+            gnb_name="lab-gnb-geo",
+            cells=(
+                CellSpec(cell_id="c1", band=78, duplex=DuplexMode.TDD, numerology=1, arfcn=632628, prb_count=10),
+                CellSpec(cell_id="c2", band=78, duplex=DuplexMode.TDD, numerology=1, arfcn=632629, prb_count=10),
+            ),
+            topology=RanSplitTopology(
+                cu=CuElement(element_id="cu-1", split=RanSplitOption.F1_CU_DU, state="HEALTHY"),
+                dus=(DuElement(element_id="du-1", split=RanSplitOption.F1_CU_DU, state="HEALTHY", cell_ids=("c1", "c2")),),
+                rus=(RuElement(element_id="ru-1", split=RanSplitOption.O_RAN_7_2X, state="HEALTHY", band=78),),
+            ),
+        )
+        mgr = _rfsim_manager(peer, integration_id="adcos:ran:rfsim-geo", label="rfsim-peer")
+        gnb_ref = str(mgr.provision_gnb(now=_T(1), request=request).value)
+        if not mgr.activate_cell(now=_T(2), gnb_ref=gnb_ref, cell_id="c1").ok:
+            return fail(name, "activate c1 failed")
+        if not mgr.activate_cell(now=_T(2), gnb_ref=gnb_ref, cell_id="c2").ok:
+            return fail(name, "activate c2 failed")
+        _bind(mgr, "sess-geo-a", gnb_ref, 3)
+        _bind(mgr, "sess-geo-b", gnb_ref, 4)
+        report = {entry["bearer_ref"]: entry for entry in peer.radio_report()}
+        if len(report) != 2:
+            return fail(name, "expected two live bearers")
+        by_ue = {entry["ue_index"]: entry for entry in report.values()}
+        if by_ue[0]["cell_id"] != "c2":
+            return fail(
+                name,
+                "UE near c2 served by %r (geometric selection broken; insertion order "
+                "would pick c1)" % by_ue[0]["cell_id"],
+            )
+        if by_ue[1]["cell_id"] != "c1":
+            return fail(name, "UE near c1 served by %r" % by_ue[1]["cell_id"])
+        observation = _observe(mgr, 5)
+        if observation.resources.prb_used != 2:
+            return fail(name, "channel-derived prb_used %r != 2" % observation.resources.prb_used)
+        return ok(
+            name,
+            "serving-cell selection is GEOMETRIC (UE near c2 served by c2 while c1 is "
+            "the insertion-order first fit; UE near c1 served by c1); channel-derived "
+            "prb_used == 2",
+        )
+    finally:
+        peer.close()
+
+
+def case_38_rfsim_rf_degradation_typed_failure() -> Result:
+    name = "case_38_rfsim_rf_degradation_typed_failure"
+    peer = RfSimRanPeer(_rfsim_scenario())
+    try:
+        mgr = _rfsim_manager(peer, integration_id="adcos:ran:rfsim-deg", label="rfsim-peer")
+        gnb_ref = str(mgr.provision_gnb(now=_T(1), request=_canonical_gnb_request()).value)
+        mgr.activate_cell(now=_T(2), gnb_ref=gnb_ref, cell_id="c1")
+        token = _bind(mgr, "sess-deg", gnb_ref, 3)
+        r = mgr.egress_data(now=_T(4), binding_ref=token, payload=PAYLOAD)
+        if not r.ok or r.value != PAYLOAD:
+            return fail(name, "nominal egress failed")
+        # 60 dB of additional propagation loss (obstruction): the
+        # bearer's SINR collapses below its admitted MCS -- delivery
+        # fails CLOSED with the typed ran-unavailable reason, never a
+        # corrupted or partial echo.
+        peer.environment.apply_extra_loss("c1", 60000)
+        r = mgr.egress_data(now=_T(5), binding_ref=token, payload=PAYLOAD)
+        if r.ok:
+            return fail(name, "degraded egress unexpectedly succeeded")
+        if r.reason != RanReasonCode.RAN_UNAVAILABLE:
+            return fail(name, "degraded egress reason %r != ran-unavailable" % r.reason)
+        if PAYLOAD in (r.detail or "").encode("utf-8", "ignore"):
+            return fail(name, "payload bytes leaked into failure detail")
+        if r.value is not None:
+            return fail(name, "failed egress returned a value (must fail closed)")
+        observation = _observe(mgr, 6)
+        if observation.health.gnb_state != HealthState.DEGRADED:
+            return fail(name, "health under RF degradation %r != DEGRADED" % observation.health.gnb_state)
+        # Core-side isolation: the binding registry is INTACT.
+        if mgr.binding_count != 1:
+            return fail(name, "binding lost during RF degradation")
+        # Recovery: clear the loss -> byte-identical delivery returns.
+        peer.environment.clear_extra_loss("c1")
+        r = mgr.egress_data(now=_T(7), binding_ref=token, payload=PAYLOAD)
+        if not r.ok or r.value != PAYLOAD:
+            return fail(name, "egress after recovery not byte-identical: %s" % r.detail)
+        observation = _observe(mgr, 8)
+        if observation.health.gnb_state != HealthState.HEALTHY:
+            return fail(name, "health after recovery %r != HEALTHY" % observation.health.gnb_state)
+        return ok(
+            name,
+            "60 dB extra loss -> typed ran-unavailable decode failure (fail-closed, no "
+            "payload leakage, value discarded); health DEGRADED (channel-derived); "
+            "manager binding registry intact (RAN failure isolated from core state); "
+            "recovery byte-identical + HEALTHY",
+        )
+    finally:
+        peer.close()
+
+
+def case_39_rfsim_cell_outage_isolation() -> Result:
+    name = "case_39_rfsim_cell_outage_isolation"
+    peer = RfSimRanPeer(_rfsim_scenario(ue_positions=((80, 60), (90, 60))))
+    try:
+        mgr = _rfsim_manager(peer, integration_id="adcos:ran:rfsim-out", label="rfsim-peer")
+        gnb_one = str(mgr.provision_gnb(now=_T(1), request=_canonical_gnb_request()).value)
+        mgr.activate_cell(now=_T(2), gnb_ref=gnb_one, cell_id="c1")
+        token_one = _bind(mgr, "sess-out-a", gnb_one, 3)
+        if not mgr.egress_data(now=_T(4), binding_ref=token_one, payload=PAYLOAD).ok:
+            return fail(name, "nominal egress failed")
+        # Cell outage: typed failure on the live bearer...
+        mgr.deactivate_cell(now=_T(5), gnb_ref=gnb_one, cell_id="c1")
+        r = mgr.egress_data(now=_T(6), binding_ref=token_one, payload=PAYLOAD)
+        if r.ok or r.reason != RanReasonCode.RAN_UNAVAILABLE:
+            return fail(name, "outage egress must fail closed ran-unavailable; got %s" % r.reason)
+        # ...while the manager keeps serving NEW work on a second gNB
+        # (the outage never corrupts integration-instance state).
+        gnb_two = str(mgr.provision_gnb(now=_T(7), request=_alternate_gnb_request()).value)
+        if not mgr.activate_cell(now=_T(8), gnb_ref=gnb_two, cell_id="c1").ok:
+            return fail(name, "second gNB activate failed")
+        token_two = _bind(mgr, "sess-out-b", gnb_two, 9)
+        r = mgr.egress_data(now=_T(10), binding_ref=token_two, payload=PAYLOAD)
+        if not r.ok or r.value != PAYLOAD:
+            return fail(name, "second-gNB egress failed during first gNB outage")
+        if mgr.binding_count != 2:
+            return fail(name, "binding registry corrupted by outage")
+        # Restoration: the original bearer recovers byte-identically.
+        mgr.activate_cell(now=_T(11), gnb_ref=gnb_one, cell_id="c1")
+        r = mgr.egress_data(now=_T(12), binding_ref=token_one, payload=PAYLOAD)
+        if not r.ok or r.value != PAYLOAD:
+            return fail(name, "original bearer did not recover byte-identically")
+        return ok(
+            name,
+            "cell outage -> typed fail-closed on the live bearer while the manager serves "
+            "new sessions on a second gNB (integration state intact); restoration "
+            "recovers the original bearer byte-identically",
+        )
+    finally:
+        peer.close()
+
+
+def case_40_rfsim_coverage_admission() -> Result:
+    name = "case_40_rfsim_coverage_admission"
+    # UE 4.9 km out: below the admission floor.  The REFERENCE engine
+    # has no radio and accepts the same bind -- the discriminator that
+    # proves the channel model actually drives admission.
+    peer = RfSimRanPeer(_rfsim_scenario(ue_positions=((4900, 0),)))
+    try:
+        mgr = _rfsim_manager(peer, integration_id="adcos:ran:rfsim-cov", label="rfsim-peer")
+        gnb_ref = str(mgr.provision_gnb(now=_T(1), request=_canonical_gnb_request()).value)
+        mgr.activate_cell(now=_T(2), gnb_ref=gnb_ref, cell_id="c1")
+        r = mgr.bind_session(now=_T(3), session_id="sess-cov", gnb_ref=gnb_ref)
+        if r.ok or r.reason != RanReasonCode.RAN_UNAVAILABLE:
+            return fail(name, "out-of-coverage bind must fail ran-unavailable; got %s" % r.reason)
+        if mgr.binding_count != 0:
+            return fail(name, "failed admission registered a binding")
+        reference = RanManager(ran_integration_id="adcos:ran:rfsim-cov")
+        reference.register_implementation(
+            ReferenceRanEngine(), label="reference-ran-engine", make_default=True, now=_T(0)
+        )
+        ref_gnb = str(reference.provision_gnb(now=_T(1), request=_canonical_gnb_request()).value)
+        reference.activate_cell(now=_T(2), gnb_ref=ref_gnb, cell_id="c1")
+        if not reference.bind_session(now=_T(3), session_id="sess-cov", gnb_ref=ref_gnb).ok:
+            return fail(name, "reference engine unexpectedly refused the same bind")
+        # Mobility-driven admission: bring the UE into coverage.
+        peer.environment.set_ue_position(0, 80, 60)
+        r = mgr.bind_session(now=_T(4), session_id="sess-cov", gnb_ref=gnb_ref)
+        if not r.ok:
+            return fail(name, "in-coverage bind failed: %s" % r.detail)
+        return ok(
+            name,
+            "out-of-coverage UE (4.9 km) -> admission refused (ran-unavailable, no binding) "
+            "while the radio-less reference engine accepts the same bind (discriminator); "
+            "UE moved into coverage -> admission succeeds",
+        )
+    finally:
+        peer.close()
+
+
+def case_41_rfsim_substitution_invariance() -> Result:
+    name = "case_41_rfsim_substitution_invariance"
+    # THREE implementations, one operation history: the in-process
+    # reference engine, the production adapter over the in-repo
+    # conformance peer, and the production adapter over the
+    # RF-simulation peer (nominal RF).  Canonical core semantics must
+    # be BYTE-IDENTICAL across all three (the work-order substitution
+    # requirement -- the RF-sim path is a fourth consumer of the same
+    # seam, not a semantics change).
+    conformance = ReferenceRanConformanceServer()
+    rfsim = RfSimRanPeer(_rfsim_scenario())
+    try:
+        canonical_bodies = []
+        labels = []
+        for implementation, label in (
+            (ReferenceRanEngine(), "reference-ran-engine"),
+            (OpenRanAdapter(control_url=conformance.base_url), "openran-adapter"),
+            (OpenRanAdapter(control_url=rfsim.base_url), "rfsim-peer"),
+        ):
+            mgr = RanManager(ran_integration_id="adcos:ran:rfsim-sub")
+            r = mgr.register_implementation(
+                implementation, label=label, make_default=True, now=_T(0)
+            )
+            if not r.ok:
+                return fail(name, "register %s failed: %s" % (label, r.detail))
+            r = mgr.provision_gnb(now=_T(1), request=_canonical_gnb_request())
+            if not r.ok:
+                return fail(name, "%s provision failed: %s" % (label, r.detail))
+            gnb_ref = str(r.value)
+            if not mgr.activate_cell(now=_T(2), gnb_ref=gnb_ref, cell_id="c1").ok:
+                return fail(name, "%s activate failed" % label)
+            token = _bind(mgr, "sess-sub", gnb_ref, 3)
+            r = mgr.egress_data(now=_T(4), binding_ref=token, payload=PAYLOAD)
+            if not r.ok or r.value != PAYLOAD:
+                return fail(name, "%s egress failed: %s" % (label, r.detail))
+            canonical_bodies.append(mgr.to_canonical_bytes())
+            labels.append(label)
+        if not (canonical_bodies[0] == canonical_bodies[1] == canonical_bodies[2]):
+            return fail(name, "canonical state differs across engine/conformance/rfsim (DIRECT)")
+        if len(set(labels)) != 3:
+            return fail(name, "labels not distinct (test invalid)")
+        return ok(
+            name,
+            "DIRECT byte-identical canonical state across THREE implementations "
+            "(ReferenceRanEngine == OpenRanAdapter/conformance-peer == "
+            "OpenRanAdapter/RfSimRanPeer, same op history); implementation labels "
+            "genuinely differ (B2)",
+        )
+    finally:
+        conformance.close()
+        rfsim.close()
+
+
+def case_42_rfsim_anti_promotion_gate() -> Result:
+    """The anti-promotion rule: the RF-simulation environment can
+    NEVER be promoted to satisfy the frozen SDR-lab criterion.
+
+    ``rf_simulation``/``rfsim`` are FORBIDDEN peer kinds: the gate
+    fires FORBIDDEN BEFORE any network probe (a connection-counting
+    listener proves zero socket connections), with the not-probed
+    disclosure; no [SDR] evidence line; no PASSED (env save/restore
+    in finally, the case_32 leg-2 discipline).
+    """
+    name = "case_42_rfsim_anti_promotion_gate"
+    env_keys = ("RAN_INTEROP", "RAN_PEER_KIND", "RAN_CONTROL_URL")
+    saved = {k: os.environ.get(k) for k in env_keys}
+    srv = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+    try:
+        srv.bind(("127.0.0.1", 0))
+        srv.listen(4)
+        port = srv.getsockname()[1]
+        outcomes = []
+        for peer_kind in ("rf_simulation", "rfsim"):
+            for key in env_keys:
+                os.environ.pop(key, None)
+            os.environ["RAN_INTEROP"] = "1"
+            os.environ["RAN_PEER_KIND"] = peer_kind
+            os.environ["RAN_CONTROL_URL"] = "http://127.0.0.1:%d" % port
+            outcome = run_openran_interop()
+            if outcome.status != "FORBIDDEN":
+                return fail(
+                    name,
+                    "RAN_PEER_KIND=%s must be FORBIDDEN; got %s: %s"
+                    % (peer_kind, outcome.status, outcome.detail),
+                )
+            if "not probed" not in outcome.detail:
+                return fail(name, "%s: FORBIDDEN detail must disclose the unprobed endpoint" % peer_kind)
+            if any(line.startswith("[SDR]") for line in outcome.evidence):
+                return fail(name, "%s: [SDR] evidence claimed by an RF simulation" % peer_kind)
+            if outcome.status == "PASSED":
+                return fail(name, "%s: PASSED from an RF simulation (anti-faking violated)" % peer_kind)
+            outcomes.append((peer_kind, outcome.status))
+        # The guard fires BEFORE any network probe: zero connections.
+        srv.setblocking(False)
+        connections = 0
+        try:
+            while True:
+                conn, _addr = srv.accept()
+                connections += 1
+                conn.close()
+        except BlockingIOError:
+            pass
+        if connections != 0:
+            return fail(
+                name,
+                "%d socket connection(s) made during FORBIDDEN gate runs (the guard "
+                "must fire BEFORE any network probe)" % connections,
+            )
+        return ok(
+            name,
+            "RAN_PEER_KIND=rf_simulation and rfsim both fire FORBIDDEN before any "
+            "network probe (ZERO socket connections; not-probed disclosure); no [SDR] "
+            "evidence; no PASSED -- the RF simulation is NEVER promoted to satisfy "
+            "the frozen SDR criterion",
+        )
+    finally:
+        srv.close()
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+def case_43_rfsim_independence_audit() -> Result:
+    """Structural independence of the RF-simulation environment.
+
+    AST audit of ``adapters/ran/rfsim.py``: ZERO imports from
+    ``conformance.py`` (the in-repo reference peer it must be
+    independent of); engine imports limited EXACTLY to the
+    conformance-precedent helper set (``_mint_ref``/``FIRST_RNTI``/
+    ``LAST_RNTI``/``RAN_ALLOCATION_KINDS`` -- shared vocabulary so
+    identical histories mint identical refs); no ``os``/``math``/
+    ``random``/``time``/``datetime``/``itertools``/``statistics``/
+    ``secrets``; TR 38.901 + TS 38.214 cited; no secret tokens.
+    """
+    name = "case_43_rfsim_independence_audit"
+    path = os.path.join(_ROOT, "adapters", "ran", "rfsim.py")
+    with open(path, "r", encoding="utf-8") as f:
+        source = f.read()
+    tree = ast.parse(source)
+    forbidden_roots = {
+        "os", "math", "random", "time", "datetime", "itertools",
+        "statistics", "secrets", "simulator", "conformance",
+    }
+    allowed_level1 = {"model", "validation", "serialization", "engine"}
+    allowed_engine_names = {"_mint_ref", "FIRST_RNTI", "LAST_RNTI", "RAN_ALLOCATION_KINDS"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                root = alias.name.split(".")[0]
+                if root in forbidden_roots:
+                    return fail(name, "forbidden import root %r" % root)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level == 0:
+                root = (node.module or "").split(".")[0]
+                if root in forbidden_roots:
+                    return fail(name, "forbidden import-from root %r" % root)
+            elif node.level == 1:
+                module = node.module or ""
+                if module == "conformance":
+                    return fail(name, "rfsim.py imports conformance.py (independence violated)")
+                if module == "engine":
+                    imported = {alias.name for alias in node.names}
+                    if not imported <= allowed_engine_names:
+                        return fail(
+                            name,
+                            "engine imports %r outside the conformance-precedent set %r"
+                            % (sorted(imported), sorted(allowed_engine_names)),
+                        )
+                elif module not in allowed_level1:
+                    return fail(name, "unexpected family-internal import %r" % module)
+            else:
+                return fail(name, "level>=2 import (only bridge.py's SDK import is sanctioned)")
+    lowered = source.lower()
+    for citation in ("tr 38.901", "ts 38.214"):
+        if citation not in lowered:
+            return fail(name, "rfsim.py missing %s citation" % citation)
+    for token_name in ("private_key", "secret_key", "password", "api_key", "shared_secret", "ghp_", "akia"):
+        if token_name in lowered:
+            return fail(name, "secret-looking token %r in rfsim.py" % token_name)
+    return ok(
+        name,
+        "zero conformance.py imports; engine imports == the conformance-precedent helper "
+        "set {_mint_ref, FIRST_RNTI, LAST_RNTI, RAN_ALLOCATION_KINDS}; family-internal "
+        "imports within {model, validation, serialization, engine}; no os/math/random/"
+        "time/datetime/itertools/statistics/secrets; TR 38.901 + TS 38.214 cited; no "
+        "secret tokens",
+    )
+
+
+_RFSIM_SUBPROCESS_SCRIPT = """
+import sys
+sys.path.insert(0, ".")
+import hashlib
+from adapters.ran import (
+    CellSpec, CuElement, DuplexMode, DuElement, GnbProvisionRequest,
+    OpenRanAdapter, RanManager, RanSplitOption, RanSplitTopology,
+    RfSimRanPeer, RfSimScenario, RuElement,
+)
+T = lambda n: "2026-06-01T12:%02d:00Z" % n
+PAYLOAD = b"adcospktpath-ran-conformance-v1"
+request = GnbProvisionRequest(
+    gnb_name="lab-gnb-1",
+    cells=(CellSpec(cell_id="c1", band=78, duplex=DuplexMode.TDD, numerology=1, arfcn=632628, prb_count=10),),
+    topology=RanSplitTopology(
+        cu=CuElement(element_id="cu-1", split=RanSplitOption.F1_CU_DU, state="HEALTHY"),
+        dus=(DuElement(element_id="du-1", split=RanSplitOption.F1_CU_DU, state="HEALTHY", cell_ids=("c1",)),),
+        rus=(RuElement(element_id="ru-1", split=RanSplitOption.O_RAN_7_2X, state="HEALTHY", band=78),),
+    ),
+)
+peer = RfSimRanPeer(RfSimScenario(seed="rfsim-subprocess", ue_positions=((80, 60),), cell_positions={"c1": (0, 0)}))
+try:
+    mgr = RanManager(ran_integration_id="adcos:ran:rfsim-sub")
+    mgr.register_implementation(OpenRanAdapter(control_url=peer.base_url), label="rfsim-peer", make_default=True, now=T(0))
+    gnb = str(mgr.provision_gnb(now=T(1), request=request).value)
+    mgr.activate_cell(now=T(2), gnb_ref=gnb, cell_id="c1")
+    token = str(mgr.bind_session(now=T(3), session_id="sess-sub", gnb_ref=gnb).value)
+    out = mgr.egress_data(now=T(4), binding_ref=token, payload=PAYLOAD)
+    assert out.ok and out.value == PAYLOAD, out.detail
+    print("manager:", mgr.content_digest())
+    print("radio:", hashlib.sha256(peer.radio_report_bytes()).hexdigest())
+finally:
+    peer.close()
+"""
+
+
+def case_44_rfsim_determinism_subprocess_hash_seeds() -> Result:
+    name = "case_44_rfsim_determinism_subprocess_hash_seeds"
+    outputs = []
+    for hash_seed in ("0", "1", "7919"):
+        for _repeat in range(2):
+            proc = subprocess.run(
+                [sys.executable, "-c", _RFSIM_SUBPROCESS_SCRIPT],
+                capture_output=True,
+                text=True,
+                cwd=_ROOT,
+                env={**os.environ, "PYTHONHASHSEED": hash_seed},
+                timeout=120,
+            )
+            if proc.returncode != 0:
+                return fail(
+                    name,
+                    "subprocess (PYTHONHASHSEED=%s) failed: %s"
+                    % (hash_seed, proc.stderr.strip()[-400:]),
+                )
+            outputs.append((hash_seed, proc.stdout))
+    distinct = {output for _seed, output in outputs}
+    if len(distinct) != 1:
+        return fail(
+            name,
+            "subprocess outputs differ across hash seeds/runs (%d distinct): %r"
+            % (len(distinct), sorted(distinct)[:2]),
+        )
+    return ok(
+        name,
+        "identical manager digest + radio-report sha256 across PYTHONHASHSEED "
+        "0/1/7919 x2 runs (6 subprocess executions, byte-identical stdout)",
+    )
+
+
+def case_45_rfsim_wire_hygiene_and_secret_free_diagnostics() -> Result:
+    name = "case_45_rfsim_wire_hygiene_and_secret_free_diagnostics"
+    peer = RfSimRanPeer(_rfsim_scenario(ue_positions=((80, 60), (4900, 0))))
+    try:
+        mgr = _rfsim_manager(peer, integration_id="adcos:ran:rfsim-wire", label="rfsim-peer")
+        gnb_ref = str(mgr.provision_gnb(now=_T(1), request=_canonical_gnb_request()).value)
+        mgr.activate_cell(now=_T(2), gnb_ref=gnb_ref, cell_id="c1")
+        token = _bind(mgr, "sess-wire", gnb_ref, 3)
+        # Typed failure diagnostics carry reason codes only -- no
+        # exception text, no payload bytes, no credential material.
+        peer.environment.apply_extra_loss("c1", 60000)
+        r = mgr.egress_data(now=_T(4), binding_ref=token, payload=PAYLOAD)
+        if r.ok:
+            return fail(name, "degraded egress unexpectedly succeeded")
+        blob = repr(r.failure.to_payload() if r.failure is not None else None) + " " + (r.detail or "")
+        for fragment in ("0xdeadbeef", "cafebad", "adcospktpath", "password", "secret"):
+            if fragment in blob.lower():
+                return fail(name, "failure diagnostics carry %r" % fragment)
+        peer.environment.clear_extra_loss("c1")
+        # Wire-level error bodies are vocabulary reason tokens only.
+        status, body = _wire_post(
+            peer.port,
+            "/bearers/ran:bearer:%s/data" % ("0" * 32),
+            '{"payload_b64": "YWJj"}',
+        )
+        if status != 404:
+            return fail(name, "unknown bearer wire status %d != 404" % status)
+        parsed = _json.loads(body)
+        if set(parsed.keys()) != {"reason"} or parsed["reason"] != "bearer-unknown":
+            return fail(name, "error body %r != {'reason': 'bearer-unknown'}" % parsed)
+        # A credential-like free-text input is rejected at the wire.
+        status, body = _wire_post(
+            peer.port,
+            "/allocations",
+            '{"kind": "ran.prb", "quantity_base": 1, "purpose": "api_key=abcdefgh"}',
+        )
+        if status != 400:
+            return fail(name, "credential-like purpose must be 400 invalid-input; got %d" % status)
+        return ok(
+            name,
+            "failure diagnostics reason-codes only (no exception text/payload/credential "
+            "material); wire error bodies are vocabulary reason tokens "
+            "({'reason': 'bearer-unknown'}); credential-like free text rejected 400",
+        )
+    finally:
+        peer.close()
+
+
+def case_46_rfsim_discriminating_regressions() -> Result:
+    """Discriminating regressions for the most important boundary
+    claims (work-order item 5): the channel model ACTUALLY drives
+    outcomes (seed/geometry/degradation sensitivity, fading variance)
+    and the R1 seam rejects an RF-sim-shaped identity collapse."""
+    name = "case_46_rfsim_discriminating_regressions"
+    # (a) Seed sensitivity: different seeds -> genuinely different
+    # channel draws (guards against a degenerate model that ignores
+    # its seed).
+    peer_a = RfSimRanPeer(_rfsim_scenario(seed="disc-a"))
+    peer_b = RfSimRanPeer(_rfsim_scenario(seed="disc-b"))
+    try:
+        if peer_a.environment.shadowing_mdb("c1", 0) == peer_b.environment.shadowing_mdb("c1", 0):
+            return fail(name, "different seeds produced identical shadowing (model insensitive to seed)")
+        # (b) Geometry sensitivity: moving the UE changes the channel.
+        peer_c = RfSimRanPeer(_rfsim_scenario(seed="disc-c", ue_positions=((80, 60), (90, 60))))
+        try:
+            mgr = _rfsim_manager(peer_c, integration_id="adcos:ran:rfsim-disc", label="rfsim-peer")
+            gnb_ref = str(mgr.provision_gnb(now=_T(1), request=_canonical_gnb_request()).value)
+            mgr.activate_cell(now=_T(2), gnb_ref=gnb_ref, cell_id="c1")
+            token = _bind(mgr, "sess-disc", gnb_ref, 3)
+            report = peer_c.radio_report()
+            if not report:
+                return fail(name, "no radio report after bind")
+            before = int(report[0]["current_sinr_mdb"])
+            peer_c.environment.set_ue_position(0, 400, 300)
+            after = int(peer_c.radio_report()[0]["current_sinr_mdb"])
+            if before == after:
+                return fail(name, "moving the UE did not change the SINR (geometry ignored)")
+            # (c) Degradation sensitivity: extra loss reduces the SINR
+            # by EXACTLY the applied loss (integer channel arithmetic).
+            baseline = int(peer_c.radio_report()[0]["current_sinr_mdb"])
+            peer_c.environment.apply_extra_loss("c1", 60000)
+            degraded = int(peer_c.radio_report()[0]["current_sinr_mdb"])
+            if baseline - degraded != 60000:
+                return fail(
+                    name,
+                    "SINR dropped by %d mdb, not the applied 60000 mdb" % (baseline - degraded),
+                )
+            # (d) Fading varies with the transmission index.
+            fades = {
+                peer_c.environment.fading_mdb("ran:bearer:" + "0" * 32, index)
+                for index in range(8)
+            }
+            if len(fades) < 2:
+                return fail(name, "fading draws do not vary with the transmission index")
+        finally:
+            peer_c.close()
+        # (e) R1 identity collapse through the RF-sim path: a peer that
+        # returns the session_id AS the bearer ref is rejected at the
+        # seam and never registered.
+        collapsing_session_id = "ran:bearer:" + "ab" * 16
+        peer_d = _SessionCollapsingRfSimPeer(_rfsim_scenario())
+        try:
+            mgr_d = _rfsim_manager(peer_d, integration_id="adcos:ran:rfsim-collapse", label="rfsim-collapse")
+            gnb_d = str(mgr_d.provision_gnb(now=_T(1), request=_canonical_gnb_request()).value)
+            mgr_d.activate_cell(now=_T(2), gnb_ref=gnb_d, cell_id="c1")
+            r = mgr_d.bind_session(now=_T(3), session_id=collapsing_session_id, gnb_ref=gnb_d)
+            if r.ok:
+                return fail(name, "session-collapsing peer was accepted")
+            if r.reason != RanReasonCode.RAN_SESSION_COLLAPSE:
+                return fail(name, "collapse reason %r != ran-session-collapse" % r.reason)
+            if mgr_d.binding_count != 0:
+                return fail(name, "collapsed binding was registered")
+        finally:
+            peer_d.close()
+        return ok(
+            name,
+            "seed sensitivity (different seeds -> different shadowing); geometry "
+            "sensitivity (UE move changes SINR); degradation sensitivity (SINR drops "
+            "EXACTLY the applied loss); fading varies per transmission; an RF-sim peer "
+            "returning the session_id as bearer ref is rejected ran-session-collapse "
+            "with no binding registered",
+        )
+    finally:
+        peer_a.close()
+        peer_b.close()
+
+
+# ==========================================================================
 # Main
 # ==========================================================================
 
@@ -1991,6 +2910,20 @@ def main() -> int:
         case_30_b4_real_ran_conformance,
         case_31_b4_real_sdr_lab_interop_gate,
         case_32_b4_gate_hardening_matrix_and_anti_faking,
+        case_33_rfsim_environment_deterministic,
+        case_34_rfsim_nominal_end_to_end,
+        case_35_rfsim_r1_identity_separation,
+        case_36_rfsim_control_plane_lifecycle,
+        case_37_rfsim_geometry_based_cell_selection,
+        case_38_rfsim_rf_degradation_typed_failure,
+        case_39_rfsim_cell_outage_isolation,
+        case_40_rfsim_coverage_admission,
+        case_41_rfsim_substitution_invariance,
+        case_42_rfsim_anti_promotion_gate,
+        case_43_rfsim_independence_audit,
+        case_44_rfsim_determinism_subprocess_hash_seeds,
+        case_45_rfsim_wire_hygiene_and_secret_free_diagnostics,
+        case_46_rfsim_discriminating_regressions,
     ]
     results: List[Result] = []
     for case in cases:

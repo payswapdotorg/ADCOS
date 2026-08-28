@@ -69,7 +69,8 @@ Environment variables consumed:
                                (``real_oai``/``real_oran``/``real_sdr``/
                                ``real_other_ran``; the forbidden kinds
                                ``reference``/``inrepo``/
-                               ``conformance_server``/``simulator``
+                               ``conformance_server``/``simulator``/
+                               ``rf_simulation``/``rfsim``
                                fire FORBIDDEN before any network probe).
 * ``RAN_CONTROL_URL``       -- the real lab's O1/E2-style control
                                endpoint (default
@@ -229,11 +230,13 @@ class RanInteropOutcome:
       evidence, and the selftest case numbering lives in the WORK-020
       RAN selftest, a sibling task).
     * ``"FORBIDDEN"`` -- the operator explicitly tagged the peer as an
-      in-repo reference/conformance peer or simulator
+      in-repo reference/conformance peer, simulator, or the
+      RF-simulation environment
       (``RAN_PEER_KIND`` in ``reference|inrepo|conformance_server|
-      simulator``); the anti-faking guard fired BEFORE any network
-      probe.  This is a hard non-acceptance outcome; the gate does NOT
-      fall back to the in-repo conformance peer (the in-repo peer can
+      simulator|rf_simulation|rfsim``); the anti-faking guard fired
+      BEFORE any network probe.  This is a hard non-acceptance
+      outcome; the gate does NOT fall back to the in-repo conformance
+      peer (the in-repo peer and any RF channel simulation can
       NEVER satisfy the frozen SDR-based lab topology criterion, not
       even as a fallback).
     * ``"UNREACHABLE"`` -- ``RAN_INTEROP=1`` was set but the
@@ -414,12 +417,15 @@ def run_openran_interop(
             detail=(
                 "RAN_INTEROP!=1: the real SDR-lab interop gate is not run; "
                 "the conformance suite against the in-repo "
-                "ReferenceRanConformanceServer remains the strongest "
-                "honest in-sandbox evidence (case numbering will live in "
-                "the WORK-020 RAN selftest, a sibling task). Set "
-                "RAN_INTEROP=1 with RAN_PEER_KIND=real_oai and a "
-                "reachable real OpenAirInterface/O-RAN lab control "
-                "endpoint (RAN_CONTROL_URL) to run the acceptance gate."
+                "ReferenceRanConformanceServer plus the RF-simulation "
+                "validation environment (RfSimRanPeer, the OAI-RFsim-style "
+                "channel-model peer) remain the strongest honest in-sandbox "
+                "evidence -- neither can satisfy the frozen SDR-based lab "
+                "criterion (case numbering will live in the WORK-020 RAN "
+                "selftest, a sibling task). Set RAN_INTEROP=1 with "
+                "RAN_PEER_KIND=real_oai and a reachable real "
+                "OpenAirInterface/O-RAN lab control endpoint "
+                "(RAN_CONTROL_URL) to run the acceptance gate."
             ),
             control_url=cfg.control_url,
             peer_kind=cfg.peer_kind,

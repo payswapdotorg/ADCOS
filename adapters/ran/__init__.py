@@ -105,6 +105,18 @@ production-shaped adapter, and the real SDR-lab interop gate
                  ADCOS test implementation, NOT a real RAN stack (it
                  cannot satisfy the frozen SDR-lab acceptance
                  criterion -- that is the interop gate's job)
+- rfsim.py       RfSimRanPeer -- the INDEPENDENT OAI-RFsim-style
+                 RF-simulation environment (Architect work order, PR
+                 #21): a real REST-over-HTTP RAN control-plane peer
+                 whose admission/PRB/health/decode behavior is derived
+                 from a deterministic TR 38.901/TS 38.214 integer
+                 channel model (UE positions, path-loss anchors,
+                 seeded shadowing/fading, interference, SINR->MCS
+                 ladder) -- RfSimScenario/RfSimEnvironment scenario
+                 scripting included; honestly disclosed as an RF
+                 SIMULATION that can never satisfy the frozen SDR
+                 criterion (rf_simulation/rfsim are FORBIDDEN peer
+                 kinds in the interop gate)
 - openran.py     OpenRanAdapter -- PRODUCTION-SHAPED real-HTTP
                  adapter targeting real OpenAirInterface / O-RAN-style
                  lab deployments through a configured HTTP control
@@ -201,6 +213,7 @@ from .manager import (
 from .session import AccessPathSession
 from .bridge import RanTechnologyAdapter
 from .conformance import ReferenceRanConformanceServer
+from .rfsim import RfSimEnvironment, RfSimRanPeer, RfSimScenario
 from .openran import (
     DEFAULT_RAN_CONTROL_URL,
     RAN_CONTROL_URL_ENV,
@@ -300,6 +313,11 @@ __all__ = [
     "RanTechnologyAdapter",
     # Conformance peer (real-socket reference RAN control plane)
     "ReferenceRanConformanceServer",
+    # Independent RF-simulation environment (Architect work order:
+    # the OAI-RFsim-style validation phase; NOT SDR evidence)
+    "RfSimScenario",
+    "RfSimEnvironment",
+    "RfSimRanPeer",
     # Production-shaped real-HTTP Open RAN adapter
     "OpenRanAdapter",
     "DEFAULT_RAN_CONTROL_URL",

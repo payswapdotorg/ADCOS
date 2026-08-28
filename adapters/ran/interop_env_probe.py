@@ -235,14 +235,22 @@ _PEER_KIND_REAL: Tuple[str, ...] = (
     "real_other_ran",
 )
 
-#: FORBIDDEN peer kinds (in-repo reference/conformance peers and any
-#: simulator substitution -- they can NEVER satisfy the frozen
-#: SDR-based lab topology criterion, not even as a fallback).
+#: FORBIDDEN peer kinds (in-repo reference/conformance peers, any
+#: simulator substitution, and the RF-simulation environment -- they
+#: can NEVER satisfy the frozen SDR-based lab topology criterion,
+#: not even as a fallback).  ``rf_simulation``/``rfsim`` cover the
+#: Architect-authorized RF-simulation validation environment
+#: (adapters/ran/rfsim.py, PR #21 work order): an RF channel
+#: simulation is additional boundary evidence, NEVER physical SDR
+#: evidence (the RF-simulation phase explicitly leaves the frozen
+#: SDR acceptance criterion untouched).
 _PEER_KIND_FORBIDDEN: Tuple[str, ...] = (
     "reference",
     "inrepo",
     "conformance_server",
     "simulator",
+    "rf_simulation",
+    "rfsim",
 )
 
 #: Integrator-populated host-fragment denylist for any FUTURE
@@ -267,11 +275,13 @@ def _assert_independent_peer(config: RanEnvProbeConfig) -> Optional[str]:
     if kind in _PEER_KIND_FORBIDDEN:
         return (
             "RAN_PEER_KIND=%r; the gate forbids running acceptance "
-            "against an in-repo reference/conformance peer or simulator "
-            "(Architect rule: the in-repo reference/conformance peer "
-            "cannot satisfy the frozen SDR-based lab topology criterion "
-            "-- no in-repo peer may be substituted for a real, "
-            "independent SDR-based RAN lab)" % kind
+            "against an in-repo reference/conformance peer, a "
+            "simulator, or the RF-simulation environment "
+            "(Architect rule: neither the in-repo reference/conformance "
+            "peer nor any RF channel simulation can satisfy the frozen "
+            "SDR-based lab topology criterion -- no in-repo peer may "
+            "be substituted for a real, independent SDR-based RAN lab)"
+            % kind
         )
     if kind not in _PEER_KIND_REAL:
         # Unset (or unrecognized) -- the operator did not assert a real
