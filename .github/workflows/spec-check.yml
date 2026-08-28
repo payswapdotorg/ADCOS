@@ -127,3 +127,6 @@ jobs:
 
       - name: Run protocol/adapter conformance suite tests
         run: python3 tools/conformance_selftest.py
+
+      - name: Run Linux reference agent tests
+        run: python3 tools/agent_selftest.py

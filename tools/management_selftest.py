@@ -1561,11 +1561,17 @@ def case_28_no_vendor_symbols() -> Result:
 
 def case_29_no_reverse_imports() -> Result:
     name = "case_29_no_reverse_imports"
+    # WORK-033 amendment (deliberate, flagged in its PR): the Linux
+    # reference agent family is a dependency-graph-sanctioned
+    # DOWNSTREAM consumer of management (spec/work-items.md: WORK-033
+    # declares WORK-030 among its frozen dependencies); the agent
+    # composes the real ManagementAPI/RBAC/audit surfaces over its own
+    # authorities and never re-implements management semantics.
     for root, dirs, files in os.walk(REPO):
         dirs[:] = [
             d
             for d in dirs
-            if d not in ("__pycache__", ".git", "docs", "spec", "tools")
+            if d not in ("__pycache__", ".git", "docs", "spec", "tools", "agent")
         ]
         for f in files:
             if not f.endswith(".py"):

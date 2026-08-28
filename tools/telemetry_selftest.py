@@ -973,6 +973,20 @@ def case_19_no_core_leakage() -> Result:
         # or serialization internals.
         if entry == "simulator":
             continue
+        # WORK-033 amendment (deliberate, flagged in its PR): the
+        # Linux reference agent family is a dependency-graph-
+        # sanctioned DOWNSTREAM consumer of telemetry
+        # (spec/work-items.md: WORK-033 declares WORK-026 among its
+        # frozen dependencies).  Its telemetry usage is pinned below
+        # to the DATA surface only: telemetry.model (the frozen
+        # subject-kind/source-class/metric vocabularies for
+        # constructing genuine observations) and telemetry.store
+        # (the genuine record_observation ingest so agent-side
+        # monitoring observations live under the real recordedness
+        # model).  It never touches the validation, authorization,
+        # or serialization internals.
+        if entry == "agent":
+            continue
         for base, _dirs, files in os.walk(os.path.join(_ROOT, entry)):
             for filename in sorted(files):
                 if not filename.endswith(".py"):
@@ -996,6 +1010,7 @@ def case_19_no_core_leakage() -> Result:
         "upgrade": ("model", "store"),
         "management": ("model", "store", "errors"),
         "simulator": ("model", "store", "errors"),
+        "agent": ("model", "store"),
     }
     for family, allowed_modules in _ALLOWED.items():
         for filename in sorted(os.listdir(os.path.join(_ROOT, family))):
