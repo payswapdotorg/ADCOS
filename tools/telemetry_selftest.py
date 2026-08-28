@@ -952,6 +952,27 @@ def case_19_no_core_leakage() -> Result:
         # authorization internals.
         if entry == "management":
             continue
+        # WORK-031 amendment (deliberate, flagged in its PR): the
+        # network/behavior simulator family is a dependency-graph-
+        # sanctioned DOWNSTREAM consumer of telemetry TRANSITIVELY:
+        # its frozen hard dependency WORK-027 (energy/resilience)
+        # declares WORK-026 among its frozen dependencies
+        # (spec/dependency-graph.md paths W026 --> W027 --> W031),
+        # and the WORK-031 boundary requires scenario telemetry to be
+        # evidence/data under the W026 vocabulary and provenance
+        # discipline (never independent external evidence, never
+        # bypassing the W026 recordedness/authorization model).
+        # Its telemetry usage is pinned below to the DATA surface
+        # only: telemetry.model (the frozen subject-kind/source-class/
+        # metric vocabularies for constructing genuine observations),
+        # telemetry.store (the genuine record_observation ingest so
+        # simulated observations live under the real recordedness
+        # model), and telemetry.errors (the public fail-closed error
+        # vocabulary so authority rejections surface in observation
+        # records).  It never touches the validation, authorization,
+        # or serialization internals.
+        if entry == "simulator":
+            continue
         for base, _dirs, files in os.walk(os.path.join(_ROOT, entry)):
             for filename in sorted(files):
                 if not filename.endswith(".py"):
@@ -974,6 +995,7 @@ def case_19_no_core_leakage() -> Result:
         "energy": ("model", "store"),
         "upgrade": ("model", "store"),
         "management": ("model", "store", "errors"),
+        "simulator": ("model", "store", "errors"),
     }
     for family, allowed_modules in _ALLOWED.items():
         for filename in sorted(os.listdir(os.path.join(_ROOT, family))):
@@ -994,8 +1016,8 @@ def case_19_no_core_leakage() -> Result:
                     )
     return ok(
         name,
-        "no core family imports telemetry; energy/upgrade/management "
-        "consume the pinned data surface only",
+        "no core family imports telemetry; energy/upgrade/management/"
+        "simulator consume the pinned data surface only",
     )
 
 
