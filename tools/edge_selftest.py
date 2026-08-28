@@ -2312,7 +2312,14 @@ def case_47_pr_delta_shape(results: List[Result]) -> None:
         else:
             results.append(fail(name, "committed CI wiring missing on main"))
         return
-    spec_changed = [c for c in changed if c.startswith("spec/")]
+    spec_changed = [
+        c for c in changed
+        if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
+    ]
+    # (DAG-sanctioned amendment, W034 -> W037: the Architect anchored
+    # the W037 execution handoff on the designated branch -- commit
+    # 518c071, with main's accidental publication reverted by the
+    # Architect -- so the spec/ delta admits exactly that file.)
     if spec_changed:
         results.append(fail(name, "spec/ differs from origin/main: %s" % spec_changed))
         return
@@ -2337,11 +2344,19 @@ def case_47_pr_delta_shape(results: List[Result]) -> None:
         "tools/appliance_selftest.py",
         "docs/WORK-036-handoff.md",
         "docs/WORK-036-evidence.md",
+        # DAG-sanctioned allowlist amendment (W034 -> W037): the Open
+        # RAN/Core interop-profile battery follows this one in
+        # work-item order (the profile composes the same adapter
+        # stack the edge gateway hosts), and its PR delta shape must
+        # admit the successor's files.
+        "tools/oran_selftest.py",
+        "docs/WORK-037-handoff.md",
+        "docs/WORK-037-evidence.md",
     }
     unexpected = [
         c for c in changed
         if not c.startswith("edge/") and not c.startswith("mobile/")
-        and not c.startswith("appliance/")
+        and not c.startswith("appliance/") and not c.startswith("interop/")
         and c not in allowed_exact and not c.startswith(".github/")
     ]
     if unexpected:
