@@ -112,6 +112,7 @@ def classify_access(
             EdgeReasonCode.INVALID_INPUT,
             "access classification requires a genuine InterfaceSnapshot",
         )
+    validate_access_plan(plan)
     if snapshot.link_kind == "loopback":
         return ""
     technology = technology_for_snapshot(snapshot)
@@ -224,15 +225,19 @@ def select_access(
     required_class: str = "",
     preference: Tuple[str, ...] = COEXISTENCE_PREFERENCE,
 ) -> Optional[AccessView]:
-    """Deterministically select one access view for traffic.
+    """Deterministically select one CLASSIFIED access view for
+    traffic.
 
-    Fail-closed: only views that carry traffic participate.  With
-    ``required_class`` set, only that class is eligible (explicit
-    coexistence routing by the deployment).  Ordering: preference
-    index first (frozen default: Ethernet, Wi-Fi, cellular), then
-    health (better first), then capacity (higher first), then
-    interface name (total order, no insertion-order dependence).
-    Returns ``None`` when no eligible view exists.
+    Fail-closed: only views that carry traffic AND carry a declared
+    access class participate (an unclassified interface is not an
+    access-class candidate; the agent's own binding path remains
+    available for it).  With ``required_class`` set, only that class
+    is eligible (explicit coexistence routing by the deployment).
+    Ordering: preference index first (frozen default: Ethernet,
+    Wi-Fi, cellular), then health (better first), then capacity
+    (higher first), then interface name (total order, no
+    insertion-order dependence).  Returns ``None`` when no eligible
+    view exists.
     """
     if required_class and required_class not in AccessClass.values():
         raise EdgeError(
@@ -240,7 +245,10 @@ def select_access(
             "required access class %r not in the frozen vocabulary"
             % (required_class,),
         )
-    candidates = [view for view in views if view.carries_traffic]
+    candidates = [
+        view for view in views
+        if view.carries_traffic and view.access_class
+    ]
     if required_class:
         candidates = [
             view for view in candidates if view.access_class == required_class

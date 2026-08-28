@@ -104,7 +104,7 @@ class BoardProfile:
 
 #: The frozen board-profile registry (public product specifications as
 #: DATA; raspberry-pi product briefs, carried without importing any
-#: vendor tooling -- names only, per the vendor-token discipline).
+#: third-party tooling -- names only, per the naming discipline).
 EDGE_BOARD_PROFILES: Tuple[BoardProfile, ...] = (
     BoardProfile(
         board_id="raspberry-pi-5",

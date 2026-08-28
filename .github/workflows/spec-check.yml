@@ -133,3 +133,6 @@ jobs:
 
       - name: Run Linux reference agent tests
         run: python3 tools/agent_selftest.py
+
+      - name: Run Raspberry Pi edge gateway tests
+        run: python3 tools/edge_selftest.py

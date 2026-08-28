@@ -1949,7 +1949,12 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
             name, "spec/ differs from origin/main: %s" % spec_changed
         ))
         return
-    allowed_docs = {"docs/WORK-033-handoff.md"}
+    allowed_docs = {
+        "docs/WORK-033-handoff.md",
+        # DAG-sanctioned amendment (W033 -> W034): the edge-gateway
+        # work item builds directly on this agent battery's subject.
+        "docs/WORK-034-handoff.md",
+    }
     docs_changed = {c for c in changed if c.startswith("docs/")}
     if not docs_changed <= allowed_docs:
         results.append(fail(
@@ -1971,6 +1976,9 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
         "tools/telemetry_selftest.py",
         "tools/upgrade_selftest.py",
         "tools/management_selftest.py",
+        # DAG-sanctioned allowlist amendment (W033 -> W034): the edge
+        # battery extends this one (work-item order in CI).
+        "tools/edge_selftest.py",
     }
     tools_changed = {c for c in changed if c.startswith("tools/")}
     if not tools_changed <= allowed_tools:
