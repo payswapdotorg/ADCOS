@@ -267,6 +267,20 @@ class Operation:
     #: policy ALLOW the promotion is impossible -- telemetry can never
     #: silently become topology authority.
     TELEMETRY_TOPOLOGY_PROMOTE = "telemetry.topology-promote"
+    #: WORK-030 deliberate vocabulary extension (the WORK-026
+    #: amendment precedent; "privileged actions require explicit
+    #: policy" acceptance criterion): the ONLY operation under which
+    #: the management plane's RBAC state (operator role assignments)
+    #: may be mutated.  Privileged (deny-by-default), so a role
+    #: assignment -- the capability half of the management plane's
+    #: two-key authorization -- can never be changed without an
+    #: explicit policy ALLOW.  Role ASSIGNMENT administration is a
+    #: privileged management action by construction (it grants
+    #: authority); reads of RBAC state are non-privileged capability
+    #: checks and are NOT policy operations (the structural
+    #: classification rule forbids inferring a read operation from
+    #: naming).
+    MANAGEMENT_ROLE_ASSIGN = "management.role-assign"
 
     @classmethod
     def values(cls) -> Tuple[str, ...]:
@@ -285,6 +299,7 @@ class Operation:
             cls.PRIVACY_REQUIREMENT_OVERRIDE,
             cls.EMERGENCY_PREEMPT,
             cls.TELEMETRY_TOPOLOGY_PROMOTE,
+            cls.MANAGEMENT_ROLE_ASSIGN,
         )
 
 
@@ -325,6 +340,10 @@ class Privileged:
         Operation.PRIVACY_REQUIREMENT_OVERRIDE,
         Operation.EMERGENCY_PREEMPT,
         Operation.TELEMETRY_TOPOLOGY_PROMOTE,
+        # WORK-030 deliberate extension (see Operation.MANAGEMENT_ROLE_ASSIGN):
+        # role-assignment administration grants authority, so it is privileged
+        # by construction -- deny-by-default without an explicit policy ALLOW.
+        Operation.MANAGEMENT_ROLE_ASSIGN,
     )
 
     NON_PRIVILEGED: Tuple[str, ...] = ()
