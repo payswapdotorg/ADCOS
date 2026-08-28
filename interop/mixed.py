@@ -42,7 +42,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, List, Optional, Sequence, Tuple
 
 from adapters.fivegc import (
     Dnn,
@@ -373,7 +373,9 @@ class _Journal:
         return tuple(self._events)
 
 
-def _require_ok(name: str, result) -> object:
+def _require_ok(name: str, result) -> Any:
+    """Require an ok result and return its value (typed Any: the
+    families' op-result value shapes are their own frozen surfaces)."""
     if not getattr(result, "ok", False):
         raise InteropError(
             InteropReasonCode.LEG_UNAVAILABLE,

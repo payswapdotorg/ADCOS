@@ -31,7 +31,7 @@ import py_compile
 import re
 import subprocess
 import sys
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 # Make the repository root importable.
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -486,7 +486,7 @@ def case_06_evidence_status_disclosure(results: List[Result]) -> None:
     runbook = profile_lab_runbook()
     if runbook["evidence_status"] != PROFILE_EVIDENCE_STATUS:
         problems.append("runbook status drifted from the pinned status")
-    if "FORBIDDEN" not in runbook["anti_faking"]:
+    if "FORBIDDEN" not in str(runbook["anti_faking"]):
         problems.append("runbook anti-faking lacks the FORBIDDEN rule")
     if profile_lab_runbook() != runbook:
         problems.append("runbook not deterministic")
@@ -831,7 +831,7 @@ def case_15_replay_verification(results: List[Result]) -> None:
         problems.append("genuine result rejected: %s" % check(result))
 
     # mutated event detail -> the replay digest diverges.
-    fields = dict(
+    fields: Dict[str, Any] = dict(
         sequence=result.events[0].sequence,
         instant=result.events[0].instant,
         kind=result.events[0].kind,
