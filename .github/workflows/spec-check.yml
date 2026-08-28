@@ -124,3 +124,6 @@ jobs:
         run: |
           grep -Fq 'python3 tools/management_selftest.py' .github/workflows/spec-check.yml
           grep -Fq 'python3 tools/simulator_selftest.py' .github/workflows/spec-check.yml
+
+      - name: Run protocol/adapter conformance suite tests
+        run: python3 tools/conformance_selftest.py
