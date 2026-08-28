@@ -1741,6 +1741,12 @@ def case_33_pr_delta_shape(results: List[Result]) -> None:
         return
     allowed_exact = {
         "tools/imt_selftest.py",
+        # DAG-sanctioned allowlist amendment (W029 -> W038): the
+        # upgrade battery's authority-boundary audit exempts the W038
+        # family as a DAG-sanctioned downstream consumer (WORK-038
+        # declares WORK-029 among its frozen dependencies;
+        # imt/coexistence.py composes the real compatibility surfaces).
+        "tools/upgrade_selftest.py",
         # DAG-sanctioned allowlist amendments (work-item order):
         # W033 -> W038 (the future profile composes the agent's
         # AdapterRuntime wiring seam):

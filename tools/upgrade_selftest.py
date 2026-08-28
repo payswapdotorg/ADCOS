@@ -1907,11 +1907,17 @@ def case_33_authority_boundaries_imports() -> Result:
     # declares WORK-029 among its frozen dependencies); the agent
     # composes the real UpgradeManager/coexistence/migration surfaces
     # and never re-implements version semantics.
+    # WORK-038 amendment (same pattern): the future-IMT adapter
+    # profile family is a dependency-graph-sanctioned DOWNSTREAM
+    # consumer of upgrade (spec/prompts/WORK-038.md: WORK-038 declares
+    # WORK-029 among its frozen dependencies); imt/coexistence.py
+    # composes the real ProfileNegotiation/envelope-disposition
+    # surfaces read-only and never re-implements version semantics.
     for family in sorted(os.listdir(_ROOT)):
         family_path = os.path.join(_ROOT, family)
         if (
             not os.path.isdir(family_path)
-            or family in ("upgrade", "tools", "agent")
+            or family in ("upgrade", "tools", "agent", "imt")
             or family.startswith(".")
         ):
             continue

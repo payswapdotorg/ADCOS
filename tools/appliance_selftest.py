@@ -2567,6 +2567,12 @@ def case_41_pr_delta_shape(results: List[Result]) -> None:
         "tools/imt_selftest.py",
         "docs/WORK-038-handoff.md",
         "docs/WORK-038-evidence.md",
+        # DAG-sanctioned allowlist amendment (W029 -> W038): the upgrade
+        # battery's authority-boundary audit exempts the W038
+        # future-IMT family as a DAG-sanctioned downstream consumer
+        # (WORK-038 declares WORK-029 among its frozen dependencies;
+        # imt/coexistence.py composes the real compatibility surfaces).
+        "tools/upgrade_selftest.py",
         # the Architect's own branch anchor (admitted above by the
         # spec-delta check):
         "spec/prompts/WORK-037.md",
