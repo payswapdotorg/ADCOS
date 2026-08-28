@@ -160,6 +160,7 @@ _EXPECTED_TOOLS = [
     "security_selftest.py", "upgrade_selftest.py", "management_selftest.py",
     "simulator_selftest.py", "conformance_selftest.py",
     "agent_selftest.py", "edge_selftest.py", "mobile_selftest.py",
+    "appliance_selftest.py",
 ]
 
 #: The frozen mobile public API surface (case_42).
@@ -2340,10 +2341,19 @@ def case_44_pr_delta_shape(results: List[Result]) -> None:
         # work-item order; its PR-delta shape admits the successor):
         "tools/edge_selftest.py",
         "docs/WORK-035-evidence.md",
+        # DAG-sanctioned allowlist amendment (W035 -> W036): the
+        # appliance battery follows this one in work-item order (the
+        # appliance and the mobile layer are sibling compositions
+        # over the agent core), and its PR-delta shape must admit
+        # the successor's files.
+        "tools/appliance_selftest.py",
+        "docs/WORK-036-handoff.md",
+        "docs/WORK-036-evidence.md",
     }
     unexpected = [
         c for c in changed
-        if not c.startswith("mobile/") and c not in allowed_exact
+        if not c.startswith("mobile/") and not c.startswith("appliance/")
+        and c not in allowed_exact
         and not c.startswith(".github/")
     ]
     if unexpected:
@@ -2377,13 +2387,15 @@ def case_45_ci_wiring_all_tools(results: List[Result]) -> None:
     edge_index = workflow.find("python3 tools/edge_selftest.py")
     mobile_index = workflow.find("python3 tools/mobile_selftest.py")
     agent_index = workflow.find("python3 tools/agent_selftest.py")
-    if not (agent_index < edge_index < mobile_index):
-        results.append(fail(name, "mobile step not ordered after agent/edge"))
+    appliance_index = workflow.find("python3 tools/appliance_selftest.py")
+    if not (agent_index < edge_index < mobile_index < appliance_index):
+        results.append(fail(name, "appliance step not ordered after agent/edge/mobile"))
         return
     results.append(ok(
         name,
         "CI wired: mobile battery + all %d prior tools; mobile ordered after "
-        "agent/edge (work-item order)" % (len(_EXPECTED_TOOLS) - 1),
+        "agent/edge, appliance after mobile (work-item order)"
+        % (len(_EXPECTED_TOOLS) - 1),
     ))
 
 
