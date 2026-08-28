@@ -1548,8 +1548,13 @@ def case_33_frozen_api(results: List[Result]) -> None:
 #: reverted by the Architect before the branch was cut).  The spec
 #: delta below admits EXACTLY this file, and case_35 additionally
 #: asserts the implementation never modified it.
+#: (W037 -> W038 amendment: the W038 handoff follows the identical
+#: branch-anchor pattern -- commit 0be736e -- and is admitted the
+#: same way.)
 _ARCHITECT_HANDOFF = "spec/prompts/WORK-037.md"
 _ARCHITECT_HANDOFF_COMMIT = "518c071"
+_SUCCESSOR_HANDOFF = "spec/prompts/WORK-038.md"
+_SUCCESSOR_HANDOFF_COMMIT = "0be736e"
 
 
 def _spec_delta_clean() -> List[str]:
@@ -1567,14 +1572,25 @@ def _spec_delta_clean() -> List[str]:
         status, _, path = line.partition("\t")
         if path == _ARCHITECT_HANDOFF and status == "A":
             continue  # the Architect's own anchor commit
+        if path == _SUCCESSOR_HANDOFF and status == "A":
+            continue  # the W038 successor's Architect anchor commit
         problems.append("%s %s" % (status, path))
     # the handoff must be byte-untouched since the Architect's commit.
     untouched = subprocess.run(
-        ["git", "diff", _ARCHITECT_HANDOFF_COMMIT, "HEAD", "--", _ARCHITECT_HANDOFF],
+        ["git", "diff", _ARCHITECT_HANDOFF_COMMIT, "HEAD", "--",
+         _ARCHITECT_HANDOFF],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
     if untouched.stdout.strip():
         problems.append("the Architect's handoff was modified by the branch")
+    # the W038 successor's handoff must equally be byte-untouched.
+    successor_untouched = subprocess.run(
+        ["git", "diff", _SUCCESSOR_HANDOFF_COMMIT, "HEAD", "--",
+         _SUCCESSOR_HANDOFF],
+        capture_output=True, text=True, cwd=str(REPO_ROOT),
+    )
+    if successor_untouched.stdout.strip():
+        problems.append("the W038 successor handoff was modified by the branch")
     return problems
 
 
@@ -1662,12 +1678,21 @@ def case_35_pr_delta_shape(results: List[Result]) -> None:
         "tools/appliance_selftest.py",
         "docs/WORK-037-handoff.md",
         "docs/WORK-037-evidence.md",
-        # the Architect's own branch anchor (validated by _spec_delta_clean):
+        # W037 -> W038 (work-item order; the future-IMT profile
+        # battery follows this one and its PR-delta shape admits the
+        # successor's files):
+        "tools/imt_selftest.py",
+        "docs/WORK-038-handoff.md",
+        "docs/WORK-038-evidence.md",
+        # the Architect's own branch anchors (validated by
+        # _spec_delta_clean):
         _ARCHITECT_HANDOFF,
+        _SUCCESSOR_HANDOFF,
     }
     unexpected = [
         c for c in changed
-        if not c.startswith("interop/") and c not in allowed_exact
+        if not c.startswith("interop/") and not c.startswith("imt/")
+        and c not in allowed_exact
         and not c.startswith(".github/")
     ]
     if unexpected:
@@ -1682,8 +1707,9 @@ def case_35_pr_delta_shape(results: List[Result]) -> None:
         return
     results.append(ok(
         name, "PR delta exactly: interop/ + interop battery + agent/edge/"
-              "mobile/appliance allowlist amendments + handoff/evidence "
-              "docs + the Architect's branch anchor + CI step",
+              "mobile/appliance allowlist amendments + W038 successor "
+              "admissions + handoff/evidence docs + the Architect's branch "
+              "anchors + CI step",
     ))
 
 
@@ -1702,7 +1728,7 @@ _EXPECTED_TOOLS = [
     "security_selftest.py", "upgrade_selftest.py", "management_selftest.py",
     "simulator_selftest.py", "conformance_selftest.py",
     "agent_selftest.py", "edge_selftest.py", "mobile_selftest.py",
-    "appliance_selftest.py", "oran_selftest.py",
+    "appliance_selftest.py", "oran_selftest.py", "imt_selftest.py",
 ]
 
 
@@ -1721,12 +1747,13 @@ def case_36_ci_wiring_all_tools(results: List[Result]) -> None:
         return
     appliance_index = workflow.find("python3 tools/appliance_selftest.py")
     oran_index = workflow.find("python3 tools/oran_selftest.py")
-    if not (appliance_index < oran_index):
-        results.append(fail(name, "oran step not ordered after appliance"))
+    imt_index = workflow.find("python3 tools/imt_selftest.py")
+    if not (appliance_index < oran_index < imt_index):
+        results.append(fail(name, "imt step not ordered after oran"))
         return
     results.append(ok(
         name, "CI wired: interop battery + all %d prior tools; oran "
-              "ordered after appliance (work-item order)"
+              "ordered after appliance and imt after oran (work-item order)"
         % (len(_EXPECTED_TOOLS) - 1),
     ))
 

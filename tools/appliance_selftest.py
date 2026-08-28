@@ -2473,10 +2473,14 @@ def case_40_frozen_spec_intact(results: List[Result]) -> None:
     spec_changed = [
         c for c in changed
         if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
+        and c != "spec/prompts/WORK-038.md"
     ]
     # (DAG-sanctioned amendment, W036 -> W037: the Architect anchored
     # the W037 execution handoff on the designated branch -- commit
     # 518c071 -- so the spec/ delta admits exactly that file.)
+    # (DAG-sanctioned amendment, W036 -> W038: the Architect anchored
+    # the W038 execution handoff on the designated branch -- commit
+    # 0be736e -- same pattern.)
     if spec_changed:
         results.append(fail(name, "spec/ differs from origin/main: %s" % spec_changed))
         return
@@ -2521,11 +2525,14 @@ def case_41_pr_delta_shape(results: List[Result]) -> None:
     spec_changed = [
         c for c in changed
         if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
+        and c != "spec/prompts/WORK-038.md"
     ]
     # (DAG-sanctioned amendment, W036 -> W037: the Architect anchored
     # the W037 execution handoff on the designated branch -- commit
     # 518c071, with main's accidental publication reverted by the
     # Architect -- so the spec/ delta admits exactly that file.)
+    # (DAG-sanctioned amendment, W036 -> W038: commit 0be736e, same
+    # pattern.)
     if spec_changed:
         results.append(fail(name, "spec/ differs from origin/main: %s" % spec_changed))
         return
@@ -2552,13 +2559,23 @@ def case_41_pr_delta_shape(results: List[Result]) -> None:
         "tools/oran_selftest.py",
         "docs/WORK-037-handoff.md",
         "docs/WORK-037-evidence.md",
+        # DAG-sanctioned allowlist amendment (W036 -> W038): the
+        # future-IMT profile battery follows this one in work-item
+        # order (the future profile composes the same accepted
+        # adapter SDK the appliance hosts), and its PR-delta shape
+        # must admit the successor's files.
+        "tools/imt_selftest.py",
+        "docs/WORK-038-handoff.md",
+        "docs/WORK-038-evidence.md",
         # the Architect's own branch anchor (admitted above by the
         # spec-delta check):
         "spec/prompts/WORK-037.md",
+        "spec/prompts/WORK-038.md",
     }
     unexpected = [
         c for c in changed
         if not c.startswith("appliance/") and not c.startswith("interop/")
+        and not c.startswith("imt/")
         and c not in allowed_exact
         and not c.startswith(".github/")
     ]
@@ -2569,8 +2586,19 @@ def case_41_pr_delta_shape(results: List[Result]) -> None:
         ["git", "diff", "origin/main", "--", ".github/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
-    if "appliance_selftest.py" not in workflow_delta.stdout:
-        results.append(fail(name, ".github delta does not include the appliance CI step"))
+    # The wiring change must be additive for the appliance step: the
+    # appliance CI step stays present and no delta line removes it.
+    # (A successor work item may append its own step further down the
+    # workflow, so the appliance step need not appear inside the diff
+    # context -- only never be weakened.  The W033 -> W035 agent
+    # case_40 precedent, applied for the W036 -> W038 successor.)
+    removed_appliance_step = any(
+        line.startswith("-") and "appliance_selftest.py" in line
+        for line in workflow_delta.stdout.splitlines()
+    )
+    if removed_appliance_step or \
+            "python3 tools/appliance_selftest.py" not in workflow:
+        results.append(fail(name, ".github delta weakens or drops the appliance CI step"))
         return
     results.append(ok(
         name,

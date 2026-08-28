@@ -2286,10 +2286,14 @@ def case_43_frozen_spec_intact(results: List[Result]) -> None:
     spec_changed = [
         c for c in changed
         if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
+        and c != "spec/prompts/WORK-038.md"
     ]
     # (DAG-sanctioned amendment, W035 -> W037: the Architect anchored
     # the W037 execution handoff on the designated branch -- commit
     # 518c071 -- so the spec/ delta admits exactly that file.)
+    # (DAG-sanctioned amendment, W035 -> W038: the Architect anchored
+    # the W038 execution handoff on the designated branch -- commit
+    # 0be736e -- same pattern.)
     if spec_changed:
         results.append(fail(name, "spec/ differs from origin/main"))
         return
@@ -2337,11 +2341,14 @@ def case_44_pr_delta_shape(results: List[Result]) -> None:
     spec_changed = [
         c for c in changed
         if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
+        and c != "spec/prompts/WORK-038.md"
     ]
     # (DAG-sanctioned amendment, W035 -> W037: the Architect anchored
     # the W037 execution handoff on the designated branch -- commit
     # 518c071, with main's accidental publication reverted by the
     # Architect -- so the spec/ delta admits exactly that file.)
+    # (DAG-sanctioned amendment, W035 -> W038: commit 0be736e, same
+    # pattern.)
     if spec_changed:
         results.append(fail(name, "spec/ differs from origin/main: %s" % spec_changed))
         return
@@ -2370,14 +2377,23 @@ def case_44_pr_delta_shape(results: List[Result]) -> None:
         "tools/oran_selftest.py",
         "docs/WORK-037-handoff.md",
         "docs/WORK-037-evidence.md",
+        # DAG-sanctioned allowlist amendment (W035 -> W038): the
+        # future-IMT profile battery follows this one in work-item
+        # order (the future profile composes the same adapter SDK the
+        # mobile agent hosts), and its PR-delta shape must admit the
+        # successor's files.
+        "tools/imt_selftest.py",
+        "docs/WORK-038-handoff.md",
+        "docs/WORK-038-evidence.md",
         # the Architect's own branch anchor (admitted above by the
         # spec-delta check):
         "spec/prompts/WORK-037.md",
+        "spec/prompts/WORK-038.md",
     }
     unexpected = [
         c for c in changed
         if not c.startswith("mobile/") and not c.startswith("appliance/")
-        and not c.startswith("interop/")
+        and not c.startswith("interop/") and not c.startswith("imt/")
         and c not in allowed_exact
         and not c.startswith(".github/")
     ]
