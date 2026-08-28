@@ -2,12 +2,85 @@
 
 ## Status
 
-Implementation complete on branch `work-031-network-behavior-simulator`
-(anchored on `main@bd775c5`, the verified W030 merge). Verification:
-simulator battery 40/40 PASS, mypy `--strict` clean over
-`simulator/` + `tools/simulator_selftest.py` (9 files), full repository
-battery rerun (see the PR). Frozen `spec/` untouched; `.github/` delta
-is one additive CI step; `docs/` delta is this handoff only.
+Round-1 Architect review (PR #34, CHANGES_REQUESTED at `50c7c34`):
+three blockers + one review note, all corrected on this branch (see
+"Round-1 review corrections" below). Verification: simulator battery
+44/44 PASS (40 original + 4 correction regressions), mypy `--strict`
+clean over `simulator/` + `tools/simulator_selftest.py` (9 files,
+`--follow-imports=silent`, matching the accepted baseline invocation),
+full repository battery rerun (see the PR). Frozen `spec/` untouched;
+`.github/` delta is one additive CI step; `docs/` delta is this
+handoff only.
+
+## Round-1 review corrections
+
+1. **BLOCKER 1 — W013 multipath authority missing from the pre/post
+   authority digests.** `_digest_state()` now includes a canonical
+   `("multipath", ...)` entry: every known session's CURRENT plan,
+   read through the owner's own query surface (`MultipathStore
+   .get_plan`) and digested through the owner's canonical serialized
+   form (`multipath.serialization.plan_canonical_bytes`), assembled
+   per session in sorted order. Read-only and owner-sourced — the
+   simulator never derives plan state itself, so a path-plan mutation
+   cannot escape the trace-integrity boundary. Regression
+   `case_41_multipath_digest_in_trace`: every record carries the
+   multipath digest; session creation (empty plan), path admission,
+   and constituent failure each change it; a pure OBSERVE does not;
+   `verify_replay` verifies the multipath-carrying trace. Degraded
+   proof: removing the digest entry makes the case FAIL.
+2. **BLOCKER 2 — semantic rejection was not transactional.**
+   `SimulatedEnvironment.cut_links`/`restore_links` now validate ALL
+   subjects before ANY mutation (the runner's `_apply_partition`
+   already resolves every subject before calling them, so the
+   contract now holds by construction at BOTH layers rather than by
+   caller-side ordering discipline). Regression
+   `case_42_partition_transactional_rejection`: (layer 1) a mixed
+   valid/unknown `cut_links` and `restore_links` raises
+   `unknown-link` with byte/state-equality of the full observable
+   environment fingerprint before vs after the rejection (the cut
+   REMAINS after a rejected mixed restore); (layer 2) a runner
+   scenario with partially valid PARTITION_START/PARTITION_END
+   payloads produces REJECTED records with identical before/after
+   digests, and the scenario WITHOUT the bad events yields
+   byte-identical applied records, identical final digests, and
+   identical applied counts — zero simulator progression. Degraded
+   proof: reverting to incremental mutation makes the case FAIL.
+3. **BLOCKER 3 — failed-event trace lost completed authority
+   mutations.** The event-application boundary was refactored to a
+caller-owned accumulator contract: handlers append every
+   owner-contract mutation/flow record to the `mutations`/`flows`
+   accumulators as it completes and return only the detail string,
+   so an unexpected later fault in the same event cannot discard
+   already-recorded evidence. The FAILED record now carries every
+   completed mutation (with its accurate owner verdict) and every
+   completed flow, alongside the pre/post digests that expose the
+   partial authority state; the detail names the completed-mutation
+   count. A defensive rule also classifies a semantic
+   `SimulatorError` escaping AFTER committed mutations as FAILED
+   (never a rejected record claiming "advanced nothing" over live
+   state). Regression `case_43_failed_event_preserves_committed_
+   mutations`: a hostile `SessionStore` whose `create` is inherited
+   (real owner contract commits) and whose `transition` raises
+   `RuntimeError` — the failed record carries the committed `create`
+   mutation, the session digests diverge (partial state explicit),
+   the completed session flow survives, and the event remains
+   FAILED. Degraded proof: restoring `mutations=()` on the FAILED
+   record makes the case FAIL.
+4. **Review note — bootstrap observation identity.** Aligned with
+   the content-derived observation identity contract instead of a
+   special sentinel: `ScenarioSpec.bootstrap_event_id()` derives the
+   tick-0 bootstrap event id as sha256 over the canonical JSON bytes
+   of the complete order-normalized scenario WORLD configuration
+   (identity, seed, time base, horizon, nodes, links, probes, policy
+   material — sorted into canonical order; the event schedule is
+   excluded because the bootstrap registers the world, not the
+   schedule). One uniform identity rule for the whole trace; the
+   README/handoff identity statements are now literally true.
+   Regression `case_44_bootstrap_identity_content_derived`:
+   sha256-prefix, spec-derived equality, full tuple-permutation
+   independence, world-content sensitivity, reproducibility.
+   Degraded proof: restoring the sentinel string makes the case
+   FAIL.
 
 ## Authoritative contract
 
@@ -129,11 +202,14 @@ artifact class the W030 cycle documented for the upgrade battery.
 
 ## Required proof style
 
-- Deterministic scenario tests are discriminating: six
-  degraded-implementation proofs (failure boundary removed; tuple-order
-  execution; degradation leaking into the topology claim; private
-  authority mutation; wall clock; shared authority instance) each make
-  the corresponding regression FAIL — the battery is not
+- Deterministic scenario tests are discriminating: TEN
+  degraded-implementation proofs — the six original (failure boundary
+  removed; tuple-order execution; degradation leaking into the
+  topology claim; private authority mutation; wall clock; shared
+  authority instance) plus the four round-1 correction proofs
+  (multipath digest removed; non-transactional partition mutation;
+  failed-event ledger discarded; sentinel bootstrap identity) — each
+  make the corresponding regression FAIL; the battery is not
   vacuously green.
 - Cross-process determinism: identical trace digests under
   PYTHONHASHSEED 0/1/7919 in subprocesses and in-process.

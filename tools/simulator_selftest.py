@@ -29,6 +29,10 @@ discriminating cases:
 - serialization round trips; frozen import surface;
   compilation; CI wiring; frozen spec/docs; frozen API;
   hash-seed determinism                                -> cases 34-40
+- PR #34 round-1 review corrections: W013 multipath
+  digest boundary; transactional partitions; failed-event
+  mutation-ledger preservation; content-derived bootstrap
+  identity                                              -> cases 41-44
 """
 
 from __future__ import annotations
@@ -1625,6 +1629,280 @@ def case_40_determinism_across_hash_seeds() -> Result:
 
 
 # --------------------------------------------------------------------------
+# 41-44: PR #34 round-1 review corrections
+# --------------------------------------------------------------------------
+
+
+def case_41_multipath_digest_in_trace() -> Result:
+    """BLOCKER 1 regression: the W013 multipath authority is inside the
+    pre/post digest boundary -- a plan mutation is visible in the
+    evidence record, and replay captures it."""
+    name = "case_41_multipath_digest_in_trace"
+    spec = ScenarioSpec(
+        scenario_id="mp-digest", seed=61, start_instant=_START, tick_seconds=60,
+        horizon_ticks=5, nodes=_nodes(), links=_links(), policy_rules=_rules(),
+        events=(
+            ScheduledEvent(at_tick=1, sequence=1, kind=EventKind.SESSION_REQUEST,
+                           payload={"label": "s1", "source": _NODE_A,
+                                    "destination": _NODE_B}),
+            ScheduledEvent(at_tick=2, sequence=1, kind=EventKind.PATH_ADD,
+                           payload={"label": "s1", "avoid": [[_NODE_A, _NODE_B]]}),
+            ScheduledEvent(at_tick=3, sequence=1, kind=EventKind.PATH_ADD,
+                           payload={"label": "s1", "avoid": [[_NODE_A, _NODE_C]]}),
+            ScheduledEvent(at_tick=4, sequence=1, kind=EventKind.PATH_FAIL,
+                           payload={"label": "s1", "index": 1}),
+            ScheduledEvent(at_tick=5, sequence=1, kind=EventKind.OBSERVE, payload={}),
+        ),
+    )
+    result = Simulator(spec).run()
+    # Every observation record carries the multipath digest entry.
+    for record in result.trace:
+        if "multipath" not in dict(record.after_digests):
+            return fail(name, "record %r lacks a multipath digest" % record.kind)
+        if record.kind != "bootstrap" and "multipath" not in dict(record.before_digests):
+            return fail(name, "record %r lacks a pre-event multipath digest"
+                        % record.kind)
+    # The session's empty plan appears at creation, the path admission
+    # changes the plan, and the constituent failure changes it again:
+    # each mutation is visible in the multipath digest.
+    session = _record(result, EventKind.SESSION_REQUEST)
+    add = _record(result, EventKind.PATH_ADD)
+    fault = _record(result, EventKind.PATH_FAIL)
+    observe = _record(result, EventKind.OBSERVE)
+    # Guard the fixture: both admissions and the constituent failure
+    # must genuinely COMMIT (a silently rejected event would trivially
+    # leave the digest unchanged).
+    if any(m.outcome != MutationOutcome.COMMITTED for m in add.mutations) or \
+            fault is None or not fault.mutations or \
+            fault.mutations[0].outcome != MutationOutcome.COMMITTED:
+        return fail(name, "fixture regression: multipath mutations did not commit: %r"
+                    % ([(r.kind, [m.outcome for m in r.mutations])
+                        for r in result.trace if r.mutations],))
+    for record, label in (
+        (session, "session creation (empty plan)"),
+        (add, "path admission"),
+        (fault, "constituent failure"),
+    ):
+        if dict(record.before_digests)["multipath"] == dict(record.after_digests)["multipath"]:
+            return fail(name, "%s left the multipath digest unchanged" % label)
+    # Control: a pure observation sweep does not touch multipath state.
+    if dict(observe.before_digests)["multipath"] != dict(observe.after_digests)["multipath"]:
+        return fail(name, "OBSERVE changed the multipath digest")
+    # The final result exposes the multipath authority state, and a
+    # full replay verifies the trace (digests included) byte-identically.
+    if "multipath" not in dict(result.final_digests):
+        return fail(name, "final digests lack the multipath entry")
+    verified, detail = verify_replay(spec, result)
+    if not verified:
+        return fail(name, "replay rejected the multipath-carrying trace: %s" % detail)
+    return ok(name, "W013 plan mutations visible in pre/post multipath digests; replay verified")
+
+
+def case_42_partition_transactional_rejection() -> Result:
+    """BLOCKER 2 regression: multi-target simulator state changes are
+    transactional -- a partially valid partition payload mutates
+    NOTHING, at the environment layer by construction and end-to-end
+    through the runner (byte/state equality and zero progression)."""
+    name = "case_42_partition_transactional_rejection"
+    # -- Layer 1: the environment mutators themselves. -------------------
+    spec = ScenarioSpec(
+        scenario_id="txn-partition", seed=62, start_instant=_START, tick_seconds=60,
+        horizon_ticks=1, nodes=_nodes()[:2],
+        links=(SimulatedLinkSpec(node_a=_NODE_A, node_b=_NODE_B),),
+    )
+    clock = ScenarioClock(_START, 60)
+    stream = DeterministicStream(62, label="scenario")
+    env = SimulatedEnvironment(spec, clock, stream)
+    valid = env.link_subject(_NODE_A, _NODE_B)
+    unknown = "adcos:link:no.pe.v1:" + "7" * 64
+
+    def fingerprint() -> List[Tuple[str, str, bool]]:
+        return [
+            (subject, env.link_status(subject), env.is_degraded(subject))
+            for subject in env.link_subjects
+        ]
+
+    pristine = fingerprint()
+    try:
+        env.cut_links((valid, unknown))
+        return fail(name, "mixed cut did not fail closed")
+    except SimulatorError as error:
+        if error.code != SimulatorReasonCode.UNKNOWN_LINK:
+            return fail(name, "mixed cut failed with the wrong code: %s" % error.code)
+    if fingerprint() != pristine:
+        return fail(name, "mixed cut mutated state before failing (non-transactional)")
+    # Restore path: after a genuine cut, a mixed restore must restore
+    # NOTHING -- the cut remains, so the rejection advanced no state.
+    env.cut_links((valid,))
+    cut_state = fingerprint()
+    if cut_state == pristine:
+        return fail(name, "valid cut did not change the fingerprint (bad fixture)")
+    try:
+        env.restore_links((valid, unknown))
+        return fail(name, "mixed restore did not fail closed")
+    except SimulatorError as error:
+        if error.code != SimulatorReasonCode.UNKNOWN_LINK:
+            return fail(name, "mixed restore failed with the wrong code: %s" % error.code)
+    if fingerprint() != cut_state:
+        return fail(name, "mixed restore mutated state before failing")
+    # -- Layer 2: the runner boundary, end to end. -----------------------
+    # One valid link followed by an unknown link (known nodes, no
+    # simulated link between them): REJECTED with byte-identical
+    # digests, and zero simulator progression -- the scenario without
+    # the bad events produces byte-identical applied records and final
+    # authority state.
+    runner_nodes = _nodes()
+    runner_links = (SimulatedLinkSpec(node_a=_NODE_A, node_b=_NODE_B),)
+    runner_probes = ((_NODE_A, _NODE_B),)
+    runner_rules = _rules()
+    session_event = ScheduledEvent(
+        at_tick=2, sequence=1, kind=EventKind.SESSION_REQUEST,
+        payload={"label": "s1", "source": _NODE_A, "destination": _NODE_B})
+    observe_event = ScheduledEvent(at_tick=3, sequence=1, kind=EventKind.OBSERVE,
+                                   payload={})
+    with_bad = ScenarioSpec(
+        scenario_id="txn-runner", seed=63, start_instant=_START, tick_seconds=60,
+        horizon_ticks=3, nodes=runner_nodes, links=runner_links,
+        probes=runner_probes, policy_rules=runner_rules,
+        events=(
+            ScheduledEvent(at_tick=1, sequence=1, kind=EventKind.PARTITION_START,
+                           payload={"cuts": [[_NODE_A, _NODE_B], [_NODE_A, _NODE_C]]}),
+            ScheduledEvent(at_tick=1, sequence=2, kind=EventKind.PARTITION_END,
+                           payload={"cuts": [[_NODE_A, _NODE_B], [_NODE_A, _NODE_C]]}),
+            session_event,
+            observe_event,
+        ),
+    )
+    without_bad = ScenarioSpec(
+        scenario_id="txn-runner", seed=63, start_instant=_START, tick_seconds=60,
+        horizon_ticks=3, nodes=runner_nodes, links=runner_links,
+        probes=runner_probes, policy_rules=runner_rules,
+        events=(session_event, observe_event),
+    )
+    a = Simulator(with_bad).run()
+    b = Simulator(without_bad).run()
+    if a.rejected_events != 2:
+        return fail(name, "expected 2 rejected records, got %d" % a.rejected_events)
+    for record in a.trace:
+        if record.verdict == EventVerdict.REJECTED:
+            if dict(record.before_digests) != dict(record.after_digests):
+                return fail(name, "rejected %r changed authority digests"
+                            % record.kind)
+            if record.mutations:
+                return fail(name, "rejected %r mutated state" % record.kind)
+    applied_a = [r.content_dict() for r in a.trace if r.verdict == EventVerdict.APPLIED]
+    applied_b = [r.content_dict() for r in b.trace if r.verdict == EventVerdict.APPLIED]
+    if applied_a != applied_b:
+        return fail(name, "rejected partitions advanced the applied sequence")
+    if dict(a.final_digests) != dict(b.final_digests):
+        return fail(name, "rejected partitions changed the final authority state")
+    if a.applied_events != b.applied_events:
+        return fail(name, "applied counts diverged: %d vs %d"
+                    % (a.applied_events, b.applied_events))
+    return ok(name, "mixed partitions mutate nothing at either layer; zero progression")
+
+
+def case_43_failed_event_preserves_committed_mutations() -> Result:
+    """BLOCKER 3 regression: an unexpected fault AFTER a committed owner
+    mutation cannot discard the trace's mutation ledger -- the failed
+    record carries the committed mutation(s), the pre/post digests make
+    the partial authority state explicit, and the event stays FAILED."""
+    name = "case_43_failed_event_preserves_committed_mutations"
+    from sessions.store import SessionStore
+
+    class HostileTransitionSessionStore(SessionStore):
+        # create() is INHERITED -- the real owner contract commits --
+        # and the fault strikes a LATER owner call inside the same
+        # multi-step event (the concrete exposure the review named).
+        def transition(self, *args: Any, **kwargs: Any) -> Any:
+            raise RuntimeError("hostile transition after committed create")
+
+    seam = AuthorityTestSeam(
+        HostileTransitionSessionStore(),
+        purpose="failed-event ledger preservation proof",
+    )
+    spec = _minimal_spec()
+    result = Simulator(spec, seam=seam).run()
+    failed = [r for r in result.trace if r.verdict == EventVerdict.FAILED]
+    if len(failed) != 1:
+        return fail(name, "expected exactly 1 failed record, got %d" % len(failed))
+    record = failed[0]
+    if record.kind != EventKind.SESSION_REQUEST:
+        return fail(name, "failed record kind %r" % record.kind)
+    # The create COMPLETED before the fault: its owner-contract record
+    # must survive in the failed observation with its accurate verdict.
+    creates = [m for m in record.mutations if m.operation == "create"]
+    if len(creates) != 1 or creates[0].outcome != MutationOutcome.COMMITTED:
+        return fail(name, "committed create mutation lost from the failed record: %r"
+                    % (record.mutations,))
+    if creates[0].authority != "sessions":
+        return fail(name, "create record authority wrong: %r" % creates[0].authority)
+    # Partial authority state is explicit BOTH ways: the preserved
+    # ledger above AND the pre/post session digests diverging (the
+    # session exists even though the event failed).
+    if dict(record.before_digests)["sessions"] == dict(record.after_digests)["sessions"]:
+        return fail(name, "session digests did not expose the partial state")
+    # Flow records completed before the fault survive too.
+    if not any(f.flow == "session" for f in record.flows):
+        return fail(name, "completed session flow lost from the failed record")
+    if "RuntimeError" not in record.detail:
+        return fail(name, "exception class missing: %r" % record.detail)
+    if result.failed_events != 1 or result.ok:
+        return fail(name, "stats wrong: failed=%d ok=%r"
+                    % (result.failed_events, result.ok))
+    if len(result.trace) != 2:  # bootstrap + the failed session request
+        return fail(name, "trace length %d (partial advance?)" % len(result.trace))
+    return ok(name, "failed record carries the committed create mutation + diverging digests")
+
+
+def case_44_bootstrap_identity_content_derived() -> Result:
+    """Review-note regression: the bootstrap observation's event id is
+    content-derived under the same canonical rule as every scheduled
+    event -- no special sentinel identity, no order dependence."""
+    name = "case_44_bootstrap_identity_content_derived"
+    spec = _minimal_spec()
+    result = Simulator(spec).run()
+    bootstrap = result.trace[0] if result.trace else None
+    if bootstrap is None or bootstrap.kind != "bootstrap":
+        return fail(name, "no bootstrap record")
+    event_id = bootstrap.event_id
+    if not event_id.startswith("sha256:"):
+        return fail(name, "bootstrap event id is not a content-derived "
+                    "fingerprint: %r" % event_id)
+    if event_id != spec.bootstrap_event_id():
+        return fail(name, "bootstrap event id diverged from the spec-derived identity")
+    # Insertion-order independence holds for the bootstrap identity:
+    # permuting every configuration tuple (nodes/links/probes/rules and
+    # the event schedule) changes nothing.
+    base = _full_spec()
+    permuted = ScenarioSpec(
+        scenario_id=base.scenario_id, seed=base.seed,
+        start_instant=base.start_instant, tick_seconds=base.tick_seconds,
+        horizon_ticks=base.horizon_ticks,
+        nodes=tuple(reversed(base.nodes)), links=tuple(reversed(base.links)),
+        probes=tuple(reversed(base.probes)),
+        policy_rules=tuple(reversed(base.policy_rules)),
+        events=tuple(reversed(base.events)),
+    )
+    if permuted.bootstrap_event_id() != base.bootstrap_event_id():
+        return fail(name, "configuration tuple order changed the bootstrap identity")
+    # Different world content changes the identity (seed participates).
+    different = ScenarioSpec(
+        scenario_id=base.scenario_id, seed=base.seed + 7,
+        start_instant=base.start_instant, tick_seconds=base.tick_seconds,
+        horizon_ticks=base.horizon_ticks, nodes=base.nodes, links=base.links,
+        probes=base.probes, policy_rules=base.policy_rules, events=base.events,
+    )
+    if different.bootstrap_event_id() == base.bootstrap_event_id():
+        return fail(name, "world content change left the bootstrap identity unchanged")
+    # Deterministic across runs.
+    second = Simulator(spec).run()
+    if second.trace[0].event_id != event_id:
+        return fail(name, "bootstrap identity is not reproducible")
+    return ok(name, "bootstrap identity content-derived, order-independent, seed-sensitive")
+
+
+# --------------------------------------------------------------------------
 # Entry point
 # --------------------------------------------------------------------------
 
@@ -1669,6 +1947,10 @@ CASES = (
     case_38_frozen_spec_intact,
     case_39_api_surface_frozen,
     case_40_determinism_across_hash_seeds,
+    case_41_multipath_digest_in_trace,
+    case_42_partition_transactional_rejection,
+    case_43_failed_event_preserves_committed_mutations,
+    case_44_bootstrap_identity_content_derived,
 )
 
 

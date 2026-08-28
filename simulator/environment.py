@@ -238,13 +238,24 @@ class SimulatedEnvironment:
         return self._link_degraded[subject]
 
     def cut_links(self, subjects: Tuple[str, ...]) -> None:
+        """Cut every named link (partition start).  TRANSACTIONAL: ALL
+        subjects are validated before ANY mutation, so a subject list
+        containing one unknown link cuts nothing -- a rejected
+        multi-target change advances no state by construction (the
+        W031 rejected-events contract does not rest on caller-side
+        ordering discipline)."""
         for subject in subjects:
             self._require_link(subject)
+        for subject in subjects:
             self._partition_cuts.add(subject)
 
     def restore_links(self, subjects: Tuple[str, ...]) -> None:
+        """Restore every named link (partition end).  Transactional
+        exactly like :meth:`cut_links`: a mixed valid/invalid subject
+        list restores nothing."""
         for subject in subjects:
             self._require_link(subject)
+        for subject in subjects:
             self._partition_cuts.discard(subject)
 
     # ------------------------------------------------------------------

@@ -257,6 +257,23 @@ class SimulatedNodeSpec:
                 "offline_grace_seconds must be non-negative",
             )
 
+    def content_dict(self) -> Dict[str, Any]:
+        """The canonical content of this node configuration (the
+        material the bootstrap registers)."""
+        return {
+            "node_id": self.node_id,
+            "capacity_millijoules": self.capacity_millijoules,
+            "initial_level_millijoules": self.initial_level_millijoules,
+            "load_milliwatts": self.load_milliwatts,
+            "generation_milliwatts": self.generation_milliwatts,
+            "power_source": self.power_source,
+            "conserve_threshold_bp": self.conserve_threshold_bp,
+            "critical_threshold_bp": self.critical_threshold_bp,
+            "survival_threshold_bp": self.survival_threshold_bp,
+            "survival_reserve_bp": self.survival_reserve_bp,
+            "offline_grace_seconds": self.offline_grace_seconds,
+        }
+
 
 @dataclass(frozen=True)
 class SimulatedLinkSpec:
@@ -312,6 +329,18 @@ class SimulatedLinkSpec:
                 "confidence_basis_points must be within [0, 10000]",
             )
 
+    def content_dict(self) -> Dict[str, Any]:
+        """The canonical content of this link configuration."""
+        return {
+            "node_a": self.node_a,
+            "node_b": self.node_b,
+            "latency_ms": self.latency_ms,
+            "loss_basis_points": self.loss_basis_points,
+            "capacity_bps": self.capacity_bps,
+            "energy_cost_millijoules": self.energy_cost_millijoules,
+            "confidence_basis_points": self.confidence_basis_points,
+        }
+
 
 @dataclass(frozen=True)
 class ScenarioPolicyRule:
@@ -360,6 +389,19 @@ class ScenarioPolicyRule:
                 SimulatorReasonCode.INVALID_INPUT,
                 "priority/specificity must be integers",
             )
+
+    def content_dict(self) -> Dict[str, Any]:
+        """The canonical content of this scenario policy rule."""
+        return {
+            "rule_id": self.rule_id,
+            "effect": self.effect,
+            "operation": self.operation,
+            "subjects": list(self.subjects),
+            "priority": self.priority,
+            "specificity": self.specificity,
+            "valid_from": self.valid_from,
+            "valid_until": self.valid_until,
+        }
 
 
 @dataclass(frozen=True)
@@ -531,6 +573,57 @@ class ScenarioSpec:
                     "event at tick %d exceeds horizon %d"
                     % (event.at_tick, self.horizon_ticks),
                 )
+
+    def bootstrap_event_id(self) -> str:
+        """The content-derived identity of the tick-0 bootstrap
+        observation.
+
+        sha256 over the canonical JSON bytes of the complete,
+        order-normalized scenario WORLD configuration -- everything the
+        bootstrap registers (identity, seed, time base, horizon,
+        nodes, links, probes, policy material).  The event schedule is
+        deliberately excluded: the bootstrap event registers the
+        world, not the schedule.  Nodes/links/probes/rules are sorted
+        into canonical order, and every field participates, so the
+        bootstrap identity is exactly as content-derived and
+        insertion-order independent as every ``ScheduledEvent``
+        identity -- one uniform identity rule for the whole trace.
+        """
+        material = {
+            "kind": "bootstrap",
+            "scenario_id": self.scenario_id,
+            "seed": self.seed,
+            "start_instant": self.start_instant,
+            "tick_seconds": self.tick_seconds,
+            "horizon_ticks": self.horizon_ticks,
+            "nodes": [
+                node.content_dict()
+                for node in sorted(self.nodes, key=lambda item: item.node_id)
+            ],
+            "links": [
+                link.content_dict()
+                for link in sorted(
+                    self.links, key=lambda item: (item.node_a, item.node_b)
+                )
+            ],
+            "probes": [
+                [source, destination]
+                for source, destination in sorted(self.probes)
+            ],
+            "policy_rules": [
+                rule.content_dict()
+                for rule in sorted(self.policy_rules, key=lambda item: item.rule_id)
+            ],
+        }
+        try:
+            digest = canonical_json_bytes(material)
+        except CanonicalizationError as error:
+            raise SimulatorError(
+                SimulatorReasonCode.INVALID_INPUT,
+                "scenario world configuration is not canonically "
+                "representable: %s" % error,
+            ) from error
+        return "sha256:" + hashlib.sha256(digest).hexdigest()
 
 
 # ---------------------------------------------------------------------------

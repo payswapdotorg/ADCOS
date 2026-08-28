@@ -42,9 +42,11 @@ never used as external interoperability evidence.
   (`sha256("<seed>|<label>|<counter>")`, rejection sampling over the
   first 8 bytes little-endian) bound to the explicit scenario seed.
   No language-level PRNG, no hash-seed dependence.
-- **Identity is content-derived.** Event ids and observation ids are
-  sha256 fingerprints over canonical JSON (WORK-003 machinery). No
-  mutable counters participate in identity.
+- **Identity is content-derived.** Event ids, the bootstrap
+  observation's event id, and observation ids are sha256
+  fingerprints over canonical JSON (WORK-003 machinery). No mutable
+  counters participate in identity, and no observation carries a
+  special-case sentinel identity.
 - **Execution order is explicit.** Events are applied ordered by
   `(at_tick, sequence)`; two specs differing only in tuple order are
   the same scenario (insertion/order independence).
@@ -73,10 +75,14 @@ Five separated state classes (frozen handoff §8):
 5. **Evidence/trace state** — the ordered trace and its digest.
 
 A rejected event (semantic fail-closed target resolution) advances no
-simulator state. An unexpected exception during event application is
-contained by the universal event failure boundary as exactly one
-`failed` record whose pre/post digests make any partial state
-explicit.
+simulator state — multi-target environment mutations are
+transactional (every subject is validated before any mutation), so a
+partially valid payload changes nothing by construction. An unexpected
+exception during event application is contained by the universal event
+failure boundary as exactly one `failed` record that carries every
+owner-contract mutation completed before the fault, with pre/post
+digests over every composed authority (including the W013 multipath
+plans) making any partial state explicit.
 
 ## Authority composition (the genuine chains)
 

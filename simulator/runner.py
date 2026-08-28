@@ -29,10 +29,14 @@ explicit :class:`~simulator.seam.AuthorityTestSeam`.
 
 Universal event failure boundary: an unexpected exception during any
 event application is contained as exactly one ``failed`` observation
-record carrying the exception class and the pre/post digests (partial
-state visibility is explicit); the scenario continues.  Semantic
-fail-closed rejections (:class:`SimulatorError`) are ``rejected``
-records that advance no simulator state.
+record carrying the exception class, the pre/post digests, and EVERY
+owner-contract mutation record completed before the fault (partial
+state is explicit in BOTH the mutation ledger and the digests); the
+scenario continues.  Semantic fail-closed rejections
+(:class:`SimulatorError`) are ``rejected`` records that advance no
+simulator state -- multi-target simulator state changes are
+transactional (all subjects validated before any mutation), so a
+partially valid payload mutates nothing by construction.
 """
 
 from __future__ import annotations
@@ -387,7 +391,7 @@ class Simulator:
         record = ObservationRecord(
             tick=0,
             instant=start,
-            event_id="simulator:bootstrap:" + self._spec.scenario_id,
+            event_id=self._spec.bootstrap_event_id(),
             kind="bootstrap",
             verdict=EventVerdict.APPLIED,
             mutations=tuple(mutations),
@@ -421,10 +425,37 @@ class Simulator:
                 flows=(),
                 detail=problems,
             )
+        # Caller-owned accumulators: handlers append every owner-
+        # contract mutation/flow record as it completes, so a record
+        # SURVIVES an unexpected later fault in the same event (the
+        # failed observation must carry the already-committed ledger,
+        # not discard it).
+        mutations: List[AuthorityMutation] = []
+        flows: List[FlowObservation] = []
         try:
-            mutations, flows, detail = self._dispatch(event, now)
+            detail = self._dispatch(event, now, mutations, flows)
         except SimulatorError as error:
-            # Semantic fail-closed rejection: nothing was mutated.
+            # Semantic fail-closed rejection: handlers raise these
+            # only from pre-mutation validation sites, so nothing was
+            # mutated and the rejected record advances nothing.  If a
+            # committed mutation somehow precedes the semantic error,
+            # the event honestly FAILED instead (a rejected record
+            # must never claim "advanced nothing" over live state).
+            if mutations:
+                self._failed += 1
+                return ObservationRecord(
+                    tick=tick,
+                    instant=now,
+                    event_id=event_id,
+                    kind=event.kind,
+                    verdict=EventVerdict.FAILED,
+                    mutations=tuple(mutations),
+                    before_digests=before,
+                    after_digests=self._digest_state(now),
+                    flows=tuple(flows),
+                    detail="semantic error after committed mutations: %s: %s"
+                    % (error.code, error.detail),
+                )
             self._rejected += 1
             return ObservationRecord(
                 tick=tick,
@@ -439,8 +470,10 @@ class Simulator:
                 detail="%s: %s" % (error.code, error.detail),
             )
         except Exception as error:  # noqa: BLE001 -- universal boundary
-            # Unexpected failure: exactly one failed record; the
-            # pre/post digests make any partial state explicit.
+            # Unexpected failure: exactly one failed record carrying
+            # every owner-contract mutation record completed before the
+            # fault.  Pre/post digests make any partial authority state
+            # explicit; the preserved ledger is the provenance for it.
             self._failed += 1
             return ObservationRecord(
                 tick=tick,
@@ -448,11 +481,12 @@ class Simulator:
                 event_id=event_id,
                 kind=event.kind,
                 verdict=EventVerdict.FAILED,
-                mutations=(),
+                mutations=tuple(mutations),
                 before_digests=before,
                 after_digests=self._digest_state(now),
-                flows=(),
-                detail="unexpected failure: %r" % (error,),
+                flows=tuple(flows),
+                detail="unexpected failure after %d completed mutation(s): %r"
+                % (len(mutations), error),
             )
         self._applied += 1
         return ObservationRecord(
@@ -469,58 +503,69 @@ class Simulator:
         )
 
     def _dispatch(
-        self, event: ScheduledEvent, now: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+        self,
+        event: ScheduledEvent,
+        now: str,
+        mutations: List[AuthorityMutation],
+        flows: List[FlowObservation],
+    ) -> str:
         kind = event.kind
         payload = event.payload
         if kind == EventKind.NODE_DOWN:
             return self._apply_node_down(payload, now)
         if kind == EventKind.NODE_UP:
-            return self._apply_node_up(payload, now)
+            return self._apply_node_up(payload, now, mutations, flows)
         if kind == EventKind.LINK_DOWN:
-            return self._apply_link_change(payload, now, "down")
+            return self._apply_link_change(payload, now, "down", mutations, flows)
         if kind == EventKind.LINK_UP:
-            return self._apply_link_change(payload, now, "up")
+            return self._apply_link_change(payload, now, "up", mutations, flows)
         if kind == EventKind.LINK_DEGRADE:
-            return self._apply_link_change(payload, now, "degraded")
+            return self._apply_link_change(
+                payload, now, "degraded", mutations, flows
+            )
         if kind == EventKind.PARTITION_START:
-            return self._apply_partition(payload, now, cut=True)
+            return self._apply_partition(payload, now, cut=True,
+                                         mutations=mutations, flows=flows)
         if kind == EventKind.PARTITION_END:
-            return self._apply_partition(payload, now, cut=False)
+            return self._apply_partition(payload, now, cut=False,
+                                         mutations=mutations, flows=flows)
         if kind == EventKind.RESOURCE_EXHAUST:
-            return self._apply_resource_exhaust(payload, now)
+            return self._apply_resource_exhaust(payload, now, mutations, flows)
         if kind == EventKind.POLICY_AMEND:
-            return self._apply_policy_amend(payload, now)
+            return self._apply_policy_amend(payload, now, mutations, flows)
         if kind == EventKind.POLICY_WITHDRAW:
-            return self._apply_policy_withdraw(payload, now)
+            return self._apply_policy_withdraw(payload, now, mutations, flows)
         if kind == EventKind.TELEMETRY_EMIT:
-            return self._apply_telemetry_emit(payload, now)
+            return self._apply_telemetry_emit(payload, now, mutations, flows)
         if kind == EventKind.SESSION_REQUEST:
-            return self._apply_session_request(payload, now)
+            return self._apply_session_request(payload, now, mutations, flows)
         if kind == EventKind.PATH_ADD:
-            return self._apply_path_add(payload, now)
+            return self._apply_path_add(payload, now, mutations, flows)
         if kind == EventKind.PATH_FAIL:
-            return self._apply_path_fail(payload, now)
+            return self._apply_path_fail(payload, now, mutations, flows)
         if kind == EventKind.SESSION_FAIL:
-            return self._apply_session_fail(payload, now)
+            return self._apply_session_fail(payload, now, mutations, flows)
         if kind == EventKind.MOBILITY_HANDOVER:
-            return self._apply_mobility_handover(payload, now)
+            return self._apply_mobility_handover(payload, now, mutations, flows)
         if kind == EventKind.CLEANUP:
-            return self._apply_cleanup(payload, now)
+            return self._apply_cleanup(payload, now, mutations, flows)
         if kind == EventKind.OBSERVE:
-            return self._apply_observe(payload, now)
+            return self._apply_observe(payload, now, flows)
         raise SimulatorError(
             SimulatorReasonCode.UNKNOWN_EVENT,
             "unhandled event kind %r" % kind,
         )
 
     # ------------------------------------------------------------------
-    # Event handlers
+    # Event handlers -- contract: append every owner-contract record to
+    # the caller-owned ``mutations``/``flows`` accumulators AS IT
+    # COMPLETES and return only the detail string, so an unexpected
+    # fault later in the same event cannot discard already-recorded
+    # evidence (the failure boundary preserves the partial ledger).
+    # SimulatorError is raised ONLY from pre-mutation validation sites.
     # ------------------------------------------------------------------
 
-    def _apply_node_down(
-        self, payload: Mapping[str, Any], now: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+    def _apply_node_down(self, payload: Mapping[str, Any], now: str) -> str:
         node = payload["node"]
         if node not in self._environment.node_ids:
             raise SimulatorError(
@@ -528,15 +573,14 @@ class Simulator:
             )
         self._environment.set_online(node, False)
         return (
-            [],
-            [],
             "node %s offline at %s (simulator state; restart/rejoin is a "
-            "node-up event through the WORK-027 ledger)" % (node[:32], now),
+            "node-up event through the WORK-027 ledger)" % (node[:32], now)
         )
 
     def _apply_node_up(
-        self, payload: Mapping[str, Any], now: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+        self, payload: Mapping[str, Any], now: str,
+        mutations: List[AuthorityMutation], flows: List[FlowObservation],
+    ) -> str:
         node = payload["node"]
         if node not in self._environment.node_ids:
             raise SimulatorError(
@@ -548,7 +592,6 @@ class Simulator:
         level = int(payload.get("level_millijoules", state.energy_level.value))
         capacity = int(payload.get("capacity_millijoules", state.energy_capacity.value))
         draw = int(payload.get("power_draw_milliwatts", state.power_draw.value))
-        mutations: List[AuthorityMutation] = []
         try:
             record = self._ledger.rejoin(
                 node,
@@ -565,7 +608,7 @@ class Simulator:
                     detail="epoch %d (%s)" % (record.epoch, record.rejoin_id[:24]),
                 )
             )
-            flows = [
+            flows.append(
                 FlowObservation(
                     flow="energy",
                     ok=True,
@@ -573,7 +616,7 @@ class Simulator:
                     ref=record.rejoin_id,
                     detail="epoch %d" % record.epoch,
                 )
-            ]
+            )
         except EnergyError as error:
             mutations.append(
                 AuthorityMutation(
@@ -583,16 +626,21 @@ class Simulator:
                     detail=str(error),
                 )
             )
-            flows = [
+            flows.append(
                 FlowObservation(
                     flow="energy", ok=False, code="rejoin-rejected", detail=str(error)
                 )
-            ]
-        return mutations, flows, "node %s restarted; rejoin through the real WORK-027 ledger" % node[:32]
+            )
+        return "node %s restarted; rejoin through the real WORK-027 ledger" % node[:32]
 
     def _apply_link_change(
-        self, payload: Mapping[str, Any], now: str, status: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+        self,
+        payload: Mapping[str, Any],
+        now: str,
+        status: str,
+        mutations: List[AuthorityMutation],
+        flows: List[FlowObservation],
+    ) -> str:
         subject = self._environment.link_subject(payload["node_a"], payload["node_b"])
         if status == LinkState.DEGRADED:
             # Degradation is a METRIC-quality dimension (LOCK-009): the
@@ -600,25 +648,32 @@ class Simulator:
             # candidates over UP links) and the deterministic metric
             # penalty carries the degradation. No topology mutation.
             self._environment.degrade_link(subject)
-            flows = self._observe_probes(now)
+            flows.extend(self._observe_probes(now))
             return (
-                [],
-                flows,
                 "link %s degraded (metric facts penalized; topology state "
-                "unchanged); probes observed" % subject[:48],
+                "unchanged); probes observed" % subject[:48]
             )
         self._environment.set_link_status(subject, status)
-        mutations = self._merge_link_claim(subject, now)
-        flows = self._observe_probes(now)
-        return (
-            mutations,
-            flows,
-            "link %s -> %s; topology claim ingested; probes observed" % (subject[:48], status),
+        mutations.extend(self._merge_link_claim(subject, now))
+        flows.extend(self._observe_probes(now))
+        return "link %s -> %s; topology claim ingested; probes observed" % (
+            subject[:48],
+            status,
         )
 
     def _apply_partition(
-        self, payload: Mapping[str, Any], now: str, cut: bool
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+        self,
+        payload: Mapping[str, Any],
+        now: str,
+        cut: bool,
+        mutations: List[AuthorityMutation],
+        flows: List[FlowObservation],
+    ) -> str:
+        # Every subject is resolved (and validated) BEFORE any state
+        # changes; the environment mutators are themselves
+        # transactional, so a partially valid payload cuts/restores
+        # NOTHING -- the rejected event advances no simulator state by
+        # construction, at both layers.
         subjects = tuple(
             self._environment.link_subject(pair[0], pair[1]) for pair in payload["cuts"]
         )
@@ -626,20 +681,21 @@ class Simulator:
             self._environment.cut_links(subjects)
         else:
             self._environment.restore_links(subjects)
-        mutations: List[AuthorityMutation] = []
         for subject in subjects:
             mutations.extend(self._merge_link_claim(subject, now))
-        flows = self._observe_probes(now)
+        flows.extend(self._observe_probes(now))
         return (
-            mutations,
-            flows,
             "partition %s over %d link(s); claims ingested; probes observed"
-            % ("start" if cut else "end", len(subjects)),
+            % ("start" if cut else "end", len(subjects))
         )
 
     def _apply_resource_exhaust(
-        self, payload: Mapping[str, Any], now: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+        self,
+        payload: Mapping[str, Any],
+        now: str,
+        mutations: List[AuthorityMutation],
+        flows: List[FlowObservation],
+    ) -> str:
         from resources.model import ResourceMeasurement
 
         node = payload["node"]
@@ -671,17 +727,19 @@ class Simulator:
             provenance="simulator:environment",
         )
         outcome = self._resources.record_measurement(measurement)
-        mutation = AuthorityMutation(
-            authority="resources",
-            operation="record-measurement",
-            outcome=(
-                MutationOutcome.COMMITTED
-                if outcome.accepted
-                else MutationOutcome.REJECTED
-            ),
-            detail="%s (%s)" % (outcome.code, resource_id[:48]),
+        mutations.append(
+            AuthorityMutation(
+                authority="resources",
+                operation="record-measurement",
+                outcome=(
+                    MutationOutcome.COMMITTED
+                    if outcome.accepted
+                    else MutationOutcome.REJECTED
+                ),
+                detail="%s (%s)" % (outcome.code, resource_id[:48]),
+            )
         )
-        flows = [
+        flows.append(
             FlowObservation(
                 flow="resource",
                 ok=outcome.accepted,
@@ -690,16 +748,18 @@ class Simulator:
                 detail="remaining %d millijoules (%d bp of capacity)"
                 % (remaining, payload["fraction_bp"]),
             )
-        ]
+        )
         return (
-            [mutation],
-            flows,
-            "energy exhaustion measurement recorded through the real WORK-008 store",
+            "energy exhaustion measurement recorded through the real WORK-008 store"
         )
 
     def _apply_policy_amend(
-        self, payload: Mapping[str, Any], now: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+        self,
+        payload: Mapping[str, Any],
+        now: str,
+        mutations: List[AuthorityMutation],
+        flows: List[FlowObservation],
+    ) -> str:
         try:
             rules = tuple(
                 ScenarioPolicyRule(
@@ -716,48 +776,64 @@ class Simulator:
                 payload["set_id"], payload["version"], rules
             )
             self._policy_store.publish(policy_set)
-            mutation = AuthorityMutation(
-                authority="policy",
-                operation="publish",
-                outcome=MutationOutcome.COMMITTED,
-                detail="%s@%d (%d rules)"
-                % (payload["set_id"], payload["version"], len(rules)),
+            mutations.append(
+                AuthorityMutation(
+                    authority="policy",
+                    operation="publish",
+                    outcome=MutationOutcome.COMMITTED,
+                    detail="%s@%d (%d rules)"
+                    % (payload["set_id"], payload["version"], len(rules)),
+                )
             )
         except PolicyError as error:
             # The policy owner rejects malformed material at rule
             # construction or publication -- an observed authority
             # rejection, not an unexpected simulator failure.
-            mutation = AuthorityMutation(
-                authority="policy",
-                operation="publish",
-                outcome=MutationOutcome.REJECTED,
-                detail=str(error),
+            mutations.append(
+                AuthorityMutation(
+                    authority="policy",
+                    operation="publish",
+                    outcome=MutationOutcome.REJECTED,
+                    detail=str(error),
+                )
             )
-        return ([mutation], [], "policy material published through the real WORK-010 store at %s" % now)
+        return "policy material published through the real WORK-010 store at %s" % now
 
     def _apply_policy_withdraw(
-        self, payload: Mapping[str, Any], now: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+        self,
+        payload: Mapping[str, Any],
+        now: str,
+        mutations: List[AuthorityMutation],
+        flows: List[FlowObservation],
+    ) -> str:
         try:
             self._policy_store.withdraw(payload["set_id"], payload["version"])
-            mutation = AuthorityMutation(
-                authority="policy",
-                operation="withdraw",
-                outcome=MutationOutcome.COMMITTED,
-                detail="%s@%d" % (payload["set_id"], payload["version"]),
+            mutations.append(
+                AuthorityMutation(
+                    authority="policy",
+                    operation="withdraw",
+                    outcome=MutationOutcome.COMMITTED,
+                    detail="%s@%d" % (payload["set_id"], payload["version"]),
+                )
             )
         except PolicyError as error:
-            mutation = AuthorityMutation(
-                authority="policy",
-                operation="withdraw",
-                outcome=MutationOutcome.REJECTED,
-                detail=str(error),
+            mutations.append(
+                AuthorityMutation(
+                    authority="policy",
+                    operation="withdraw",
+                    outcome=MutationOutcome.REJECTED,
+                    detail=str(error),
+                )
             )
-        return ([mutation], [], "policy set withdrawn at %s" % now)
+        return "policy set withdrawn at %s" % now
 
     def _apply_telemetry_emit(
-        self, payload: Mapping[str, Any], now: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+        self,
+        payload: Mapping[str, Any],
+        now: str,
+        mutations: List[AuthorityMutation],
+        flows: List[FlowObservation],
+    ) -> str:
         node = payload["node"]
         if node not in self._environment.node_ids:
             raise SimulatorError(
@@ -788,41 +864,45 @@ class Simulator:
         )
         try:
             recorded = self._telemetry.record_observation(observation, now=now)
-            mutation = AuthorityMutation(
-                authority="telemetry",
-                operation="record-observation",
-                outcome=MutationOutcome.COMMITTED,
-                detail=recorded.observation_id,
+            mutations.append(
+                AuthorityMutation(
+                    authority="telemetry",
+                    operation="record-observation",
+                    outcome=MutationOutcome.COMMITTED,
+                    detail=recorded.observation_id,
+                )
             )
-            flows = [
+            flows.append(
                 FlowObservation(
                     flow="telemetry",
                     ok=True,
                     code="recorded",
                     ref=recorded.observation_id,
                 )
-            ]
-        except TelemetryError as error:
-            mutation = AuthorityMutation(
-                authority="telemetry",
-                operation="record-observation",
-                outcome=MutationOutcome.REJECTED,
-                detail=str(error),
             )
-            flows = [
+        except TelemetryError as error:
+            mutations.append(
+                AuthorityMutation(
+                    authority="telemetry",
+                    operation="record-observation",
+                    outcome=MutationOutcome.REJECTED,
+                    detail=str(error),
+                )
+            )
+            flows.append(
                 FlowObservation(
                     flow="telemetry", ok=False, code="rejected", detail=str(error)
                 )
-            ]
-        return (
-            [mutation],
-            flows,
-            "telemetry observation recorded through the real WORK-026 store",
-        )
+            )
+        return "telemetry observation recorded through the real WORK-026 store"
 
     def _apply_session_request(
-        self, payload: Mapping[str, Any], now: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+        self,
+        payload: Mapping[str, Any],
+        now: str,
+        mutations: List[AuthorityMutation],
+        flows: List[FlowObservation],
+    ) -> str:
         label = payload["label"]
         source = payload["source"]
         destination = payload["destination"]
@@ -837,26 +917,18 @@ class Simulator:
                 SimulatorReasonCode.INVALID_INPUT,
                 "session label %r already used in this scenario" % label,
             )
-        mutations: List[AuthorityMutation] = []
-        flows: List[FlowObservation] = []
         authorized, decision, policy_flows = self._policy_gate(source, now)
         flows.extend(policy_flows)
         if not authorized or decision is None:
-            return (
-                mutations,
-                flows,
-                "session request %r denied by policy; no session created" % label,
-            )
+            return "session request %r denied by policy; no session created" % label
         route_flows, route_decision = self._evaluate_route(
             source, destination, decision, now, avoid=()
         )
         flows.extend(route_flows)
         if route_decision is None:
             return (
-                mutations,
-                flows,
                 "session request %r produced no accepted route; no session created"
-                % label,
+                % label
             )
         result = self._sessions.create(
             route_decision,
@@ -919,10 +991,8 @@ class Simulator:
                 )
                 if not transition.ok:
                     return (
-                        mutations,
-                        flows,
                         "session request %r: lifecycle transition to %s failed closed"
-                        % (label, new_state),
+                        % (label, new_state)
                     )
             self._sessions_by_label[label] = (
                 session_id,
@@ -931,23 +1001,21 @@ class Simulator:
                 source,
                 destination,
             )
-        return (
-            mutations,
-            flows,
-            "session request %r: policy -> routing -> session authority chain" % label,
-        )
+        return "session request %r: policy -> routing -> session authority chain" % label
 
     def _apply_path_add(
-        self, payload: Mapping[str, Any], now: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+        self,
+        payload: Mapping[str, Any],
+        now: str,
+        mutations: List[AuthorityMutation],
+        flows: List[FlowObservation],
+    ) -> str:
         label = payload["label"]
         session_id, current, decision, source, destination = self._require_session(label)
         avoid = tuple(
             self._environment.link_subject(pair[0], pair[1])
             for pair in payload.get("avoid", ())
         )
-        mutations: List[AuthorityMutation] = []
-        flows: List[FlowObservation] = []
         # The session's policy binding never changes silently: the new
         # route is computed under the SAME retained accepted policy
         # decision (WORK-012 reconnect verification, reused verbatim by
@@ -957,7 +1025,7 @@ class Simulator:
         )
         flows.extend(route_flows)
         if route_decision is None:
-            return mutations, flows, "path-add for %r produced no alternate route" % label
+            return "path-add for %r produced no alternate route" % label
         result = self._multipath.add_path(
             session_id,
             route_decision,
@@ -983,15 +1051,17 @@ class Simulator:
             )
         )
         return (
-            mutations,
-            flows,
             "path-add for %r through the real WORK-013 store (routing selected the "
-            "alternate; multipath admitted it)" % label,
+            "alternate; multipath admitted it)" % label
         )
 
     def _apply_path_fail(
-        self, payload: Mapping[str, Any], now: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+        self,
+        payload: Mapping[str, Any],
+        now: str,
+        mutations: List[AuthorityMutation],
+        flows: List[FlowObservation],
+    ) -> str:
         from multipath.model import PathStatus
 
         label = payload["label"]
@@ -1019,7 +1089,7 @@ class Simulator:
             actor_reference="simulator:scenario",
             reason_code="simulator:fault-injection",
         )
-        mutations = [
+        mutations.append(
             AuthorityMutation(
                 authority="multipath",
                 operation="change-path-status",
@@ -1028,9 +1098,9 @@ class Simulator:
                 ),
                 detail="%s (%s)" % (result.code, result.detail[:64]),
             )
-        ]
+        )
         session = self._sessions.get(session_id)
-        flows = [
+        flows.append(
             FlowObservation(
                 flow="multipath",
                 ok=result.ok,
@@ -1039,17 +1109,19 @@ class Simulator:
                 detail="constituent failed; session state %s"
                 % (session.state if session else "unknown"),
             )
-        ]
+        )
         return (
-            mutations,
-            flows,
             "path failure injected through the real WORK-013 store (loss of one "
-            "path does not terminate the session)",
+            "path does not terminate the session)"
         )
 
     def _apply_session_fail(
-        self, payload: Mapping[str, Any], now: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+        self,
+        payload: Mapping[str, Any],
+        now: str,
+        mutations: List[AuthorityMutation],
+        flows: List[FlowObservation],
+    ) -> str:
         """Inject a provider/session failure through the REAL WORK-012
         transition table (the frozen table routes active sessions to
         FAILED; a failed session is terminal)."""
@@ -1062,7 +1134,7 @@ class Simulator:
             actor_reference="simulator:scenario",
             reason_code="simulator:fault-injection",
         )
-        mutations = [
+        mutations.append(
             AuthorityMutation(
                 authority="sessions",
                 operation="transition-failed",
@@ -1071,24 +1143,24 @@ class Simulator:
                 ),
                 detail="%s (%s)" % (result.code, result.detail[:64]),
             )
-        ]
-        flows = [
+        )
+        flows.append(
             FlowObservation(
                 flow="session",
                 ok=result.ok,
                 code=result.code,
                 ref=session_id,
             )
-        ]
-        return (
-            mutations,
-            flows,
-            "session failure injected through the real WORK-012 transition table",
         )
+        return "session failure injected through the real WORK-012 transition table"
 
     def _apply_mobility_handover(
-        self, payload: Mapping[str, Any], now: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+        self,
+        payload: Mapping[str, Any],
+        now: str,
+        mutations: List[AuthorityMutation],
+        flows: List[FlowObservation],
+    ) -> str:
         from mobility.model import HandoverMode
 
         label = payload["label"]
@@ -1097,8 +1169,6 @@ class Simulator:
             self._environment.link_subject(pair[0], pair[1])
             for pair in payload.get("avoid", ())
         )
-        mutations: List[AuthorityMutation] = []
-        flows: List[FlowObservation] = []
         # Same retained-decision discipline as path-add: the candidate
         # route is computed under the session's accepted policy decision.
         route_flows, candidate = self._evaluate_route(
@@ -1106,7 +1176,7 @@ class Simulator:
         )
         flows.extend(route_flows)
         if candidate is None:
-            return mutations, flows, "handover for %r produced no candidate route" % label
+            return "handover for %r produced no candidate route" % label
         prepared = self._mobility.prepare_handover(
             session_id,
             candidate,
@@ -1133,7 +1203,7 @@ class Simulator:
                     detail=prepared.detail[:96],
                 )
             )
-            return mutations, flows, "handover preparation failed closed for %r" % label
+            return "handover preparation failed closed for %r" % label
         committed = self._mobility.commit_handover(
             prepared.transaction.transaction_id,
             event_instant=now,
@@ -1166,15 +1236,15 @@ class Simulator:
                 source,
                 destination,
             )
-        return (
-            mutations,
-            flows,
-            "mobility handover for %r through the real WORK-014 store" % label,
-        )
+        return "mobility handover for %r through the real WORK-014 store" % label
 
     def _apply_cleanup(
-        self, payload: Mapping[str, Any], now: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
+        self,
+        payload: Mapping[str, Any],
+        now: str,
+        mutations: List[AuthorityMutation],
+        flows: List[FlowObservation],
+    ) -> str:
         label = payload["label"]
         session_id, _current, _decision, _source, _destination = self._require_session(label)
         result = self._sessions.terminate(
@@ -1184,23 +1254,27 @@ class Simulator:
             reason_code="simulator:cleanup",
         )
         if result.ok:
-            mutation = AuthorityMutation(
-                authority="sessions",
-                operation="terminate",
-                outcome=MutationOutcome.COMMITTED,
-                detail="%s (%s)" % (result.code, result.detail[:64]),
+            mutations.append(
+                AuthorityMutation(
+                    authority="sessions",
+                    operation="terminate",
+                    outcome=MutationOutcome.COMMITTED,
+                    detail="%s (%s)" % (result.code, result.detail[:64]),
+                )
             )
         else:
             # Cleanup is correctness: an owner-contract cleanup failure
             # becomes an EXPLICIT pending state, never a silent pass.
             self._pending_cleanups += 1
-            mutation = AuthorityMutation(
-                authority="sessions",
-                operation="terminate",
-                outcome=MutationOutcome.PENDING,
-                detail="%s (%s)" % (result.code, result.detail[:64]),
+            mutations.append(
+                AuthorityMutation(
+                    authority="sessions",
+                    operation="terminate",
+                    outcome=MutationOutcome.PENDING,
+                    detail="%s (%s)" % (result.code, result.detail[:64]),
+                )
             )
-        flows = [
+        flows.append(
             FlowObservation(
                 flow="cleanup",
                 ok=result.ok,
@@ -1208,17 +1282,13 @@ class Simulator:
                 ref=session_id,
                 detail=result.detail[:96],
             )
-        ]
-        return (
-            [mutation],
-            flows,
-            "cleanup for %r through the real WORK-012 terminate contract" % label,
         )
+        return "cleanup for %r through the real WORK-012 terminate contract" % label
 
     def _apply_observe(
-        self, payload: Mapping[str, Any], now: str
-    ) -> Tuple[List[AuthorityMutation], List[FlowObservation], str]:
-        flows = self._observe_probes(now)
+        self, payload: Mapping[str, Any], now: str, flows: List[FlowObservation]
+    ) -> str:
+        flows.extend(self._observe_probes(now))
         for node in self._environment.node_ids:
             state = self._environment.power_simulator(node).energy_state()
             sequence = self._posture_sequence.get(node, 1)
@@ -1245,10 +1315,8 @@ class Simulator:
                 )
             )
         return (
-            [],
-            flows,
             "observation sweep: %d probe(s) + %d energy posture(s)"
-            % (len(self._spec.probes), len(self._environment.node_ids)),
+            % (len(self._spec.probes), len(self._environment.node_ids))
         )
 
     # ------------------------------------------------------------------
@@ -1417,6 +1485,8 @@ class Simulator:
     # ------------------------------------------------------------------
 
     def _digest_state(self, now: str) -> Tuple[Tuple[str, str], ...]:
+        from multipath.serialization import plan_canonical_bytes
+
         moment = parse_instant(now)
         topology_projection = sorted(
             claim.claim_id for claim in self._topology.get_current_observations(now=moment)
@@ -1430,6 +1500,22 @@ class Simulator:
                 offer.offer_id if offer else None,
                 measurement.measurement_id if measurement else None,
             ]
+        # The W013-owned multipath-state digest: every known session's
+        # CURRENT plan, read through the owner's own query surface
+        # (``get_plan``) and digested through the owner's canonical
+        # serialized plan form (``plan_canonical_bytes``).  Read-only
+        # and owner-sourced: the simulator never derives plan state
+        # itself, so a path-plan mutation cannot escape the
+        # trace-integrity boundary.
+        multipath_projection: Dict[str, Any] = {}
+        for session_entry in self._sessions.snapshot()["sessions"]:
+            session_id = session_entry["session_id"]
+            plan = self._multipath.get_plan(session_id)
+            multipath_projection[session_id] = (
+                "sha256:" + hashlib.sha256(plan_canonical_bytes(plan)).hexdigest()
+                if plan is not None
+                else None
+            )
         power_projection = {
             node: self._environment.power_simulator(node).trajectory_digest()
             for node in sorted(self._environment.node_ids)
@@ -1449,6 +1535,7 @@ class Simulator:
                 "sha256:"
                 + hashlib.sha256(self._sessions.to_canonical_bytes()).hexdigest(),
             ),
+            ("multipath", _digest(multipath_projection)),
             (
                 "policy",
                 _digest(
