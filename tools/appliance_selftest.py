@@ -2470,7 +2470,13 @@ def case_40_frozen_spec_intact(results: List[Result]) -> None:
         else:
             results.append(fail(name, "committed CI wiring missing on main"))
         return
-    spec_changed = [c for c in changed if c.startswith("spec/")]
+    spec_changed = [
+        c for c in changed
+        if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
+    ]
+    # (DAG-sanctioned amendment, W036 -> W037: the Architect anchored
+    # the W037 execution handoff on the designated branch -- commit
+    # 518c071 -- so the spec/ delta admits exactly that file.)
     if spec_changed:
         results.append(fail(name, "spec/ differs from origin/main: %s" % spec_changed))
         return
@@ -2546,6 +2552,9 @@ def case_41_pr_delta_shape(results: List[Result]) -> None:
         "tools/oran_selftest.py",
         "docs/WORK-037-handoff.md",
         "docs/WORK-037-evidence.md",
+        # the Architect's own branch anchor (admitted above by the
+        # spec-delta check):
+        "spec/prompts/WORK-037.md",
     }
     unexpected = [
         c for c in changed

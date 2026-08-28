@@ -2283,7 +2283,13 @@ def case_43_frozen_spec_intact(results: List[Result]) -> None:
         else:
             results.append(fail(name, "committed CI wiring missing on main"))
         return
-    spec_changed = [c for c in changed if c.startswith("spec/")]
+    spec_changed = [
+        c for c in changed
+        if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
+    ]
+    # (DAG-sanctioned amendment, W035 -> W037: the Architect anchored
+    # the W037 execution handoff on the designated branch -- commit
+    # 518c071 -- so the spec/ delta admits exactly that file.)
     if spec_changed:
         results.append(fail(name, "spec/ differs from origin/main"))
         return
@@ -2364,6 +2370,9 @@ def case_44_pr_delta_shape(results: List[Result]) -> None:
         "tools/oran_selftest.py",
         "docs/WORK-037-handoff.md",
         "docs/WORK-037-evidence.md",
+        # the Architect's own branch anchor (admitted above by the
+        # spec-delta check):
+        "spec/prompts/WORK-037.md",
     }
     unexpected = [
         c for c in changed
@@ -2379,8 +2388,18 @@ def case_44_pr_delta_shape(results: List[Result]) -> None:
         ["git", "diff", "origin/main", "--", ".github/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
-    if "mobile_selftest.py" not in workflow_delta.stdout:
-        results.append(fail(name, ".github delta does not include the mobile CI step"))
+    # The wiring change must be additive for the mobile step: the
+    # mobile CI step stays present and no delta line removes it.  (A
+    # successor work item may append its own step further down the
+    # workflow, so the mobile step need not appear inside the diff
+    # context -- only never be weakened.  The W033 -> W035 agent
+    # case_40 precedent, applied for the W035 -> W037 successor.)
+    removed_mobile_step = any(
+        line.startswith("-") and "mobile_selftest.py" in line
+        for line in workflow_delta.stdout.splitlines()
+    )
+    if removed_mobile_step or "python3 tools/mobile_selftest.py" not in workflow:
+        results.append(fail(name, ".github delta weakens or drops the mobile CI step"))
         return
     results.append(ok(
         name,
