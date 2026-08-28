@@ -1901,11 +1901,17 @@ def case_33_authority_boundaries_imports() -> Result:
             return fail(name, "%s performs file I/O (the family is read-only over spec/)" % filename)
     # Nothing outside tools/ imports the family (the selftest is the
     # composition root; upgrade is the composer, never the composed).
+    # WORK-033 amendment (deliberate, flagged in its PR): the Linux
+    # reference agent family is a dependency-graph-sanctioned
+    # DOWNSTREAM consumer of upgrade (spec/work-items.md: WORK-033
+    # declares WORK-029 among its frozen dependencies); the agent
+    # composes the real UpgradeManager/coexistence/migration surfaces
+    # and never re-implements version semantics.
     for family in sorted(os.listdir(_ROOT)):
         family_path = os.path.join(_ROOT, family)
         if (
             not os.path.isdir(family_path)
-            or family in ("upgrade", "tools")
+            or family in ("upgrade", "tools", "agent")
             or family.startswith(".")
         ):
             continue
