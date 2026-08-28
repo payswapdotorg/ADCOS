@@ -142,3 +142,6 @@ jobs:
 
       - name: Run Network-in-a-Box appliance tests
         run: python3 tools/appliance_selftest.py
+
+      - name: Run Open RAN/Core interop profile tests
+        run: python3 tools/oran_selftest.py

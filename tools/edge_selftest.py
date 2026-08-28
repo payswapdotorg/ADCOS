@@ -2265,10 +2265,20 @@ def case_46_frozen_spec_intact(results: List[Result]) -> None:
         ))
         return
     diff = subprocess.run(
-        ["git", "diff", "origin/main", "HEAD", "--", "spec/"],
+        [
+            "git", "diff", "--name-only", "origin/main", "HEAD", "--",
+            "spec/",
+        ],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
-    if diff.returncode != 0 or diff.stdout.strip():
+    spec_delta = [
+        line for line in diff.stdout.splitlines()
+        if line.strip() and line.strip() != "spec/prompts/WORK-037.md"
+    ]
+    # (DAG-sanctioned amendment, W034 -> W037: the Architect anchored
+    # the W037 execution handoff on the designated branch -- commit
+    # 518c071 -- so the spec/ delta admits exactly that file.)
+    if diff.returncode != 0 or spec_delta:
         results.append(fail(name, "spec/ not byte-identical to origin/main"))
         return
     results.append(ok(name, "spec/ byte-identical to origin/main; tree clean"))
@@ -2312,7 +2322,14 @@ def case_47_pr_delta_shape(results: List[Result]) -> None:
         else:
             results.append(fail(name, "committed CI wiring missing on main"))
         return
-    spec_changed = [c for c in changed if c.startswith("spec/")]
+    spec_changed = [
+        c for c in changed
+        if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
+    ]
+    # (DAG-sanctioned amendment, W034 -> W037: the Architect anchored
+    # the W037 execution handoff on the designated branch -- commit
+    # 518c071, with main's accidental publication reverted by the
+    # Architect -- so the spec/ delta admits exactly that file.)
     if spec_changed:
         results.append(fail(name, "spec/ differs from origin/main: %s" % spec_changed))
         return
@@ -2337,11 +2354,22 @@ def case_47_pr_delta_shape(results: List[Result]) -> None:
         "tools/appliance_selftest.py",
         "docs/WORK-036-handoff.md",
         "docs/WORK-036-evidence.md",
+        # DAG-sanctioned allowlist amendment (W034 -> W037): the Open
+        # RAN/Core interop-profile battery follows this one in
+        # work-item order (the profile composes the same adapter
+        # stack the edge gateway hosts), and its PR delta shape must
+        # admit the successor's files.
+        "tools/oran_selftest.py",
+        "docs/WORK-037-handoff.md",
+        "docs/WORK-037-evidence.md",
+        # the Architect's own branch anchor (admitted above by the
+        # spec-delta check):
+        "spec/prompts/WORK-037.md",
     }
     unexpected = [
         c for c in changed
         if not c.startswith("edge/") and not c.startswith("mobile/")
-        and not c.startswith("appliance/")
+        and not c.startswith("appliance/") and not c.startswith("interop/")
         and c not in allowed_exact and not c.startswith(".github/")
     ]
     if unexpected:

@@ -1944,7 +1944,15 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
             results.append(fail(name, "committed CI wiring missing on main"))
         return
     # PR/branch context: the delta must be exactly the sanctioned shape.
-    spec_changed = [c for c in changed if c.startswith("spec/")]
+    # DAG-sanctioned amendment (W033 -> W037): the Architect anchored the
+    # W037 execution handoff ON THE DESIGNATED BRANCH (commit 518c071;
+    # the accidental main publication was reverted by the Architect
+    # before the branch was cut), so the spec/ delta admits EXACTLY
+    # that file -- nothing else.
+    spec_changed = [
+        c for c in changed
+        if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
+    ]
     if spec_changed:
         results.append(fail(
             name, "spec/ differs from origin/main: %s" % spec_changed
@@ -1963,6 +1971,11 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
         # subject transitively through the W034 edge composition.
         "docs/WORK-036-handoff.md",
         "docs/WORK-036-evidence.md",
+        # DAG-sanctioned amendment (W033 -> W037): the Open RAN/Core
+        # interoperability profile names this battery's subject as its
+        # reference-agent component.
+        "docs/WORK-037-handoff.md",
+        "docs/WORK-037-evidence.md",
     }
     docs_changed = {c for c in changed if c.startswith("docs/")}
     if not docs_changed <= allowed_docs:
@@ -2004,6 +2017,10 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
         # appliance battery extends this one transitively through the
         # W034 edge composition (work-item order in CI).
         "tools/appliance_selftest.py",
+        # DAG-sanctioned allowlist amendment (W033 -> W037): the Open
+        # RAN/Core interop-profile battery extends this one through
+        # the reference-agent component (work-item order in CI).
+        "tools/oran_selftest.py",
     }
     tools_changed = {c for c in changed if c.startswith("tools/")}
     if not tools_changed <= allowed_tools:
