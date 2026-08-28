@@ -91,6 +91,22 @@ discriminating cases:
 - API constructor requires GENUINE injected
   authorities (duck-typed fakes rejected however
   complete)                                          -> case_37
+- OUTER FAILURE BOUNDARY: hostile/failing
+  injected authorities (snapshot methods,
+  RoutingEngine.evaluate, SessionStore create/
+  terminate, federation lookup, the RBAC gate,
+  denial-detail formation, telemetry query,
+  policy snapshot) each leave ONE-AND-ONLY-ONE
+  ``management.failed`` audit record -- never
+  an unaudited exception, never a success,
+  never a double audit; expected policy-
+  material errors stay audited denials
+                                                     -> case_38
+- forged constructor-injected initial RBAC
+  event ids (content/id mismatch) fail closed
+  at the authoritative construction boundary;
+  genuine content-derived initial events
+  install cleanly                                   -> case_39
 
 Run: python3 tools/management_selftest.py   (exit 0 = PASS)
 """
@@ -107,7 +123,7 @@ import re
 import subprocess
 import sys
 from dataclasses import FrozenInstanceError
-from typing import Any, Dict, FrozenSet, List, Optional, Tuple
+from typing import Any, Callable, Dict, FrozenSet, List, Optional, Tuple
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
@@ -118,12 +134,14 @@ from policy.model import (  # noqa: E402
     Effect,
     Operation,
     PolicyDomain,
+    PolicyError,
     PolicyRule,
     PolicySet,
     Privileged,
 )
 from policy.store import PolicyStore  # noqa: E402
 from resources.model import ResourceStore  # noqa: E402
+from routing.engine import RoutingEngine  # noqa: E402
 from sessions.store import SessionStore  # noqa: E402
 from telemetry.model import (  # noqa: E402
     PrivacyClass,
@@ -162,6 +180,7 @@ from management import (  # noqa: E402
     audit_record_from_mapping,
     audit_record_to_mapping,
     derive_audit_record_id,
+    derive_role_event_id,
     role_event_from_mapping,
     role_event_to_mapping,
 )
@@ -285,6 +304,7 @@ def _api(
     federation_store: Optional[FederationStore] = None,
     telemetry_store: Optional[TelemetryStore] = None,
     audit: Optional[AuditLedger] = None,
+    routing_engine: Optional[RoutingEngine] = None,
 ) -> ManagementAPI:
     return ManagementAPI(
         policy_store=_policy_store(
@@ -299,6 +319,7 @@ def _api(
         ),
         role_store=role_store if role_store is not None else _role_store(),
         audit=audit if audit is not None else AuditLedger(),
+        routing_engine=routing_engine,
     )
 
 
@@ -1878,6 +1899,370 @@ def case_37_genuine_authorities_required() -> Result:
 
 
 # --------------------------------------------------------------------------
+# 38-39: PR #32 Architect-correction regressions (review 5047201533)
+# --------------------------------------------------------------------------
+
+
+def _hostile(store: Any, method: str, failure: str) -> Any:
+    """Turn a GENUINE authority instance into a failing one: replace
+    exactly one public callable with a function that raises an
+    unexpected RuntimeError.  (The object remains a genuine instance
+    of its authority class -- this is the hostile/failing
+    injected-authority regression shape: the authority fails, the
+    composition root must still account for the call.)"""
+
+    def hostile(*_args: Any, **_kwargs: Any) -> Any:
+        raise RuntimeError(failure)
+
+    setattr(store, method, hostile)
+    return store
+
+
+def case_38_hostile_authority_failure_boundary() -> Result:
+    """PR #32 blocker 1 regression: the universal outer operation
+    boundary guarantees ONE-AND-ONLY-ONE audit record per invocation
+    when an injected authority fails unexpectedly -- never an
+    unaudited exception, never a success, never a double audit."""
+    name = "case_38_hostile_authority_failure_boundary"
+
+    def run(
+        label: str,
+        api: ManagementAPI,
+        call: Callable[[], ManagementResult],
+        operation: str,
+    ) -> Optional[str]:
+        ledger = api._audit
+        before = len(ledger.records())
+        result = call()
+        new_records = ledger.records()[before:]
+        if len(new_records) != 1:
+            return "%s: expected exactly 1 audit record, got %d" % (
+                label,
+                len(new_records),
+            )
+        record = new_records[0]
+        if record.outcome != AuditOutcome.FAILED:
+            return "%s: audit outcome %r is not failed" % (label, record.outcome)
+        if record.operation != operation:
+            return "%s: record operation %r wrong" % (label, record.operation)
+        if result.ok or result.code != ManagementReasonCode.FAILED:
+            return "%s: result not a FAILED envelope (ok=%r code=%r)" % (
+                label,
+                result.ok,
+                result.code,
+            )
+        if result.audit_record_id != record.record_id:
+            return "%s: result does not reference the failure record" % label
+        if result.payload is not None:
+            return "%s: failed result carries a payload" % label
+        return None
+
+    scenarios = 0
+
+    # (1) read path -- hostile session-authority snapshot
+    api = _api(
+        session_store=_hostile(SessionStore(), "snapshot", "hostile snapshot")
+    )
+    error = run(
+        "session.snapshot",
+        api,
+        lambda: api.inspect_sessions(_OPERATOR, now=_NOW),
+        ManagementOperation.SESSION_SNAPSHOT,
+    )
+    if error:
+        return fail(name, error)
+    scenarios += 1
+
+    # (2) privileged delegation -- hostile routing-engine evaluation
+    engine = _hostile(RoutingEngine(), "evaluate", "hostile evaluation")
+    api = _api(routing_engine=engine)
+    error = run(
+        "routing.evaluate",
+        api,
+        lambda: _create_session(api),
+        ManagementOperation.SESSION_CREATE,
+    )
+    if error:
+        return fail(name, error)
+    scenarios += 1
+
+    # (3) privileged delegation -- hostile session-authority creation
+    api = _api(session_store=_hostile(SessionStore(), "create", "hostile create"))
+    error = run(
+        "session.create",
+        api,
+        lambda: _create_session(api),
+        ManagementOperation.SESSION_CREATE,
+    )
+    if error:
+        return fail(name, error)
+    scenarios += 1
+
+    # (4) privileged delegation -- hostile session-authority teardown
+    api = _api(session_store=_hostile(SessionStore(), "terminate", "hostile teardown"))
+    error = run(
+        "session.terminate",
+        api,
+        lambda: api.terminate_session(
+            _OPERATOR, now=_NOW, session_id="sha256:" + "0" * 64
+        ),
+        ManagementOperation.SESSION_TERMINATE,
+    )
+    if error:
+        return fail(name, error)
+    scenarios += 1
+
+    # (5) federation control -- hostile relationship lookup
+    api = _api(
+        federation_store=_hostile(
+            FederationStore(), "get_relationship", "hostile lookup"
+        )
+    )
+    error = run(
+        "federation.get_relationship",
+        api,
+        lambda: api.accept_federation_peer(
+            _OPERATOR, now=_NOW, relationship_id="adcos:federation.relationship.v1:"
+            + "0" * 64
+        ),
+        ManagementOperation.FEDERATION_ACCEPT_PEER,
+    )
+    if error:
+        return fail(name, error)
+    scenarios += 1
+
+    # (6) RBAC gate -- hostile capability resolution (an UNEXPECTED
+    # exception, not a ManagementError, so it must not be mistaken
+    # for a clean denial)
+    api = _api(
+        role_store=_hostile(
+            RoleAssignmentStore(roles=_CATALOG),
+            "active_capabilities",
+            "hostile gate",
+        )
+    )
+    error = run(
+        "rbac.active_capabilities",
+        api,
+        lambda: api.inspect_sessions(_OPERATOR, now=_NOW),
+        ManagementOperation.SESSION_SNAPSHOT,
+    )
+    if error:
+        return fail(name, error)
+    scenarios += 1
+
+    # (7) denial formation interrupted -- the RBAC denial was DECIDED
+    # (no capability) but the hostile active_roles raises while
+    # FORMING the denial detail: the invocation must still leave
+    # exactly one record (not zero, not two)
+    roles = RoleAssignmentStore(roles=_CATALOG)  # no grants: no capability
+    _hostile(roles, "active_roles", "hostile denial detail")
+    api = _api(role_store=roles)
+    error = run(
+        "rbac.active_roles (denial formation)",
+        api,
+        lambda: api.inspect_sessions(_OPERATOR, now=_NOW),
+        ManagementOperation.SESSION_SNAPSHOT,
+    )
+    if error:
+        return fail(name, error)
+    scenarios += 1
+
+    # (8) telemetry read -- hostile query (unexpected, not TelemetryError)
+    api = _api(
+        telemetry_store=_hostile(
+            TelemetryStore(), "query_observations", "hostile query"
+        )
+    )
+    error = run(
+        "telemetry.query_observations",
+        api,
+        lambda: api.query_telemetry(
+            _OPERATOR, now=_NOW, privacy_scope=PrivacyClass.OPERATIONAL
+        ),
+        ManagementOperation.TELEMETRY_QUERY,
+    )
+    if error:
+        return fail(name, error)
+    scenarios += 1
+
+    # (9) policy read payload -- applicable sets resolve genuinely,
+    # the hostile snapshot fails while materializing the payload
+    genuine_policy = _policy_store([_management_policy_set()])
+    policy = PolicyStore()
+    setattr(policy, "list_applicable", genuine_policy.list_applicable)
+    _hostile(policy, "snapshot", "hostile policy snapshot")
+    api = ManagementAPI(
+        policy_store=policy,
+        session_store=SessionStore(),
+        federation_store=FederationStore(),
+        telemetry_store=TelemetryStore(),
+        role_store=_role_store(),
+    )
+    error = run(
+        "policy.snapshot",
+        api,
+        lambda: api.inspect_policy(_OPERATOR, now=_NOW),
+        ManagementOperation.POLICY_SNAPSHOT,
+    )
+    if error:
+        return fail(name, error)
+    scenarios += 1
+
+    # (10) contrast -- an EXPECTED policy-material failure (the
+    # genuine PolicyError on a rejected instant) remains a documented
+    # audited DENIAL, not a failure: exactly one record either way
+    policy = PolicyStore()
+
+    def _reject_instant(now: str) -> Tuple[PolicySet, ...]:
+        raise PolicyError("evaluation-instant", "hostile rejected instant")
+
+    setattr(policy, "list_applicable", _reject_instant)
+    api = ManagementAPI(
+        policy_store=policy,
+        session_store=SessionStore(),
+        federation_store=FederationStore(),
+        telemetry_store=TelemetryStore(),
+        role_store=_role_store(),
+    )
+    ledger = api._audit
+    before = len(ledger.records())
+    result = api.inspect_policy(_OPERATOR, now=_NOW)
+    new_records = ledger.records()[before:]
+    if len(new_records) != 1:
+        return fail(
+            name,
+            "expected-policy-error: expected exactly 1 audit record, got %d"
+            % len(new_records),
+        )
+    if new_records[0].outcome != AuditOutcome.DENIED_INVALID_INPUT:
+        return fail(
+            name,
+            "expected-policy-error: outcome %r is not denied-invalid-input"
+            % new_records[0].outcome,
+        )
+    if result.ok or result.code != ManagementReasonCode.INVALID_INPUT:
+        return fail(name, "expected-policy-error: result is not the input denial")
+    if result.audit_record_id != new_records[0].record_id:
+        return fail(name, "expected-policy-error: audit reference missing")
+    scenarios += 1
+
+    # (11) no-double-audit proof -- a fault AFTER the invocation
+    # already appended its record appends NOTHING further: the failed
+    # envelope references the existing record and the ledger grows by
+    # exactly one
+    api = _api()
+    ledger = api._audit
+    before = len(ledger.records())
+
+    def _audited_then_raises() -> ManagementResult:
+        api._record(
+            now=_NOW,
+            operation=ManagementOperation.SESSION_SNAPSHOT,
+            operator=_OPERATOR,
+            outcome=AuditOutcome.EXECUTED,
+            detail="audited before the fault",
+        )
+        raise RuntimeError("fault after the audit")
+
+    result = api._invoke(
+        ManagementOperation.SESSION_SNAPSHOT,
+        _OPERATOR,
+        _NOW,
+        _audited_then_raises,
+    )
+    new_records = ledger.records()[before:]
+    if len(new_records) != 1:
+        return fail(
+            name,
+            "already-audited path: expected exactly 1 record, got %d"
+            % len(new_records),
+        )
+    if result.ok or result.code != ManagementReasonCode.FAILED:
+        return fail(name, "already-audited path: envelope is not FAILED")
+    if result.audit_record_id != new_records[0].record_id:
+        return fail(name, "already-audited path: envelope lost the record reference")
+    scenarios += 1
+
+    return ok(
+        name,
+        "%d hostile/expected scenarios: exactly one record each, "
+        "no double audit" % scenarios,
+    )
+
+
+def case_39_forged_initial_event_id() -> Result:
+    """PR #32 blocker 2 regression: constructor-injected initial RBAC
+    events are integrity-validated at the authoritative construction
+    boundary -- a valid-looking event whose event_id does not
+    recompute from its content (forged identity) fails closed, while
+    a genuine content-derived initial event installs cleanly."""
+    name = "case_39_forged_initial_event_id"
+    # a genuine event (id minted from its content by the store itself)
+    seeder = RoleAssignmentStore(roles=_CATALOG)
+    event = seeder.grant(
+        _OPERATOR, "network-operator", instant=_T0, actor_node_id=_ISSUER
+    )
+    if event.event_id != derive_role_event_id(event):
+        return fail(name, "fixture: grant did not mint a content-derived id")
+    # genuine initial event -> construction succeeds, history installs
+    store = RoleAssignmentStore(roles=_CATALOG, initial_events=(event,))
+    if store.active_capabilities(_OPERATOR, now=_NOW) != frozenset(
+        _ROLE_OPERATOR.capabilities
+    ):
+        return fail(name, "genuine initial event did not install capabilities")
+
+    def _with_id(event_id: str) -> RoleAssignmentEvent:
+        return RoleAssignmentEvent(
+            event_id=event_id,
+            kind=event.kind,
+            operator_node_id=event.operator_node_id,
+            role_id=event.role_id,
+            instant=event.instant,
+            actor_node_id=event.actor_node_id,
+            reason=event.reason,
+            valid_from=event.valid_from,
+            valid_until=event.valid_until,
+        )
+
+    # forged well-formed id: same content, different identity
+    forged = _with_id("f" * 64)
+    if forged.event_id == derive_role_event_id(forged):
+        return fail(name, "fixture: forged id accidentally content-valid")
+    try:
+        RoleAssignmentStore(roles=_CATALOG, initial_events=(forged,))
+        return fail(name, "forged well-formed event id accepted")
+    except ManagementError:
+        pass
+    # empty/garbage id also fails closed
+    try:
+        RoleAssignmentStore(roles=_CATALOG, initial_events=(_with_id(""),))
+        return fail(name, "empty event id accepted")
+    except ManagementError:
+        pass
+    # a SINGLE forged entry poisons the whole construction (fail
+    # closed on any inconsistency, not just the first entry)
+    try:
+        RoleAssignmentStore(roles=_CATALOG, initial_events=(event, forged))
+        return fail(name, "mixed genuine/forged initial events accepted")
+    except ManagementError:
+        pass
+    # the wire-form reconstruction path still enforces the same
+    # integrity (the pre-existing serialization check, unchanged)
+    wire = role_event_to_mapping(event)
+    wire["event_id"] = "e" * 64
+    try:
+        role_event_from_mapping(wire)
+        return fail(name, "serialization layer lost its integrity check")
+    except ManagementError:
+        pass
+    return ok(
+        name,
+        "forged initial event ids fail closed; genuine ones install",
+    )
+
+
+# --------------------------------------------------------------------------
 # Driver
 # --------------------------------------------------------------------------
 
@@ -1919,6 +2304,8 @@ CASES = (
     case_35_serialization_round_trips,
     case_36_no_bypass_structural,
     case_37_genuine_authorities_required,
+    case_38_hostile_authority_failure_boundary,
+    case_39_forged_initial_event_id,
 )
 
 

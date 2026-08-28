@@ -50,11 +50,31 @@ Two-key authorization: RBAC decides whether THIS operator may even
 request the operation (capability); WORK-010 policy decides whether
 the privileged ACTION is permitted.  Neither alone ever suffices --
 see the package README for the full rationale.
+
+The universal outer audit boundary (every invocation, no escape):
+every public operation method is a thin wrapper over
+:meth:`ManagementAPI._invoke`, the ONE outer boundary that runs the
+operation body and guarantees the acceptance invariant
+
+    every management API call -> exactly one audit record
+
+including unexpected internal failures: an exception escaping the
+body (a hostile or failing injected authority, a broken policy
+evaluation, ANY unexpected fault after the operation has been
+identified) becomes exactly one ``management.failed`` audit record
+and a FAILED result envelope -- never an unaudited exception, never
+a success, and never a second record when the invocation already
+audited its outcome (per-invocation accounting makes the guarantee
+double-audit-free).  Expected, documented denial paths (RBAC /
+policy / invalid input / authority rejection) keep their own precise
+outcome vocabulary; the boundary exists so that UNEXPECTED faults
+cannot slip past the ledger.
 """
 
 from __future__ import annotations
 
-from typing import Any, FrozenSet, Mapping, Optional, Tuple
+import threading
+from typing import Any, Callable, FrozenSet, Mapping, Optional, Tuple
 
 from federation.model import FederationError, FederationRelationship
 from federation.policy import evaluate_federation_operation
@@ -66,6 +86,7 @@ from policy.model import (
     Operation as PolicyOperation,
     PolicyContext,
     PolicyDecision,
+    PolicyError,
     PolicySet,
 )
 from policy.store import PolicyStore
@@ -114,6 +135,42 @@ _BLOCKING_POLICY_CODES = frozenset(
         DecisionCode.UNSUPPORTED_PREDICATE,
     }
 )
+
+#: The fallback recorded instant for a failure audit whose request
+#: instant could not be validated (the boundary never lets an
+#: unrenderable input prevent the record).
+_EPOCH_INSTANT = "1970-01-01T00:00:00Z"
+
+
+def _render_operator_ref(value: object) -> str:
+    """Best-effort operator rendering for the boundary's failure
+    record: the reference as text, or a placeholder when even ``str``
+    is hostile.  The boundary must be able to audit EVERY failure,
+    including failures of the request material itself."""
+    try:
+        text = str(value)
+    except Exception:  # noqa: BLE001 -- hostile __str__ must not win
+        return "<unrenderable-operator>"
+    return text if text else "<empty-operator>"
+
+
+def _fallback_instant(value: object) -> str:
+    """The failure record's instant: the request instant when it is a
+    valid RFC 3339 UTC string, the epoch otherwise."""
+    try:
+        require_instant(value, "now")
+    except Exception:  # noqa: BLE001 -- hostile input must not win
+        return _EPOCH_INSTANT
+    return str(value)
+
+
+def _render_error(error: BaseException) -> str:
+    """Best-effort exception rendering (a hostile ``__str__`` yields a
+    placeholder, never a second failure)."""
+    try:
+        return str(error)
+    except Exception:  # noqa: BLE001 -- hostile __str__ must not win
+        return "<unrenderable-error>"
 
 
 class ManagementAPI:
@@ -186,10 +243,126 @@ class ManagementAPI:
         self._routing_engine = (
             routing_engine if routing_engine is not None else RoutingEngine()
         )
+        # Per-invocation audit accounting for the outer boundary
+        # (``_invoke``): thread-local, so concurrent API use on
+        # different threads accounts independently; nested
+        # invocations save/restore the counters.  ``appended`` counts
+        # records this invocation has appended; ``last_record_id`` is
+        # the most recent one -- the boundary uses exactly these to
+        # guarantee one-and-only-one record per invocation (no
+        # double audit of an already-recorded outcome).
+        self._invocation = threading.local()
 
     # ------------------------------------------------------------------
     # Shared machinery
     # ------------------------------------------------------------------
+
+    def _invoke(
+        self,
+        operation: str,
+        operator: object,
+        now: object,
+        body: Callable[[], ManagementResult],
+    ) -> ManagementResult:
+        """The universal outer operation boundary (the acceptance
+        invariant's single enforcement point).
+
+        Runs ``body`` -- the identified operation's implementation,
+        whose every NORMAL completion path (executed / denied /
+        authority-rejected) has already appended exactly one audit
+        record -- and guarantees that EVERY invocation leaves exactly
+        one record in the ledger:
+
+        - an exception escaping the body (unexpected authority
+          failure, broken policy evaluation, ANY fault after the
+          operation has been identified) becomes exactly one
+          ``management.failed`` record and a FAILED envelope -- never
+          an unaudited exception, never a success;
+        - an invocation that already appended its record before the
+          fault appends NO second record (the failure envelope
+          references the existing record -- no double audit);
+        - a body that (defensively) returns an unaudited envelope is
+          audited here rather than passing through silently.
+
+        If the audit ledger itself cannot append, the failure cannot
+        be recorded and the exception propagates loudly (a broken
+        audit authority is never masked as a clean result).
+        """
+        prior_appended = getattr(self._invocation, "appended", 0)
+        prior_last = getattr(self._invocation, "last_record_id", "")
+        self._invocation.appended = 0
+        self._invocation.last_record_id = ""
+        try:
+            try:
+                result = body()
+            except Exception as error:  # noqa: BLE001 -- the boundary
+                return self._boundary_failure(
+                    operation=operation,
+                    operator=operator,
+                    now=now,
+                    detail="unexpected internal failure (%s): %s"
+                    % (type(error).__name__, _render_error(error)),
+                )
+            if (
+                not isinstance(result, ManagementResult)
+                or not result.audit_record_id
+            ):
+                # Defensive: a normal completion without an audited
+                # envelope would silently break the invariant -- audit
+                # it here instead of passing it through.
+                return self._boundary_failure(
+                    operation=operation,
+                    operator=operator,
+                    now=now,
+                    detail="internal error: operation completed without "
+                    "an audited result envelope",
+                )
+            return result
+        finally:
+            self._invocation.appended = prior_appended
+            self._invocation.last_record_id = prior_last
+
+    def _boundary_failure(
+        self,
+        *,
+        operation: str,
+        operator: object,
+        now: object,
+        detail: str,
+    ) -> ManagementResult:
+        """The boundary's terminal failure envelope: exactly one
+        audit record for the invocation, no more, no fewer.
+
+        If the invocation already appended a record (per-invocation
+        accounting), the failure envelope references it and NOTHING
+        is appended (an already-recorded outcome is never
+        double-audited).  Otherwise exactly one ``failed`` record is
+        appended here with the best-effort operator/instant
+        rendering, so even unrenderable request material cannot
+        prevent the record."""
+        appended = getattr(self._invocation, "appended", 0)
+        last_id = getattr(self._invocation, "last_record_id", "")
+        if appended > 0 and last_id:
+            return ManagementResult(
+                ok=False,
+                code=ManagementReasonCode.FAILED,
+                detail="%s [outcome already audited as record %s; no "
+                "second record appended]" % (detail, last_id[:16]),
+                audit_record_id=last_id,
+            )
+        audit_id = self._record(
+            now=_fallback_instant(now),
+            operation=operation,
+            operator=_render_operator_ref(operator),
+            outcome=AuditOutcome.FAILED,
+            detail=detail,
+        )
+        return ManagementResult(
+            ok=False,
+            code=ManagementReasonCode.FAILED,
+            detail=detail,
+            audit_record_id=audit_id,
+        )
 
     def _record(
         self,
@@ -202,7 +375,9 @@ class ManagementAPI:
         evidence_refs: Tuple[str, ...] = (),
     ) -> str:
         """Append one audit record; return its id (every call is
-        audited -- allowed or denied)."""
+        audited -- allowed or denied).  Also maintains the
+        per-invocation accounting the outer boundary relies on
+        (appended count + last record id)."""
         record = self._audit.append(
             recorded_instant=now,
             operation=operation,
@@ -211,6 +386,10 @@ class ManagementAPI:
             detail=detail,
             evidence_refs=evidence_refs,
         )
+        self._invocation.appended = (
+            getattr(self._invocation, "appended", 0) + 1
+        )
+        self._invocation.last_record_id = record.record_id
         return record.record_id
 
     def _deny(
@@ -257,7 +436,9 @@ class ManagementAPI:
         policy-set identity downstream binding checks will see)."""
         try:
             applicable = self._policy_store.list_applicable(now)
-        except Exception as error:  # PolicyError on malformed now
+        except PolicyError as error:  # expected: malformed instant;
+            # anything unexpected reaches the outer boundary instead
+            # of being masked as a denial
             return False, None, "policy store rejected the instant: %s" % error
         if not applicable:
             return (
@@ -392,6 +573,14 @@ class ManagementAPI:
 
     def inspect_policy(self, operator: str, *, now: str) -> ManagementResult:
         """Inspect the live policy material (RBAC ``policy.read``)."""
+        return self._invoke(
+            ManagementOperation.POLICY_SNAPSHOT,
+            operator,
+            now,
+            lambda: self._op_inspect_policy(operator, now=now),
+        )
+
+    def _op_inspect_policy(self, operator: str, *, now: str) -> ManagementResult:
         operation = ManagementOperation.POLICY_SNAPSHOT
         try:
             operator, now = self._operator_and_now(operator, now)
@@ -410,7 +599,7 @@ class ManagementAPI:
             return denial
         try:
             applicable = self._policy_store.list_applicable(now)
-        except Exception as error:
+        except PolicyError as error:  # expected: malformed instant
             return self._deny(
                 now=now,
                 operation=operation,
@@ -451,6 +640,16 @@ class ManagementAPI:
 
     def inspect_sessions(self, operator: str, *, now: str) -> ManagementResult:
         """Inspect session authority state (RBAC ``session.read``)."""
+        return self._invoke(
+            ManagementOperation.SESSION_SNAPSHOT,
+            operator,
+            now,
+            lambda: self._op_inspect_sessions(operator, now=now),
+        )
+
+    def _op_inspect_sessions(
+        self, operator: str, *, now: str
+    ) -> ManagementResult:
         operation = ManagementOperation.SESSION_SNAPSHOT
         try:
             operator, now = self._operator_and_now(operator, now)
@@ -485,11 +684,19 @@ class ManagementAPI:
             audit_record_id=audit_id,
         )
 
-    def inspect_federation(
-        self, operator: str, *, now: str
-    ) -> ManagementResult:
+    def inspect_federation(self, operator: str, *, now: str) -> ManagementResult:
         """Inspect federation authority state (RBAC
         ``federation.read``)."""
+        return self._invoke(
+            ManagementOperation.FEDERATION_SNAPSHOT,
+            operator,
+            now,
+            lambda: self._op_inspect_federation(operator, now=now),
+        )
+
+    def _op_inspect_federation(
+        self, operator: str, *, now: str
+    ) -> ManagementResult:
         operation = ManagementOperation.FEDERATION_SNAPSHOT
         try:
             operator, now = self._operator_and_now(operator, now)
@@ -544,6 +751,38 @@ class ManagementAPI:
         explicit purpose, and observations above the scope are
         filtered -- never erroring -- so this surface cannot be used to
         probe the existence of restricted data."""
+        return self._invoke(
+            ManagementOperation.TELEMETRY_QUERY,
+            operator,
+            now,
+            lambda: self._op_query_telemetry(
+                operator,
+                now=now,
+                privacy_scope=privacy_scope,
+                purpose=purpose,
+                subject_kind=subject_kind,
+                subject_ref=subject_ref,
+                source_class=source_class,
+                metric=metric,
+                min_confidence_basis_points=min_confidence_basis_points,
+                include_stale=include_stale,
+            ),
+        )
+
+    def _op_query_telemetry(
+        self,
+        operator: str,
+        *,
+        now: str,
+        privacy_scope: str,
+        purpose: str = "",
+        subject_kind: Optional[str] = None,
+        subject_ref: Optional[str] = None,
+        source_class: Optional[str] = None,
+        metric: Optional[str] = None,
+        min_confidence_basis_points: Optional[int] = None,
+        include_stale: bool = False,
+    ) -> ManagementResult:
         operation = ManagementOperation.TELEMETRY_QUERY
         try:
             operator, now = self._operator_and_now(operator, now)
@@ -602,6 +841,14 @@ class ManagementAPI:
         ``audit.read``).  This is the operational tamper-evidence
         check: the recomputed chain must be intact and the head is the
         value deployments pin externally."""
+        return self._invoke(
+            ManagementOperation.AUDIT_VERIFY,
+            operator,
+            now,
+            lambda: self._op_verify_audit(operator, now=now),
+        )
+
+    def _op_verify_audit(self, operator: str, *, now: str) -> ManagementResult:
         operation = ManagementOperation.AUDIT_VERIFY
         try:
             operator, now = self._operator_and_now(operator, now)
@@ -643,6 +890,14 @@ class ManagementAPI:
     def inspect_roles(self, operator: str, *, now: str) -> ManagementResult:
         """Inspect the RBAC state (catalog + assignment history; RBAC
         ``roles.read``)."""
+        return self._invoke(
+            ManagementOperation.ROLES_SNAPSHOT,
+            operator,
+            now,
+            lambda: self._op_inspect_roles(operator, now=now),
+        )
+
+    def _op_inspect_roles(self, operator: str, *, now: str) -> ManagementResult:
         operation = ManagementOperation.ROLES_SNAPSHOT
         try:
             operator, now = self._operator_and_now(operator, now)
@@ -711,6 +966,40 @@ class ManagementAPI:
         repairs, or replaces a route (WORK-012's rule) and never
         accepts a precomputed route/policy decision (provenance: the
         decision used is the one evaluated inside this call)."""
+        return self._invoke(
+            ManagementOperation.SESSION_CREATE,
+            operator,
+            now,
+            lambda: self._op_create_session(
+                operator,
+                now=now,
+                source_node_id=source_node_id,
+                destination_node_id=destination_node_id,
+                topology=topology,
+                resources=resources,
+                link_metrics=link_metrics,
+                intent_digest=intent_digest,
+                resource_refs=resource_refs,
+                federation_domain=federation_domain,
+                credential_active=credential_active,
+            ),
+        )
+
+    def _op_create_session(
+        self,
+        operator: str,
+        *,
+        now: str,
+        source_node_id: str,
+        destination_node_id: str,
+        topology: Any,
+        resources: Any,
+        link_metrics: Optional[Mapping[str, Any]] = None,
+        intent_digest: str = "",
+        resource_refs: Tuple[str, ...] = (),
+        federation_domain: str = "",
+        credential_active: Optional[bool] = None,
+    ) -> ManagementResult:
         operation = ManagementOperation.SESSION_CREATE
         try:
             operator, now = self._operator_and_now(operator, now)
@@ -732,7 +1021,7 @@ class ManagementAPI:
                 credential_active=credential_active,
                 evaluation_instant=now,
             )
-        except Exception as error:
+        except PolicyError as error:  # expected: context validation
             return self._deny(
                 now=now,
                 operation=operation,
@@ -862,6 +1151,32 @@ class ManagementAPI:
         transition table (it validates legality fail-closed);
         ``suspend`` delegates to the explicit suspend operation
         (SUSPENDED is reachable ONLY through it)."""
+        return self._invoke(
+            ManagementOperation.SESSION_MODIFY,
+            operator,
+            now,
+            lambda: self._op_modify_session(
+                operator,
+                now=now,
+                session_id=session_id,
+                transition=transition,
+                suspend=suspend,
+                reason_code=reason_code,
+                metadata=metadata,
+            ),
+        )
+
+    def _op_modify_session(
+        self,
+        operator: str,
+        *,
+        now: str,
+        session_id: str,
+        transition: Optional[str] = None,
+        suspend: bool = False,
+        reason_code: str = "",
+        metadata: Tuple[Tuple[str, str], ...] = (),
+    ) -> ManagementResult:
         operation = ManagementOperation.SESSION_MODIFY
         try:
             operator, now = self._operator_and_now(operator, now)
@@ -929,6 +1244,21 @@ class ManagementAPI:
         ``session.terminate``).  The session authority owns teardown
         semantics (terminal states, idempotence, the two-event
         terminating sequence)."""
+        return self._invoke(
+            ManagementOperation.SESSION_TERMINATE,
+            operator,
+            now,
+            lambda: self._op_terminate_session(
+                operator,
+                now=now,
+                session_id=session_id,
+                reason_code=reason_code,
+            ),
+        )
+
+    def _op_terminate_session(
+        self, operator: str, *, now: str, session_id: str, reason_code: str = ""
+    ) -> ManagementResult:
         operation = ManagementOperation.SESSION_TERMINATE
         try:
             operator, now = self._operator_and_now(operator, now)
@@ -1040,6 +1370,40 @@ class ManagementAPI:
         itself is the federation authority's: identity binding, scope
         envelope, and (when policy references are declared) the
         matching tamper-evident ALLOW decision are verified THERE."""
+        return self._invoke(
+            ManagementOperation.FEDERATION_JOIN,
+            operator,
+            now,
+            lambda: self._op_join_federation(
+                operator,
+                now=now,
+                local_domain_id=local_domain_id,
+                peer_domain_id=peer_domain_id,
+                peer_identity_reference=peer_identity_reference,
+                declared_scopes=declared_scopes,
+                valid_from=valid_from,
+                valid_until=valid_until,
+                resource_exposure_refs=resource_exposure_refs,
+                capability_import_refs=capability_import_refs,
+                policy_references=policy_references,
+            ),
+        )
+
+    def _op_join_federation(
+        self,
+        operator: str,
+        *,
+        now: str,
+        local_domain_id: str,
+        peer_domain_id: str,
+        peer_identity_reference: str,
+        declared_scopes: Tuple[str, ...],
+        valid_from: str,
+        valid_until: str,
+        resource_exposure_refs: Tuple[str, ...] = (),
+        capability_import_refs: Tuple[str, ...] = (),
+        policy_references: Tuple[Tuple[str, int], ...] = (),
+    ) -> ManagementResult:
         operation = ManagementOperation.FEDERATION_JOIN
         try:
             operator, now = self._operator_and_now(operator, now)
@@ -1102,6 +1466,26 @@ class ManagementAPI:
         built by the GENUINE WORK-015 thin consumer from the
         relationship's own fields; the federation authority enforces
         that acceptance may only NARROW the proposed scope envelope."""
+        return self._invoke(
+            ManagementOperation.FEDERATION_ACCEPT_PEER,
+            operator,
+            now,
+            lambda: self._op_accept_federation_peer(
+                operator,
+                now=now,
+                relationship_id=relationship_id,
+                scopes=scopes,
+            ),
+        )
+
+    def _op_accept_federation_peer(
+        self,
+        operator: str,
+        *,
+        now: str,
+        relationship_id: str,
+        scopes: Tuple[str, ...] = (),
+    ) -> ManagementResult:
         operation = ManagementOperation.FEDERATION_ACCEPT_PEER
         return self._federation_control(
             operation,
@@ -1135,6 +1519,32 @@ class ManagementAPI:
         ``federation.control`` + policy ``federation.resource-export``).
         Grant discipline (scope vocabulary, envelope containment,
         anti-escalation) is the federation authority's."""
+        return self._invoke(
+            ManagementOperation.FEDERATION_RESOURCE_EXPORT,
+            operator,
+            now,
+            lambda: self._op_export_federation_resource(
+                operator,
+                now=now,
+                relationship_id=relationship_id,
+                scope=scope,
+                valid_from=valid_from,
+                valid_until=valid_until,
+                evidence_refs=evidence_refs,
+            ),
+        )
+
+    def _op_export_federation_resource(
+        self,
+        operator: str,
+        *,
+        now: str,
+        relationship_id: str,
+        scope: str,
+        valid_from: str,
+        valid_until: str,
+        evidence_refs: Tuple[str, ...] = (),
+    ) -> ManagementResult:
         operation = ManagementOperation.FEDERATION_RESOURCE_EXPORT
         return self._federation_control(
             operation,
@@ -1169,6 +1579,26 @@ class ManagementAPI:
         validates determinism, scope grants, and identity binding
         fail-closed -- the management layer never records imports on
         its own."""
+        return self._invoke(
+            ManagementOperation.FEDERATION_RESOURCE_IMPORT,
+            operator,
+            now,
+            lambda: self._op_import_federation_resource(
+                operator,
+                now=now,
+                relationship_id=relationship_id,
+                exchange=exchange,
+            ),
+        )
+
+    def _op_import_federation_resource(
+        self,
+        operator: str,
+        *,
+        now: str,
+        relationship_id: str,
+        exchange: Any,
+    ) -> ManagementResult:
         operation = ManagementOperation.FEDERATION_RESOURCE_IMPORT
         return self._federation_control(
             operation,
@@ -1231,7 +1661,7 @@ class ManagementAPI:
         # Policy gate through the genuine WORK-015 consumer.
         try:
             applicable = self._policy_store.list_applicable(now)
-        except Exception as error:
+        except PolicyError as error:  # expected: malformed instant
             return self._deny(
                 now=now,
                 operation=operation,
@@ -1405,6 +1835,32 @@ class ManagementAPI:
         that the observation is fresh, and that the privacy boundary
         is honored.  Management adds no disclosure capability of its
         own."""
+        return self._invoke(
+            ManagementOperation.TELEMETRY_TOPOLOGY_PROMOTE,
+            operator,
+            now,
+            lambda: self._op_promote_telemetry_observation(
+                operator,
+                now=now,
+                observation_id=observation_id,
+                subject_kind=subject_kind,
+                subject_ref=subject_ref,
+                privacy_scope=privacy_scope,
+                source_disclosure=source_disclosure,
+            ),
+        )
+
+    def _op_promote_telemetry_observation(
+        self,
+        operator: str,
+        *,
+        now: str,
+        observation_id: str,
+        subject_kind: str,
+        subject_ref: str,
+        privacy_scope: str,
+        source_disclosure: str,
+    ) -> ManagementResult:
         operation = ManagementOperation.TELEMETRY_TOPOLOGY_PROMOTE
         try:
             operator, now = self._operator_and_now(operator, now)
@@ -1433,7 +1889,7 @@ class ManagementAPI:
                 evaluation_instant=now,
                 extensions=(descriptor,),
             )
-        except Exception as error:
+        except PolicyError as error:  # expected: context validation
             return self._deny(
                 now=now,
                 operation=operation,
@@ -1521,6 +1977,34 @@ class ManagementAPI:
         itself (unknown roles, duplicate grants, revoking inactive
         assignments all fail closed) and its history is append-only
         and auditable."""
+        return self._invoke(
+            ManagementOperation.MANAGEMENT_ROLE_ASSIGN,
+            operator,
+            now,
+            lambda: self._op_assign_role(
+                operator,
+                now=now,
+                target_operator=target_operator,
+                role_id=role_id,
+                revoke=revoke,
+                reason=reason,
+                valid_from=valid_from,
+                valid_until=valid_until,
+            ),
+        )
+
+    def _op_assign_role(
+        self,
+        operator: str,
+        *,
+        now: str,
+        target_operator: str,
+        role_id: str,
+        revoke: bool = False,
+        reason: str = "",
+        valid_from: str = "",
+        valid_until: str = "",
+    ) -> ManagementResult:
         operation = ManagementOperation.MANAGEMENT_ROLE_ASSIGN
         try:
             operator, now = self._operator_and_now(operator, now)

@@ -77,7 +77,32 @@ operator request
                         authority verdict
   -> [4] audit append   exactly one tamper-evident record per call —
                         allowed OR denied (P11)
+
+the WHOLE flow runs inside one outer operation boundary
+(``ManagementAPI._invoke``): an exception escaping any step becomes
+exactly one ``management.failed`` audit record — never an unaudited
+exception, never a success, never a second record when the outcome
+was already audited
 ```
+
+The outer boundary is the acceptance invariant's single enforcement
+point. Every public operation method is a thin wrapper delegating to
+``_invoke``, which runs the operation body and guarantees one record
+per invocation through per-invocation (thread-local) accounting:
+if the body appended its record before a fault, the failed envelope
+references that record and nothing further is appended (no double
+audit); if it appended nothing, the boundary appends exactly one
+``failed`` record using best-effort operator/instant rendering, so
+even unrenderable request material cannot prevent the record. If the
+audit ledger itself cannot append, the failure cannot be recorded
+and the exception propagates loudly — a broken audit authority is
+never masked as a clean result. Expected, documented denial paths
+(RBAC / policy / invalid input / authority rejection) keep their own
+precise outcome vocabulary; expected authority error types
+(``PolicyError``, ``RoutingError``, ``TelemetryError``,
+``FederationError``, ``ManagementError``) are converted at the point
+of use, while anything unexpected reaches the boundary and becomes
+``management.failed``.
 
 ## Two-key authorization
 
@@ -111,15 +136,21 @@ the UNION across active assignments at an injected instant. A role is
 never an identity (spec/architecture.md section 4): role ids are
 structurally disjoint from the NodeID grammar (no colons, no
 `adcos:` prefix family). Initial assignments are constructor-injected
-deployment configuration; every later mutation flows through the
-management API behind the policy-gated `management.role-assign`
-operation (the deliberate WORK-030 policy vocabulary extension, the
-WORK-026 amendment precedent — deny-by-default like every privileged
-operation).
+deployment configuration — and are integrity-validated at that
+authoritative construction boundary: every initial event must carry
+the event id its own content derives (`event_id ==
+derive_role_event_id(event)`; a forged identity fails closed, the
+same tamper-evidence the wire form enforces). Every later mutation
+flows through the management API behind the policy-gated
+`management.role-assign` operation (the deliberate WORK-030 policy
+vocabulary extension, the WORK-026 amendment precedent —
+deny-by-default like every privileged operation).
 
 ## Audit (immutable + tamper-evident)
 
-Every API call produces exactly one `AuditRecord`. Tamper evidence is
+Every API call produces exactly one `AuditRecord` — allowed, denied,
+authority-rejected, or (through the outer boundary) failed by an
+unexpected internal fault. Tamper evidence is
 a sha256 hash chain: `record_id_n = sha256(record_id_{n-1} + "|" +
 canonical(content_n))` — every record covers its own content AND the
 entire prefix chain. `verify_chain` recomputes mechanically: in-place

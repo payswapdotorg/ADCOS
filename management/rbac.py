@@ -149,8 +149,14 @@ class RoleAssignmentStore:
     """The append-only role-assignment (RBAC) authority.
 
     Construct with a frozen role catalog and optional deployment-time
-    initial assignment events.  All state changes thereafter are
-    append-only grant/revoke events.
+    initial assignment events.  Initial events are integrity-checked
+    at this authoritative construction boundary: each must reference
+    a catalog role AND carry the event id its own content derives
+    (``event_id == derive_role_event_id(event)``) -- a valid-looking
+    event with a forged identity fails closed instead of entering
+    closure-owned history.  All state changes thereafter are
+    append-only grant/revoke events whose ids are minted from their
+    content by this store, never caller-supplied.
     """
 
     def __init__(
@@ -160,8 +166,16 @@ class RoleAssignmentStore:
     ) -> None:
         validate_role_catalog(roles)
         role_ids = frozenset(role.role_id for role in roles)
-        # Validate initial events against the catalog BEFORE any
-        # closure state exists (fail-closed construction).
+        # Validate initial events against the catalog AND their own
+        # content-derived identity BEFORE any closure state exists
+        # (fail-closed construction).  An initial event whose
+        # event_id does not recompute from its content is a FORGED
+        # identity: the RBAC history is an append-only authority and
+        # event identity is explicitly content-derived, so the
+        # constructor must not admit an internally inconsistent
+        # authoritative event (the same tamper-evidence the
+        # serialization layer enforces on the wire form -- here at
+        # the authoritative construction boundary).
         for event in initial_events:
             if not isinstance(event, RoleAssignmentEvent):
                 raise ManagementError(
@@ -174,6 +188,13 @@ class RoleAssignmentStore:
                     ManagementReasonCode.INVALID_INPUT,
                     "initial event references role %r which is not in "
                     "the catalog" % event.role_id,
+                )
+            if event.event_id != derive_role_event_id(event):
+                raise ManagementError(
+                    ManagementReasonCode.INVALID_INPUT,
+                    "initial event id %r does not recompute from its "
+                    "content (forged event identity; construction "
+                    "fails closed)" % (event.event_id,),
                 )
 
         history: _History = tuple(initial_events)
