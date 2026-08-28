@@ -987,6 +987,24 @@ def case_19_no_core_leakage() -> Result:
         # or serialization internals.
         if entry == "agent":
             continue
+        # WORK-034 amendment (deliberate, flagged in its PR): the
+        # Raspberry Pi edge-gateway family is a dependency-graph-
+        # sanctioned DOWNSTREAM consumer of telemetry TRANSITIVELY:
+        # its frozen hard dependency WORK-033 (the Linux reference
+        # agent) declares WORK-026 among its frozen dependencies
+        # (spec/dependency-graph.md path W026 --> W033 --> W034), and
+        # the WORK-034 boundary requires pressure observations to be
+        # genuine W026 records under the frozen vocabulary and
+        # provenance discipline (MODELED scheduler pressure labeled
+        # as such, never host measurements).  Its telemetry usage is
+        # pinned below to the DATA surface only: telemetry.model (the
+        # frozen subject-kind/source-class/metric vocabularies for
+        # constructing genuine observations) and telemetry.store
+        # (the genuine record_observation ingest through the agent's
+        # own telemetry authority).  It never touches the
+        # validation, authorization, or serialization internals.
+        if entry == "edge":
+            continue
         for base, _dirs, files in os.walk(os.path.join(_ROOT, entry)):
             for filename in sorted(files):
                 if not filename.endswith(".py"):
@@ -1011,6 +1029,7 @@ def case_19_no_core_leakage() -> Result:
         "management": ("model", "store", "errors"),
         "simulator": ("model", "store", "errors"),
         "agent": ("model", "store"),
+        "edge": ("model", "store"),
     }
     for family, allowed_modules in _ALLOWED.items():
         for filename in sorted(os.listdir(os.path.join(_ROOT, family))):
@@ -1032,7 +1051,7 @@ def case_19_no_core_leakage() -> Result:
     return ok(
         name,
         "no core family imports telemetry; energy/upgrade/management/"
-        "simulator consume the pinned data surface only",
+        "simulator/agent/edge consume the pinned data surface only",
     )
 
 
