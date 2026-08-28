@@ -37,15 +37,18 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime, timezone
-from typing import List, Optional, Tuple
+from typing import Any, List, Mapping, Optional, Tuple
 
 from protocol.canonicalization import CanonicalizationError, canonical_json_bytes
 from protocol.temporal import TemporalError, parse_instant
 
 from .conflict import resolve_conflicts
+from .invocation import invocation_binding_from_context
+from .promotion import promotion_binding_from_context
 from .model import (
     DecisionCode,
     Effect,
+    Operation,
     PolicyContext,
     PolicyDecision,
     PolicyError,
@@ -190,6 +193,23 @@ def _compute_decision_id(decision_content: dict) -> str:
 # Public engine entry point
 # --------------------------------------------------------------------------
 
+def _deny_bound_extensions(
+    context: PolicyContext,
+) -> Tuple[Mapping[str, Any], ...]:
+    """Born-bound deny decisions: a DEFAULT_DENY for a bound
+    operation still carries its derived binding (the scope the rules
+    were evaluated for), so even denials are scope-attributable.
+    Derivation failure here cannot occur for well-formed evaluation
+    flow (the binding was already derived fail-closed in
+    :meth:`PolicyEngine.evaluate`); the call mirrors the previous
+    inline service.invoke behavior exactly."""
+    if context.operation == Operation.SERVICE_INVOKE:
+        return (invocation_binding_from_context(context),)
+    if context.operation == Operation.TELEMETRY_TOPOLOGY_PROMOTE:
+        return (promotion_binding_from_context(context),)
+    return ()
+
+
 class PolicyEngine:
     """The pure deterministic policy evaluation engine.
 
@@ -255,6 +275,60 @@ class PolicyEngine:
             )
 
         # ----------------------------------------------------------------
+        # Invocation binding (PR #26 blocker 2 remediation): for the
+        # frozen ``service.invoke`` operation the decision is BORN
+        # bound to the exact invocation context.  The composition
+        # root declares the (service, session, caller, tenant) scope
+        # as an opaque descriptor inside ``context.extensions``; the
+        # derivation (policy.invocation) enforces the strict schema
+        # and the mirror checks against the first-class fields the
+        # rules evaluate, and the resulting binding travels INSIDE
+        # the decision's digest-covered ``extensions``.  A
+        # service.invoke context without a valid descriptor is
+        # malformed for that operation and fails closed HERE -- the
+        # engine never emits an unbound service.invoke decision, and
+        # no downstream layer possesses a binding-construction
+        # capability (the authority boundary the PR #26 review
+        # required).
+        # ----------------------------------------------------------------
+        bound_extensions: Tuple[Mapping[str, Any], ...] = ()
+        if context.operation == Operation.SERVICE_INVOKE:
+            try:
+                bound_extensions = (
+                    invocation_binding_from_context(context),
+                )
+            except PolicyError as error:
+                return PolicyEvaluationResult(
+                    ok=False,
+                    code=DecisionCode.INVALID_POLICY,
+                    detail="service.invoke context carries no valid "
+                           "invocation binding: %s" % error.detail,
+                    decision=None,
+                )
+        # ----------------------------------------------------------------
+        # WORK-026 promotion binding ("policy-controlled authority"):
+        # the frozen telemetry.topology-promote operation is BORN
+        # bound to the exact promotion scope (observation, subject
+        # kind, subject ref), exactly like service.invoke above -- the
+        # engine never emits an unbound promotion decision, and the
+        # telemetry layer re-derives the authorized scope from the
+        # stored observation (verification + extraction ONLY).
+        # ----------------------------------------------------------------
+        if context.operation == Operation.TELEMETRY_TOPOLOGY_PROMOTE:
+            try:
+                bound_extensions = bound_extensions + (
+                    promotion_binding_from_context(context),
+                )
+            except PolicyError as error:
+                return PolicyEvaluationResult(
+                    ok=False,
+                    code=DecisionCode.INVALID_POLICY,
+                    detail="telemetry.topology-promote context carries "
+                           "no valid promotion binding: %s" % error.detail,
+                    decision=None,
+                )
+
+        # ----------------------------------------------------------------
         # Resolve the injected evaluation instant. The engine never
         # reads the wall clock; if the instant is malformed or absent,
         # the engine produces a FAIL_CLOSED decision (ok=True -- the
@@ -271,6 +345,7 @@ class PolicyEngine:
                 policy_set=policy_set,
                 context=context,
                 conflict_trace=(),
+                extensions=bound_extensions,
             )
             return PolicyEvaluationResult(
                 ok=True,
@@ -290,6 +365,7 @@ class PolicyEngine:
                 policy_set=policy_set,
                 context=context,
                 conflict_trace=(),
+                extensions=bound_extensions,
             )
             return PolicyEvaluationResult(
                 ok=True,
@@ -319,6 +395,7 @@ class PolicyEngine:
                 policy_set=policy_set,
                 context=context,
                 conflict_trace=(),
+                extensions=bound_extensions,
             )
             return PolicyEvaluationResult(
                 ok=True,
@@ -378,6 +455,7 @@ class PolicyEngine:
                     policy_set=policy_set,
                     context=context,
                     conflict_trace=tuple(predicate_trace),
+                    extensions=bound_extensions,
                 )
                 return PolicyEvaluationResult(
                     ok=True,
@@ -409,6 +487,7 @@ class PolicyEngine:
                 policy_set=policy_set,
                 context=context,
                 conflict_trace=tuple(predicate_trace),
+                extensions=bound_extensions,
             )
             return PolicyEvaluationResult(
                 ok=True,
@@ -432,6 +511,7 @@ class PolicyEngine:
                 policy_set=policy_set,
                 context=context,
                 conflict_trace=tuple(conflict_trace) + tuple(predicate_trace),
+                extensions=bound_extensions,
             )
             return PolicyEvaluationResult(
                 ok=True,
@@ -453,6 +533,7 @@ class PolicyEngine:
                 policy_set=policy_set,
                 context=context,
                 conflict_trace=tuple(conflict_trace) + tuple(predicate_trace),
+                extensions=bound_extensions,
             )
             return PolicyEvaluationResult(
                 ok=True,
@@ -474,6 +555,7 @@ class PolicyEngine:
             policy_set=policy_set,
             context=context,
             conflict_trace=tuple(conflict_trace) + tuple(predicate_trace),
+            extensions=bound_extensions,
         )
         return PolicyEvaluationResult(
             ok=True,
@@ -505,6 +587,7 @@ class PolicyEngine:
             policy_set=policy_set,
             context=context,
             conflict_trace=conflict_trace,
+            extensions=_deny_bound_extensions(context),
         )
 
     # ------------------------------------------------------------------
@@ -519,10 +602,15 @@ class PolicyEngine:
         policy_set: PolicySet,
         context: PolicyContext,
         conflict_trace: Tuple[str, ...],
+        extensions: Tuple[Mapping[str, Any], ...] = (),
     ) -> PolicyDecision:
         # Construct a placeholder decision (decision_id filled in
         # below). dataclass(frozen=True) so we cannot mutate; construct
         # with a placeholder and then re-construct with the real digest.
+        # ``extensions`` carries the invocation binding for
+        # service.invoke evaluations (born bound; PR #26 blocker 2)
+        # and is covered by the content-derived digest like every
+        # other decision field.
         placeholder = PolicyDecision(
             decision_id="placeholder",
             effect=effect,
@@ -533,6 +621,7 @@ class PolicyEngine:
             policy_set_version=policy_set.version,
             evaluation_instant=context.evaluation_instant,
             conflict_trace=conflict_trace,
+            extensions=extensions,
         )
         try:
             decision_id = _compute_decision_id(placeholder.content_dict())
@@ -550,6 +639,7 @@ class PolicyEngine:
                 policy_set_version=policy_set.version,
                 evaluation_instant=context.evaluation_instant,
                 conflict_trace=conflict_trace,
+                extensions=extensions,
             )
         return PolicyDecision(
             decision_id=decision_id,
@@ -561,6 +651,7 @@ class PolicyEngine:
             policy_set_version=policy_set.version,
             evaluation_instant=context.evaluation_instant,
             conflict_trace=conflict_trace,
+            extensions=extensions,
         )
 
 

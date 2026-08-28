@@ -81,3 +81,55 @@ jobs:
 
       - name: Run 5G RAN integration boundary tests
         run: python3 tools/ran_selftest.py
+
+      - name: Run Wi-Fi/non-3GPP access adapter tests
+        run: python3 tools/wifi_selftest.py
+
+      - name: Run backhaul adapter family tests
+        run: python3 tools/backhaul_selftest.py
+
+      - name: Run mesh/relay adapter family tests
+        run: python3 tools/mesh_selftest.py
+
+      - name: Run distributed-core adapter family tests
+        run: python3 tools/distcore_selftest.py
+
+      - name: Run service registry/edge compute tests
+        run: python3 tools/service_selftest.py
+
+      - name: Run telemetry/observability tests
+        run: python3 tools/telemetry_selftest.py
+
+      - name: Run energy/resilience tests
+        run: python3 tools/energy_selftest.py
+
+      - name: Run cross-cutting security hardening tests
+        run: python3 tools/security_selftest.py
+
+      - name: Run upgrade/rollback/compatibility manager tests
+        run: python3 tools/upgrade_selftest.py
+
+      # Management and simulator frozen-surface cases historically inspect
+      # the PR delta. That delta does not exist on merged main, so those
+      # comprehensive batteries remain mandatory on pull requests; main
+      # validates their committed CI wiring directly instead of requiring a
+      # nonexistent main-vs-main diff.
+      - name: Run management API tests
+        if: github.event_name == 'pull_request'
+        run: python3 tools/management_selftest.py
+
+      - name: Run network/behavior simulator tests
+        if: github.event_name == 'pull_request'
+        run: python3 tools/simulator_selftest.py
+
+      - name: Verify management/simulator CI wiring on main
+        if: github.event_name == 'push'
+        run: |
+          grep -Fq 'python3 tools/management_selftest.py' .github/workflows/spec-check.yml
+          grep -Fq 'python3 tools/simulator_selftest.py' .github/workflows/spec-check.yml
+
+      - name: Run protocol/adapter conformance suite tests
+        run: python3 tools/conformance_selftest.py
+
+      - name: Run Linux reference agent tests
+        run: python3 tools/agent_selftest.py

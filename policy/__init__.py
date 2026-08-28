@@ -18,6 +18,13 @@ Public API:
 - :class:`PolicyStore` -- atomic publish / withdraw / snapshot
   sequencing (policy-owned version semantics, distinct from
   resource/topology sequences)
+- :class:`PolicyRevalidationAuthority`, :class:`RevalidationReceipt`,
+  :class:`RevalidationResult` -- the authority-owned revalidation
+  primitive (PR #28 review B2 round 3): a receipt proving a decision
+  was freshly evaluated by a SPECIFIC online authority instance is
+  minted exclusively by that instance's mint ledger and verified only
+  against it -- a caller-supplied object is never proof of
+  reauthorization
 - :func:`rule_from_mapping`, :func:`policy_set_from_mapping`,
   :func:`context_from_mapping`, :func:`policy_decision_canonical_bytes`,
   :func:`policy_set_canonical_bytes` -- wire-form helpers (WORK-003
@@ -35,6 +42,16 @@ from __future__ import annotations
 
 from .conflict import resolve_conflicts
 from .evaluation import PolicyEngine, evaluate
+from .invocation import (
+    INVOCATION_BINDING_KIND,
+    INVOCATION_BINDING_KEYS,
+    invocation_binding_from_context,
+)
+from .promotion import (
+    PROMOTION_BINDING_KIND,
+    PROMOTION_BINDING_KEYS,
+    promotion_binding_from_context,
+)
 from .model import (
     Condition,
     DecisionCode,
@@ -53,6 +70,11 @@ from .model import (
     is_valid_content_digest,
 )
 from .predicates import PredicateKind, PredicateResult, evaluate_condition
+from .revalidation import (
+    PolicyRevalidationAuthority,
+    RevalidationReceipt,
+    RevalidationResult,
+)
 from .serialization import (
     condition_from_mapping,
     context_from_mapping,
@@ -89,6 +111,17 @@ __all__ = [
     "evaluate_condition",
     # Conflict resolution
     "resolve_conflicts",
+    # Invocation binding (the policy authority's born-bound scope
+    # derivation for service.invoke decisions; PR #26 blocker 2)
+    "INVOCATION_BINDING_KIND",
+    "INVOCATION_BINDING_KEYS",
+    "invocation_binding_from_context",
+    # Promotion binding (the policy authority's born-bound scope
+    # derivation for telemetry.topology-promote decisions; WORK-026
+    # "policy-controlled authority")
+    "PROMOTION_BINDING_KIND",
+    "PROMOTION_BINDING_KEYS",
+    "promotion_binding_from_context",
     # Validation
     "validate_context",
     "validate_policy_set",
@@ -96,6 +129,11 @@ __all__ = [
     # Evaluation
     "PolicyEngine",
     "evaluate",
+    # Authority-owned revalidation (the PR #28 review B2 round-3
+    # boundary; consumed by the WORK-027 offline policy cache)
+    "PolicyRevalidationAuthority",
+    "RevalidationReceipt",
+    "RevalidationResult",
     # Store
     "PolicyStore",
     # Serialization

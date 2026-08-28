@@ -42,8 +42,8 @@ Closed sets (adding a member is a deliberate schema change, never a silent exten
 - **`Effect`**: `ALLOW`, `DENY`, `REQUIRE_REVIEW` (third outcome permitted by the frozen design; MUST NOT silently become ALLOW).
 - **`DecisionCode`**: `ALLOW`, `DENY`, `DEFAULT_DENY`, `FAIL_CLOSED`, `POLICY_EXPIRED`, `POLICY_NOT_YET_VALID`, `MISSING_FACT`, `UNSUPPORTED_PREDICATE`, `CONFLICT`, `INVALID_SUBJECT`, `INVALID_POLICY`. The engine MUST NOT collapse these into a generic `false` result (deny-by-default auditability).
 - **`PolicyDomain`**: `identity`, `resource`, `locality`, `federation`, `privacy`, `emergency`, `service`, `energy`, `trust` (9 frozen policy dimensions; trust is an explicit INPUT, NOT a computed score — see LOCK-022).
-- **`Operation`**: `resource.reserve`, `resource.consume`, `resource.release`, `session.create`, `session.modify`, `session.terminate`, `federation.join`, `federation.accept-peer`, `federation.resource-export`, `federation.resource-import`, `service.invoke`, `privacy.requirement-override`, `emergency.preempt`. Policy-owned action identifiers, never 5G/Wi-Fi/vendor/cell/route vocabulary.
-- **`Privileged`**: structural classification — all 13 frozen operations are PRIVILEGED; there is currently no non-privileged operation in the frozen set. A future ACR adding one (e.g. a read-only status query) MUST add it to `NON_PRIVILEGED` explicitly, never inferred from naming.
+- **`Operation`**: `resource.reserve`, `resource.consume`, `resource.release`, `session.create`, `session.modify`, `session.terminate`, `federation.join`, `federation.accept-peer`, `federation.resource-export`, `federation.resource-import`, `service.invoke`, `privacy.requirement-override`, `emergency.preempt`, plus two deliberate, flagged vocabulary extensions: `telemetry.topology-promote` (WORK-026 — the only operation under which telemetry may be promoted toward topology authority) and `management.role-assign` (WORK-030 — the only operation under which the management plane's RBAC state may be mutated; role-assignment administration grants authority, so it is privileged by construction). Policy-owned action identifiers, never 5G/Wi-Fi/vendor/cell/route vocabulary.
+- **`Privileged`**: structural classification — all 15 frozen operations are PRIVILEGED (13 original + the WORK-026 `telemetry.topology-promote` and WORK-030 `management.role-assign` extensions); there is currently no non-privileged operation in the frozen set. A future ACR adding one (e.g. a read-only status query) MUST add it to `NON_PRIVILEGED` explicitly, never inferred from naming.
 - **`PredicateKind`**: `subject-equals`, `credential-active`, `resource-owner`, `resource-kind`, `locality-equals`, `federation-domain`, `privacy-required`, `emergency-true`, `service-class`, `energy-reserve-gte`, `trust-min-class`, `capability-required`, `topology-evidence-present`, `intent-present` (14 frozen predicates).
 
 Rules are DATA. A `Condition` is `(predicate, arguments)` — it MUST NOT carry executable code, Python expressions, lambdas, callables, or imported policy languages. The engine dispatches on `predicate` to a pure matcher in `policy/predicates.py`. Unknown required predicates MUST fail explicitly (rule 8).
@@ -144,6 +144,49 @@ The `PolicyStore` enforces:
 
 Policy-set version sequencing is a policy-owned concept. It MUST NOT be conflated with WORK-008 resource-account versions or WORK-007 topology sequences (rule 9).
 
+## Authority-owned revalidation (receipts)
+
+Added by the PR #28 review B2 round-3 correction (consumed by the
+WORK-027 offline policy cache; a deliberate, review-mandated surface
+extension of WORK-010):
+
+```text
+PolicyRevalidationAuthority(policy_set)   # the ONLINE authority instance
+  .revalidate(context)                    # FRESH engine evaluation + minted receipt
+  .verify_revalidation_receipt(r, d)      # the ONLY receipt validity check
+```
+
+A `PolicyDecision` is pure data with a content-derived digest: `decision_id ==
+sha256(canonical_bytes)` proves content integrity, NEVER provenance — anyone
+can forge a new self-consistent ALLOW with any `evaluation_instant`.  The
+revalidation receipt closes that hole architecturally: a verifying
+`(decision, receipt)` pair is obtainable ONLY by submitting a context to the
+specific authority instance, which evaluates the context itself and records
+the mint in its internal hash-chained ledger.  Verification is a
+ledger-membership check against that same instance — a fabricated receipt, a
+receipt minted by a different instance, and a genuine receipt paired with the
+wrong decision all fail.  The receipt id is derived over the receipt content
+PLUS the authority-internal chain root, so it is not computable from the
+public fields alone.  All clocks are injected; the ledger is a pure function
+of the mint sequence (deterministic).
+
+The ISSUANCE boundary is mechanically closed (PR #28 review B2 round 4; the
+accepted WORK-013 multipath authority-seam precedent): the ledger (an
+IMMUTABLE tuple), the sequence, the chain root, the engine, and the
+policy-set snapshot are CLOSURE-OWNED — never class/instance attributes,
+never module globals, never a mutable collection — and the mint path is
+INLINE CODE in the genuine `revalidate` frame, so no `_mint` callable exists
+at all.  An attacker holding a GENUINE authority instance can neither invoke
+issuance (there is no callable to reach), manufacture ledger membership
+(there is no attribute or mutable collection to write — decoy `_minted`
+attributes are never consulted), extract an issuance capability from closure
+cells (they hold immutable data only), nor neuter a consumer's gate
+(consumers such as the WORK-027 offline cache capture the verify capability
+at injection time).
+
+The engine itself is unchanged: `PolicyEngine.evaluate` stays pure and
+stateless; the authority only wraps it with the mint ledger.
+
 ## Secret isolation
 
 Policy documents, contexts, and decisions must NEVER carry: private keys, secret keys, passwords, subscriber secrets, credential secrets, session encryption secrets, raw bearer tokens. The `policy/validation.py` recursive `_reject_secret_material` guard rejects any field name or sequence item matching the `_SECRET_HINTS` list (LOCK-023 conventions, kept in sync with WORK-008/WORK-009). Diagnostics MUST NOT echo secret material on failures — only the field name is reported.
@@ -188,6 +231,12 @@ policy/
                      #   cross-checks
   evaluation.py      # PolicyEngine.evaluate(): pure, deterministic,
                      #   injected instant, no wall-clock, no state mutation
+  revalidation.py   # PolicyRevalidationAuthority: the authority-owned
+                     #   revalidation boundary (PR #28 review B2 rounds
+                     #   3-4) -- fresh evaluation + closure-owned
+                     #   mint-ledger receipts (inline mint path, NO
+                     #   callable issuance surface); the ONLY receipt
+                     #   validity check is the authority itself
   serialization.py  # rule_from_mapping / policy_set_from_mapping /
                      #   context_from_mapping / canonical-bytes helpers
                      #   (WORK-003 machinery)
