@@ -139,3 +139,6 @@ jobs:
 
       - name: Run Android mobile agent tests
         run: python3 tools/mobile_selftest.py
+
+      - name: Run Network-in-a-Box appliance tests
+        run: python3 tools/appliance_selftest.py

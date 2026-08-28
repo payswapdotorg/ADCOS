@@ -148,6 +148,7 @@ _EXPECTED_TOOLS = [
     "security_selftest.py", "upgrade_selftest.py", "management_selftest.py",
     "simulator_selftest.py", "conformance_selftest.py",
     "agent_selftest.py", "edge_selftest.py", "mobile_selftest.py",
+    "appliance_selftest.py",
 ]
 
 #: The frozen edge public API surface (case_45).
@@ -2329,10 +2330,18 @@ def case_47_pr_delta_shape(results: List[Result]) -> None:
         # PR delta shape must admit the successor's files.
         "tools/mobile_selftest.py",
         "docs/WORK-035-evidence.md",
+        # DAG-sanctioned allowlist amendment (W034 -> W036): the
+        # appliance battery follows this one in work-item order (the
+        # appliance composes the edge gateway), and its PR delta
+        # shape must admit the successor's files.
+        "tools/appliance_selftest.py",
+        "docs/WORK-036-handoff.md",
+        "docs/WORK-036-evidence.md",
     }
     unexpected = [
         c for c in changed
         if not c.startswith("edge/") and not c.startswith("mobile/")
+        and not c.startswith("appliance/")
         and c not in allowed_exact and not c.startswith(".github/")
     ]
     if unexpected:
@@ -2342,8 +2351,18 @@ def case_47_pr_delta_shape(results: List[Result]) -> None:
         ["git", "diff", "origin/main", "--", ".github/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
-    if "edge_selftest.py" not in workflow_delta.stdout:
-        results.append(fail(name, ".github delta does not include the edge CI step"))
+    # The wiring change must be additive for the edge step: the edge
+    # CI step stays present and no delta line removes it.  (A
+    # successor work item may append its own step further down the
+    # workflow, so the edge step need not appear inside the diff
+    # context -- only never be weakened.  W034 -> W036 amendment,
+    # the W033 -> W035 precedent.)
+    removed_edge_step = any(
+        line.startswith("-") and "edge_selftest.py" in line
+        for line in workflow_delta.stdout.splitlines()
+    )
+    if removed_edge_step or "python3 tools/edge_selftest.py" not in workflow:
+        results.append(fail(name, ".github delta weakens or drops the edge CI step"))
         return
     results.append(ok(
         name,
