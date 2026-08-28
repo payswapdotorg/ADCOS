@@ -1969,9 +1969,18 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
         ["git", "diff", "origin/main", "--", ".github/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
-    if "agent_selftest.py" not in workflow_delta.stdout:
+    # The wiring change must be additive for the agent step: the agent
+    # CI step stays present and no delta line removes it.  (A successor
+    # work item may append its own step further down the workflow, so
+    # the agent step need not appear inside the diff context -- only
+    # never be weakened.  W033 -> W035 amendment.)
+    removed_agent_step = any(
+        line.startswith("-") and "agent_selftest.py" in line
+        for line in workflow_delta.stdout.splitlines()
+    )
+    if removed_agent_step or "python3 tools/agent_selftest.py" not in workflow:
         results.append(fail(
-            name, ".github delta does not include the agent CI step"
+            name, ".github delta weakens or drops the agent CI step"
         ))
         return
     allowed_tools = {

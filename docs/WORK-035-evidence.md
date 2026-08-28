@@ -94,17 +94,22 @@ build wires the port to a WORK-006 service constructed with the app's identity m
 - The journal is append-only with content-derived event ids and stable digests; whole
   scenarios are one replayable digest (`mobile_digest`).
 
-## Flagged battery amendments (both narrowing, DAG-cited)
+## Flagged battery amendments (all narrowing, DAG-cited)
 
 1. `tools/agent_selftest.py` case_40 allowlist += `tools/mobile_selftest.py` +
    `docs/WORK-035-evidence.md` (W033 → W035: the mobile battery extends the agent
    battery); `_EXPECTED_TOOLS` += the mobile battery.
-2. `tools/edge_selftest.py` case_47 `allowed_exact` += the mobile battery + evidence
+2. `tools/agent_selftest.py` case_40 `.github` delta check made removal-aware
+   (W033 → W035): the successor's appended CI step no longer sits adjacent to the
+   agent step, so the old context-line heuristic ("the agent step must appear inside
+   the diff context") no longer holds. The invariant is unchanged and stronger: the
+   agent CI step stays present in the workflow and no delta line removes it.
+3. `tools/edge_selftest.py` case_47 `allowed_exact` += the mobile battery + evidence
    doc and the `mobile/` prefix (W034 → W035: the mobile battery follows the edge
    battery in work-item order); `_EXPECTED_TOOLS` += the mobile battery.
 
 No frozen `spec/` file was modified; `agent/` and `edge/` sources are untouched (only
-the two batteries' sanctioned allowlists above).
+the sanctioned battery amendments above).
 
 ## Local verification evidence
 
