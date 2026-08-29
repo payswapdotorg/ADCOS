@@ -60,14 +60,35 @@ observes and journals, with exact hand-verified counts:
 - **LOCK-012 local-first**: relationships with partitioned peers remain
   queryable with full history, including across link partitions (both
   endpoint stores stay queryable).
-- **Revocation propagation**: convergence observed in EXPLICIT rounds
+- **Revocation propagation (REAL hop-by-hop relay delivery)**: each
+  declaration travels from the revoking domain to its peer store along
+  the deterministic BFS shortest path over the up delivery subgraph —
+  one hop per explicit round, riding a WORK-003 envelope forwarded
+  verbatim (LOCK-014 opaque forward; every hop's receipt is the real
+  `protocol.accept` classification `unknown-optional-forwarded`,
+  journaled per hop), and applied ONLY at the final recipient through
+  the real `apply_exchange`. Convergence observed in EXPLICIT rounds
   that always equal the pre-computed graph-distance bound (1 round
-  direct; exactly 5 rounds for the LINK-partitioned relay around a
-  6-ring); idempotent re-delivery (`replayed` verdicts, unchanged
-  digests); predictable scope closure (`relationship-terminal`) at
-  every converged store; partitioned peers honestly `unreached` with
-  their stores digest-identical to a no-revocation world (no fabricated
+  direct; exactly 5 real hops for the LINK-partitioned relay around a
+  6-ring: `0 -> 5 -> 4 -> 3 -> 2 -> 1`); the pure relays' stores
+  (2, 3, 4) are byte-identical across the propagation and the transit
+  at relay/peer 5 leaves zero protocol state (A/B digest proof);
+  idempotent re-delivery (`replayed` verdicts, unchanged digests);
+  predictable scope closure (`relationship-terminal`) at every
+  converged store; partitioned peers honestly `unreached` with their
+  stores digest-identical to a no-revocation world (no fabricated
   convergence); post-recovery convergence exactly at the healing tick.
+- **Relay sabotage fails the convergence proof (the discriminating
+  negative)**: a black-holed relay on the delivery path (up domain, up
+  links, forwarding plane silently dropping transiting declarations)
+  stalls the declaration mid-path; the pre-computed bound predicts 5
+  hops, the observation diverges, and `scale.convergence-mismatch`
+  fails closed with the stall position — the recipient's relationship
+  stays ESTABLISHED (digest-identical to pre-issue state) while the
+  authoritative store holds the honest divergent REVOKED state. A
+  teleporting (direct-application) implementation would report
+  `5/5 matched` here; the case exists to catch exactly that defect
+  class (correction cycle 1, blocker W039-001).
 - **Determinism**: fresh runs byte-identical; `PYTHONHASHSEED`
   1/99/31337 reproduce the run digest; reversed plan/scope tuples
   produce identical spec and run digests; TRUE replay verification

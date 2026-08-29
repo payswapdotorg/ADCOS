@@ -53,7 +53,7 @@ class PartitionState:
     links are currently unreachable (pure harness state; the stores
     know nothing about it).
 
-    Two partition granularities, both delivery-plane only:
+    Three delivery-plane fault granularities (never protocol state):
 
     - ``failed`` domains -- whole-domain failure (the failure-DOMAIN
       unit): nothing is delivered to or from the domain, and its own
@@ -61,11 +61,21 @@ class PartitionState:
     - ``failed_edges`` -- link partitions between two UP domains (the
       W031 link-down discipline): the pair's relationship remains
       fully queryable at both stores (local-first); only delivery
-      between them is withheld, forcing propagation through relays.
+      between them is withheld, forcing propagation through relays;
+    - ``blackholed`` relays -- an UP domain with a broken FORWARDING
+      plane: it still receives deliveries addressed to itself (its
+      links are up, it is not failed), but any declaration TRANSITING
+      through it is silently dropped.  This is the delivery-plane
+      sabotage the battery injects to prove revocation convergence is
+      genuinely hop-by-hop: a black hole on the delivery path stalls
+      the declaration mid-path and the convergence proof fails closed
+      -- a teleporting (direct-application) implementation would
+      falsely "converge" and the discriminating case catches it.
     """
 
     _failed: FrozenSet[int] = field(default_factory=frozenset)
     _failed_edges: FrozenSet[Tuple[int, int]] = field(default_factory=frozenset)
+    _blackholed: FrozenSet[int] = field(default_factory=frozenset)
 
     @property
     def failed(self) -> FrozenSet[int]:
@@ -75,8 +85,15 @@ class PartitionState:
     def failed_edges(self) -> FrozenSet[Tuple[int, int]]:
         return self._failed_edges
 
+    @property
+    def blackholed(self) -> FrozenSet[int]:
+        return self._blackholed
+
     def is_up(self, index: int) -> bool:
         return index not in self._failed
+
+    def is_blackholed(self, index: int) -> bool:
+        return index in self._blackholed
 
     def fail(self, indices: Tuple[int, ...]) -> None:
         self._failed = self._failed | frozenset(indices)
@@ -95,6 +112,14 @@ class PartitionState:
             (a, b) if a < b else (b, a) for a, b in edges
         }
         self._failed_edges = self._failed_edges - frozenset(normalized)
+
+    def blackhole_relays(self, indices: Tuple[int, ...]) -> None:
+        """Sabotage the FORWARDING plane of UP relays (delivery-plane
+        only; see the class docstring)."""
+        self._blackholed = self._blackholed | frozenset(indices)
+
+    def restore_relays(self, indices: Tuple[int, ...]) -> None:
+        self._blackholed = self._blackholed - frozenset(indices)
 
 
 def up_edges(

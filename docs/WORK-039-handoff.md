@@ -2,9 +2,11 @@
 
 **Branch:** `work-039-federation-at-scale` (anchored on `main@06c445a`)
 **Architect handoff:** `spec/prompts/WORK-039.md` (commit `7274384`, byte-untouched)
-**Package:** `scale/` (9 modules, 46 frozen exports)
-**Battery:** `tools/scale_selftest.py` (38 cases)
+**Package:** `scale/` (9 modules, 48 frozen exports)
+**Battery:** `tools/scale_selftest.py` (39 cases)
 **Status:** delivered for Architect review; not self-merged.
+**Correction cycle 1:** blocker W039-001 (multi-hop relay not actually
+implemented) corrected — see "Revocation relay semantics" below.
 
 ## What was built
 
@@ -15,8 +17,46 @@ frozen acceptance criteria over the ACCEPTED authorities only:
 |---|---|
 | **Federation scales horizontally** | `scale/topology.py` (4 frozen shapes with EXACT edge-count formulas), `scale/world.py` (one REAL WORK-015 `FederationStore` per domain — never a second, centralized authority), the battery's scaling ladder (N = 6/12/24/48 over `cliques`: relationships 15/31/64/128 and grants 120/248/512/1024 exactly as predicted; monotone journal growth; 64 MiB / 120 s resource envelope; measured 4 MiB peak). |
 | **Failure domains remain isolated** | `scale/partition.py`: failures partition DELIVERY only (never protocol state). Isolation is PROVEN by byte-identical store digests across every failure window (`IsolationProof`), fail-closed foreign/identity-confused/third-domain/same-slot declarations with side-effect-free rejections, poison containment at the target store, and LOCK-012 local-first survival (relationships with a failed peer stay queryable with full history). |
-| **Revocation propagates predictably** | `scale/revocation.py`: the revoking domain's own store executes the authoritative `revoke_relationship`; declarations then propagate in EXPLICIT ROUNDS bounded by the pre-computed graph distance (BFS over the UP delivery subgraph); the `convergence-mismatch` guard fails closed if observation ever diverges from the bound; idempotent re-delivery proven by `replayed` verdicts with unchanged digests; partitioned peers are honestly `unreached` (no fabricated state — digest-proven identical to a no-revocation world) and converge exactly at partition healing. |
+| **Revocation propagates predictably** | `scale/revocation.py`: the revoking domain's own store executes the authoritative `revoke_relationship`; each declaration then travels to its peer store in REAL hops — one hop per explicit round along the deterministic BFS shortest path over the up delivery subgraph (`scale.topology.delivery_paths`), riding a WORK-003 envelope (`exchange_to_envelope`, message type `federation.revocation`: unregistered, so every hop's receipt is the LOCK-014 opaque-forward classification from the real `protocol.accept`) and applied ONLY at the final recipient via the real `apply_exchange`. The rounds are bounded by the pre-computed graph distance and the `convergence-mismatch` guard fails closed if any predicted-reachable peer is not applied at exactly its predicted round — including when a black-holed relay (up domain, up links, forwarding plane silently dropping transiting declarations) stalls the declaration mid-path: the convergence proof fails loudly with the stall position, and no state is fabricated at the recipient (digest-proven). Pure relays' stores are byte-identical across the propagation (transport, never protocol state); idempotent re-delivery proven by `replayed` verdicts with unchanged digests; partitioned peers are honestly `unreached` and converge exactly at partition healing. |
 | **Large-scale simulation + integration** | `scale/scenario.py` (the deterministic journaled scenario runner: content-derived event ids, injected W031 `ScenarioClock`, TRUE replay verification, insertion-order independence, `PYTHONHASHSEED` invariance) + `scale/integration.py` (three REAL participants: two booted WORK-033 `AgentRuntime` instances + one booted WORK-036 `NetworkAppliance`, federating through their own `federation()` stores with the domain operator NodeID bound to each participant's REAL agent node id). |
+
+## Revocation relay semantics (correction cycle 1: blocker W039-001)
+
+The first delivery claimed multi-hop revocation propagation but only
+LABELED rounds with pre-computed graph distances while applying the
+declaration directly at the target store (distance calculation, not
+distance-based forwarding). The corrected semantics:
+
+1. **Actual hop-by-hop delivery.** Every affected peer is a direct
+   relationship neighbour (whose bilateral relationship is being
+   revoked); when the direct link is partitioned, the declaration
+   rides a WORK-003 envelope along the deterministic BFS path —
+   e.g. ring-6 with LINK (0,1) down: `0 -> 5 -> 4 -> 3 -> 2 -> 1`,
+   one hop per round, the same envelope bytes forwarded verbatim
+   (LOCK-014 opaque forward). Each hop is an actual receipt at the
+   next domain through the real `protocol.accept` under
+   `ParsePolicy(unknown_type=FORWARD_OPAQUE)` — journaled per hop
+   (`revocation-relayed` events with round/from/to/peer).
+2. **Only the recipient applies.** The final hop extracts the exchange
+   (`exchange_from_envelope`) and applies it via the real
+   `apply_exchange`. An intermediate relay NEVER applies: the frozen
+   WORK-015 contract rejects third-domain declarations fail-closed,
+   so the relay is transport only — proven by byte-identical store
+   digests for every pure relay across the propagation, and by the
+   transit leaving zero state at a relay that is also an affected
+   peer (case_21's A/B digest comparison at store 5).
+3. **Discriminating sabotage negative (case_39).** A black-holed
+   relay on the delivery path (up domain, up links, forwarding plane
+   dropping transiting declarations) stalls the declaration mid-path;
+   the graph-distance bound — computed before delivery and unaware
+   of the sabotage — diverges from observation and the convergence
+   proof FAILS closed (`scale.convergence-mismatch`, stall position
+   in the detail). The recipient's relationship stays ESTABLISHED
+   (digest-identical to pre-issue state; no fabricated convergence)
+   while the authoritative store holds the honest divergent REVOKED
+   state. The first delivery's teleporting implementation would have
+   reported `5/5 matched` here — the case exists to catch exactly
+   that defect class.
 
 ## Composition surfaces (all accepted, all reused as-is)
 
@@ -83,7 +123,7 @@ frozen acceptance criteria over the ACCEPTED authorities only:
 
 ## Verification
 
-- `tools/scale_selftest.py`: 38/38 (two complete full-context runs
+- `tools/scale_selftest.py`: 39/39 (two complete full-context runs
   byte-identical).
 - Determinism: fresh runs byte-identical; `PYTHONHASHSEED` 1/99/31337
   reproduce the run digest; reversed plan/scope tuples produce the
@@ -92,15 +132,30 @@ frozen acceptance criteria over the ACCEPTED authorities only:
   digests; seed tamper and digest forgery both fail.
 - Hand-verified exact counts for the canonical 12-domain scenario:
   31 relationships, 248 grants, 202 declarations (124 + 6 + 72), all
-  applied, 0 rejected, 4 idempotent replays, 420 journal events;
-  convergence rounds 1 with bound 1 (direct) and exactly 5 with bound 5
-  (LINK-partitioned relay around a 6-ring); peers 1+2 converge exactly
-  at the recovery tick.
+  applied, 0 rejected, 4 idempotent replays, 424 journal events
+  (420 + 4 direct-hop relay receipts); convergence rounds 1 with bound
+  1 (direct) and exactly 5 real hops with bound 5 (LINK-partitioned
+  relay around a 6-ring: 0->5->4->3->2->1, per-hop receipts
+  journaled, relay stores 2/3/4 byte-identical, transit at store 5
+  stateless); peers 1+2 converge exactly at the recovery tick.
+- Correction-cycle regression matrix: case_21 now proves the hop
+  sequence itself; case_39 (new) proves a sabotaged relay fails the
+  convergence proof with no fabricated state (the false-positive
+  shape the first delivery validated).
 - All prior batteries green after the DAG-sanctioned allowlist
   amendments: agent 45/45, edge 48/48, mobile 45/45, appliance 42/42,
-  oran 36/36, imt 34/34.
+  oran 36/36, imt 34/34. (The twenty pre-existing frozen-surface
+  batteries flag only `spec/prompts/WORK-039.md` vs `origin/main` —
+  the Architect's own branch-anchored handoff, byte-identical to the
+  first delivery; in CI's pull_request checkout the `origin/main` ref
+  is absent and those checks pass vacuously, the documented W028-era
+  precedent.)
 - CI: one additive step ("Run federation-at-scale tests") after the
   imt step (work-item order).
+- Environment note: `mypy` is not installed in the correction-cycle
+  sandbox; `py_compile` + the battery's structural audits (private
+  access, import discipline, authority constructors) cover the same
+  discipline classes.
 
 ## Narrowing amendments to accepted surfaces (all DAG-cited)
 

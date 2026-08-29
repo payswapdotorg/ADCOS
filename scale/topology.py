@@ -38,6 +38,7 @@ __all__ = [
     "expected_edge_count",
     "neighbor_map",
     "delivery_distances",
+    "delivery_paths",
     "validate_topology",
 ]
 
@@ -293,6 +294,78 @@ def delivery_distances(
                     next_frontier.append(peer)
         frontier = next_frontier
     return distances
+
+
+def delivery_paths(
+    edges: Tuple[Tuple[int, int], ...],
+    count: int,
+    source: int,
+    *,
+    excluded: FrozenSet[int] = frozenset(),
+    excluded_edges: FrozenSet[Tuple[int, int]] = frozenset(),
+) -> Dict[int, Tuple[int, ...]]:
+    """Deterministic shortest DELIVERY PATHS from ``source`` over the UP
+    delivery subgraph (the hop sequence a relayed declaration travels).
+
+    Same delivery model as :func:`delivery_distances` (failed domains and
+    partitioned links removed; transport-plane reachability, never
+    protocol state).  The path for each reachable domain is the BFS
+    shortest path under the deterministic discipline (frontier in
+    discovery order, neighbours in sorted order -- the first discovery
+    fixes the parent), so the hop sequence is a pure function of the
+    topology and the partition state: two identical worlds relay along
+    byte-identical paths.  ``paths[v][0] == source`` and
+    ``len(paths[v]) - 1 == delivery_distances(...)[v]`` for every
+    reachable ``v``; unreachable domains are absent from the result.
+    """
+    distances = delivery_distances(
+        edges, count, source, excluded=excluded, excluded_edges=excluded_edges
+    )
+    if source not in distances:
+        return {}
+    blocked = {_normalize_edge(edge) for edge in excluded_edges}
+    adjacency: Dict[int, Tuple[int, ...]] = {
+        index: () for index in range(count)
+    }
+    for a, b in edges:
+        if a in excluded or b in excluded:
+            continue
+        if _normalize_edge((a, b)) in blocked:
+            continue
+        adjacency.setdefault(a, tuple())
+        adjacency.setdefault(b, tuple())
+        merged_a = adjacency.get(a, ()) + (b,)
+        merged_b = adjacency.get(b, ()) + (a,)
+        adjacency[a] = tuple(sorted(set(merged_a)))
+        adjacency[b] = tuple(sorted(set(merged_b)))
+    parents: Dict[int, int] = {}
+    frontier = [source]
+    while frontier:
+        next_frontier = []
+        for node in frontier:
+            for peer in adjacency.get(node, ()):
+                if peer in parents or peer == source:
+                    continue
+                parents[peer] = node
+                next_frontier.append(peer)
+        frontier = next_frontier
+    paths: Dict[int, Tuple[int, ...]] = {source: (source,)}
+    for node in sorted(parents):
+        chain = [node]
+        cursor = node
+        while cursor != source:
+            cursor = parents[cursor]
+            chain.append(cursor)
+        paths[node] = tuple(reversed(chain))
+    # the parent-tree path length must equal the BFS distance exactly
+    for node, path in paths.items():
+        if len(path) - 1 != distances[node]:
+            raise ScaleError(
+                ScaleReasonCode.WORLD_INVALID,
+                "delivery path for %d has %d hops but distance %d"
+                % (node, len(path) - 1, distances[node]),
+            )
+    return paths
 
 
 def edge_fingerprint(edges: Tuple[Tuple[int, int], ...]) -> str:

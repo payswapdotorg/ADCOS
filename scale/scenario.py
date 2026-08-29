@@ -122,12 +122,18 @@ class FailurePlan:
     ``recover_at_tick`` (``None`` = no recovery inside this scenario).
     The listed ``failed_edges`` (topology edges between UP domains)
     are link-partitioned for the same window: both stores stay fully
-    queryable; only delivery across the link is withheld.
+    queryable; only delivery across the link is withheld.  The listed
+    ``blackholed_relays`` are UP domains whose FORWARDING plane
+    silently drops transiting declarations for the same window (the
+    delivery-plane sabotage that proves revocation convergence is
+    genuinely hop-by-hop: a black-holed relay on the delivery path
+    stalls the declaration and the convergence guard fails closed).
     """
 
     at_tick: int
     failed_indices: Tuple[int, ...] = ()
     failed_edges: Tuple[Tuple[int, int], ...] = ()
+    blackholed_relays: Tuple[int, ...] = ()
     recover_at_tick: Optional[int] = None
 
     def content_dict(self) -> Dict[str, Any]:
@@ -135,6 +141,7 @@ class FailurePlan:
             "at_tick": self.at_tick,
             "failed_indices": list(self.failed_indices),
             "failed_edges": [[a, b] for a, b in self.failed_edges],
+            "blackholed_relays": list(self.blackholed_relays),
             "recover_at_tick": self.recover_at_tick,
         }
 
@@ -317,6 +324,25 @@ class ScaleScenarioSpec:
                     ScaleReasonCode.SPEC_INVALID,
                     "duplicate partitioned link",
                 )
+            if len(set(fplan.blackholed_relays)) != len(fplan.blackholed_relays):
+                raise ScaleError(
+                    ScaleReasonCode.SPEC_INVALID,
+                    "duplicate black-holed relay",
+                )
+            for relay in fplan.blackholed_relays:
+                if not 0 <= relay < self.domain_count:
+                    raise ScaleError(
+                        ScaleReasonCode.SPEC_INVALID,
+                        "black-holed relay %r outside [0, %d)"
+                        % (relay, self.domain_count),
+                    )
+                if relay in fplan.failed_indices:
+                    raise ScaleError(
+                        ScaleReasonCode.SPEC_INVALID,
+                        "black-holed relay %r is also a failed domain in "
+                        "the same plan (a failed domain is unreachable "
+                        "already; the sabotage is for UP relays)" % (relay,),
+                    )
             if fplan.recover_at_tick is not None and fplan.recover_at_tick <= fplan.at_tick:
                 raise ScaleError(
                     ScaleReasonCode.SPEC_INVALID,
@@ -617,6 +643,7 @@ def run_scale_scenario(spec: ScaleScenarioSpec) -> ScaleRunResult:
             before = dict(world.digests())
             partition.fail(payload.failed_indices)
             partition.fail_edges(payload.failed_edges)
+            partition.blackhole_relays(payload.blackholed_relays)
             journal.append(
                 at_tick,
                 ScaleEventType.DOMAIN_FAILED,
@@ -627,6 +654,12 @@ def run_scale_scenario(spec: ScaleScenarioSpec) -> ScaleRunResult:
                     ],
                 },
             )
+            if payload.blackholed_relays:
+                journal.append(
+                    at_tick,
+                    ScaleEventType.RELAY_BLACKHOLED,
+                    {"blackholed": sorted(payload.blackholed_relays)},
+                )
             # Isolation is proven across the failure transition itself:
             # healthy stores must be byte-identical before/after.
             after = dict(world.digests())
@@ -667,6 +700,7 @@ def run_scale_scenario(spec: ScaleScenarioSpec) -> ScaleRunResult:
         elif action == "recover":
             partition.recover(payload.failed_indices)
             partition.recover_edges(payload.failed_edges)
+            partition.restore_relays(payload.blackholed_relays)
             journal.append(
                 at_tick,
                 ScaleEventType.DOMAIN_RECOVERED,
@@ -741,6 +775,21 @@ def run_scale_scenario(spec: ScaleScenarioSpec) -> ScaleRunResult:
                     "reason": payload.reason,
                 },
             )
+            # every actual hop is journaled: round r moves the
+            # declaration for ``peer`` one hop ``from -> to``; the
+            # final hop's ``to`` is the peer whose store applied it.
+            for round_number, hop_from, hop_to, peer_index in outcome.hops:
+                journal.append(
+                    at_tick,
+                    ScaleEventType.REVOCATION_RELAYED,
+                    {
+                        "round": round_number,
+                        "from": hop_from,
+                        "to": hop_to,
+                        "peer": peer_index,
+                        "final": hop_to == peer_index,
+                    },
+                )
             for peer_index, round_number in sorted(outcome.applied_round.items()):
                 journal.append(
                     at_tick,

@@ -158,14 +158,15 @@ _CACHE: Dict[str, Any] = {}
 def case_01_frozen_vocabularies(results: List[Result]) -> None:
     name = "case_01_frozen_vocabularies"
     problems = []
-    if len(ScaleEventType.values()) != 16:
-        problems.append("journal event taxonomy must have 16 kinds")
+    if len(ScaleEventType.values()) != 18:
+        problems.append("journal event taxonomy must have 18 kinds")
     if ScaleEventType.values() != (
         "scenario-started", "world-built", "grant-published", "exchange-declared",
         "exchange-applied", "exchange-rejected", "exchange-replayed",
         "domain-failed", "domain-recovered", "revocation-issued",
-        "revocation-propagated", "convergence-observed", "scope-closed",
-        "isolation-proven", "observation", "scenario-completed",
+        "revocation-relayed", "revocation-propagated", "relay-blackholed",
+        "convergence-observed", "scope-closed", "isolation-proven",
+        "observation", "scenario-completed",
     ):
         problems.append("journal event taxonomy drifted")
     if TopologyShape.values() != ("ring", "hub-spoke", "cliques", "full-mesh"):
@@ -185,7 +186,7 @@ def case_01_frozen_vocabularies(results: List[Result]) -> None:
     if problems:
         results.append(fail(name, "; ".join(problems)))
         return
-    results.append(ok(name, "16 journal kinds; 4 shapes; 13 scale. codes; "
+    results.append(ok(name, "18 journal kinds; 4 shapes; 13 scale. codes; "
                             "W032 evidence classes reused as DATA"))
 
 
@@ -234,6 +235,9 @@ def case_03_observation_records(results: List[Result]) -> None:
         revoking_index=0, affected_count=2, reached=(1,), unreached=(2,),
         rounds=1, expected_bound=1, matched=True, exchange_count=2,
         idempotent=True,
+        paths=((1, (0, 5, 4, 3, 2, 1)),),
+        hops=((1, 0, 5, 1), (2, 5, 4, 1), (3, 4, 3, 1), (4, 3, 2, 1), (5, 2, 1, 1)),
+        relay_digest_checks=((4, True), (3, True), (2, True)),
     )
     mapping = record.to_dict()
     if mapping["reached"] != [1] or mapping["unreached"] != [2]:
@@ -241,6 +245,27 @@ def case_03_observation_records(results: List[Result]) -> None:
         return
     if not mapping["matched"]:
         results.append(fail(name, "convergence record must record the bound match"))
+        return
+    if mapping["paths"] != [[1, [0, 5, 4, 3, 2, 1]]]:
+        results.append(fail(name, "relay paths not serialized"))
+        return
+    if mapping["hops"] != [
+        [1, 0, 5, 1], [2, 5, 4, 1], [3, 4, 3, 1], [4, 3, 2, 1], [5, 2, 1, 1],
+    ]:
+        results.append(fail(name, "relay hops not serialized"))
+        return
+    if mapping["relay_digest_checks"] != [[4, True], [3, True], [2, True]]:
+        results.append(fail(name, "relay digest checks not serialized"))
+        return
+    # the relay-evidence fields default to empty (records without them
+    # stay constructible and serialize deterministically)
+    plain = ConvergenceRecord(
+        revoking_index=0, affected_count=1, reached=(1,), unreached=(),
+        rounds=1, expected_bound=1, matched=True, exchange_count=1,
+        idempotent=True,
+    )
+    if plain.paths or plain.hops or plain.relay_digest_checks:
+        results.append(fail(name, "relay-evidence fields must default empty"))
         return
     proof = IsolationProof(
         failed_indices=(2,), checked=((0, True), (1, True)), holds=True
@@ -254,7 +279,8 @@ def case_03_observation_records(results: List[Result]) -> None:
     if bad.holds:
         results.append(fail(name, "isolation proof must not hold with a drift"))
         return
-    results.append(ok(name, "convergence + isolation observation records frozen"))
+    results.append(ok(name, "convergence (incl. relay paths/hops/digest "
+                            "checks) + isolation observation records frozen"))
 
 
 def case_04_run_result_shape(results: List[Result]) -> None:
@@ -1074,6 +1100,80 @@ def case_21_revocation_convergence(results: List[Result]) -> None:
     if relay_record.rounds != 5 or relay_record.expected_bound != 5:
         results.append(fail(name, "relay bound: %r" % (relay_record.to_dict(),)))
         return
+    # the ACTUAL five-hop relay delivery, per hop: the declaration for
+    # peer 1 travels 0 -> 5 -> 4 -> 3 -> 2 -> 1, one hop per round,
+    # and only the FINAL hop applies it at store 1
+    if dict(relay_record.paths) != {
+        1: (0, 5, 4, 3, 2, 1),
+        5: (0, 5),
+    }:
+        results.append(fail(name, "relay paths: %r" % (relay_record.paths,)))
+        return
+    peer_1_hops = [
+        (round_number, hop_from, hop_to)
+        for round_number, hop_from, hop_to, peer in relay_record.hops
+        if peer == 1
+    ]
+    if peer_1_hops != [
+        (1, 0, 5), (2, 5, 4), (3, 4, 3), (4, 3, 2), (5, 2, 1),
+    ]:
+        results.append(fail(name, "peer-1 hop sequence: %r" % (peer_1_hops,)))
+        return
+    if not all(
+        hop_to != 1 or round_number == 5
+        for round_number, hop_from, hop_to in peer_1_hops
+    ):
+        results.append(fail(name, "peer 1 received the declaration before round 5"))
+        return
+    # every hop is journaled, in order, with the final hop flagged
+    relayed = [
+        (e.payload["round"], e.payload["from"], e.payload["to"], e.payload["peer"])
+        for e in relay.journal if e.kind == "revocation-relayed"
+    ]
+    if relayed != [
+        (1, 0, 5, 1), (1, 0, 5, 5), (2, 5, 4, 1),
+        (3, 4, 3, 1), (4, 3, 2, 1), (5, 2, 1, 1),
+    ]:
+        results.append(fail(name, "journaled hops: %r" % (relayed,)))
+        return
+    # the pure relays (4, 3, 2 -- intermediate, not affected peers)
+    # RECEIVED the declaration but never APPLIED it: their stores are
+    # byte-identical across the propagation (transport, not protocol)
+    if sorted(relay_record.relay_digest_checks) != [
+        (2, True), (3, True), (4, True),
+    ]:
+        results.append(fail(
+            name, "relay immutability: %r" % (relay_record.relay_digest_checks,),
+        ))
+        return
+    # domain 5 is BOTH a relay and an affected peer: its store changes
+    # ONLY through its own (0,5) revocation.  Proof: the same scenario
+    # revoking ONLY peer 5 (no transiting (0,1) declaration at all)
+    # leaves store 5 byte-identical -- the relay transit is stateless.
+    only_5_spec = replace(
+        relay_spec,
+        scenario_id="relay-only-5",
+        revocations=(RevocationPlan(
+            at_tick=2, revoking_index=0, peer_indices=(5,), reason="relay",
+        ),),
+    )
+    only_5 = run_scale_scenario(only_5_spec)
+    if dict(relay.store_digests)[5] != dict(only_5.store_digests)[5]:
+        results.append(fail(
+            name,
+            "the transiting (0,1) declaration left state at relay store 5",
+        ))
+        return
+    # the recipient really applied it: the scope evaluation closes at
+    # every converged store (relationship-terminal), including the
+    # relayed store 1
+    scope_closures = [
+        e for e in relay.journal if e.kind == "scope-closed"
+    ]
+    if sorted(e.payload["store"] for e in scope_closures) != [1, 5]:
+        results.append(fail(name, "relay scope closures at %r" % (
+            [e.payload["store"] for e in scope_closures],)))
+        return
     # a link partition is NOT a domain failure: both endpoint stores
     # stay fully queryable (local-first over the partitioned link)
     relay_local_first = [
@@ -1084,8 +1184,10 @@ def case_21_revocation_convergence(results: List[Result]) -> None:
                                   "domain failure"))
         return
     results.append(ok(name, "direct convergence in 1 round; LINK-partitioned "
-                            "relay convergence in exactly 5 rounds around the "
-                            "ring; scope closed at every converged store"))
+                            "relay convergence in exactly 5 real hops "
+                            "(0->5->4->3->2->1, per-hop receipts journaled, "
+                            "only store 1 applies); relay stores 2/3/4 and "
+                            "the transit at 5 leave zero protocol state"))
 
 
 def case_22_unreached_honesty(results: List[Result]) -> None:
@@ -1557,11 +1659,13 @@ def case_35_frozen_api(results: List[Result]) -> None:
         "ConvergenceRecord", "IsolationProof", "ScaleRunResult",
         "CLIQUE_SIZE", "FULL_MESH_MAX_DOMAINS", "DomainMaterial",
         "build_domain_materials", "topology_edges", "expected_edge_count",
-        "neighbor_map", "delivery_distances", "validate_topology",
+        "neighbor_map", "delivery_distances", "delivery_paths",
+        "validate_topology",
         "ScaleWorld", "build_world", "world_summary",
         "PartitionState", "up_edges", "check_isolation",
         "foreign_declaration_rejected", "local_first_survives",
-        "RevocationOutcome", "propagate_revocation", "convergence_record",
+        "RELAY_MESSAGE_TYPE", "RevocationOutcome", "propagate_revocation",
+        "convergence_record",
         "ExportPlan", "FailurePlan", "RevocationPlan", "ScaleScenarioSpec",
         "run_scale_scenario", "verify_scale_replay", "scenario_summary",
         "IntegrationResult", "run_integration_scenario",
@@ -1772,6 +1876,175 @@ def case_38_ci_wiring_all_tools(results: List[Result]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# 39: relay sabotage -- the discriminating convergence negative
+# ---------------------------------------------------------------------------
+
+
+def case_39_relay_sabotage_fails_convergence(results: List[Result]) -> None:
+    """A sabotaged relay MUST cause the convergence proof to fail.
+
+    This is the discriminating negative for the multi-hop relay
+    semantics (the W039-001 correction): the graph-distance bound
+    predicts peer 1 reachable at 5 hops around the partitioned ring,
+    and only the REAL hop-by-hop delivery can be broken mid-path.  A
+    teleporting implementation that applies the declaration directly
+    at the target store (the defect this branch shipped first) would
+    report convergence ``5/5 matched`` here -- exactly the
+    false-positive architectural test the ruling identified -- so this
+    case fails under the defective semantics and passes only under
+    genuine relay delivery.
+    """
+    name = "case_39_relay_sabotage_fails_convergence"
+    from scale import (
+        RELAY_MESSAGE_TYPE,
+        ScaleError,
+        ScaleReasonCode,
+        build_domain_materials,
+        build_world,
+        delivery_paths,
+        propagate_revocation,
+        topology_edges,
+    )
+    from federation import RelationshipState, Scope
+
+    # the delivery path is predicted BEFORE delivery and does not know
+    # about the sabotage: 0 -> 5 -> 4 -> 3 -> 2 -> 1
+    edges = topology_edges(TopologyShape.RING, 6)
+    partition = PartitionState()
+    partition.fail_edges(((0, 1),))
+    paths = delivery_paths(
+        edges, 6, 0, excluded=partition.failed, excluded_edges=partition.failed_edges
+    )
+    if paths[1] != (0, 5, 4, 3, 2, 1):
+        results.append(fail(name, "setup: relay path %r" % (paths[1],)))
+        return
+
+    # -- 1. direct drive: black-hole relay 3 on the delivery path ------
+    world = build_world(
+        build_domain_materials(6, 17), edges,
+        declared_scopes=(Scope.ROUTE_IMPORT,), grant_scopes=(Scope.ROUTE_IMPORT,),
+        start_instant=_T0, valid_until="2026-09-01T00:00:00Z", event_instant=_T0,
+    )
+    partition.blackhole_relays((3,))
+    store_1_before = world.store_digest(1)
+    mismatched = False
+    detail = ""
+    try:
+        propagate_revocation(
+            world, revoking_index=0, peer_indices=(1, 5), reason="sabotage",
+            event_instant=_T0, partition=partition,
+        )
+    except ScaleError as error:
+        mismatched = error.reason == ScaleReasonCode.CONVERGENCE_MISMATCH
+        detail = error.detail
+    if not mismatched:
+        results.append(fail(
+            name, "the sabotaged relay did not fail the convergence proof",
+        ))
+        return
+    if "stalled at relay 3" not in detail:
+        results.append(fail(name, "the stall position is not in the mismatch detail"))
+        return
+    # NO fabricated convergence: the recipient's relationship is still
+    # established and its store is byte-identical to pre-issue state
+    relationship = world.store(1).get_relationship(world.relationship_id(0, 1))
+    if relationship is None or relationship.state != RelationshipState.ESTABLISHED:
+        results.append(fail(
+            name, "store 1's relationship is %r after a failed propagation"
+                  % (getattr(relationship, "state", None),),
+        ))
+        return
+    if world.store_digest(1) != store_1_before:
+        results.append(fail(name, "the failed propagation mutated store 1"))
+        return
+    # the authority DID revoke (the honest divergent state: the issuer
+    # revoked, the peer never learned, the harness reports it loudly)
+    authoritative = world.store(0).get_relationship(world.relationship_id(0, 1))
+    if authoritative is None or authoritative.state != RelationshipState.REVOKED:
+        results.append(fail(name, "the authoritative store did not revoke"))
+        return
+
+    # -- 2. scenario surface: the same sabotage through a plan ---------
+    sabotage_spec = ScaleScenarioSpec(
+        scenario_id="relay-sabotage", seed=17, start_instant=_T0, tick_seconds=60,
+        horizon_ticks=20, domain_count=6, shape=TopologyShape.RING,
+        exports=(),
+        failures=(
+            FailurePlan(
+                at_tick=1, failed_edges=((0, 1),),
+                blackholed_relays=(3,), recover_at_tick=None,
+            ),
+        ),
+        revocations=(RevocationPlan(at_tick=2, revoking_index=0, reason="sabotage"),),
+        observation_ticks=(),
+    )
+    scenario_mismatch = False
+    try:
+        run_scale_scenario(sabotage_spec)
+    except ScaleError as error:
+        scenario_mismatch = error.reason == ScaleReasonCode.CONVERGENCE_MISMATCH
+    if not scenario_mismatch:
+        results.append(fail(
+            name, "the scenario surface did not fail closed on the sabotage",
+        ))
+        return
+    # the sabotage injection itself is journaled as delivery-plane
+    # fault evidence (never protocol state): the sabotage-free run
+    # under the same failure plan completes and journals it
+    try:
+        base = run_scale_scenario(
+            replace(sabotage_spec, revocations=(), scenario_id="relay-sabotage-base")
+        )
+    except ScaleError:
+        results.append(fail(name, "the black-holed relay broke a sabotage-free run"))
+        return
+    blackholed_events = [
+        e for e in base.journal if e.kind == "relay-blackholed"
+    ]
+    if not blackholed_events or blackholed_events[0].payload["blackholed"] != [3]:
+        results.append(fail(name, "the relay black-hole injection is not journaled"))
+        return
+    # -- 3. spec validation: the sabotage plan shape fails closed ------
+    try:
+        ScaleScenarioSpec(
+            scenario_id="bad-sabotage", seed=1, start_instant=_T0, tick_seconds=60,
+            horizon_ticks=5, domain_count=6, shape=TopologyShape.RING,
+            failures=(FailurePlan(
+                at_tick=1, failed_indices=(3,), blackholed_relays=(3,),
+            ),),
+        )
+        results.append(fail(name, "a failed domain accepted as a black-holed relay"))
+        return
+    except ScaleError as error:
+        if error.reason != ScaleReasonCode.SPEC_INVALID:
+            results.append(fail(name, "wrong reason: %r" % error.reason))
+            return
+    try:
+        ScaleScenarioSpec(
+            scenario_id="bad-sabotage", seed=1, start_instant=_T0, tick_seconds=60,
+            horizon_ticks=5, domain_count=6, shape=TopologyShape.RING,
+            failures=(FailurePlan(at_tick=1, blackholed_relays=(9,)),),
+        )
+        results.append(fail(name, "an out-of-range relay index accepted"))
+        return
+    except ScaleError:
+        pass
+    # the relay message type is the LOCK-014 unregistered opaque-forward
+    # surface (never a registered protocol message type)
+    from protocol.validation import protocol_metadata
+    if protocol_metadata().is_known_message_type(RELAY_MESSAGE_TYPE):
+        results.append(fail(
+            name, "the relay message type must stay unregistered (LOCK-014)",
+        ))
+        return
+    results.append(ok(name, "a black-holed relay on the delivery path stalls "
+                            "the declaration (predicted 5 hops, stalled at "
+                            "relay 3); the convergence proof fails closed "
+                            "with no fabricated state at the recipient; a "
+                            "teleporting implementation would falsely pass"))
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 
@@ -1817,6 +2090,7 @@ def main() -> int:
         case_36_frozen_spec_intact,
         case_37_pr_delta_shape,
         case_38_ci_wiring_all_tools,
+        case_39_relay_sabotage_fails_convergence,
     ):
         case(results)
     passed = sum(1 for _, ok_flag, _ in results if ok_flag)

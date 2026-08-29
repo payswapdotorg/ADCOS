@@ -64,7 +64,9 @@ class ScaleEventType:
     DOMAIN_FAILED = "domain-failed"
     DOMAIN_RECOVERED = "domain-recovered"
     REVOCATION_ISSUED = "revocation-issued"
+    REVOCATION_RELAYED = "revocation-relayed"
     REVOCATION_PROPAGATED = "revocation-propagated"
+    RELAY_BLACKHOLED = "relay-blackholed"
     CONVERGENCE_OBSERVED = "convergence-observed"
     SCOPE_CLOSED = "scope-closed"
     ISOLATION_PROVEN = "isolation-proven"
@@ -84,7 +86,9 @@ class ScaleEventType:
             cls.DOMAIN_FAILED,
             cls.DOMAIN_RECOVERED,
             cls.REVOCATION_ISSUED,
+            cls.REVOCATION_RELAYED,
             cls.REVOCATION_PROPAGATED,
+            cls.RELAY_BLACKHOLED,
             cls.CONVERGENCE_OBSERVED,
             cls.SCOPE_CLOSED,
             cls.ISOLATION_PROVEN,
@@ -220,6 +224,23 @@ class ConvergenceRecord:
     graph-distance bound, and ``matched`` records whether the
     observation equals the bound.  A ``False`` match is a
     ``convergence-mismatch`` failure in the checker.
+
+    The relay evidence (the multi-hop delivery proof):
+
+    - ``paths`` -- one ``(peer, hop-path)`` pair per affected peer: the
+      exact domain sequence the declaration travelled from the
+      revoking domain to the peer's store (``(revoker, peer)`` for a
+      direct delivery; the full relay chain when the direct edge is
+      partitioned);
+    - ``hops`` -- every actual hop as ``(round, from, to, peer)``:
+      round r moves the declaration for ``peer`` one hop
+      ``from -> to``; the FINAL hop's ``to`` is the peer, where the
+      real ``apply_exchange`` applied it (the only protocol-state
+      mutation in the whole propagation);
+    - ``relay_digest_checks`` -- ``(relay, unchanged)`` for every PURE
+      relay on any path (an intermediate domain that is not itself an
+      affected peer): its store digest must be byte-identical across
+      the propagation -- the relay is transport, never protocol state.
     """
 
     revoking_index: int
@@ -231,6 +252,9 @@ class ConvergenceRecord:
     matched: bool
     exchange_count: int
     idempotent: bool
+    paths: Tuple[Tuple[int, Tuple[int, ...]], ...] = ()
+    hops: Tuple[Tuple[int, int, int, int], ...] = ()
+    relay_digest_checks: Tuple[Tuple[int, bool], ...] = ()
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -243,6 +267,16 @@ class ConvergenceRecord:
             "matched": self.matched,
             "exchange_count": self.exchange_count,
             "idempotent": self.idempotent,
+            "paths": [
+                [peer, list(path)] for peer, path in self.paths
+            ],
+            "hops": [
+                [round_number, hop_from, hop_to, peer]
+                for round_number, hop_from, hop_to, peer in self.hops
+            ],
+            "relay_digest_checks": [
+                [relay, unchanged] for relay, unchanged in self.relay_digest_checks
+            ],
         }
 
 

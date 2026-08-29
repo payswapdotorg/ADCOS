@@ -64,6 +64,7 @@ from .topology import (
     DomainMaterial,
     build_domain_materials,
     delivery_distances,
+    delivery_paths,
     expected_edge_count,
     neighbor_map,
     topology_edges,
@@ -77,7 +78,12 @@ from .partition import (
     local_first_survives,
     up_edges,
 )
-from .revocation import RevocationOutcome, convergence_record, propagate_revocation
+from .revocation import (
+    RELAY_MESSAGE_TYPE,
+    RevocationOutcome,
+    convergence_record,
+    propagate_revocation,
+)
 from .scenario import (
     ExportPlan,
     FailurePlan,
@@ -123,6 +129,7 @@ __all__ = [
     "expected_edge_count",
     "neighbor_map",
     "delivery_distances",
+    "delivery_paths",
     "validate_topology",
     # the multi-domain world over real stores
     "ScaleWorld",
@@ -134,7 +141,8 @@ __all__ = [
     "check_isolation",
     "foreign_declaration_rejected",
     "local_first_survives",
-    # revocation propagation
+    # revocation propagation (hop-by-hop relay delivery)
+    "RELAY_MESSAGE_TYPE",
     "RevocationOutcome",
     "propagate_revocation",
     "convergence_record",
