@@ -1952,10 +1952,14 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
     # DAG-sanctioned amendment (W033 -> W038): the Architect anchored
     # the W038 execution handoff ON THE DESIGNATED BRANCH (commit
     # 0be736e), same pattern as W037.
+    # DAG-sanctioned amendment (W033 -> W039): the Architect anchored
+    # the W039 execution handoff ON THE DESIGNATED BRANCH (commit
+    # 7274384), same pattern as W037/W038.
     spec_changed = [
         c for c in changed
         if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
         and c != "spec/prompts/WORK-038.md"
+        and c != "spec/prompts/WORK-039.md"
     ]
     if spec_changed:
         results.append(fail(
@@ -1985,6 +1989,11 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
         # AdapterRuntime wiring seam.
         "docs/WORK-038-handoff.md",
         "docs/WORK-038-evidence.md",
+        # DAG-sanctioned amendment (W033 -> W039): the federation-at-
+        # scale harness composes this battery's subject as one of its
+        # declared integration surfaces (the W033 Linux Agent).
+        "docs/WORK-039-handoff.md",
+        "docs/WORK-039-evidence.md",
     }
     docs_changed = {c for c in changed if c.startswith("docs/")}
     if not docs_changed <= allowed_docs:
@@ -2034,6 +2043,10 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
         # future-IMT profile battery extends this one through the
         # AdapterRuntime wiring seam (work-item order in CI).
         "tools/imt_selftest.py",
+        # DAG-sanctioned allowlist amendment (W033 -> W039): the
+        # federation-at-scale battery extends this one through the
+        # agent composition surface (work-item order in CI).
+        "tools/scale_selftest.py",
     }
     tools_changed = {c for c in changed if c.startswith("tools/")}
     if not tools_changed <= allowed_tools:

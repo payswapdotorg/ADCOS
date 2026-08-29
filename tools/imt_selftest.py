@@ -1641,6 +1641,8 @@ def case_31_frozen_api(results: List[Result]) -> None:
 #: never modified it.
 _ARCHITECT_HANDOFF = "spec/prompts/WORK-038.md"
 _ARCHITECT_HANDOFF_COMMIT = "0be736e"
+_SUCCESSOR_HANDOFF = "spec/prompts/WORK-039.md"
+_SUCCESSOR_HANDOFF_COMMIT = "7274384"
 
 
 def _spec_delta_clean() -> List[str]:
@@ -1658,6 +1660,8 @@ def _spec_delta_clean() -> List[str]:
         status, _, path = line.partition("\t")
         if path == _ARCHITECT_HANDOFF and status == "A":
             continue  # the Architect's own anchor commit
+        if path == _SUCCESSOR_HANDOFF and status == "A":
+            continue  # the W039 successor's Architect anchor commit
         problems.append("%s %s" % (status, path))
     # the handoff must be byte-untouched since the Architect's commit.
     untouched = subprocess.run(
@@ -1667,6 +1671,16 @@ def _spec_delta_clean() -> List[str]:
     )
     if untouched.stdout.strip():
         problems.append("the Architect's handoff was modified by the branch")
+    # the W039 successor's handoff must equally be byte-untouched
+    # (the W038 -> W039 successor admission; the same pattern the
+    # oran battery applied for W037 -> W038).
+    successor_untouched = subprocess.run(
+        ["git", "diff", _SUCCESSOR_HANDOFF_COMMIT, "HEAD", "--",
+         _SUCCESSOR_HANDOFF],
+        capture_output=True, text=True, cwd=str(REPO_ROOT),
+    )
+    if successor_untouched.stdout.strip():
+        problems.append("the W039 successor handoff was modified by the branch")
     return problems
 
 
@@ -1761,12 +1775,20 @@ def case_33_pr_delta_shape(results: List[Result]) -> None:
         "tools/oran_selftest.py",
         "docs/WORK-038-handoff.md",
         "docs/WORK-038-evidence.md",
-        # the Architect's own branch anchor (validated by _spec_delta_clean):
+        # DAG-sanctioned allowlist amendment (W038 -> W039; work-item
+        # order; the federation-at-scale battery follows this one and
+        # its PR-delta shape admits the successor's files):
+        "tools/scale_selftest.py",
+        "docs/WORK-039-handoff.md",
+        "docs/WORK-039-evidence.md",
+        # the Architect's own branch anchors (validated by _spec_delta_clean):
         _ARCHITECT_HANDOFF,
+        _SUCCESSOR_HANDOFF,
     }
     unexpected = [
         c for c in changed
-        if not c.startswith("imt/") and c not in allowed_exact
+        if not c.startswith("imt/") and not c.startswith("scale/")
+        and c not in allowed_exact
         and not c.startswith(".github/")
     ]
     if unexpected:
