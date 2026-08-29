@@ -1949,9 +1949,13 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
     # the accidental main publication was reverted by the Architect
     # before the branch was cut), so the spec/ delta admits EXACTLY
     # that file -- nothing else.
+    # DAG-sanctioned amendment (W033 -> W038): the Architect anchored
+    # the W038 execution handoff ON THE DESIGNATED BRANCH (commit
+    # 0be736e), same pattern as W037.
     spec_changed = [
         c for c in changed
         if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
+        and c != "spec/prompts/WORK-038.md"
     ]
     if spec_changed:
         results.append(fail(
@@ -1976,6 +1980,11 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
         # reference-agent component.
         "docs/WORK-037-handoff.md",
         "docs/WORK-037-evidence.md",
+        # DAG-sanctioned amendment (W033 -> W038): the future-IMT
+        # adapter profile composes this battery's subject through the
+        # AdapterRuntime wiring seam.
+        "docs/WORK-038-handoff.md",
+        "docs/WORK-038-evidence.md",
     }
     docs_changed = {c for c in changed if c.startswith("docs/")}
     if not docs_changed <= allowed_docs:
@@ -2021,6 +2030,10 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
         # RAN/Core interop-profile battery extends this one through
         # the reference-agent component (work-item order in CI).
         "tools/oran_selftest.py",
+        # DAG-sanctioned allowlist amendment (W033 -> W038): the
+        # future-IMT profile battery extends this one through the
+        # AdapterRuntime wiring seam (work-item order in CI).
+        "tools/imt_selftest.py",
     }
     tools_changed = {c for c in changed if c.startswith("tools/")}
     if not tools_changed <= allowed_tools:

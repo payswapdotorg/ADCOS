@@ -2274,10 +2274,14 @@ def case_46_frozen_spec_intact(results: List[Result]) -> None:
     spec_delta = [
         line for line in diff.stdout.splitlines()
         if line.strip() and line.strip() != "spec/prompts/WORK-037.md"
+        and line.strip() != "spec/prompts/WORK-038.md"
     ]
     # (DAG-sanctioned amendment, W034 -> W037: the Architect anchored
     # the W037 execution handoff on the designated branch -- commit
     # 518c071 -- so the spec/ delta admits exactly that file.)
+    # (DAG-sanctioned amendment, W034 -> W038: the Architect anchored
+    # the W038 execution handoff on the designated branch -- commit
+    # 0be736e -- same pattern.)
     if diff.returncode != 0 or spec_delta:
         results.append(fail(name, "spec/ not byte-identical to origin/main"))
         return
@@ -2325,11 +2329,14 @@ def case_47_pr_delta_shape(results: List[Result]) -> None:
     spec_changed = [
         c for c in changed
         if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
+        and c != "spec/prompts/WORK-038.md"
     ]
     # (DAG-sanctioned amendment, W034 -> W037: the Architect anchored
     # the W037 execution handoff on the designated branch -- commit
     # 518c071, with main's accidental publication reverted by the
     # Architect -- so the spec/ delta admits exactly that file.)
+    # (DAG-sanctioned amendment, W034 -> W038: commit 0be736e, same
+    # pattern.)
     if spec_changed:
         results.append(fail(name, "spec/ differs from origin/main: %s" % spec_changed))
         return
@@ -2362,14 +2369,30 @@ def case_47_pr_delta_shape(results: List[Result]) -> None:
         "tools/oran_selftest.py",
         "docs/WORK-037-handoff.md",
         "docs/WORK-037-evidence.md",
+        # DAG-sanctioned allowlist amendment (W034 -> W038): the
+        # future-IMT profile battery follows this one in work-item
+        # order (the future profile composes the same adapter SDK the
+        # edge gateway hosts), and its PR delta shape must admit the
+        # successor's files.
+        "tools/imt_selftest.py",
+        "docs/WORK-038-handoff.md",
+        "docs/WORK-038-evidence.md",
+        # DAG-sanctioned allowlist amendment (W029 -> W038): the upgrade
+        # battery's authority-boundary audit exempts the W038
+        # future-IMT family as a DAG-sanctioned downstream consumer
+        # (WORK-038 declares WORK-029 among its frozen dependencies;
+        # imt/coexistence.py composes the real compatibility surfaces).
+        "tools/upgrade_selftest.py",
         # the Architect's own branch anchor (admitted above by the
         # spec-delta check):
         "spec/prompts/WORK-037.md",
+        "spec/prompts/WORK-038.md",
     }
     unexpected = [
         c for c in changed
         if not c.startswith("edge/") and not c.startswith("mobile/")
         and not c.startswith("appliance/") and not c.startswith("interop/")
+        and not c.startswith("imt/")
         and c not in allowed_exact and not c.startswith(".github/")
     ]
     if unexpected:

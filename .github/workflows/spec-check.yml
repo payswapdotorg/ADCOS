@@ -145,3 +145,6 @@ jobs:
 
       - name: Run Open RAN/Core interop profile tests
         run: python3 tools/oran_selftest.py
+
+      - name: Run Future IMT/6G adapter profile tests
+        run: python3 tools/imt_selftest.py
