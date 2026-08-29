@@ -2275,6 +2275,7 @@ def case_46_frozen_spec_intact(results: List[Result]) -> None:
         line for line in diff.stdout.splitlines()
         if line.strip() and line.strip() != "spec/prompts/WORK-037.md"
         and line.strip() != "spec/prompts/WORK-038.md"
+        and line.strip() != "spec/prompts/WORK-039.md"
     ]
     # (DAG-sanctioned amendment, W034 -> W037: the Architect anchored
     # the W037 execution handoff on the designated branch -- commit
@@ -2282,6 +2283,9 @@ def case_46_frozen_spec_intact(results: List[Result]) -> None:
     # (DAG-sanctioned amendment, W034 -> W038: the Architect anchored
     # the W038 execution handoff on the designated branch -- commit
     # 0be736e -- same pattern.)
+    # (DAG-sanctioned amendment, W034 -> W039: the Architect anchored
+    # the W039 execution handoff on the designated branch -- commit
+    # 7274384 -- same pattern.)
     if diff.returncode != 0 or spec_delta:
         results.append(fail(name, "spec/ not byte-identical to origin/main"))
         return
@@ -2330,12 +2334,15 @@ def case_47_pr_delta_shape(results: List[Result]) -> None:
         c for c in changed
         if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
         and c != "spec/prompts/WORK-038.md"
+        and c != "spec/prompts/WORK-039.md"
     ]
     # (DAG-sanctioned amendment, W034 -> W037: the Architect anchored
     # the W037 execution handoff on the designated branch -- commit
     # 518c071, with main's accidental publication reverted by the
     # Architect -- so the spec/ delta admits exactly that file.)
     # (DAG-sanctioned amendment, W034 -> W038: commit 0be736e, same
+    # pattern.)
+    # (DAG-sanctioned amendment, W034 -> W039: commit 7274384, same
     # pattern.)
     if spec_changed:
         results.append(fail(name, "spec/ differs from origin/main: %s" % spec_changed))
@@ -2377,6 +2384,14 @@ def case_47_pr_delta_shape(results: List[Result]) -> None:
         "tools/imt_selftest.py",
         "docs/WORK-038-handoff.md",
         "docs/WORK-038-evidence.md",
+        # DAG-sanctioned allowlist amendment (W034 -> W039): the
+        # federation-at-scale battery follows this one in work-item
+        # order (the scale harness composes the edge-gateway fixture
+        # surface the appliance integration requires), and its PR
+        # delta shape must admit the successor's files.
+        "tools/scale_selftest.py",
+        "docs/WORK-039-handoff.md",
+        "docs/WORK-039-evidence.md",
         # DAG-sanctioned allowlist amendment (W029 -> W038): the upgrade
         # battery's authority-boundary audit exempts the W038
         # future-IMT family as a DAG-sanctioned downstream consumer
@@ -2387,12 +2402,13 @@ def case_47_pr_delta_shape(results: List[Result]) -> None:
         # spec-delta check):
         "spec/prompts/WORK-037.md",
         "spec/prompts/WORK-038.md",
+        "spec/prompts/WORK-039.md",
     }
     unexpected = [
         c for c in changed
         if not c.startswith("edge/") and not c.startswith("mobile/")
         and not c.startswith("appliance/") and not c.startswith("interop/")
-        and not c.startswith("imt/")
+        and not c.startswith("imt/") and not c.startswith("scale/")
         and c not in allowed_exact and not c.startswith(".github/")
     ]
     if unexpected:

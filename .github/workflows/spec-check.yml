@@ -148,3 +148,6 @@ jobs:
 
       - name: Run Future IMT/6G adapter profile tests
         run: python3 tools/imt_selftest.py
+
+      - name: Run federation-at-scale tests
+        run: python3 tools/scale_selftest.py

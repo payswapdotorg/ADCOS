@@ -1555,6 +1555,8 @@ _ARCHITECT_HANDOFF = "spec/prompts/WORK-037.md"
 _ARCHITECT_HANDOFF_COMMIT = "518c071"
 _SUCCESSOR_HANDOFF = "spec/prompts/WORK-038.md"
 _SUCCESSOR_HANDOFF_COMMIT = "0be736e"
+_SECOND_SUCCESSOR_HANDOFF = "spec/prompts/WORK-039.md"
+_SECOND_SUCCESSOR_HANDOFF_COMMIT = "7274384"
 
 
 def _spec_delta_clean() -> List[str]:
@@ -1574,6 +1576,8 @@ def _spec_delta_clean() -> List[str]:
             continue  # the Architect's own anchor commit
         if path == _SUCCESSOR_HANDOFF and status == "A":
             continue  # the W038 successor's Architect anchor commit
+        if path == _SECOND_SUCCESSOR_HANDOFF and status == "A":
+            continue  # the W039 successor's Architect anchor commit
         problems.append("%s %s" % (status, path))
     # the handoff must be byte-untouched since the Architect's commit.
     untouched = subprocess.run(
@@ -1591,6 +1595,14 @@ def _spec_delta_clean() -> List[str]:
     )
     if successor_untouched.stdout.strip():
         problems.append("the W038 successor handoff was modified by the branch")
+    # the W039 successor's handoff must equally be byte-untouched.
+    second_successor_untouched = subprocess.run(
+        ["git", "diff", _SECOND_SUCCESSOR_HANDOFF_COMMIT, "HEAD", "--",
+         _SECOND_SUCCESSOR_HANDOFF],
+        capture_output=True, text=True, cwd=str(REPO_ROOT),
+    )
+    if second_successor_untouched.stdout.strip():
+        problems.append("the W039 successor handoff was modified by the branch")
     return problems
 
 
@@ -1684,6 +1696,12 @@ def case_35_pr_delta_shape(results: List[Result]) -> None:
         "tools/imt_selftest.py",
         "docs/WORK-038-handoff.md",
         "docs/WORK-038-evidence.md",
+        # W038 -> W039 (work-item order; the federation-at-scale
+        # battery follows this one and its PR-delta shape admits the
+        # successor's files):
+        "tools/scale_selftest.py",
+        "docs/WORK-039-handoff.md",
+        "docs/WORK-039-evidence.md",
         # DAG-sanctioned allowlist amendment (W029 -> W038): the upgrade
         # battery's authority-boundary audit exempts the W038
         # future-IMT family as a DAG-sanctioned downstream consumer
@@ -1694,10 +1712,12 @@ def case_35_pr_delta_shape(results: List[Result]) -> None:
         # _spec_delta_clean):
         _ARCHITECT_HANDOFF,
         _SUCCESSOR_HANDOFF,
+        _SECOND_SUCCESSOR_HANDOFF,
     }
     unexpected = [
         c for c in changed
         if not c.startswith("interop/") and not c.startswith("imt/")
+        and not c.startswith("scale/")
         and c not in allowed_exact
         and not c.startswith(".github/")
     ]
@@ -1708,12 +1728,26 @@ def case_35_pr_delta_shape(results: List[Result]) -> None:
         ["git", "diff", "origin/main", "--", ".github/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
+    # The interop CI step was introduced by THIS family's PR; a
+    # successor work item appending its own step further down the
+    # workflow (W038 -> W039 amendment) pushes the interop step out of
+    # the diff hunk context.  The discipline is therefore: the interop
+    # step appears in the delta (this family's own PR) OR the committed
+    # workflow still contains it AND the delta never weakens it (a
+    # successor's PR) -- the W033 agent battery's case_40 pattern.
+    removed_interop_step = any(
+        line.startswith("-") and "oran_selftest.py" in line
+        for line in workflow_delta.stdout.splitlines()
+    )
     if "oran_selftest.py" not in workflow_delta.stdout:
-        results.append(fail(name, ".github delta does not include the interop CI step"))
-        return
+        if removed_interop_step or "python3 tools/oran_selftest.py" not in workflow:
+            results.append(fail(
+                name, ".github delta weakens or drops the interop CI step",
+            ))
+            return
     results.append(ok(
         name, "PR delta exactly: interop/ + interop battery + agent/edge/"
-              "mobile/appliance allowlist amendments + W038 successor "
+              "mobile/appliance allowlist amendments + successor "
               "admissions + handoff/evidence docs + the Architect's branch "
               "anchors + CI step",
     ))

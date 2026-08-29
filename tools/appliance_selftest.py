@@ -2474,6 +2474,7 @@ def case_40_frozen_spec_intact(results: List[Result]) -> None:
         c for c in changed
         if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
         and c != "spec/prompts/WORK-038.md"
+        and c != "spec/prompts/WORK-039.md"
     ]
     # (DAG-sanctioned amendment, W036 -> W037: the Architect anchored
     # the W037 execution handoff on the designated branch -- commit
@@ -2481,6 +2482,9 @@ def case_40_frozen_spec_intact(results: List[Result]) -> None:
     # (DAG-sanctioned amendment, W036 -> W038: the Architect anchored
     # the W038 execution handoff on the designated branch -- commit
     # 0be736e -- same pattern.)
+    # (DAG-sanctioned amendment, W036 -> W039: the Architect anchored
+    # the W039 execution handoff on the designated branch -- commit
+    # 7274384 -- same pattern.)
     if spec_changed:
         results.append(fail(name, "spec/ differs from origin/main: %s" % spec_changed))
         return
@@ -2526,6 +2530,7 @@ def case_41_pr_delta_shape(results: List[Result]) -> None:
         c for c in changed
         if c.startswith("spec/") and c != "spec/prompts/WORK-037.md"
         and c != "spec/prompts/WORK-038.md"
+        and c != "spec/prompts/WORK-039.md"
     ]
     # (DAG-sanctioned amendment, W036 -> W037: the Architect anchored
     # the W037 execution handoff on the designated branch -- commit
@@ -2567,6 +2572,13 @@ def case_41_pr_delta_shape(results: List[Result]) -> None:
         "tools/imt_selftest.py",
         "docs/WORK-038-handoff.md",
         "docs/WORK-038-evidence.md",
+        # DAG-sanctioned allowlist amendment (W036 -> W039): the
+        # federation-at-scale battery follows this one in work-item
+        # order, and its PR delta shape must admit the successor's
+        # files.
+        "tools/scale_selftest.py",
+        "docs/WORK-039-handoff.md",
+        "docs/WORK-039-evidence.md",
         # DAG-sanctioned allowlist amendment (W029 -> W038): the upgrade
         # battery's authority-boundary audit exempts the W038
         # future-IMT family as a DAG-sanctioned downstream consumer
@@ -2577,11 +2589,12 @@ def case_41_pr_delta_shape(results: List[Result]) -> None:
         # spec-delta check):
         "spec/prompts/WORK-037.md",
         "spec/prompts/WORK-038.md",
+        "spec/prompts/WORK-039.md",
     }
     unexpected = [
         c for c in changed
         if not c.startswith("appliance/") and not c.startswith("interop/")
-        and not c.startswith("imt/")
+        and not c.startswith("imt/") and not c.startswith("scale/")
         and c not in allowed_exact
         and not c.startswith(".github/")
     ]
