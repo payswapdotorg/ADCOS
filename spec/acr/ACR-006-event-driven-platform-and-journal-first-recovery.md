@@ -1,13 +1,13 @@
 # ACR-006 — Event-Driven Platform Integration and Journal-First Recovery
 
-Status: PROPOSED — Architect decision required before implementation
+Status: ACCEPTED — Architect decision DEC-0048
 Issue: #63
 
 ## Intent
 
 Formalize an event-driven platform integration model and journal-first recovery semantics for mobile and other intermittent execution environments.
 
-## Proposed semantic model
+## Accepted semantic model
 
 ### 1. Events plus snapshots
 
@@ -61,7 +61,7 @@ A control-plane path transition must not be treated as successful data-plane han
 
 ## Authority constraints
 
-This proposal does NOT create a new session, routing, transport, policy, identity, or persistence authority. It refines how existing authorities consume platform observations and recover their own state.
+This ACR does NOT create a new session, routing, transport, policy, identity, or persistence authority. It refines how existing authorities consume platform observations and recover their own state.
 
 Existing journal/audit/management semantics remain authoritative.
 
@@ -80,8 +80,8 @@ This ACR does not:
 - redesign the session authority;
 - change transport wire semantics;
 - redefine evidence classes;
-- authorize W040 or W041+ implementation.
+- authorize W040 or W041+ implementation by itself.
 
-## Acceptance condition
+## Acceptance
 
-Before implementation, the Architect must accept this ACR and record the resulting contract/schema decisions in `spec/architect/decisions/` and the persistent current-state/authorization records.
+Accepted by DEC-0048 on the merged proposal state from PR #64. Concrete schema/API implementation remains gated by an authorized Work Item and must preserve existing authority ownership and frozen wire semantics.
