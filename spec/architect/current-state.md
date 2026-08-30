@@ -5,7 +5,7 @@
 ## Repository
 
 - Repository: `github.com/pectoraux/ADCOS`
-- Current `main`: `0bf8391d0c42ef803c196e4359e52d857d128d69` (ACR-009 proposal merged by PR #82; this governance reconciliation records its acceptance)
+- Current `main`: `03f19c5e7fee3acc209f8e48701493e109685921` (tree-clean post-ACR-009 acceptance; includes the PR #82 acceptance merge and compensating cleanup commits for a temporary direct-write artifact)
 - Architecture version: `1.0` (`spec/architecture.md`)
 - Protocol version: `1.0` (`spec/schemas/protocol.json`)
 
@@ -21,7 +21,7 @@ GitHub/repository state is the persistent Architect. Chat is not an authority so
 
 - Active Work Item: `WORK-040`
 - Execution mode: `implementing` (correction-only)
-- Active authorization: `WORK-040-CORRECTION-001` (DEC-0046), baseline `3810da99a86182987b1b966ee15b92b15bc65a29` (reconciled from `93efa54f1edc2ec3c0bb5646827719f92af06b86` by LEDGER-RECON-002, post-PR-67 mainline reconciliation; correction-only scope unchanged)
+- Active authorization: `WORK-040-CORRECTION-001` (DEC-0046), baseline `3810da99a86182987b1b966ee15b92b15bc65a29` (reconciled by LEDGER-RECON-002; correction-only scope unchanged)
 - W040 status: `in-review` on PR `#48` (round 1 verdict: CHANGES_REQUIRED, DEC-0046)
 - W040 implementation head: `ee9b356020b6450d85837f60e60c41d08f0ec09a`
 - W040 original baseline: `1669ae9a396838b72ba461c846b98e84478ab24f`
@@ -57,7 +57,7 @@ A software rehearsal cannot close a physical criterion by inference.
 - `ACR-005` — First-Class Network Path and Platform Boundary — **ACCEPTED**, DEC-0047, proposal merged by PR #64.
 - `ACR-006` — Event-Driven Platform Integration and Journal-First Recovery — **ACCEPTED**, DEC-0048, proposal merged by PR #64.
 - `ACR-007` — Mission-Immutable, Architecture-Evolvable Governance — **ACCEPTED**, DEC-0049, merged by PR #67.
-- `ACR-009` — Commercial Connectivity Control Plane — **ACCEPTED**, DEC-0050, proposal merged by PR #82; this reconciliation is the durable acceptance transition.
+- `ACR-009` — Commercial Connectivity Control Plane — **ACCEPTED**, DEC-0050, proposal merged by PR #82; durable acceptance is recorded by PR #86.
 
 ACR-005 and ACR-006 define reusable architectural direction without independently authorizing implementation. ACR-007 defines the mission/architecture distinction and durable learning loop. ACR-009 defines the accepted commercial control-plane architecture; none of these ACRs independently authorizes Work Item implementation.
 
