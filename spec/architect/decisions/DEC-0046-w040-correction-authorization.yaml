@@ -1,0 +1,21 @@
+decision_id: DEC-0046
+kind: WORK_ITEM_AUTHORIZATION
+status: ACCEPTED
+work_item: WORK-040
+authorization_id: WORK-040-CORRECTION-001
+issued_on_main_sha: 93efa54f1edc2ec3c0bb5646827719f92af06b86
+reviewed_work_item_head: ee9b356020b6450d85837f60e60c41d08f0ec09a
+reviewer: Architect
+basis: "W040 remains CHANGES_REQUIRED: criterion 1 requires real-device participation and criterion 2 requires a defensible physical 5G access path. The correction cycle is authorized without reopening protocol architecture."
+scope:
+  - "physical participant evidence"
+  - "physical 5G access evidence, only if genuinely available"
+  - "preserve existing non-cellular, relay/backhaul, failover, and operational evidence"
+  - "maintain provenance, anti-promotion, authority, adapter-boundary, and frozen-spec invariants"
+prohibited:
+  - "W041+"
+  - "new protocol semantics"
+  - "new authority"
+  - "synthetic physical-path evidence"
+  - "private-method fallback used as acceptance evidence"
+effect: "Creates the repository-local active authorization required by ARCH-08 for the W040 correction PR. It does not constitute W040 acceptance."
