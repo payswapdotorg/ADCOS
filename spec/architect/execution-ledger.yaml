@@ -19,7 +19,7 @@
 # never silently rewritten.
 
 schema_version: 1
-main_sha: 3810da99a86182987b1b966ee15b92b15bc65a29
+main_sha: 03f19c5e7fee3acc209f8e48701493e109685921
 last_updated: "2026-08-30"
 work_items:
   - work_item: WORK-001
@@ -745,3 +745,10 @@ reconciliations:
     to_main_sha: 3810da99a86182987b1b966ee15b92b15bc65a29
     reason: "post-PR-67 mainline reconciliation: main advanced to 3810da99 (mission-immutable, architecture-evolvable governance, PR #67) while the persistent-state snapshot and the WORK-040-CORRECTION-001 authorization still referenced the PR #60 merge 93efa54f; the snapshot baseline (main_sha) and the authorization baseline_sha are formally moved to the current mainline so ARCH-03/ARCH-05 hold and the correction-only authorization is valid for the resumed W040 correction cycle"
     history: "no work-item history rewritten: every WORK-001..WORK-040 entry is byte-identical (including the WORK-040 note recording the authorization as issued at baseline 93efa54f); W041/W042 stay prepared ready-candidates and are not activated; no protocol semantics changed; the only changes are the snapshot baseline, the LEDGER-RECON-002 record itself, the reconciled baseline_sha in authorizations/WORK-040.yaml, and the reconciling narrative fields in execution-state.yaml and current-state.md"
+  - reconciliation_id: LEDGER-RECON-003
+    recorded_by: DEC-0050
+    recorded_at: 2026-08-30T18:44:05Z
+    from_main_sha: 3810da99a86182987b1b966ee15b92b15bc65a29
+    to_main_sha: 03f19c5e7fee3acc209f8e48701493e109685921
+    reason: "ACR-009 acceptance reconciliation: main advanced from the PR-67 governance baseline to the post-PR-82 mainline containing the accepted Commercial Connectivity Control Plane; DEC-0050 records acceptance while W041/W042/W043 remain unauthorized."
+    history: "No work-item history rewritten: WORK-001..WORK-040 entries remain byte-identical; this reconciliation changes only the ledger snapshot baseline and records the formal movement of the persistent Architect state."

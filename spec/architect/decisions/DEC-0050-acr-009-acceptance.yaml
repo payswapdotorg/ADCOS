@@ -1,0 +1,40 @@
+# ADCOS Architect decision record.
+# schema: spec/architect/decision-record-template.md; verified by tools/spec_check.py (ARCH-04).
+decision_id: DEC-0050
+type: governance
+work_item: null
+acr: ACR-009
+pr: 82
+reviewed_sha: 01f064bb497ba4eeadb4a45e6f501ba33509acc8
+decision: ACCEPTED
+status: ACCEPTED
+reviewer: "Architect (pectoraux)"
+timestamp: 2026-08-30T18:09:03Z
+findings:
+  - "ACR-009 Commercial Connectivity Control Plane is accepted as an additional commercial control-plane architecture layer. It preserves the permanent mission and does not replace or redefine identity, session, routing, NetworkPath, transport, or packet authorities."
+  - "The accepted architecture separates commercial state from regulated payment movement: ADCOS owns canonical commercial intent, usage correlation, allocation policy, settlement state, and audit lineage; external payment providers remain responsible for payment authorization, payment rails, and regulated funds movement."
+  - "Jurisdiction-aware connectivity and payment eligibility are mandatory architectural boundaries."
+  - "The three-way economic model is accepted: gross billable proceeds may be allocated deterministically among the connectivity provider, application/developer, and ADCOS, subject to versioned platform constraints and explicit fees, reserves, and adjustments."
+  - "ACR-009 is architecture direction only. It does not itself authorize implementation. Concrete commercial schema/API changes require separate repository-local Work Item authorization."
+blockers: []
+required_corrections: []
+evidence:
+  merge_sha: 0bf8391d0c42ef803c196e4359e52d857d128d69
+  ci_run: 33326263536
+  artifacts:
+    - "PR #82 proposal head 01f064bb497ba4eeadb4a45e6f501ba33509acc8"
+    - "PR #82 CI/spec-check success run 33326263536"
+    - "User acceptance directive recorded on PR #82 as review comment 5061538109"
+accepted_scope:
+  - "ACR-009 Commercial Connectivity Control Plane and its authority boundaries, invariants, lifecycle, economic model, provider abstraction, developer-facing conceptual surface, trust/jurisdiction requirements, and learning/revision mechanism"
+rejected_scope:
+  - "automatic authorization of W041, W042, W043, or any later Work Item"
+  - "payment-provider-specific implementation"
+  - "regulated funds custody or direct payment movement by ADCOS"
+  - "changes to existing connectivity/session/path/routing/transport authorities"
+downstream_effect:
+  - "ACR-009 is accepted and becomes durable architecture direction when this governance reconciliation merges to main"
+  - "W041, W042, and W043 remain ready-candidates and are not authorized by ACR-009 acceptance alone"
+  - "persistent Architect state must be reconciled to the PR #82 merge mainline"
+  - "future commercial implementations must preserve ACR-009 invariants and may be revised through later accepted ACRs under ACR-007"
+resolved_by: null
