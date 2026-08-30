@@ -33,15 +33,23 @@ skip context), that a missing authorization blocks implementation, that
 a stale authorization is detected, that review state cannot contradict
 execution state, that an acceptance SHA cannot differ from the reviewed
 SHA, that open evidence obligations cannot disappear, and that broken
-references fail. The PROVENANCE cases initialize a temporary git
-repository with an origin/main base and prove the authorization-
-provenance rules of ARCH-08: governance-only deltas pass, unauthorized
-implementation fails, self-authorization fails, in-review state without
-an active authorization fails closed (PA-001, DEC-0045: an in-review
-ledger entry is descriptive only and never authorizes), an authorized
-implementation delta passes (active authorization inherited
-byte-identically from the base, exact baseline, scope containment), and
-implementation PRs may not modify the persistent package.
+references fail. Since DEC-0046 the unmutated package fixture IS the
+reconciled post-PR-60 state: mode implementing with the active
+WORK-040 correction authorization WORK-040-CORRECTION-001 (baseline
+93efa54f) — the "missing authorization" and "no active authorization"
+cases now revert that activation deliberately to simulate the stopped
+state. The PROVENANCE cases initialize a temporary git repository with
+an origin/main base and prove the authorization-provenance rules of
+ARCH-08: governance-only deltas pass, implementation outside the
+authorized scope fails, self-authorization (modifying the inherited
+authorization record in the PR) fails, in-review state without an
+active authorization fails closed (PA-001, DEC-0045: an in-review
+ledger entry is descriptive only and never authorizes — simulated by
+reverting the activation in the base), an authorized implementation
+delta passes (the base now carries the real WORK-040-CORRECTION-001
+activation inherited byte-identically, exact baseline, scope
+containment), and implementation PRs may not modify the persistent
+package.
 """
 
 from __future__ import annotations
@@ -438,7 +446,7 @@ ARCH_CASES: List[Case] = [
             (
                 "replace",
                 "spec/architect/execution-state.yaml",
-                'mode: "awaiting-architect-decisions"',
+                'mode: "implementing"',
                 'mode: ["implementing"]',
             )
         ],
@@ -446,20 +454,29 @@ ARCH_CASES: List[Case] = [
         "expect_check": "ARCH-02",
     },
     {
-        # NO CURRENT AUTHORIZATION = IMPLEMENTATION MUST STOP.
+        # NO CURRENT AUTHORIZATION = IMPLEMENTATION MUST STOP. The fixture
+        # base is the reconciled post-DEC-0046 state (already implementing
+        # under WORK-040-CORRECTION-001), so the case reverts the
+        # authorization to in-review to simulate the stopped state.
         "name": "architect-missing-authorization-blocks-implementation",
         "ops": [
             (
                 "replace",
                 "spec/architect/execution-state.yaml",
-                'mode: "awaiting-architect-decisions"',
-                'mode: "implementing"',
+                '  active_authorization: "WORK-040-CORRECTION-001"',
+                "  active_authorization: null",
             ),
             (
                 "replace",
-                "spec/architect/execution-state.yaml",
-                "  active_work_item: null",
-                "  active_work_item: WORK-040",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "status: active",
+                "status: in-review",
+            ),
+            (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "authorized: true",
+                "authorized: false",
             ),
         ],
         "expect_exit": 1,
@@ -467,39 +484,18 @@ ARCH_CASES: List[Case] = [
     },
     {
         # An active authorization whose baseline no longer matches the
-        # recorded main baseline is stale.
+        # recorded main baseline is stale. The fixture base already
+        # carries the active WORK-040-CORRECTION-001 authorization
+        # (baseline 93efa54f); corrupting the recorded main baseline
+        # makes it stale.
         "name": "architect-stale-authorization-detected",
         "ops": [
             (
                 "replace",
                 "spec/architect/execution-state.yaml",
-                'mode: "awaiting-architect-decisions"',
-                'mode: "implementing"',
-            ),
-            (
-                "replace",
-                "spec/architect/execution-state.yaml",
-                "  active_work_item: null",
-                "  active_work_item: WORK-040",
-            ),
-            (
-                "replace",
-                "spec/architect/execution-state.yaml",
-                "  main_sha: 1669ae9a396838b72ba461c846b98e84478ab24f",
+                "  main_sha: 93efa54f1edc2ec3c0bb5646827719f92af06b86",
                 "  main_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            ),
-            (
-                "replace",
-                "spec/architect/authorizations/WORK-040.yaml",
-                "status: in-review",
-                "status: active",
-            ),
-            (
-                "replace",
-                "spec/architect/authorizations/WORK-040.yaml",
-                "authorized: false",
-                "authorized: true",
-            ),
+            )
         ],
         "expect_exit": 1,
         "expect_check": "ARCH-03",
@@ -575,8 +571,8 @@ ARCH_CASES: List[Case] = [
             (
                 "replace",
                 "spec/architect/current-state.md",
-                "Lifecycle ledger: `spec/architect/execution-ledger.yaml`",
-                "Lifecycle ledger: `spec/architect/nonexistent-ledger.yaml`",
+                "Tracked in `spec/architect/evidence-obligations.yaml`",
+                "Tracked in `spec/architect/nonexistent-obligations.yaml`",
             )
         ],
         "expect_exit": 1,
@@ -595,13 +591,16 @@ PROVENANCE_CASES: List[Case] = [
         "expect_check": None,
     },
     {
-        # Unauthorized implementation files fail reconstruction.
+        # Implementation outside the authorized scope fails. Since
+        # DEC-0046 the base carries the active WORK-040-CORRECTION-001
+        # authorization (scope: pilot/ + its tools/docs/evidence areas),
+        # so an implementation file under agent/ is out of scope.
         "name": "provenance-unauthorized-implementation-fails",
         "ops": [
             (
                 "create",
-                "pilot/unauthorized_probe.py",
-                "# unauthorized implementation file\n",
+                "agent/unauthorized_probe.py",
+                "# implementation file outside the authorized scope\n",
             )
         ],
         "branch": None,
@@ -609,51 +608,24 @@ PROVENANCE_CASES: List[Case] = [
         "expect_check": "ARCH-08",
     },
     {
-        # Self-authorization: the PR adds/activates the authorization
-        # itself instead of inheriting it from main. The handoff is
-        # completed too, so the failure is attributed to ARCH-08's
-        # inheritance rule alone (not to a schema shortfall).
+        # Self-authorization: the PR modifies the inherited authorization
+        # record itself instead of inheriting it byte-identically from
+        # main. Since DEC-0046 the base already carries the active
+        # WORK-040-CORRECTION-001 authorization, so self-authorization now
+        # means altering that record inside the PR (here: replacing the
+        # authorization id with a fabricated successor).
         "name": "provenance-self-authorization-fails",
         "ops": [
             (
                 "replace",
-                "spec/architect/execution-state.yaml",
-                'mode: "awaiting-architect-decisions"',
-                'mode: "implementing"',
-            ),
-            (
-                "replace",
-                "spec/architect/execution-state.yaml",
-                "  active_work_item: null",
-                "  active_work_item: WORK-040",
-            ),
-            (
-                "replace",
                 "spec/architect/authorizations/WORK-040.yaml",
-                "status: in-review",
-                "status: active",
-            ),
-            (
-                "replace",
-                "spec/architect/authorizations/WORK-040.yaml",
-                "authorized: false",
-                "authorized: true",
-            ),
-            (
-                "replace",
-                "spec/architect/authorizations/WORK-040.yaml",
-                "handoff: null",
-                "handoff: docs/WORK-040-handoff.md",
-            ),
-            (
-                "create",
-                "docs/WORK-040-handoff.md",
-                "# WORK-040 handoff (selftest fixture)\n",
+                "authorization_id: \"WORK-040-CORRECTION-001\"",
+                "authorization_id: \"WORK-040-SELF-AUTHORIZED-002\"",
             ),
             (
                 "create",
                 "pilot/self_authorized_probe.py",
-                "# self-authorized implementation file\n",
+                "# implementation file under a PR-altered authorization\n",
             ),
         ],
         "branch": None,
@@ -662,12 +634,45 @@ PROVENANCE_CASES: List[Case] = [
     },
     {
         # PA-001 (DEC-0045): an in-review ledger entry with a matching
-        # branch and areas is DESCRIPTIVE ONLY. With no active
-        # authorization the continuation delta fails closed — even though
-        # the branch matches the ledger entry and the file is inside the
-        # declared areas. This case is the inversion of the pre-PA-001
-        # "in-review branch reconstruction passes" case.
+        # branch and areas is DESCRIPTIVE ONLY. The base_ops revert the
+        # post-DEC-0046 activation to simulate the stopped state (no
+        # active authorization on main), so the continuation delta fails
+        # closed — even though the branch matches the ledger entry and the
+        # file is inside the declared areas. This case is the inversion of
+        # the pre-PA-001 "in-review branch reconstruction passes" case.
         "name": "provenance-in-review-without-active-authorization-fails",
+        "base_ops": [
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                'mode: "implementing"',
+                'mode: "awaiting-architect-decisions"',
+            ),
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                "  active_work_item: WORK-040",
+                "  active_work_item: null",
+            ),
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                '  active_authorization: "WORK-040-CORRECTION-001"',
+                "  active_authorization: null",
+            ),
+            (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "status: active",
+                "status: in-review",
+            ),
+            (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "authorized: true",
+                "authorized: false",
+            ),
+        ],
         "ops": [
             (
                 "create",
@@ -683,58 +688,12 @@ PROVENANCE_CASES: List[Case] = [
         # PA-001 (DEC-0045): an implementation delta passes ONLY under an
         # active authorization inherited byte-identically from the base,
         # with the exact recorded baseline and the delta inside scope.
-        # base_ops simulate the Architect activating WORK-040 on main
-        # BEFORE the implementation branch exists.
+        # Since DEC-0046 the fixture base IS the Architect's activated
+        # state on main (WORK-040-CORRECTION-001 landed through the PR #61
+        # reconciliation), so no base_ops are needed: the case now
+        # exercises the real repository activation end-to-end.
         "name": "provenance-authorized-implementation-passes",
-        "base_ops": [
-            (
-                "replace",
-                "spec/architect/execution-state.yaml",
-                'mode: "awaiting-architect-decisions"',
-                'mode: "implementing"',
-            ),
-            (
-                "replace",
-                "spec/architect/execution-state.yaml",
-                "  active_work_item: null",
-                "  active_work_item: WORK-040",
-            ),
-            (
-                "replace",
-                "spec/architect/execution-state.yaml",
-                "  active_authorization: null",
-                "  active_authorization: WORK-040",
-            ),
-            (
-                "replace",
-                "spec/architect/execution-state.yaml",
-                "Implementation stops until the Architect records the next repository-local authorization.\"",
-                "WORK-040 continuation is authorized on main (selftest fixture).\"",
-            ),
-            (
-                "replace",
-                "spec/architect/authorizations/WORK-040.yaml",
-                "status: in-review",
-                "status: active",
-            ),
-            (
-                "replace",
-                "spec/architect/authorizations/WORK-040.yaml",
-                "authorized: false",
-                "authorized: true",
-            ),
-            (
-                "replace",
-                "spec/architect/authorizations/WORK-040.yaml",
-                "handoff: null",
-                "handoff: docs/WORK-040-handoff.md",
-            ),
-            (
-                "create",
-                "docs/WORK-040-handoff.md",
-                "# WORK-040 repository-local handoff (selftest fixture)\n\nRecorded on main by the Architect when activating the WORK-040\nauthorization (persistent-Architect selftest fixture).\n",
-            ),
-        ],
+        "base_ops": [],
         "ops": [
             (
                 "create",
@@ -758,8 +717,8 @@ PROVENANCE_CASES: List[Case] = [
             (
                 "replace",
                 "spec/architect/current-state.md",
-                "Snapshot recorded: 2026-08-30",
-                "Snapshot recorded: 2026-08-31",
+                "## Resume rule",
+                "## Resume rule (modified by the implementation PR)",
             ),
         ],
         "branch": "work-040-pilot-deployment",

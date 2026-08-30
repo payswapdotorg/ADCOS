@@ -12,9 +12,14 @@
 # an acceptance-comment time is durably recorded.
 #
 # schema: spec/architect/ (execution ledger v1); verified by tools/spec_check.py (ARCH-05).
+#
+# Reconciliation convention: the ledger snapshot baseline (main_sha) tracks
+# the mainline the persistent state is reconciled against. Reconciliations
+# are recorded formally in the `reconciliations` list below — history is
+# never silently rewritten.
 
 schema_version: 1
-main_sha: 1669ae9a396838b72ba461c846b98e84478ab24f
+main_sha: 93efa54f1edc2ec3c0bb5646827719f92af06b86
 last_updated: "2026-08-30"
 work_items:
   - work_item: WORK-001
@@ -714,12 +719,22 @@ work_items:
     merge_sha: null
     merged_at: null
     ci_run: 33278751838
-    review_rounds: 0
+    review_rounds: 1
     acceptance_decision: null
-    correction_decisions: []
-    handoff: null
+    correction_decisions:
+      - DEC-0046
+    handoff: docs/WORK-040-correction-handoff.md
     handoff_required: true
     lifecycle: in-review
     areas:
       - pilot/
-    note: "in review: delivered on PR #48 (head ee9b356, CI run 33278751838 SUCCESS, delivery record posted 2026-08-29); no Architect verdict rendered yet; the chat-era designation is recorded as deprecated provenance in authorizations/WORK-040.yaml; the handoff lives on the branch (docs/WORK-040-handoff.md) and in the PR #48 body, not on main"
+    note: "in review, round 1 verdict rendered: delivered on PR #48 (head ee9b356, CI run 33278751838 SUCCESS, delivery record posted 2026-08-29); DEC-0046 rules CHANGES_REQUIRED (criteria 1-2 open) and issues the repository-local correction authorization WORK-040-CORRECTION-001 (baseline 93efa54f); the chat-era designation remains deprecated provenance in authorizations/WORK-040.yaml; the correction-cycle handoff is docs/WORK-040-correction-handoff.md on main, while the implementation handoff still lives on the branch (docs/WORK-040-handoff.md) and in the PR #48 body; this in-review entry stays descriptive only and is never authorization (PA-001, DEC-0045)"
+
+reconciliations:
+  - reconciliation_id: LEDGER-RECON-001
+    recorded_by: DEC-0046
+    recorded_at: 2026-08-30T04:02:23Z
+    from_main_sha: 1669ae9a396838b72ba461c846b98e84478ab24f
+    to_main_sha: 93efa54f1edc2ec3c0bb5646827719f92af06b86
+    reason: "persistent-state reconciliation after the persistent Architect package merged (PR #60, merge 93efa54f at 2026-08-30T03:59:21Z): the package-establishment snapshot baseline moves from 1669ae9a to the post-merge mainline, and the WORK-040 round 1 verdict plus the correction-only authorization WORK-040-CORRECTION-001 are recorded on the WORK-040 entry"
+    history: "no work-item history rewritten: every WORK-001..WORK-039 entry is byte-identical to the package-establishment snapshot; WORK-040 gains its review_rounds count, its correction-decision reference, and the repository-local correction handoff; the reconciliation is formal and visible, never silent"
