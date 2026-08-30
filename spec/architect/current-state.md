@@ -21,7 +21,7 @@ GitHub/repository state is the persistent Architect. Chat is not an authority so
 
 - Active Work Item: `WORK-040`
 - Execution mode: `implementing` (correction-only)
-- Active authorization: `WORK-040-CORRECTION-001` (DEC-0046), baseline `93efa54f1edc2ec3c0bb5646827719f92af06b86`
+- Active authorization: `WORK-040-CORRECTION-001` (DEC-0046), baseline `3810da99a86182987b1b966ee15b92b15bc65a29` (reconciled from `93efa54f1edc2ec3c0bb5646827719f92af06b86` by LEDGER-RECON-002, post-PR-67 mainline reconciliation; correction-only scope unchanged)
 - W040 status: `in-review` on PR `#48` (round 1 verdict: CHANGES_REQUIRED, DEC-0046)
 - W040 implementation head: `ee9b356020b6450d85837f60e60c41d08f0ec09a`
 - W040 original baseline: `1669ae9a396838b72ba461c846b98e84478ab24f`
