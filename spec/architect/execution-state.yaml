@@ -12,8 +12,8 @@ last_updated: "2026-08-30"
 
 repository:
   canonical: "github.com/pectoraux/ADCOS"
-  main_sha: 0bf8391d0c42ef803c196e4359e52d857d128d69
-  main_sha_semantics: "main after PR #82 merged the ACR-009 commercial connectivity control plane; this governance reconciliation records DEC-0050 acceptance and preserves the rule that ACR acceptance does not authorize implementation"
+  main_sha: 03f19c5e7fee3acc209f8e48701493e109685921
+  main_sha_semantics: "actual current main after PR #82 merged ACR-009 and compensating cleanup removed a temporary direct-write artifact; this governance reconciliation records DEC-0050 acceptance and preserves the rule that ACR acceptance does not authorize implementation"
 
 versions:
   architecture_version_reference: "1.0"
