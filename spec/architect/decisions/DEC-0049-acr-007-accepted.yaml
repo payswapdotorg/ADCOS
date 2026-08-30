@@ -2,15 +2,15 @@
 # schema: spec/architect/decision-record-template.md
 # Design-level acceptance; does not itself authorize implementation.
 decision_id: DEC-0049
-type: architecture
+type: governance
 work_item: null
 acr: ACR-007
-pr: null
+pr: 67
 reviewed_sha: abd7adbdb3db6f7c558b3045ee3b351999c7ea33
 decision: ACCEPTED
 status: ACCEPTED
 reviewer: "Architect (pectoraux)"
-timestamp: 2026-08-30T00:00:00Z
+timestamp: 2026-08-30T06:30:00Z
 findings:
   - "The ADCOS mission is the permanent objective and is not mutable through ordinary architecture change control."
   - "The architecture is a versioned, authoritative snapshot representing the current technical hypothesis for achieving the mission; it may evolve through accepted ACRs."
@@ -42,5 +42,5 @@ downstream_effect:
   - "Architectural improvement is a governed, expected process rather than an exceptional failure of a permanently frozen architecture."
   - "Future ACRs should cite motivating experience IDs when applicable."
   - "Future architecture versions remain subordinate to the permanent Mission Authority."
-  - "Future implementation Work Items still require explicit repository-local authorization."
+  - "Future implementation Work Items require explicit repository-local authorization."
 resolved_by: null
