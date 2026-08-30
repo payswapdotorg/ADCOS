@@ -2,7 +2,7 @@
 
 ## Status
 
-PROPOSED — ACR candidate
+ACCEPTED — Architect decision DEC-0050; proposal merged by PR #82.
 
 ## Motivation
 
@@ -123,7 +123,7 @@ The platform must never assume that a provider has unrestricted legal authority 
 
 ## Compatibility and migration
 
-This ACR is a proposed architecture layer and does not itself alter existing wire semantics. Any accepted implementation must introduce the commercial control plane as an additional authority domain that references, but does not redefine, existing connectivity authorities.
+This ACR is an accepted architecture layer and does not itself alter existing wire semantics. Any implementation must introduce the commercial control plane as an additional authority domain that references, but does not redefine, existing connectivity authorities.
 
 Concrete schema/API changes, ledger schemas, payment adapters, and developer interfaces require separate authorized Work Items.
 
@@ -135,9 +135,9 @@ Ghana's current NCA materials classify Internet/Public Data Service Provision an
 
 ## Architect decision
 
-PENDING.
+ACCEPTED — DEC-0050. User-directed acceptance was recorded on PR #82 at 2026-08-30T18:09:03Z; the durable repository decision record is `spec/architect/decisions/DEC-0050-acr-009-acceptance.yaml`.
 
-No implementation is authorized by this record. Acceptance requires a durable Architect decision and synchronized persistent-state update.
+ACR-009 acceptance does not itself authorize implementation. Concrete commercial implementation remains subject to separately authorized Work Items.
 
 ## Learning and revision
 
