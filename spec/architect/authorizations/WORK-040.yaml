@@ -1,0 +1,82 @@
+# ADCOS Work Item authorization record — WORK-040.
+#
+# Provenance note (migration): WORK-040 was designated through chat on
+# 2026-08-29, BEFORE the persistent Architect package existed. That
+# designation produced the delivered implementation now in review on PR #48.
+# Under this package, chat is not durable authority: authorized is false,
+# and any CONTINUATION of WORK-040 implementation requires a fresh
+# repository-local authorization by the Architect.
+# schema: spec/architect/authorizations/ (v1); verified by ARCH-03.
+
+work_item: WORK-040
+status: in-review
+authorized: false
+type: implementation
+baseline_sha: 1669ae9a396838b72ba461c846b98e84478ab24f
+historical_designation: "chat-issued 2026-08-29 (pre-persistent-governance); deprecated provenance, not durable authority under this package"
+dependencies:
+  - WORK-027
+  - WORK-028
+  - WORK-036
+  - WORK-037
+  - WORK-039
+authority_inputs:
+  - "WORK-003 envelope (protocol/)"
+  - "WORK-004 identity (identity/)"
+  - "WORK-010 policy (policy/)"
+  - "WORK-011 routing (routing/)"
+  - "WORK-012 sessions (sessions/)"
+  - "WORK-017 transport (transport/)"
+  - "WORK-018 IP integration (agent/, adapters/)"
+  - "WORK-025 services (services/)"
+  - "WORK-027 energy/resilience (energy/)"
+  - "WORK-028 security posture (docs/security/)"
+  - "WORK-033 agent runtime (agent/)"
+  - "WORK-036 appliance (appliance/)"
+  - "WORK-039 federation relay discipline (scale/)"
+authority_outputs:
+  - "pilot/ deployment harness and evidence model (pilot/ owns the pilot journal, criteria, and evidence classes; no second protocol/session/routing authority)"
+scope:
+  - pilot/
+  - tools/pilot_selftest.py
+  - docs/WORK-040-handoff.md
+  - docs/WORK-040-evidence.md
+acceptance_criteria:
+  - "real users/devices participate"
+  - "at least one 5G access path, one non-cellular path, and one relay/backhaul path work"
+  - "resilience/failover demonstrated"
+  - "operational evidence is captured"
+evidence_classes:
+  - criterion: "real users/devices participate"
+    class: PHYSICAL
+    allowed_statuses:
+      - PASS
+      - PARTIAL
+      - NOT-TESTABLE
+      - OPEN
+  - criterion: "real 5G access path"
+    class: PHYSICAL
+    allowed_statuses:
+      - PASS
+      - PARTIAL
+      - NOT-TESTABLE
+      - OPEN
+  - criterion: "non-cellular path; relay/backhaul path; failover; operational evidence"
+    class: OPERATIONAL
+    allowed_statuses:
+      - PASS
+      - PARTIAL
+      - NOT-TESTABLE
+      - OPEN
+out_of_scope:
+  - "protocol design (no second identity/session/routing/federation authority)"
+  - "pilot-specific protocol semantics"
+  - "bypassing adapter boundaries"
+  - "mocks replacing production paths in acceptance evidence"
+  - "promoting simulated evidence to physical"
+  - "weakening anti-promotion controls"
+  - "modifying frozen spec semantics"
+  - "W041+ behavior"
+handoff: null
+handoff_note: "no repository-local handoff on main (governance gap of the chat era); the durable handoff equivalents are the PR #48 body and the branch document docs/WORK-040-handoff.md"
+handoff_required: true

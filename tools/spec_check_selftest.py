@@ -25,6 +25,23 @@ inside Status sections, the exact usage future prompts, ADRs, and
 audit records need — and must pass. A mixed fixture proves that a
 Status-section prose reference does not whitelist a bare declaration
 statement in the same Status section.
+
+Persistent Architect package (governance era): the ARCH cases prove
+that a new session can reconstruct active state (the baseline case now
+exercises ARCH-01..ARCH-07 on the unmutated package and ARCH-08 in its
+skip context), that a missing authorization blocks implementation, that
+a stale authorization is detected, that review state cannot contradict
+execution state, that an acceptance SHA cannot differ from the reviewed
+SHA, that open evidence obligations cannot disappear, and that broken
+references fail. The PROVENANCE cases initialize a temporary git
+repository with an origin/main base and prove the authorization-
+provenance rules of ARCH-08: governance-only deltas pass, unauthorized
+implementation fails, self-authorization fails, in-review state without
+an active authorization fails closed (PA-001, DEC-0045: an in-review
+ledger entry is descriptive only and never authorizes), an authorized
+implementation delta passes (active authorization inherited
+byte-identically from the base, exact baseline, scope containment), and
+implementation PRs may not modify the persistent package.
 """
 
 from __future__ import annotations
@@ -40,7 +57,7 @@ from typing import Dict, List, Optional, cast
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Tracked tree items required for the checker to be representative.
-COPY_ITEMS: List[str] = ["spec", "tools", ".github", "protocol", "identity", "capabilities", "discovery", "topology", "resources", "intent", "policy", "routing", "sessions", "multipath", "mobility", "federation", "adapters", "transport", "README.md", ".gitignore"]
+COPY_ITEMS: List[str] = ["spec", "tools", ".github", "docs", "protocol", "identity", "capabilities", "discovery", "topology", "resources", "intent", "policy", "routing", "sessions", "multipath", "mobility", "federation", "adapters", "transport", "README.md", ".gitignore"]
 
 FAIL_LINE_RE = re.compile(r"^\[FAIL    \] (\S+)", re.MULTILINE)
 
@@ -50,6 +67,10 @@ FAIL_LINE_RE = re.compile(r"^\[FAIL    \] (\S+)", re.MULTILINE)
 #                   ("delete",  path)
 #                   ("replace", path, old, new)   # old must occur exactly once
 #                   ("create",  path, content)
+#   base_ops      provenance cases only: operations applied BEFORE the
+#                 initial commit, so they are part of the origin/main base
+#                 (how the Architect records state on main before a PR
+#                 branches from it); defaults to no operations
 #   expect_exit   expected checker exit code
 #   expect_check  expected failing check id (implies expect_exit == 1)
 Case = Dict[str, object]
@@ -354,6 +375,7 @@ def apply_ops(root: Path, ops: List[tuple]) -> None:
             _, _, content = op
             if path.exists():
                 raise AssertionError("fixture %s already exists" % op[1])
+            path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding="utf-8")
         else:  # pragma: no cover - defensive
             raise AssertionError("unknown operation %r" % (kind,))
@@ -368,9 +390,445 @@ def run_checker(root: Path) -> subprocess.CompletedProcess:
     )
 
 
+EVID_004_BLOCK = """  - obligation_id: EVID-004
+    work_item: WORK-035
+    criterion: "Physical Android device track; specifically the physical transport re-bind/handover over a handset-backed second path"
+    evidence_class: PHYSICAL
+    status: OPEN
+    required_environment: "Physical Android handset with a genuinely handset-backed second transport path (DEC-0042)"
+    latest_evidence_artifact: "PR #47 v6 review (DEC-0042)"
+    evidence_sha: null
+    review_decision: DEC-0042
+    remaining_condition: "Physical observation is PASS and the software implementation is CLOSED, but the handover re-bind over a handset-backed second path remains undemonstrated; host-lo mapping and synthetic interface sources are inadmissible."
+
+"""
+
+IN_REVIEW_BLOCK = """in_review:
+  - work_item: WORK-040
+    branch: "work-040-pilot-deployment"
+    pr: 48
+    pr_head: ee9b356020b6450d85837f60e60c41d08f0ec09a
+    baseline_sha: 1669ae9a396838b72ba461c846b98e84478ab24f
+    state: "in-review"
+    delivered_at: "2026-08-29"
+    areas:
+      - pilot/
+"""
+
+ARCH_CASES: List[Case] = [
+    {
+        # The package itself is present and coherent: a new session can
+        # reconstruct active state from the repository alone.
+        "name": "architect-baseline-reconstructs-state",
+        "ops": [],
+        "expect_exit": 0,
+        "expect_check": None,
+    },
+    {
+        "name": "architect-package-artifact-missing",
+        "ops": [("delete", "spec/architect/current-state.md")],
+        "expect_exit": 1,
+        "expect_check": "ARCH-01",
+    },
+    {
+        # The machine-readable state must stay inside the supported YAML
+        # subset: a flow sequence is rejected (fail closed).
+        "name": "architect-yaml-subset-violation",
+        "ops": [
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                'mode: "awaiting-architect-decisions"',
+                'mode: ["implementing"]',
+            )
+        ],
+        "expect_exit": 1,
+        "expect_check": "ARCH-02",
+    },
+    {
+        # NO CURRENT AUTHORIZATION = IMPLEMENTATION MUST STOP.
+        "name": "architect-missing-authorization-blocks-implementation",
+        "ops": [
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                'mode: "awaiting-architect-decisions"',
+                'mode: "implementing"',
+            ),
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                "  active_work_item: null",
+                "  active_work_item: WORK-040",
+            ),
+        ],
+        "expect_exit": 1,
+        "expect_check": "ARCH-03",
+    },
+    {
+        # An active authorization whose baseline no longer matches the
+        # recorded main baseline is stale.
+        "name": "architect-stale-authorization-detected",
+        "ops": [
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                'mode: "awaiting-architect-decisions"',
+                'mode: "implementing"',
+            ),
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                "  active_work_item: null",
+                "  active_work_item: WORK-040",
+            ),
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                "  main_sha: 1669ae9a396838b72ba461c846b98e84478ab24f",
+                "  main_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            ),
+            (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "status: in-review",
+                "status: active",
+            ),
+            (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "authorized: false",
+                "authorized: true",
+            ),
+        ],
+        "expect_exit": 1,
+        "expect_check": "ARCH-03",
+    },
+    {
+        # Review state cannot contradict execution state: the execution
+        # state drops the in-review entry while the ledger keeps it.
+        "name": "architect-review-state-contradicts-execution-state",
+        "ops": [
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                IN_REVIEW_BLOCK,
+                "in_review: []",
+            )
+        ],
+        "expect_exit": 1,
+        "expect_check": "ARCH-05",
+    },
+    {
+        # An in-review ledger entry must never claim a merge.
+        "name": "architect-in-review-claims-merge",
+        "ops": [
+            (
+                "replace",
+                "spec/architect/execution-ledger.yaml",
+                "    merge_sha: null",
+                "    merge_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            ),
+            (
+                "replace",
+                "spec/architect/execution-ledger.yaml",
+                "    merged_at: null",
+                "    merged_at: 2026-08-30T00:00:00Z",
+            ),
+        ],
+        "expect_exit": 1,
+        "expect_check": "ARCH-02",
+    },
+    {
+        # An acceptance decision must identify the exact reviewed SHA.
+        "name": "architect-accepted-sha-differs-from-reviewed-sha",
+        "ops": [
+            (
+                "replace",
+                "spec/architect/decisions/DEC-0039-w039-acceptance.yaml",
+                "reviewed_sha: c515231fa23bc168d603926a81b2c73654e3dfb4",
+                "reviewed_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            )
+        ],
+        "expect_exit": 1,
+        "expect_check": "ARCH-04",
+    },
+    {
+        # Open evidence obligations cannot disappear: dropping the EVID-004
+        # registration breaks the visibility cross-checks.
+        "name": "architect-open-evidence-obligation-disappears",
+        "ops": [
+            (
+                "replace",
+                "spec/architect/evidence-obligations.yaml",
+                EVID_004_BLOCK,
+                "",
+            )
+        ],
+        "expect_exit": 1,
+        "expect_check": "ARCH-06",
+    },
+    {
+        # Broken canonical references fail the checks.
+        "name": "architect-broken-reference-fails",
+        "ops": [
+            (
+                "replace",
+                "spec/architect/current-state.md",
+                "Lifecycle ledger: `spec/architect/execution-ledger.yaml`",
+                "Lifecycle ledger: `spec/architect/nonexistent-ledger.yaml`",
+            )
+        ],
+        "expect_exit": 1,
+        "expect_check": "ARCH-07",
+    },
+]
+
+PROVENANCE_CASES: List[Case] = [
+    {
+        # A governance/meta-only delta needs no implementation
+        # authorization.
+        "name": "provenance-governance-delta-passes",
+        "ops": [("create", "docs/governance-note.txt", "governance only\n")],
+        "branch": None,
+        "expect_exit": 0,
+        "expect_check": None,
+    },
+    {
+        # Unauthorized implementation files fail reconstruction.
+        "name": "provenance-unauthorized-implementation-fails",
+        "ops": [
+            (
+                "create",
+                "pilot/unauthorized_probe.py",
+                "# unauthorized implementation file\n",
+            )
+        ],
+        "branch": None,
+        "expect_exit": 1,
+        "expect_check": "ARCH-08",
+    },
+    {
+        # Self-authorization: the PR adds/activates the authorization
+        # itself instead of inheriting it from main. The handoff is
+        # completed too, so the failure is attributed to ARCH-08's
+        # inheritance rule alone (not to a schema shortfall).
+        "name": "provenance-self-authorization-fails",
+        "ops": [
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                'mode: "awaiting-architect-decisions"',
+                'mode: "implementing"',
+            ),
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                "  active_work_item: null",
+                "  active_work_item: WORK-040",
+            ),
+            (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "status: in-review",
+                "status: active",
+            ),
+            (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "authorized: false",
+                "authorized: true",
+            ),
+            (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "handoff: null",
+                "handoff: docs/WORK-040-handoff.md",
+            ),
+            (
+                "create",
+                "docs/WORK-040-handoff.md",
+                "# WORK-040 handoff (selftest fixture)\n",
+            ),
+            (
+                "create",
+                "pilot/self_authorized_probe.py",
+                "# self-authorized implementation file\n",
+            ),
+        ],
+        "branch": None,
+        "expect_exit": 1,
+        "expect_check": "ARCH-08",
+    },
+    {
+        # PA-001 (DEC-0045): an in-review ledger entry with a matching
+        # branch and areas is DESCRIPTIVE ONLY. With no active
+        # authorization the continuation delta fails closed — even though
+        # the branch matches the ledger entry and the file is inside the
+        # declared areas. This case is the inversion of the pre-PA-001
+        # "in-review branch reconstruction passes" case.
+        "name": "provenance-in-review-without-active-authorization-fails",
+        "ops": [
+            (
+                "create",
+                "pilot/reconstruction_probe.py",
+                "# in-review continuation inside the declared areas\n",
+            )
+        ],
+        "branch": "work-040-pilot-deployment",
+        "expect_exit": 1,
+        "expect_check": "ARCH-08",
+    },
+    {
+        # PA-001 (DEC-0045): an implementation delta passes ONLY under an
+        # active authorization inherited byte-identically from the base,
+        # with the exact recorded baseline and the delta inside scope.
+        # base_ops simulate the Architect activating WORK-040 on main
+        # BEFORE the implementation branch exists.
+        "name": "provenance-authorized-implementation-passes",
+        "base_ops": [
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                'mode: "awaiting-architect-decisions"',
+                'mode: "implementing"',
+            ),
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                "  active_work_item: null",
+                "  active_work_item: WORK-040",
+            ),
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                "  active_authorization: null",
+                "  active_authorization: WORK-040",
+            ),
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                "Implementation stops until the Architect records the next repository-local authorization.\"",
+                "WORK-040 continuation is authorized on main (selftest fixture).\"",
+            ),
+            (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "status: in-review",
+                "status: active",
+            ),
+            (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "authorized: false",
+                "authorized: true",
+            ),
+            (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "handoff: null",
+                "handoff: docs/WORK-040-handoff.md",
+            ),
+            (
+                "create",
+                "docs/WORK-040-handoff.md",
+                "# WORK-040 repository-local handoff (selftest fixture)\n\nRecorded on main by the Architect when activating the WORK-040\nauthorization (persistent-Architect selftest fixture).\n",
+            ),
+        ],
+        "ops": [
+            (
+                "create",
+                "pilot/authorized_probe.py",
+                "# implementation inside the authorized scope\n",
+            )
+        ],
+        "branch": "work-040-continuation",
+        "expect_exit": 0,
+        "expect_check": None,
+    },
+    {
+        # Implementation PRs must not modify the persistent package.
+        "name": "provenance-implementation-modifies-package-fails",
+        "ops": [
+            (
+                "create",
+                "pilot/package_tamper_probe.py",
+                "# implementation file\n",
+            ),
+            (
+                "replace",
+                "spec/architect/current-state.md",
+                "Snapshot recorded: 2026-08-30",
+                "Snapshot recorded: 2026-08-31",
+            ),
+        ],
+        "branch": "work-040-pilot-deployment",
+        "expect_exit": 1,
+        "expect_check": "ARCH-08",
+    },
+]
+
+
+def run_git(root: Path, *args: str) -> None:
+    process = subprocess.run(
+        ["git", "-C", str(root)] + list(args),
+        capture_output=True,
+        text=True,
+    )
+    if process.returncode != 0:
+        raise AssertionError(
+            "git %s failed: %s" % (" ".join(args), process.stderr.strip())
+        )
+
+
+def run_provenance_case(case: Case) -> tuple:
+    name = case["name"]
+    root = make_copy()
+    try:
+        init = subprocess.run(
+            ["git", "-C", str(root), "init", "-b", "main"],
+            capture_output=True,
+            text=True,
+        )
+        if init.returncode != 0:
+            run_git(root, "init")
+            run_git(root, "branch", "-M", "main")
+        run_git(root, "config", "user.email", "selftest@adcos.invalid")
+        run_git(root, "config", "user.name", "spec_check_selftest")
+        # base_ops land IN the initial commit: they are the state the
+        # Architect recorded on main before the PR branched from it.
+        apply_ops(root, cast(List[tuple], case.get("base_ops") or []))
+        run_git(root, "add", "-A")
+        run_git(
+            root, "-c", "commit.gpgsign=false", "commit", "-m", "base",
+        )
+        run_git(root, "update-ref", "refs/remotes/origin/main", "HEAD")
+        if case.get("branch"):
+            run_git(root, "checkout", "-b", str(case["branch"]))
+        apply_ops(root, cast(List[tuple], case["ops"]))
+        process = subprocess.run(
+            [sys.executable, str(root / "tools" / "spec_check.py"), "--provenance"],
+            capture_output=True,
+            text=True,
+            cwd=str(root),
+        )
+        output = process.stdout + process.stderr
+        failed_checks = FAIL_LINE_RE.findall(output)
+        expected_exit = case["expect_exit"]
+        expected_check = case["expect_check"]
+        ok = process.returncode == expected_exit
+        detail = "exit %d" % process.returncode
+        if expected_check is not None and expected_check not in failed_checks:
+            ok = False
+        detail += ", failed checks: %s" % (", ".join(failed_checks) or "none")
+        return (name, ok, detail)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 def main() -> int:
     results: List[tuple] = []
-    for case in CASES:
+    for case in CASES + ARCH_CASES:
         name = case["name"]
         root = make_copy()
         try:
@@ -396,6 +854,8 @@ def main() -> int:
             results.append((name, ok, detail))
         finally:
             shutil.rmtree(root, ignore_errors=True)
+    for case in PROVENANCE_CASES:
+        results.append(run_provenance_case(case))
 
     print("ADCOS specification checker self-test")
     print("=" * 72)
