@@ -151,3 +151,19 @@ jobs:
 
       - name: Run federation-at-scale tests
         run: python3 tools/scale_selftest.py
+
+      # Persistent Architect package: authorization provenance for pull
+      # requests. Runs LAST on purpose: the frozen-surface batteries above
+      # detect the origin/main ref to choose their strict context, and this
+      # step is the only one that fetches it. The spec_check run above
+      # reports ARCH-08 as SKIP in the base-less PR checkout; this step
+      # enforces it strictly: an implementation-file delta must be
+      # reconstructible from repository artifacts (an active authorization
+      # inherited byte-identically from the base, or an in-review ledger
+      # entry with a matching branch), and implementation deltas must not
+      # modify spec/architect/.
+      - name: Verify execution-authorization provenance (PR context)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags origin main
+          python3 tools/spec_check.py --provenance
