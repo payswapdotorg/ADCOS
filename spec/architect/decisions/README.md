@@ -6,7 +6,7 @@
 
 Durable Architect decision records live in this directory as `DEC-NNNN-<short-slug>.yaml`, numbered sequentially and stably. Schema: `spec/architect/decision-record-template.md`. Verified by `tools/spec_check.py` (ARCH-04).
 
-Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-001 … WORK-039, reconstructed from repository-durable evidence. Unknown chat-era detail is not invented. Records DEC-0040 … DEC-0049 are corrective/governance/architecture decisions whose requirements shape future work.
+Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-001 … WORK-039, reconstructed from repository-durable evidence. Unknown chat-era detail is not invented. Records DEC-0040 … DEC-0050 are corrective/governance/architecture decisions whose requirements shape future work.
 
 ## Registry
 
@@ -61,6 +61,7 @@ Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-
 | DEC-0047 | architecture | null | ACCEPTED | ACCEPTED | ACR-005: first-class network path/platform boundary |
 | DEC-0048 | architecture | null | ACCEPTED | ACCEPTED | ACR-006: event-driven platform/journal-first recovery |
 | DEC-0049 | architecture | null | ACCEPTED | ACCEPTED | ACR-007: mission-immutable, architecture-evolvable governance |
+| DEC-0050 | architecture | null | ACCEPTED | ACCEPTED | ACR-009: commercial connectivity control plane |
 
 ## Rules
 
