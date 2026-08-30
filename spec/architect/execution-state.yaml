@@ -1,4 +1,12 @@
 # ADCOS execution state — persisted by the Architect.
+#
+# Reconciled after the PR #60 merge: the WORK-040 correction cycle is now
+# authorized repository-locally (DEC-0046 / WORK-040-CORRECTION-001, baseline
+# 93efa54f). The frozen mode vocabulary is implementing/awaiting-architect-
+# decisions; the correction-only qualifier of this authorization is carried
+# by halted_reason and by the authorization record itself.
+#
+# schema: spec/architect/ (execution state v1); verified by ARCH-02/ARCH-03.
 schema_version: 1
 package: "persistent-architect"
 last_updated: "2026-08-30"
@@ -6,7 +14,7 @@ last_updated: "2026-08-30"
 repository:
   canonical: "github.com/pectoraux/ADCOS"
   main_sha: 93efa54f1edc2ec3c0bb5646827719f92af06b86
-  main_sha_semantics: "current main after merge of the persistent Architect package PR #60"
+  main_sha_semantics: "main after the merge of the persistent Architect package (PR #60); the baseline the WORK-040 correction authorization is issued against"
 
 versions:
   architecture_version_reference: "1.0"
@@ -15,10 +23,10 @@ versions:
   protocol_version_authority: "spec/schemas/protocol.json"
 
 execution:
-  mode: "correction-authorized"
+  mode: "implementing"
   active_work_item: WORK-040
   active_authorization: "WORK-040-CORRECTION-001"
-  halted_reason: "WORK-040 remains in Architect review. Only the explicitly authorized correction scope may proceed; acceptance is not granted. W041+ remain blocked."
+  halted_reason: "Correction-only implementing: WORK-040 remains CHANGES_REQUIRED (DEC-0046) and only the WORK-040-CORRECTION-001 scope may proceed; acceptance is not granted and W041+ remain blocked. When the correction PR is delivered, this halts pending Architect re-review."
   next_required_decisions:
     - "Review the W040 correction PR after it is submitted under WORK-040-CORRECTION-001"
     - "Disposition W035 physical-evidence PRs 45, 46, 47"

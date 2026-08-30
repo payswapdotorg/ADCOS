@@ -86,8 +86,8 @@ obligations:
     required_environment: "Real human users and physical devices in the pilot"
     latest_evidence_artifact: "PR #48 evidence (pilot report; software-class participants)"
     evidence_sha: null
-    review_decision: null
-    remaining_condition: "Pending Architect review of PR #48: current participants are software-class device processes, not physical handsets or human users."
+    review_decision: DEC-0046
+    remaining_condition: "The correction cycle (WORK-040-CORRECTION-001) must demonstrate participation by an actual physical endpoint while preserving the production ADCOS chain; current participants are software-class device processes, not physical handsets or human users."
 
   - obligation_id: EVID-008
     work_item: WORK-040
@@ -97,5 +97,5 @@ obligations:
     required_environment: "Real 5G infrastructure per the frozen W037 runbook (no SDR/SCTP/TUN/Open5GS toolchain on the pilot host)"
     latest_evidence_artifact: "PR #48 evidence (GATE_DISABLED reconnaissance; frozen W037 runbook quoted as requires)"
     evidence_sha: null
-    review_decision: null
-    remaining_condition: "Pending Architect review of PR #48: the criterion is recorded NOT-TESTABLE on the current host with three-level anti-promotion enforced; a real 5G path requires real infrastructure."
+    review_decision: DEC-0046
+    remaining_condition: "The correction cycle (WORK-040-CORRECTION-001) must attempt a real 5G access path and record the genuine outcome; the criterion stays NOT-TESTABLE on hosts without real 5G infrastructure, with three-level anti-promotion enforced and 5G distinguished from generic cellular evidence."

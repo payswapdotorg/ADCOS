@@ -14,7 +14,7 @@ WORK-001 … WORK-039, reconstructed from repository-durable evidence (the
 Architect merges; recorded review commentary). Chat-era detail that is not
 durably recorded is not restated; timestamps are merge-commit times except
 where an acceptance-comment time is durably known; unknown fields are null,
-never invented. Records DEC-0040 … DEC-0045 are the corrective/governance
+never invented. Records DEC-0040 … DEC-0046 are the corrective/governance
 decisions whose requirements still shape future work.
 
 ## Registry
@@ -66,6 +66,7 @@ decisions whose requirements still shape future work.
 | DEC-0043 | correction | WORK-039 | CHANGES_REQUIRED | SUPERSEDED | Blocker W039-001: multi-hop relay not implemented |
 | DEC-0044 | governance | null | CHANGES_REQUIRED | CHANGES_REQUIRED | Persistent-Architect mandate (PR #49); fulfilled by this package |
 | DEC-0045 | governance | null | CHANGES_REQUIRED | CHANGES_REQUIRED | Package review round 1 (PR #60): PA-001 — an in-review ledger entry is never authorization |
+| DEC-0046 | correction | WORK-040 | CHANGES_REQUIRED | CHANGES_REQUIRED | W040 review round 1 (PR #48): verdict recorded + correction-only authorization WORK-040-CORRECTION-001 issued (baseline 93efa54f) |
 
 ## Rules
 
