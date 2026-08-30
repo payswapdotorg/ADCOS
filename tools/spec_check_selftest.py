@@ -36,9 +36,12 @@ SHA, that open evidence obligations cannot disappear, and that broken
 references fail. The PROVENANCE cases initialize a temporary git
 repository with an origin/main base and prove the authorization-
 provenance rules of ARCH-08: governance-only deltas pass, unauthorized
-implementation fails, self-authorization fails, in-review branch
-reconstruction passes, and implementation PRs may not modify the
-persistent package.
+implementation fails, self-authorization fails, in-review state without
+an active authorization fails closed (PA-001, DEC-0045: an in-review
+ledger entry is descriptive only and never authorizes), an authorized
+implementation delta passes (active authorization inherited
+byte-identically from the base, exact baseline, scope containment), and
+implementation PRs may not modify the persistent package.
 """
 
 from __future__ import annotations
@@ -64,6 +67,10 @@ FAIL_LINE_RE = re.compile(r"^\[FAIL    \] (\S+)", re.MULTILINE)
 #                   ("delete",  path)
 #                   ("replace", path, old, new)   # old must occur exactly once
 #                   ("create",  path, content)
+#   base_ops      provenance cases only: operations applied BEFORE the
+#                 initial commit, so they are part of the origin/main base
+#                 (how the Architect records state on main before a PR
+#                 branches from it); defaults to no operations
 #   expect_exit   expected checker exit code
 #   expect_check  expected failing check id (implies expect_exit == 1)
 Case = Dict[str, object]
@@ -603,7 +610,9 @@ PROVENANCE_CASES: List[Case] = [
     },
     {
         # Self-authorization: the PR adds/activates the authorization
-        # itself instead of inheriting it from main.
+        # itself instead of inheriting it from main. The handoff is
+        # completed too, so the failure is attributed to ARCH-08's
+        # inheritance rule alone (not to a schema shortfall).
         "name": "provenance-self-authorization-fails",
         "ops": [
             (
@@ -631,6 +640,17 @@ PROVENANCE_CASES: List[Case] = [
                 "authorized: true",
             ),
             (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "handoff: null",
+                "handoff: docs/WORK-040-handoff.md",
+            ),
+            (
+                "create",
+                "docs/WORK-040-handoff.md",
+                "# WORK-040 handoff (selftest fixture)\n",
+            ),
+            (
                 "create",
                 "pilot/self_authorized_probe.py",
                 "# self-authorized implementation file\n",
@@ -641,9 +661,13 @@ PROVENANCE_CASES: List[Case] = [
         "expect_check": "ARCH-08",
     },
     {
-        # An in-review ledger entry with a matching branch and areas makes
-        # the continuation delta reconstructible.
-        "name": "provenance-in-review-branch-reconstruction-passes",
+        # PA-001 (DEC-0045): an in-review ledger entry with a matching
+        # branch and areas is DESCRIPTIVE ONLY. With no active
+        # authorization the continuation delta fails closed — even though
+        # the branch matches the ledger entry and the file is inside the
+        # declared areas. This case is the inversion of the pre-PA-001
+        # "in-review branch reconstruction passes" case.
+        "name": "provenance-in-review-without-active-authorization-fails",
         "ops": [
             (
                 "create",
@@ -652,6 +676,73 @@ PROVENANCE_CASES: List[Case] = [
             )
         ],
         "branch": "work-040-pilot-deployment",
+        "expect_exit": 1,
+        "expect_check": "ARCH-08",
+    },
+    {
+        # PA-001 (DEC-0045): an implementation delta passes ONLY under an
+        # active authorization inherited byte-identically from the base,
+        # with the exact recorded baseline and the delta inside scope.
+        # base_ops simulate the Architect activating WORK-040 on main
+        # BEFORE the implementation branch exists.
+        "name": "provenance-authorized-implementation-passes",
+        "base_ops": [
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                'mode: "awaiting-architect-decisions"',
+                'mode: "implementing"',
+            ),
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                "  active_work_item: null",
+                "  active_work_item: WORK-040",
+            ),
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                "  active_authorization: null",
+                "  active_authorization: WORK-040",
+            ),
+            (
+                "replace",
+                "spec/architect/execution-state.yaml",
+                "Implementation stops until the Architect records the next repository-local authorization.\"",
+                "WORK-040 continuation is authorized on main (selftest fixture).\"",
+            ),
+            (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "status: in-review",
+                "status: active",
+            ),
+            (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "authorized: false",
+                "authorized: true",
+            ),
+            (
+                "replace",
+                "spec/architect/authorizations/WORK-040.yaml",
+                "handoff: null",
+                "handoff: docs/WORK-040-handoff.md",
+            ),
+            (
+                "create",
+                "docs/WORK-040-handoff.md",
+                "# WORK-040 repository-local handoff (selftest fixture)\n\nRecorded on main by the Architect when activating the WORK-040\nauthorization (persistent-Architect selftest fixture).\n",
+            ),
+        ],
+        "ops": [
+            (
+                "create",
+                "pilot/authorized_probe.py",
+                "# implementation inside the authorized scope\n",
+            )
+        ],
+        "branch": "work-040-continuation",
         "expect_exit": 0,
         "expect_check": None,
     },
@@ -704,6 +795,9 @@ def run_provenance_case(case: Case) -> tuple:
             run_git(root, "branch", "-M", "main")
         run_git(root, "config", "user.email", "selftest@adcos.invalid")
         run_git(root, "config", "user.name", "spec_check_selftest")
+        # base_ops land IN the initial commit: they are the state the
+        # Architect recorded on main before the PR branched from it.
+        apply_ops(root, cast(List[tuple], case.get("base_ops") or []))
         run_git(root, "add", "-A")
         run_git(
             root, "-c", "commit.gpgsign=false", "commit", "-m", "base",

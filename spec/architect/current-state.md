@@ -60,8 +60,12 @@ package. The execution mode is `awaiting-architect-decisions`:
 **Execution status:** implementation STOPPED — no current authorization.
 Pending Architect decisions (in order):
 
-1. Accept or correct this persistent-Architect package (the governance PR
-   that establishes `spec/architect/`).
+1. Re-review this persistent-Architect package: review round 1 returned
+   CHANGES REQUIRED (DEC-0045, PA-001 — an in-review ledger entry is never
+   authorization); the correction is delivered on PR #60 and the PR stays
+   open awaiting the Architect's re-review (the GitHub CHANGES_REQUESTED
+   review state is to be applied by a separate reviewer identity; DEC-0045
+   is the durable review record).
 2. Decide WORK-040 PR #48 (in review since 2026-08-29).
 3. Disposition the open W035 physical-evidence PRs #45, #46, #47 (see
    decisions DEC-0040 … DEC-0042).
@@ -135,6 +139,11 @@ PASS):
 
 ## Latest rejected / corrective decisions
 
+- `DEC-0045` — persistent-Architect package review round 1 (PR #60,
+  2026-08-30): CHANGES REQUIRED — PA-001, ARCH-08 must not treat an
+  in-review ledger entry as authorization (the package concept itself was
+  affirmed); correction delivered on the package branch, awaiting
+  re-review.
 - `DEC-0044` — governance mandate (PR #49 Architect follow-up, 2026-08-29):
   CHANGES REQUIRED — the persistent Architect package (this package) must
   exist before PR #49 can be accepted; W041+ gated on ACR-004. Status:

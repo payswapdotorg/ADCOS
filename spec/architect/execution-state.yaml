@@ -25,7 +25,7 @@ execution:
   active_authorization: null
   halted_reason: "No repository-local implementation authorization exists under this package. WORK-040 is delivered and in review (PR #48); this governance package is itself awaiting Architect acceptance. Implementation stops until the Architect records the next repository-local authorization."
   next_required_decisions:
-    - "Accept or correct the persistent-Architect package (this governance PR; fulfills DEC-0044)"
+    - "Re-review the persistent-Architect package after the PA-001 correction: review round 1 was CHANGES_REQUIRED (DEC-0045); PR #60 carries the correction and stays open"
     - "Decide WORK-040 PR #48 (in review since 2026-08-29)"
     - "Disposition open W035 physical-evidence PRs 45, 46, 47 (DEC-0040 through DEC-0042)"
     - "Decide ACR-004 / PR #49 (gated on this package per DEC-0044)"

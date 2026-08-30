@@ -69,11 +69,13 @@ lives in the repository.
     implemented / verified / accepted / merged are distinct.
 
 12. Continue from the current lifecycle state.
-    - no authorization + no in-review entry → STOP; the next action is an
-      Architect decision (persist an authorization, or decide an open PR).
-    - in-review entry → the Architect renders a verdict per
+    - no active authorization → STOP; the next action is an Architect
+      decision (persist an authorization, or decide an open PR).
+    - in-review entry (descriptive only — never authorization, PA-001) →
+      the Architect renders a verdict per
       spec/architect/review-protocol.md (persisting the decision record and
-      ledger transition).
+      ledger transition); further implementation still requires an active
+      authorization.
     - active authorization → Z.ai implements exactly that Work Item, from
       its handoff, on a fresh branch cut from main.
 ```

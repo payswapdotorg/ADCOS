@@ -57,13 +57,16 @@ silently skipping it.
 ## 3. Authorization and provenance rules
 
 1. **No authorization, no implementation.** A PR containing implementation
-   changes is reviewable only if the Work Item is either (a) covered by a
+   changes is reviewable only if the Work Item is covered by a
    repository-local authorization (`spec/architect/authorizations/`,
-   `status: active`) that was present on `main` before the PR branched, or
-   (b) recorded as `in-review` in the execution ledger with a matching
-   branch. CI check `ARCH-08` (provenance mode) enforces this mechanically;
-   the reviewer verifies the authorization was **inherited from `main`**, not
-   introduced or modified by the PR itself (self-authorization).
+   `status: active`) that was present on `main` before the PR branched,
+   declares the exact recorded baseline, and covers the PR delta in its
+   scope. An **in-review ledger entry is descriptive only — it records
+   what was delivered for review and never authorizes anything** (PA-001,
+   `DEC-0045`). CI check `ARCH-08` (provenance mode) enforces this
+   mechanically; the reviewer verifies the authorization was **inherited
+   from `main`**, not introduced or modified by the PR itself
+   (self-authorization).
 2. **Implementation PRs must not modify `spec/architect/`.** The Architect
    owns the persistent state. Verdicts, ledger transitions, decision records,
    and authorizations are persisted by the Architect, not by the

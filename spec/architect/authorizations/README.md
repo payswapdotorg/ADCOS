@@ -66,3 +66,7 @@ handoff_required: true
    areas.
 5. Implementation PRs must not modify `spec/architect/` at all
    (review-protocol §3).
+6. An in-review ledger entry — and an authorization record with `status:
+   in-review` — is descriptive only: it records delivery/review state and
+   never authorizes implementation. Only `status: active` authorizes
+   (PA-001, DEC-0045; enforced by ARCH-08 provenance mode).

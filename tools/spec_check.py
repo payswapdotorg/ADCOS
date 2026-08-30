@@ -21,7 +21,6 @@ validate prose semantics and is not a protocol semantic compiler.
 
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 import sys
@@ -1349,7 +1348,8 @@ def _validate_ledger(ledger: object, problems: List[str]) -> Optional[Dict]:
             if not isinstance(entry.get("areas"), list) or not entry.get("areas"):
                 problems.append(
                     "%s: in-review entries must declare their implementation "
-                    "areas (PR reconstruction)" % where
+                    "areas (descriptive disclosure of the delivered delta; "
+                    "never authorization — PA-001)" % where
                 )
         if entry.get("acceptance_decision") is not None and not _is_dec_id(entry.get("acceptance_decision")):
             problems.append("%s: acceptance_decision must be DEC-NNNN or null" % where)
@@ -2002,16 +2002,22 @@ def _git(args: List[str]) -> Optional[str]:
 
 
 def check_arch_08(report: Report, state: ArchState, strict: bool = False) -> None:
-    """ARCH-08: implementation-PR reconstruction and authorization provenance.
+    """ARCH-08: implementation-PR authorization provenance.
 
     Active only when a base reference is available (an origin/main ref in a
     full clone, e.g. the dedicated CI provenance step) or in strict mode
-    (tools/spec_check.py --provenance). Verifies that any implementation-file
-    delta in the PR is reconstructible from repository artifacts: covered by
-    an active authorization inherited byte-identically from the base (never
-    self-authorized by the PR) or by an in-review ledger entry with a
-    matching branch and areas; and that implementation PRs never modify the
-    persistent Architect package itself.
+    (tools/spec_check.py --provenance). Any implementation-file delta in the
+    PR requires an ACTIVE authorization (status: active) that (a) is
+    inherited byte-identically from the base — never added or modified by
+    the PR itself (no self-authorization), (b) declares the exact baseline
+    of the persistent state (baseline_sha == execution-state.yaml
+    repository.main_sha), and (c) covers every implementation file in its
+    scope. An in-review ledger entry is DESCRIPTIVE ONLY: it records what
+    was delivered for review and NEVER authorizes anything (PA-001,
+    DEC-0045) — an implementation PR without an active authorization fails
+    closed (NO CURRENT AUTHORIZATION = IMPLEMENTATION MUST STOP).
+    Implementation PRs also never modify the persistent Architect package
+    itself.
     """
     base_check = _git(["rev-parse", "--verify", "origin/main"])
     if base_check is None:
@@ -2068,26 +2074,31 @@ def check_arch_08(report: Report, state: ArchState, strict: bool = False) -> Non
 
     execution_state = state.get("execution_state")
     authorizations = state.get("authorizations")
-    ledger = state.get("ledger")
-    if not isinstance(execution_state, dict) or not isinstance(authorizations, dict) or not isinstance(ledger, dict):
-        report.record("FAIL", "ARCH-08", problems + ["prerequisite ARCH-02 failed; cannot verify PR reconstruction"])
+    if not isinstance(execution_state, dict) or not isinstance(authorizations, dict):
+        report.record("FAIL", "ARCH-08", problems + ["prerequisite ARCH-02 failed; cannot verify PR authorization provenance"])
         return
 
-    head_ref = None
-    env_ref = os.environ.get("ADCOS_PR_HEAD_REF")
-    if env_ref:
-        head_ref = env_ref
-    else:
-        branch = _git(["rev-parse", "--abbrev-ref", "HEAD"])
-        if branch and branch.strip() not in ("HEAD", ""):
-            head_ref = branch.strip()
-
-    covered = False
+    # An in-review ledger entry is DESCRIPTIVE ONLY and is never consulted
+    # here: only an active authorization can cover an implementation delta
+    # (PA-001, DEC-0045).
     active_auths = [
         (wid, record) for wid, record in authorizations.items()
         if record.get("status") == "active"
     ]
-    if len(active_auths) == 1:
+    if not active_auths:
+        report.record("FAIL", "ARCH-08", problems + [
+            "implementation delta present (%d file(s)) but NO repository-local "
+            "authorization is active — NO CURRENT AUTHORIZATION = "
+            "IMPLEMENTATION MUST STOP" % len(implementation),
+            "an in-review ledger entry is descriptive only and is never "
+            "authorization (PA-001, DEC-0045); the Architect must record an "
+            "active authorization on main (spec/architect/authorizations/) "
+            "before any implementation delta may proceed",
+        ])
+        return
+    if len(active_auths) > 1:
+        problems.append("multiple active authorizations; cannot attribute the PR delta")
+    else:
         wid, record = active_auths[0]
         scope = record.get("scope") or []
         uncovered = [
@@ -2098,6 +2109,17 @@ def check_arch_08(report: Report, state: ArchState, strict: bool = False) -> Non
             problems.append(
                 "implementation files outside the authorized scope of %s: %s"
                 % (wid, ", ".join(uncovered[:5]))
+            )
+        # the exact baseline of the persistent state (ARCH-03 enforces the
+        # same rule on the package; repeated here so the dedicated PR
+        # provenance gate fails closed on a stale authorization by itself)
+        main_sha = (execution_state.get("repository") or {}).get("main_sha")
+        if record.get("baseline_sha") != main_sha:
+            problems.append(
+                "%s: authorization baseline %s does not match the recorded "
+                "main baseline %s (the exact baseline is required — a stale "
+                "authorization never covers this PR)"
+                % (wid, record.get("baseline_sha"), main_sha)
             )
         # authorization must be inherited from the base, byte-identical
         auth_rel = "spec/architect/authorizations/%s.yaml" % wid
@@ -2118,52 +2140,15 @@ def check_arch_08(report: Report, state: ArchState, strict: bool = False) -> Non
                     "%s differs from origin/main (authorization modified by "
                     "this PR)" % auth_rel
                 )
-        covered = True
-    elif len(active_auths) > 1:
-        problems.append("multiple active authorizations; cannot attribute the PR delta")
-
-    if not covered and head_ref:
-        in_review = [
-            entry for entry in ledger.get("work_items", [])
-            if isinstance(entry, dict) and entry.get("lifecycle") == "in-review"
-        ]
-        matching = [
-            entry for entry in in_review if entry.get("branch") == head_ref
-        ]
-        if not matching:
-            problems.append(
-                "no active authorization and no in-review ledger entry "
-                "matches branch %r — the implementation delta cannot be "
-                "reconstructed from repository artifacts (NO CURRENT "
-                "AUTHORIZATION = IMPLEMENTATION MUST STOP)" % head_ref
-            )
-        else:
-            entry = matching[0]
-            areas = entry.get("areas") or []
-            uncovered = [
-                path for path in sorted(implementation)
-                if not any(path == a or path.startswith(str(a)) for a in areas)
-            ]
-            if uncovered:
-                problems.append(
-                    "implementation files outside the in-review areas of %s: %s"
-                    % (entry.get("work_item"), ", ".join(uncovered[:5]))
-                )
-            covered = True
-    elif not covered and not head_ref:
-        problems.append(
-            "implementation delta present, no active authorization, and the "
-            "PR head branch cannot be determined (detached HEAD and no "
-            "ADCOS_PR_HEAD_REF); failing closed"
-        )
 
     if problems:
         report.record("FAIL", "ARCH-08", problems)
     else:
         report.record(
             "PASS", "ARCH-08",
-            ["implementation delta (%d file(s)) reconstructible from "
-             "repository artifacts" % len(implementation)],
+            ["implementation delta (%d file(s)) covered by the active "
+             "authorization inherited from the base (in-review ledger "
+             "entries are descriptive only)" % len(implementation)],
         )
 
 
@@ -2188,7 +2173,7 @@ CHECK_TITLES: Dict[str, str] = {
     "ARCH-05": "Execution ledger lifecycle coherence (never merged while open; review/execution agreement)",
     "ARCH-06": "Evidence obligations registered and honestly classified",
     "ARCH-07": "Canonical reference resolution across the package",
-    "ARCH-08": "Implementation-PR reconstruction and authorization provenance",
+    "ARCH-08": "Implementation-PR authorization provenance (active authorization required)",
     "ADV-01": "Dependency declaration consistency advisories (non-blocking)",
 }
 
