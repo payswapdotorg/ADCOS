@@ -1,13 +1,13 @@
 # ACR-005 — First-Class Network Path and Platform Boundary
 
-Status: PROPOSED — Architect decision required before implementation
+Status: ACCEPTED — Architect decision DEC-0047
 Issue: #62
 
 ## Intent
 
 Formalize the boundary between physical facts, platform observations, and ADCOS protocol state. The current architecture has proven these distinctions are necessary through W035/W040 physical validation and handover work, but the semantics should become explicit and reusable.
 
-## Proposed semantic model
+## Accepted semantic model
 
 ### 1. Three distinct truth layers
 
@@ -38,7 +38,7 @@ The concept should be able to identify, as applicable:
 - observation instant;
 - validation status.
 
-The exact schema remains subject to implementation and ACR acceptance.
+Concrete schema/API shape remains an implementation concern and requires an authorized Work Item; acceptance of this ACR does not silently alter the frozen wire schema.
 
 ### 3. Logical session versus physical path
 
@@ -100,7 +100,7 @@ Evidence must remain evidence; it must not become protocol truth merely through 
 
 ## Authority constraints
 
-This proposal does NOT authorize new identity, session, routing, transport, federation, or policy authorities.
+This ACR does NOT authorize new identity, session, routing, transport, federation, or policy authorities.
 
 Existing authorities remain authoritative for their respective semantics.
 
@@ -123,6 +123,6 @@ This ACR does not:
 - make physical evidence mandatory for every software operation;
 - authorize W040 or W041+ implementation by itself.
 
-## Acceptance condition
+## Acceptance
 
-Before implementation, the Architect must accept this ACR and record the resulting schema/contract decisions in `spec/architect/decisions/` and the current-state/authorization records.
+Accepted by DEC-0047 on the merged proposal state from PR #64. Concrete schema/API implementation remains gated by an authorized Work Item and must preserve existing authority ownership and frozen wire semantics.
