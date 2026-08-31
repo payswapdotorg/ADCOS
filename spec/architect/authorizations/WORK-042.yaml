@@ -1,0 +1,138 @@
+# ADCOS Work Item authorization record — WORK-042 active implementation.
+#
+# WORK-042-CORE-001 (issued by DEC-0055): the Architect's repository-local
+# authorization for WORK-042 (Event-Driven Platform Integration and
+# Journal-First Recovery, ACR-006). This record is the sole durable authority
+# for W042 implementation scope. It becomes the single active authorization
+# at the moment DEC-0055 merges, atomically superseding WORK-041-CORE-001
+# (whose Work Item is accepted-merged through DEC-0054 in the same
+# governance transition) so the single active execution slot is never vacant
+# (mode implementing + zero active auths = STOP) nor double-occupied (two
+# active auths = ARCH-03 FAIL), and so W042 is never active while its hard
+# dependency W041 is not accepted-merged.
+#
+# Scope is the ACR-006 event-driven platform integration and journal-first
+# recovery model per the W042 ready-candidate contract
+# (spec/architect/work-items/WORK-042.md): a platform-event ingestion
+# boundary carrying authoritative observations through the
+# platform-adapter boundary, deterministic event/snapshot reconciliation
+# (events are change notifications; snapshots remain state representation),
+# an append-only journal with periodic compact snapshots, durable
+# restart/suspension recovery that reconciles reconstructed state with the
+# current platform observation, and preserved stable logical session
+# identity and existing recovery/session-loss semantics — WITHOUT creating
+# a new identity, session, routing, transport, federation, or policy
+# authority, and without treating platform observations as protocol truth
+# without existing authority establishment.
+#
+# W042 consumes the accepted WORK-041 NetworkPath/platform interfaces where
+# needed (W041 accepted-merged by DEC-0054, PR #107, merge 96db8aa). W042
+# does NOT authorize W043 (retired), W044..W053, or W048; the W042->W048
+# (interfaces consumed) dependency remains hard per the ready-candidate
+# contracts. W042 makes NO physical validation claims; physical-device
+# evidence is not required for W042 implementation (W042 contract Evidence
+# classes), and any physical claims remain governed separately by W040's
+# open PHYSICAL obligations EVID-007/EVID-008 (W040 stays in-review and is
+# NOT accepted; its track is independent of W042 and unaffected by this
+# authorization).
+#
+# Baseline note: baseline_sha is 96db8aa (current main at this governance
+# commit, the post-PR-#107 mainline). Per the RECON-002/003/004/005/006
+# convention it moves in lockstep with the snapshot baseline only through a
+# formally recorded reconciliation; there is no in-flight W042
+# implementation branch to invalidate at activation time — a future W042
+# implementation PR branches from a main carrying this exact record.
+#
+# schema: spec/architect/authorizations/ (v1); verified by tools/spec_check.py (ARCH-03).
+
+work_item: WORK-042
+status: active
+authorized: true
+type: implementation
+authorization_id: "WORK-042-CORE-001"
+authorization_decision: DEC-0055
+baseline_sha: 96db8aa4423dff845a223e0c93c67f3dc14e314d
+review_basis: "DEC-0055 atomic transition: WORK-041 accepted-merged (DEC-0054, PR #107 head 4ce5a42, merge 96db8aa, CI run 33426900730 SUCCESS); WORK-041-CORE-001 superseded; WORK-042-CORE-001 is the single active authorization. ACR-006 (DEC-0048) is the architecture basis; the W042 ready-candidate contract gates implementation; W041 interfaces may be consumed (accepted-merged). W040 physical validation continues independently (in-review, NOT accepted; EVID-007/EVID-008 remain OPEN and W040-owned)."
+
+dependencies:
+  - WORK-012
+  - WORK-013
+  - WORK-014
+  - WORK-033
+  - WORK-035
+  - WORK-041
+
+authority_inputs:
+  - "ACR-006 accepted (DEC-0048) — Event-Driven Platform Integration and Journal-First Recovery"
+  - "ACR-005 accepted (DEC-0047) — First-Class Network Path and Platform Boundary (consumed through the accepted WORK-041 NetworkPath interfaces)"
+  - "WORK-012 Logical Sessions"
+  - "WORK-013 Multipath Session Manager"
+  - "WORK-014 Mobility/Handover"
+  - "WORK-033 AgentRuntime"
+  - "WORK-035 Mobile Agent"
+  - "WORK-041 NetworkPath/platform boundary (accepted-merged by DEC-0054; interfaces consumed where needed)"
+
+authority_outputs:
+  - "platform-event ingestion boundary carrying authoritative observations through the platform-adapter boundary; deterministic and idempotent event/snapshot reconciliation; append-only journal with periodic compact snapshots; durable restart/suspension recovery reconciling reconstructed state with the current platform observation — no new identity/session/routing/transport/federation/policy authority; no treatment of platform observations as protocol truth without existing authority establishment"
+
+scope:
+  - "platform/"
+  - "tools/platform_selftest.py"
+  - "docs/WORK-042-handoff.md"
+  - "docs/WORK-042-evidence.md"
+
+required_corrections: []
+
+acceptance_criteria:
+  - "Platform changes can be delivered event-first without polling-only semantics."
+  - "Event/snapshot reconciliation is deterministic and idempotent."
+  - "Process death/suspension does not lose durable authorization/journal state."
+  - "Recovery reconstructs state correctly and records session loss honestly where transport state cannot survive process death."
+  - "Existing accepted batteries remain green and authority ownership is unchanged."
+
+evidence_classes:
+  - criterion: "Software/architecture conformance"
+    class: SOFTWARE
+    allowed_statuses:
+      - PASS
+      - PARTIAL
+      - NOT-TESTABLE
+      - OPEN
+  - criterion: "Deterministic automated verification"
+    class: SOFTWARE
+    allowed_statuses:
+      - PASS
+      - PARTIAL
+      - NOT-TESTABLE
+      - OPEN
+  - criterion: "Physical-device evidence"
+    class: PHYSICAL
+    allowed_statuses:
+      - PASS
+      - PARTIAL
+      - NOT-TESTABLE
+      - OPEN
+
+out_of_scope:
+  - "W040 continuation (W040 remains an independent physical validation track, in-review and NOT accepted; EVID-007/EVID-008 remain W040-owned and OPEN)"
+  - "W043+ implementation (W043 retired from commercial use; W044–W050 and the commercial chain W051/W052/W053 remain ready-candidates, unauthorized)"
+  - "commercial core / payment / settlement implementation (ACR-009 commercial control plane is separate Work Item scope)"
+  - "new identity/session/routing/transport/federation/policy authority"
+  - "treating platform observations as protocol truth without existing authority establishment"
+  - "continuous-daemon assumptions on Android or similar lifecycle-managed platforms"
+  - "private authority access (and private-method fallbacks for recovery or evidence)"
+  - "synthetic physical evidence presented as physical PASS (physical-device evidence is not required for W042 implementation; any physical claims remain governed separately)"
+  - "wire-schema changes unless separately authorized"
+  - "modifying frozen spec semantics"
+
+acceptance_gate:
+  status: "Architect review required after implementation"
+  required_evidence:
+    - "criteria 1-5 of the W042 contract satisfied with SOFTWARE-class conformance evidence"
+    - "deterministic automated verification PASS (relevant selftest batteries green)"
+    - "existing accepted batteries remain green; no authority ownership changes"
+    - "exact execution SHA and evidence manifest"
+    - "all relevant CI checks green"
+
+handoff: docs/WORK-042-handoff.md
+handoff_required: true

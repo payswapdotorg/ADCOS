@@ -1,0 +1,58 @@
+# ADCOS Architect decision record.
+# schema: spec/architect/decision-record-template.md; verified by tools/spec_check.py (ARCH-04).
+#
+# This record accepts WORK-041 (First-Class Network Path and Platform
+# Integration, ACR-005) as delivered and merged by PR #107 at head 4ce5a42.
+# It is the Architect's durable acceptance of the W041 contract scope with
+# SOFTWARE-class evidence only; it makes no physical validation claim
+# (physical evidence is not required for W041 implementation and any
+# physical claims remain governed by WORK-040's open PHYSICAL obligations
+# EVID-007/EVID-008). It does NOT accept WORK-040 and does NOT authorize
+# WORK-042 (the activation of the next Work Item is the separate governance
+# decision DEC-0055, rendered in the same atomic transition).
+decision_id: DEC-0054
+type: acceptance
+work_item: WORK-041
+acr: ACR-005
+pr: 107
+reviewed_sha: 4ce5a42b42532cf1daceda8e20e0d1d7eff8f788
+decision: ACCEPTED
+status: ACCEPTED
+reviewer: "Architect (pectoraux)"
+timestamp: 2026-08-31T21:00:00Z
+findings:
+  - "PR #107 delivered WORK-041 under WORK-041-CORE-001 (DEC-0052; authorization baseline bb964a1 as reconciled by LEDGER-RECON-005; branch work-041-networkpath-core cut from ece53db, which carries the authorization record byte-identically from main). The delivered delta is exactly the authorized scope: networkpath/ (11 modules: public API, errors, frozen lifecycle, model, observation, validation, binding, lifecycle, evidence, integration), tools/networkpath_selftest.py (36-case battery), docs/WORK-041-handoff.md, docs/WORK-041-evidence.md."
+  - "Review round 1 found one blocking evidence-chain defect: networkpath_selftest case_26_evidence_chain_explicit asserted digest MISMATCH as PASS (inverted assertion), so criterion 4's independently-verifiable evidence chain was not honestly proven by the battery. The correction landed on the same branch at head 4ce5a42 ('WORK-041: fix inverted digest assertion in case_26 (equality=PASS, mismatch=FAIL)', +38/-9): digest equality now passes, recomputed-digest mismatch fails, and tamper negative-coverage was added."
+  - "Review round 2 verified the corrected head: the authoritative CI run 33426900730 (spec-check workflow) on 4ce5a42 is SUCCESS, and the delivery's locally-run battery results recorded in docs/WORK-041-evidence.md §2 are networkpath_selftest 36/36, spec_check 17/17, spec_check --provenance 2/2 (delta covered by WORK-041-CORE-001), spec_check_selftest 32/32, agent_selftest 45/45, mobile_selftest 46/46, pilot_selftest 30/30. PR #107 was merged by the Architect at 96db8aa on 2026-08-31T19:15:03Z."
+  - "All five W041 contract acceptance criteria are satisfied with SOFTWARE-class evidence per docs/WORK-041-evidence.md §3: (1) session continuity across distinct validated paths (session_id byte-identical, one created event, no reconnected events, IP binding id changes through the ordinary WORK-033 bind path); (2) candidates detected without becoming active (discovery is idempotent and gates fail closed before the chain); (3) failed validation/bind/probe preserves the existing active path (typed abort before the old path is touched); (4) the evidence chain is explicit, deterministic, replay-safe, and independently verifiable (byte-identical digests across fresh runs and hash-seed subprocesses; tamper-evident; secret-free); (5) existing accepted batteries remain green and authority ownership is unchanged (one owner per authority, structural audits battery-pinned)."
+  - "The delivery made no physical validation claim: NETWORKPATH_EVIDENCE_STATUS pins physical_device: open; EVID-007 (PARTIAL) and EVID-008 (NOT-TESTABLE) remain OPEN and W040-owned. Anti-promotion discipline (software PASS never becomes physical PASS) is preserved."
+  - "No frozen authority ownership changed and no frozen architecture semantic changed: the W041 delta was confined to the authorized scope (networkpath/, the selftest, the two W041 docs), the five frozen spec files were byte-identical to origin/main (battery-pinned), and the wire schema is unchanged. The CI wiring of tools/networkpath_selftest.py — explicitly deferred to the Architect at acceptance by docs/WORK-041-evidence.md §7 — is completed by this same governance transition (one workflow step in .github/workflows/spec-check.yml)."
+  - "Recording the acceptance in the execution ledger mechanically requires the frozen Work Item registry to represent WORK-041: the ledger validator (tools/spec_check.py ARCH-02) admits exactly WORK-001..WORK-040 while the frozen backlog and dependency graph terminate at WORK-040, yet ARCH-04 requires every acceptance decision to have a matching ledger entry and ARCH-03 requires every hard dependency of a future WORK-042 authorization to be accepted-merged in that ledger. The synchronized registry extension (registering WORK-041 in spec/work-items.md and spec/dependency-graph.md as Phase 9 with its contract dependencies WORK-016/WORK-018/WORK-033/WORK-034, and moving EXPECTED_WORK_ITEM_COUNT 40 -> 41) is therefore applied in the same atomic transition, with WORK-001..WORK-040 byte-identical, no relabeling, no new authority, and no semantic change — the scope of the ACR-010 proposal (PR #108) applied directly by this transition and superseding it."
+blockers: []
+required_corrections: []
+evidence:
+  merge_sha: 96db8aa4423dff845a223e0c93c67f3dc14e314d
+  ci_run: 33426900730
+  artifacts:
+    - "docs/WORK-041-evidence.md"
+    - "docs/WORK-041-handoff.md"
+accepted_scope:
+  - "The WORK-041 contract scope (spec/architect/work-items/WORK-041.md, ACR-005 / DEC-0047, tracking issue #68): the ACR-005 NetworkPath/platform boundary — a technology-neutral NetworkPath representation over existing authority-owned state; platform observation separated from ADCOS protocol state; path detection/validation/binding/activation/retirement separated; transactional handover (validate -> bind -> probe -> activate -> retire old LAST); stable logical session_id across physical path changes; an explicit, deterministic, replay-safe, independently verifiable path/platform evidence chain — accepted on PR #107 head 4ce5a42 (merge 96db8aa) with SOFTWARE-class conformance and deterministic-verification evidence."
+  - "The W041 delivery delta: networkpath/ package, tools/networkpath_selftest.py (36 cases), docs/WORK-041-handoff.md, docs/WORK-041-evidence.md — exactly the WORK-041-CORE-001 scope, including the case_26 correction at head 4ce5a42."
+  - "The WORK-041 execution-ledger entry at lifecycle accepted-merged (reviewed_sha 4ce5a42, merge_sha 96db8aa, merged_at 2026-08-31T19:15:03Z, pr 107, ci_run 33426900730, review_rounds 2, phase 9) and the WORK-041 registration in the frozen registry (spec/work-items.md Phase 9 entry; spec/dependency-graph.md Phase 9 node with edges WORK-016/WORK-018/WORK-033/WORK-034 -> WORK-041; EXPECTED_WORK_ITEM_COUNT 41)."
+  - "The CI wiring of tools/networkpath_selftest.py into .github/workflows/spec-check.yml, completing at acceptance the one-line addition anticipated by docs/WORK-041-evidence.md §7."
+rejected_scope:
+  - "Any PHYSICAL-class acceptance claim for W041 or any other Work Item. Physical deployment evidence is not required for W041 implementation; EVID-007 (PARTIAL) and EVID-008 (NOT-TESTABLE) remain OPEN and W040-owned with anti-promotion discipline unchanged."
+  - "Acceptance of WORK-040. W040 remains in-review (execution-ledger lifecycle in-review, acceptance_decision null, correction authorization superseded by DEC-0052); the independent physical validation track is unaffected by this acceptance."
+  - "Authorization of WORK-042, WORK-043, WORK-048, or any commercial Work Item by this decision. Activation of the next Work Item is DEC-0055 in the same atomic transition; every other Work Item still requires its own repository-local authorization."
+  - "Any change to WORK-040's or any other Work Item's acceptance criteria, evidence obligations, ledger history, or frozen semantics. WORK-001..WORK-040 ledger entries are byte-identical; the registry extension adds WORK-041 registration only (no relabeling, no edge removal, no authority change)."
+  - "Any wire-schema or frozen-architecture-semantic change. The architecture version stays 1.0 (change-control.md §7: governance-only changes may leave the architecture version unchanged)."
+downstream_effect:
+  - "spec/architect/execution-ledger.yaml: the WORK-041 entry is recorded at lifecycle accepted-merged with acceptance_decision DEC-0054, reviewed_sha 4ce5a42, merge_sha 96db8aa; LEDGER-RECON-006 records the reconciliation (snapshot baseline bb964a1 -> 96db8aa) and the registry extension; no W001..W040 entry is rewritten."
+  - "spec/work-items.md and spec/dependency-graph.md: WORK-041 registered (Phase 9 — Governed architecture evolution) with the contract dependencies; the completion criterion count moves 40 -> 41; WORK-001..WORK-040 blocks are byte-identical."
+  - "tools/spec_check.py: EXPECTED_WORK_ITEM_COUNT 40 -> 41, synchronized with the registry extension."
+  - ".github/workflows/spec-check.yml: tools/networkpath_selftest.py wired into CI."
+  - "The W041 -> W042 hard dependency (interfaces consumed) is now satisfied where W042 consumes W041 interfaces; W042 remains unauthorized until DEC-0055's repository-local authorization WORK-042-CORE-001 (created in the same atomic transition) takes effect."
+  - "WORK-041-CORE-001 is superseded by DEC-0055 in the same atomic transition (status superseded, authorized false, scope/criteria/provenance preserved); the single active execution slot transfers to WORK-042-CORE-001 so the slot is never vacant nor double-occupied."
+  - "PR #108 (the ACR-010 proposal, base 96db8aa) is superseded by this transition, which applies its scope directly; it remains historical proposal evidence, and its disposition is recorded in execution-state.yaml open_prs."
+resolved_by: null
