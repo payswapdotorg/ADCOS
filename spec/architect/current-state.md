@@ -19,14 +19,16 @@ GitHub/repository state is the persistent Architect. Chat is not an authority so
 
 ## Execution state
 
-- Active Work Item: `WORK-040`
-- Execution mode: `implementing` (correction-only)
-- Active authorization: `WORK-040-CORRECTION-001` (DEC-0046), baseline `03f19c5e7fee3acc209f8e48701493e109685921` (reconciled by LEDGER-RECON-003; correction-only scope unchanged)
-- W040 status: `in-review` on PR `#48` (round 1 verdict: CHANGES_REQUIRED, DEC-0046)
+- Active Work Item: `WORK-041`
+- Execution mode: `implementing`
+- Active authorization: `WORK-041-CORE-001` (DEC-0052), baseline `1f8833e5cfbb3e1a17bac5c718070a31a7f67775` (atomic handoff from WORK-040-CORRECTION-001; reconciled by LEDGER-RECON-004)
+- W041 status: `active` — implements the ACR-005 NetworkPath/platform boundary (DEC-0047)
+- W040 status: `in-review` on PR `#48` (round 1 verdict: CHANGES_REQUIRED, DEC-0046). The W040 correction authorization `WORK-040-CORRECTION-001` was superseded by DEC-0052 (atomic handoff); W040 is **not accepted** (lifecycle stays `in-review`, `acceptance_decision: null`).
 - W040 implementation head: `ee9b356020b6450d85837f60e60c41d08f0ec09a`
 - W040 original baseline: `1669ae9a396838b72ba461c846b98e84478ab24f`
 - Correction-cycle handoff: `docs/WORK-040-correction-handoff.md`
-- The current authorization is correction-only and does not authorize unrelated implementation or any W041+ work.
+- W041 implementation handoff: `docs/WORK-041-handoff.md`
+- The active authorization is scoped to WORK-041 only and does not authorize W042/W043/W048 or any commercial-core/payment implementation.
 
 ## W040 review disposition
 
@@ -45,8 +47,8 @@ A software rehearsal cannot close a physical criterion by inference.
 
 ## Planned / gated Work Items
 
-- `WORK-040`: correction cycle active; acceptance remains blocked pending Architect re-review.
-- `WORK-041`: READY-CANDIDATE contract recorded under ACR-009; execution not authorized. W040 was decoupled as a non-blocking prerequisite by DEC-0051 — W041 is DAG-ready and may proceed after repository-local authorization. W040 remains an independent physical validation track.
+- `WORK-040`: correction authorization `WORK-040-CORRECTION-001` superseded by DEC-0052 (atomic handoff to W041). W040 remains an independent physical validation track — `in-review`, **not accepted**; EVID-007 (PARTIAL) and EVID-008 (NOT-TESTABLE) remain OPEN and W040-owned. The correction cycle may resume later under a `type: evidence-continuation` authorization once physical evidence is available.
+- `WORK-041`: READY-CANDIDATE contract recorded under ACR-005; **active authorized implementation track** under `WORK-041-CORE-001` (DEC-0052). Implements the ACR-005 NetworkPath/platform boundary. W040 was decoupled as a non-blocking prerequisite by DEC-0051; W041 is DAG-ready and active. W042/W043/W048 remain unauthorized.
 - `WORK-042`: READY-CANDIDATE contract recorded under ACR-009; execution not authorized, and depends on W041 where its interfaces are consumed.
 - `WORK-043`: READY-CANDIDATE contract recorded under ACR-009; execution not authorized, and depends on W042/W041 where its interfaces are consumed.
 - `WORK-044+`: not yet authorized; must be established through the mission/learning/change-control process.

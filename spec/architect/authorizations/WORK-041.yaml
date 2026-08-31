@@ -1,0 +1,116 @@
+# ADCOS Work Item authorization record — WORK-041 active implementation.
+#
+# WORK-041-CORE-001 (issued by DEC-0052): the Architect's repository-local
+# authorization for WORK-041 (First-Class Network Path and Platform
+# Integration, ACR-005). This record is the sole durable authority for
+# W041 implementation scope. It becomes the single active authorization
+# at the moment DEC-0052 merges, atomically superseding
+# WORK-040-CORRECTION-001 so the single active execution slot is never
+# vacant (mode implementing + zero active auths = STOP) nor double-occupied
+# (two active auths = ARCH-03 FAIL).
+#
+# Scope is the ACR-005 NetworkPath/platform boundary per the W041
+# ready-candidate contract (spec/architect/work-items/WORK-041.md): a
+# technology-neutral NetworkPath representation over existing
+# authority-owned state, separating platform observation from ADCOS
+# protocol state, and separating path detection/validation/binding/
+# activation/retirement — WITHOUT creating a second identity, session,
+# routing, transport, federation, or policy authority.
+#
+# W041 does NOT authorize W042, W043, or W048. W041->W042 (interfaces
+# consumed) and W042->W048 (interfaces consumed) remain hard dependencies
+# per the ready-candidate contracts. W041 makes NO physical validation
+# claims; physical evidence is not required for W041 implementation
+# (W041 contract Evidence classes), and any physical claims remain
+# governed separately by W040's open PHYSICAL obligations EVID-007/EVID-008.
+#
+# schema: spec/architect/authorizations/ (v1); verified by tools/spec_check.py (ARCH-03).
+
+work_item: WORK-041
+status: active
+authorized: true
+type: implementation
+authorization_id: "WORK-041-CORE-001"
+authorization_decision: DEC-0052
+baseline_sha: 1f8833e5cfbb3e1a17bac5c718070a31a7f67775
+review_basis: "DEC-0052 atomic handoff: WORK-040-CORRECTION-001 superseded; W041 activated as the single active Work Item. ACR-005 (DEC-0047) is the architecture basis; W041 ready-candidate contract gates implementation. W040 physical validation continues independently; EVID-007/EVID-008 remain OPEN and W040-owned."
+
+dependencies:
+  - WORK-016
+  - WORK-018
+  - WORK-033
+  - WORK-034
+
+authority_inputs:
+  - "ACR-005 accepted (DEC-0047) — First-Class Network Path and Platform Boundary"
+  - "ACR-006 accepted (DEC-0048) — Event-Driven Platform Integration and Journal-First Recovery (where consumed)"
+  - "WORK-016 Adapter SDK/runtime"
+  - "WORK-018 IP integration boundary"
+  - "WORK-033 AgentRuntime"
+  - "WORK-034 EdgeGateway"
+
+authority_outputs:
+  - "NetworkPath representation and path lifecycle (discover/validate/bind/activate/retire) over existing authority-owned state; no new identity/session/routing/transport/federation/policy authority"
+
+scope:
+  - "networkpath/"
+  - "tools/networkpath_selftest.py"
+  - "docs/WORK-041-handoff.md"
+  - "docs/WORK-041-evidence.md"
+
+required_corrections: []
+
+acceptance_criteria:
+  - "The same logical session can move between distinct validated physical paths without changing session_id."
+  - "Candidate paths are detected without automatically becoming active."
+  - "Failed validation/bind/probe leaves the existing active path intact where possible."
+  - "The path/platform evidence chain is explicit, deterministic, replay-safe, and independently verifiable."
+  - "Existing accepted batteries remain green; no frozen authority ownership changes."
+
+evidence_classes:
+  - criterion: "Software/architecture conformance"
+    class: SOFTWARE
+    allowed_statuses:
+      - PASS
+      - PARTIAL
+      - NOT-TESTABLE
+      - OPEN
+  - criterion: "Deterministic automated verification"
+    class: SOFTWARE
+    allowed_statuses:
+      - PASS
+      - PARTIAL
+      - NOT-TESTABLE
+      - OPEN
+  - criterion: "Physical deployment evidence"
+    class: PHYSICAL
+    allowed_statuses:
+      - PASS
+      - PARTIAL
+      - NOT-TESTABLE
+      - OPEN
+
+out_of_scope:
+  - "new identity/session/routing/transport/federation/policy authority"
+  - "wire-schema changes unless separately authorized"
+  - "private authority access"
+  - "synthetic physical evidence presented as physical PASS"
+  - "W040 continuation (W040 correction cycle is superseded-only for the active slot; EVID-007/EVID-008 remain W040-owned)"
+  - "W042 implementation (W041->W042 interface dependency remains hard)"
+  - "W043 implementation"
+  - "W048 provider sharing implementation"
+  - "commercial core / payment / settlement implementation (ACR-009 commercial control plane is a separate Work Item scope)"
+  - "physical validation claims (physical evidence is not required for W041; any physical claims remain governed by W040's open PHYSICAL obligations)"
+  - "modifying frozen spec semantics"
+
+acceptance_gate:
+  status: "Architect review required after implementation"
+  required_evidence:
+    - "criteria 1-5 of the W041 contract satisfied with SOFTWARE-class conformance evidence"
+    - "deterministic automated verification PASS (relevant selftest batteries green)"
+    - "no frozen authority ownership changes (existing accepted batteries remain green)"
+    - "exact execution SHA and evidence manifest"
+    - "all relevant CI checks green"
+
+handoff: docs/WORK-041-handoff.md
+handoff_required: true
