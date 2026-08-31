@@ -82,6 +82,9 @@ jobs:
       - name: Run IP integration boundary tests
         run: python3 tools/ipintegration_selftest.py
 
+      - name: Run network path/platform boundary tests
+        run: python3 tools/networkpath_selftest.py
+
       - name: Run 5G Core integration boundary tests
         run: python3 tools/fivegc_selftest.py
 

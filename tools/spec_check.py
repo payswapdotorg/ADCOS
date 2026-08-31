@@ -211,10 +211,16 @@ GOVERNANCE_ARTIFACTS: List[str] = [
     ".github/PULL_REQUEST_TEMPLATE.md",
 ]
 
-# Work Items are frozen as WORK-001 .. WORK-040 (spec/dependency-graph.md §8:
-# "all 40 Work Items"). Changing the backlog size is an architecture change
-# and requires a synchronized update of this expectation.
-EXPECTED_WORK_ITEM_COUNT = 40
+# Work Items are frozen as WORK-001 .. WORK-041 (spec/dependency-graph.md §8:
+# "all 41 Work Items"). The backlog was extended from 40 to 41 items by the
+# DEC-0054/DEC-0055 governance transition (LEDGER-RECON-006; registering
+# WORK-041 — ACR-005 NetworkPath/platform boundary, authorization
+# WORK-041-CORE-001, delivery merged by PR #107, accepted by DEC-0054) with
+# the synchronized registry/DAG/ledger updates in the same governance change;
+# it supersedes the ACR-010 proposal (PR #108), whose scope that transition
+# applies directly. Changing the backlog size is an architecture change and
+# requires a synchronized update of this expectation.
+EXPECTED_WORK_ITEM_COUNT = 41
 
 VERSION_KIND_TERMS = [
     "**Architecture Version**",

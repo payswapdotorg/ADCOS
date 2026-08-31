@@ -1,4 +1,4 @@
-# ADCOS Work Item authorization record — WORK-041 active implementation.
+# ADCOS Work Item authorization record — WORK-041 superseded (accepted).
 #
 # Baseline reconciliation (LEDGER-RECON-005, 2026-08-31): baseline_sha moves
 # 1f8833e -> bb964a1 (post-PR-#103 mainline reconciliation, per the
@@ -6,6 +6,20 @@
 # (DEC-0052), the dependencies, and every other field are unchanged. No
 # in-flight W041 implementation branch existed at reconciliation time; a
 # future implementation PR branches from a main carrying this exact record.
+#
+# Supersession (DEC-0055, 2026-08-31): status moves active -> superseded and
+# authorized moves true -> false, transferring the single active execution
+# slot to WORK-042-CORE-001 (atomic transition per DEC-0055, in the same
+# governance change as the WORK-041 acceptance DEC-0054: the W041 delivery
+# PR #107 was accepted on head 4ce5a42, merge 96db8aa, CI run 33426900730
+# SUCCESS, and the WORK-041 ledger entry is lifecycle accepted-merged).
+# The authorized scope, the acceptance criteria, the dependency set, the
+# DEC-0052 provenance, the evidence rules, and the physical-evidence
+# separation are PRESERVED UNCHANGED below; this record remains durable
+# provenance of what WORK-041-CORE-001 covered. WORK-041's own obligations
+# are discharged by DEC-0054's acceptance; no open evidence obligation of
+# this authorization survives it (physical claims were never required and
+# remain governed by WORK-040's open EVID-007/EVID-008).
 #
 # WORK-041-CORE-001 (issued by DEC-0052): the Architect's repository-local
 # authorization for WORK-041 (First-Class Network Path and Platform
@@ -34,8 +48,10 @@
 # schema: spec/architect/authorizations/ (v1); verified by tools/spec_check.py (ARCH-03).
 
 work_item: WORK-041
-status: active
-authorized: true
+status: superseded
+authorized: false
+superseded_by: "WORK-042-CORE-001"
+supersession_decision: DEC-0055
 type: implementation
 authorization_id: "WORK-041-CORE-001"
 authorization_decision: DEC-0052
