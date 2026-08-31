@@ -9,7 +9,7 @@
 # schema: spec/architect/ (execution state v1); verified by ARCH-02/ARCH-03.
 schema_version: 1
 package: "persistent-architect"
-last_updated: "2026-08-30"
+last_updated: "2026-08-31"
 
 repository:
   canonical: "github.com/pectoraux/ADCOS"
@@ -26,12 +26,11 @@ execution:
   mode: "implementing"
   active_work_item: WORK-040
   active_authorization: "WORK-040-CORRECTION-001"
-  halted_reason: "Correction-only implementing: WORK-040 remains CHANGES_REQUIRED (DEC-0046); only WORK-040-CORRECTION-001 may proceed. ACR-009 is accepted (DEC-0050) but W041/W042/W043 remain unauthorized until W040 is formally dispositioned and the Architect issues repository-local implementation authorization."
+  halted_reason: "Correction-only implementing: WORK-040 remains CHANGES_REQUIRED (DEC-0046); only WORK-040-CORRECTION-001 may proceed. ACR-009 is accepted (DEC-0050); W040 was decoupled as a non-blocking prerequisite for downstream software work by DEC-0051 (ACCEPTED) — W040 physical validation findings are advisory input to future W041/W042/W048 authorization decisions, not a prerequisite. W041/W042/W043 remain unauthorized pending their own repository-local implementation authorization."
   next_required_decisions:
     - "Review the W040 correction PR after physical evidence work under WORK-040-CORRECTION-001"
     - "Disposition W035 physical-evidence PRs 45, 46, 47"
-    - "Formally disposition W040 before activating W041"
-    - "Create repository-local authorization for W041 after W040 disposition"
+    - "Create repository-local authorization for W041 (W040 is no longer a blocking prerequisite per DEC-0051; W041 may proceed after its own authorization)"
 
 in_review:
   - work_item: WORK-040
@@ -103,7 +102,7 @@ planned_work_items:
     status: "ready-candidate"
     contract: "spec/architect/work-items/WORK-041.md"
     authorization: "none"
-    prerequisite: "WORK-040 formally accepted/dispositioned"
+    prerequisite: "W040 physical validation findings are advisory input (DEC-0051); WORK-041 execution requires its own repository-local authorization"
   - work_item: WORK-042
     issue: 84
     status: "ready-candidate"

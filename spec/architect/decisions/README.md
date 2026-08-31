@@ -62,6 +62,7 @@ Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-
 | DEC-0048 | architecture | null | ACCEPTED | ACCEPTED | ACR-006: event-driven platform/journal-first recovery |
 | DEC-0049 | architecture | null | ACCEPTED | ACCEPTED | ACR-007: mission-immutable, architecture-evolvable governance |
 | DEC-0050 | architecture | null | ACCEPTED | ACCEPTED | ACR-009: commercial connectivity control plane |
+| DEC-0051 | governance | null | ACCEPTED | ACCEPTED | Work Item dependency decoupling (W040 decoupled as non-blocking prerequisite for downstream software work) |
 
 ## Rules
 
