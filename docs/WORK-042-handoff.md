@@ -133,3 +133,137 @@ All relevant existing batteries must remain green; no frozen authority
 ownership changes; the implementation PR must inherit this authorization
 byte-identically from main (ARCH-08) and must not modify
 `spec/architect/` at all (review-protocol §3).
+
+---
+
+# WORK-042 Implementation Handoff (delivery branch)
+
+**Status: DELIVERED — the implementation-level handoff on
+`work-042-platform-journal-core` (cut from main `1909479`, which
+carries the `WORK-042-CORE-001` authorization record
+byte-identically from the recorded baseline `96db8aa`).**
+
+Everything above the divider is the governance-level handoff from
+main (unchanged). This section is the implementation-level handoff
+per the WORK-041 precedent: module structure, interfaces, evidence
+model.
+
+## Module structure
+
+```text
+platform/                    (new package, 11 modules, 3827 lines)
+    __init__.py              public API (55 frozen names)
+    errors.py                PlatformError + frozen reason vocabulary (12)
+    model.py                 PlatformEvent / EventKind / SessionBindingRef /
+                             IngestionOutcome + content-derived ids
+    boundary.py              the platform-event ingestion boundary
+                             (push primary + change-detected polling
+                             fallback over the accepted W033/W035 seams)
+    state.py                 ReconciledState / ObservationRecord +
+                             the deterministic fold (apply_record /
+                             fold_state / fold_state_from)
+    journal.py               JournalRecord (2 discriminated kinds) /
+                             AppendOnlyJournal (hash chain, duplicate +
+                             collision gates, persist-then-ack) /
+                             PlatformStore seam (Memory + File durable)
+    checkpoint.py            PlatformCheckpoint (journal-tail-bound
+                             compact snapshot, content-derived id)
+    recovery.py              load_verified_checkpoint / divergences /
+                             perform_recovery + RecoveryReport
+    lifecycle.py             PlatformIntegrator (the public production
+                             surface) + ReconciledInterfaceSource /
+                             ReconciledPlatformSource (the frozen-seam
+                             composition views)
+    evidence.py              RecoveryEvidenceRecord + digests + the
+                             honest two-track disclosure
+    integration.py           session_bindings_from_manager (public
+                             NetworkPath reads -> checkpoint DATA)
+tools/platform_selftest.py   the W042 battery (32 cases, 2259 lines)
+docs/WORK-042-handoff.md     this document (governance part unchanged)
+docs/WORK-042-evidence.md    the evidence document
+```
+
+## The implemented flow (ACR-006)
+
+```text
+platform authority (OS, through the accepted W033 InterfaceSource /
+W035 MobilePlatformSource seams -- read-only)
+    |
+    | push: one observation per change callback (EVENT-FIRST primary)
+    |      or: change-detected polling fallback
+    v
+PlatformEventBoundary  (typed validation, provenance, content id)
+    v
+PlatformEvent (kind, source, platform_ref, payload, observed_at, id)
+    v
+AppendOnlyJournal (hash-chained records, duplicate/contradiction
+gates, persist-then-ack durable append)      [events = observations]
+    v
+ReconciledState (deterministic fold; latest observation per
+reference; stale observations inert; session-loss outcomes distinct)
+    v
+PlatformCheckpoint (compact, journal-tail-bound, session-binding
+references as DATA; persist-before-suspend)
+    v
+PlatformIntegrator.recover (load + verify journal; verify checkpoint
+binding + state==fold(prefix); replay tail; ONE fresh platform
+observation; reconcile through the ordinary boundary; record session
+loss honestly; NO authority parameters at all)
+    v
+existing session/path/authority semantics (successor composes the
+reconciled views through the frozen seams; re-establishment through
+the ordinary WORK-012/033 paths)
+```
+
+## Key design decisions (all inside the ACR-006 contract)
+
+1. **Events are observations; outcomes are decisions.** The journal
+   discriminates `platform-event` records from `session-loss`
+   records at the record-kind level, so an honest recovery outcome
+   can never be mistaken for a platform observation (the contract's
+   "distinguish observations from protocol decisions").
+2. **Event id = fingerprint(kind, source, ref, payload, instant)** —
+   the WORK-004/007/012/041 claim_id convention (empty = derive;
+   non-empty must match). Journal record id additionally binds
+   (sequence, content, prev link) — a hash chain, so load-time
+   verification catches byte tamper, reorder, truncation, and
+   sequence gaps.
+3. **Contradiction rule**: two events for the same
+   (platform_ref, observed_at) with different content are rejected
+   whole at ingest AND re-checked by the fold on replay; an exact
+   replay of the same event is an idempotent no-op (duplicate).
+4. **Stale rule**: an observation older than the reconciled record
+   for its reference is journaled for forensics but deterministically
+   inert — ACR-006 §2 (no transition inferred from stale re-reads).
+5. **Construction discipline**: a fresh `PlatformIntegrator` requires
+   an EMPTY store; continuing from durable state is only possible
+   through `recover()` (fresh observation + honest session loss).
+   No silent adoption of stale state.
+6. **Recovery takes no authority parameters** (store, clock, two
+   read-only platform sources only): it cannot touch session,
+   routing, identity, or transport state by construction. The
+   successor re-establishes sessions through the ordinary paths
+   (new session id, exactly one created event).
+7. **Session-loss honesty is total**: every checkpoint binding is
+   recorded lost at recovery (idempotently keyed on
+   (session_id, checkpoint_id)), whatever the fresh platform
+   observation says — a still-present interface never resurrects
+   transport state (no faked liveness).
+8. **The reconciled views implement the frozen seams**
+   (`InterfaceSource`, `MobilePlatformSource`) over event-reconstructed
+   state: the accepted authorities consume recovered state
+   unchanged (composition, not replacement).
+9. **Durability seam is injectable**: `MemoryPlatformStore`
+   (deterministic verification) and `FilePlatformStore` (the real
+   append-only durable store — journal file opened `ab` only, so it
+   can only grow; the only filesystem-write site in the family).
+   Every append is persisted BEFORE the in-memory ack.
+
+## Verification
+
+See `docs/WORK-042-evidence.md` for the complete table (battery,
+spec checks, all existing batteries, determinism proofs, negative
+coverage, authority-ownership audit). Headline: W042 battery
+32/32 PASS; `spec_check.py` 17/17; `spec_check.py --provenance`
+2/2; every mandated existing battery green; PYTHONHASHSEED
+0/1/7919/unset subprocesses byte-identical.
