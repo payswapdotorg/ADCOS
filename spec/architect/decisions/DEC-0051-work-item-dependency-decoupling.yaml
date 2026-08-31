@@ -1,0 +1,52 @@
+# ADCOS Architect decision record.
+# schema: spec/architect/decision-record-template.md; verified by tools/spec_check.py (ARCH-04).
+#
+# This record is PROPOSED and does not govern until the Architect accepts and
+# merges it (review-protocol §5, §7). It creates no Work Item authorization
+# and modifies no frozen architecture document.
+decision_id: DEC-0051
+type: governance
+work_item: null
+acr: null
+pr: null
+reviewed_sha: 5da120f6e0945410a8fc9346692058ca9a8b49f3
+decision: PROPOSED
+status: PROPOSED
+reviewer: "Architect (pectoraux)"
+timestamp: 2026-08-31T00:00:00Z
+findings:
+  - "The frozen dependency graph (spec/dependency-graph.md §2, FROZEN) terminates at WORK-040 and contains NO edge W040→W041, W040→W042, or W040→W048. W040's only incoming DAG edges are W027, W028, W036, W037, W039. By the frozen DAG's own §5 hard-dependency semantics, W040 is not a hard dependency of W041/W042/W043/W048."
+  - "The W040→W041/W042 coupling is encoded only in process/execution-state records (spec/architect/execution-state.yaml planned_work_items[].prerequisite and halted_reason; spec/architect/current-state.md 'remains blocked while W040 is active'), which are persistent governance state (authority-order level 8), not frozen architecture (level 2) and not the frozen dependency DAG."
+  - "The ready-candidate contracts spec/architect/work-items/WORK-041.md and WORK-042.md do NOT list W040 as a hard dependency. W041 Required dependencies (W016/W018/W033/W034) are all Architect-accepted W001–W039. W042 consumes W041 interfaces where present, not W040. W041/W042 Execution gates require only their own ACTIVE repository-local authorization."
+  - "W041 and W042 contracts explicitly state 'Physical-device evidence: not required for W041/W042 implementation; physical claims remain governed separately.' W040's PHYSICAL evidence obligations (EVID-007 real users/devices PARTIAL; EVID-008 real 5G access path NOT-TESTABLE) are W040-owned and are not criteria of W041/W042."
+  - "ACR-005 (DEC-0047), ACR-006 (DEC-0048), and ACR-009 (DEC-0050) are ACCEPTED. The architecture W041/W042 implement is decided; W040 is physical validation of the integrated fabric, not an interface W041/W042 consume. workflow.md §2.1 already distinguishes DAG-ready from execution-ready and explicitly permits a Work Item to be DAG-ready but execution-blocked."
+  - "workflow.md §2 explicitly states dependency divergence 'must be resolved by the Architect — directly, or through an Architecture Change Request' and that 'until resolved, the DAG remains the approved implementation order.' change-control.md §8 permits process-authority documents to be updated by the Architect through normal PR review when no architectural rule is altered."
+  - "Reclassifying the W040→W041/W042/W048 coupling from a blocking prerequisite to a non-blocking advisory changes no frozen architectural semantic content (no frozen DAG edge, no acceptance criterion, no architecture lock). It is therefore a governance decision, not an ACR (change-control.md §1, §8)."
+blockers: []
+required_corrections: []
+evidence:
+  merge_sha: null
+  ci_run: null
+  artifacts:
+    - "docs/governance/WORK-040-dependency-decoupling-review.md"
+    - "spec/architect/decisions/DEC-0051-work-item-dependency-decoupling.yaml"
+accepted_scope:
+  - "Reclassify the W040→W041/W042/W048 coupling from a blocking prerequisite to a non-blocking advisory. W040's physical findings (when produced) enter W041/W042/W048 authorization review as experience records (spec/experience/, authority-order level 5), not as a prerequisite."
+  - "On ratification: update spec/architect/execution-state.yaml planned_work_items[].prerequisite for W041 from 'WORK-040 formally accepted/dispositioned' to a non-blocking advisory reference; update spec/architect/current-state.md W041/W042 wording from 'blocked while W040 is active' to 'DAG-ready; execution-blocked pending its own repository-local authorization'."
+  - "On ratification: add this record to spec/architect/decisions/README.md registry table."
+rejected_scope:
+  - "Any change to WORK-040 status, its correction cycle (WORK-040-CORRECTION-001, DEC-0046), its in-review PR #48, or its CHANGES_REQUIRED verdict."
+  - "Any authorization of W041, W042, W043, or W048. Each still requires its own repository-local WORK-XXX.yaml with status: active before any implementation branch may proceed (review-protocol §3.1; ARCH-08)."
+  - "Any weakening of acceptance criteria, evidence-class discipline (workflow §2.2), or the one-Work-Item-at-a-time rule (workflow §1, dependency-graph §6)."
+  - "Any change to W040's PHYSICAL evidence obligations EVID-007/EVID-008. They remain W040-owned, governed by spec/architect/evidence-obligations.yaml, and remain OPEN until physically proven."
+  - "Any change to the frozen dependency graph (spec/dependency-graph.md), frozen backlog (spec/work-items.md), spec/architecture.md, or spec/architecture-lock.md. No frozen edge is added, removed, or relabeled."
+  - "Any change to the W041→W042 and W042→W048 INTERFACE dependencies (where W042 consumes W041 interfaces and W048 consumes W041/W042 interfaces). Those remain hard dependencies per the ready-candidate contracts and workflow.md §2."
+  - "Any bypass of ARCH-08 provenance enforcement. Implementation deltas still require an active authorization inherited byte-identically from main."
+downstream_effect:
+  - "W041/W042/W043/W048 each remain gated by their own repository-local authorization (status: active) before implementation. Decoupling the prerequisite does NOT authorize any of them."
+  - "W040 physical findings become non-blocking advisory input to future W041/W042/W048 authorization decisions via spec/experience/, rather than an unconditional prerequisite."
+  - "The W041→W042 (interfaces consumed) and W042→W048 (interfaces consumed) dependencies remain hard and unchanged."
+  - "W040's correction cycle, in-review PR #48, and open PHYSICAL evidence obligations are unaffected and remain owned by W040."
+  - "The frozen dependency DAG, frozen backlog, architecture, and architecture-lock are unchanged; no architecture version bump (change-control.md §7: governance-only changes may leave the architecture version unchanged)."
+  - "If the Architect judges on review that this change alters architectural semantics, it must be converted into an ACR per review-protocol §6 and change-control.md §1 rather than merged as-is."
+resolved_by: null
