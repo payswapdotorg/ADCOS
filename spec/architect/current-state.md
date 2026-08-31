@@ -46,7 +46,7 @@ A software rehearsal cannot close a physical criterion by inference.
 ## Planned / gated Work Items
 
 - `WORK-040`: correction cycle active; acceptance remains blocked pending Architect re-review.
-- `WORK-041`: READY-CANDIDATE contract recorded under ACR-009; execution not authorized and remains blocked while W040 is active.
+- `WORK-041`: READY-CANDIDATE contract recorded under ACR-009; execution not authorized. W040 was decoupled as a non-blocking prerequisite by DEC-0051 — W041 is DAG-ready and may proceed after repository-local authorization. W040 remains an independent physical validation track.
 - `WORK-042`: READY-CANDIDATE contract recorded under ACR-009; execution not authorized, and depends on W041 where its interfaces are consumed.
 - `WORK-043`: READY-CANDIDATE contract recorded under ACR-009; execution not authorized, and depends on W042/W041 where its interfaces are consumed.
 - `WORK-044+`: not yet authorized; must be established through the mission/learning/change-control process.

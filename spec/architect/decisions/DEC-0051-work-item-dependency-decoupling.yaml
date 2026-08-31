@@ -1,19 +1,20 @@
 # ADCOS Architect decision record.
 # schema: spec/architect/decision-record-template.md; verified by tools/spec_check.py (ARCH-04).
 #
-# This record is PROPOSED and does not govern until the Architect accepts and
-# merges it (review-protocol §5, §7). It creates no Work Item authorization
-# and modifies no frozen architecture document.
+# This record was ratified ACCEPTED by the Architect (PR #99 merge 1caafee
+# brought the decision into main; this ratification PR persists the ACCEPTED
+# status). It creates no Work Item authorization and modifies no frozen
+# architecture document (review-protocol §5, §7).
 decision_id: DEC-0051
 type: governance
 work_item: null
 acr: null
-pr: null
-reviewed_sha: 5da120f6e0945410a8fc9346692058ca9a8b49f3
-decision: PROPOSED
-status: PROPOSED
+pr: 99
+reviewed_sha: 006a7ad762f4005f3026fb8fe66db3c22be72ea4
+decision: ACCEPTED
+status: ACCEPTED
 reviewer: "Architect (pectoraux)"
-timestamp: 2026-08-31T00:00:00Z
+timestamp: 2026-08-31T06:36:01Z
 findings:
   - "The frozen dependency graph (spec/dependency-graph.md §2, FROZEN) terminates at WORK-040 and contains NO edge W040→W041, W040→W042, or W040→W048. W040's only incoming DAG edges are W027, W028, W036, W037, W039. By the frozen DAG's own §5 hard-dependency semantics, W040 is not a hard dependency of W041/W042/W043/W048."
   - "The W040→W041/W042 coupling is encoded only in process/execution-state records (spec/architect/execution-state.yaml planned_work_items[].prerequisite and halted_reason; spec/architect/current-state.md 'remains blocked while W040 is active'), which are persistent governance state (authority-order level 8), not frozen architecture (level 2) and not the frozen dependency DAG."
@@ -25,7 +26,7 @@ findings:
 blockers: []
 required_corrections: []
 evidence:
-  merge_sha: null
+  merge_sha: 1caafee23438ac218a81a38c82b48f8a86215c00
   ci_run: null
   artifacts:
     - "docs/governance/WORK-040-dependency-decoupling-review.md"
