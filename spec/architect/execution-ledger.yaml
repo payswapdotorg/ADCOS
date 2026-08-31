@@ -17,9 +17,16 @@
 # the mainline the persistent state is reconciled against. Reconciliations
 # are recorded formally in the `reconciliations` list below — history is
 # never silently rewritten.
+#
+# LEDGER-RECON-005 (2026-08-31) additionally reconciles the commercial
+# roadmap planning pointers to the DEC-0052 binding (W041 = ACR-005
+# NetworkPath contract / issue #68; W042 = ACR-006 contract / issue #69) and
+# records the commercial chain resequencing W051/W052/W053 (issues
+# #83/#84/#85, W043 retired). No work-item entry is rewritten and no
+# authorization is created or altered by the planning reconciliation.
 
 schema_version: 1
-main_sha: 1f8833e5cfbb3e1a17bac5c718070a31a7f67775
+main_sha: bb964a1bd94176fdc55f6870ffcdaf75445cc657
 last_updated: "2026-08-31"
 work_items:
   - work_item: WORK-001
@@ -761,3 +768,11 @@ reconciliations:
     to_main_sha: 1f8833e5cfbb3e1a17bac5c718070a31a7f67775
     reason: "Atomic W040->W041 handoff reconciliation (DEC-0052): main advanced from the ACR-009 baseline to the post-PR-#101 mainline (DEC-0051 ratification merged). The single active execution slot transfers from WORK-040-CORRECTION-001 to WORK-041-CORE-001. WORK-040 is NOT accepted (lifecycle stays in-review, acceptance_decision stays null); EVID-007/EVID-008 remain OPEN and W040-owned. W041 (ACR-005 NetworkPath/platform boundary) becomes the active Work Item; W042/W043/W048 remain unauthorized. The W041 authorization baseline is the current mainline 1f8833e so ARCH-03 holds."
     history: "No work-item history rewritten: WORK-001..WORK-039 entries remain byte-identical; WORK-040 entry gains correction_authorization_superseded_by and correction_supersession_decision fields and an updated note (lifecycle and acceptance_decision unchanged — W040 is NOT accepted). W041 is not yet a registered entry in the frozen backlog (spec/work-items.md terminates at W040), so no W041 work_items entry is added here; W041's active implementing state is recorded in execution-state.yaml (active_work_item: WORK-041) and the WORK-041.yaml authorization + DEC-0052. A W041 delivery ledger entry will be added when W041 has a delivery PR and is registered in the frozen backlog (separately authorized). The snapshot baseline (main_sha) is reconciled to 1f8833e in lockstep with execution-state.yaml. No frozen architecture document is modified."
+
+  - reconciliation_id: LEDGER-RECON-005
+    recorded_by: "Governance maintenance reconciliation (commercial roadmap) recorded as LEDGER-RECON-005; no new decision record is required because no acceptance, authorization, frozen-architecture semantic, or work-item history changes — only stale planning pointers, the snapshot baseline, and documentation are reconciled to already-accepted decisions (DEC-0050/0051/0052/0053)"
+    recorded_at: 2026-08-31T00:00:00Z
+    from_main_sha: 1f8833e5cfbb3e1a17bac5c718070a31a7f67775
+    to_main_sha: bb964a1bd94176fdc55f6870ffcdaf75445cc657
+    reason: "post-PR-#103 mainline reconciliation: main advanced to bb964a1 (DEC-0052 atomic handoff + DEC-0053 single-Architect authority merged by PR #103, then the W041 implementation-directive docs commit) while the persistent state still referenced the PR-#101 mainline 1f8833e; this reconciliation moves the snapshot baseline and the active WORK-041-CORE-001 authorization baseline (per the RECON-002/003/004 pattern) to bb964a1 so ARCH-03/ARCH-05 hold, and reconciles the commercial roadmap planning pointers: planned_work_items re-pointed to the DEC-0052 binding (W041 issue #68 NetworkPath, W042 issue #69 event-driven/journal), the commercial chain resequenced to W051/W052/W053 (issues #83/#84/#85), W043 retired from commercial use, W044–W050 planned entries recorded (issues #88–#92/#98/#96, authorization none), the duplicate W049 resolved (#98 canonical, #95 superseded), and the canonical model recorded at docs/roadmap/commercial-dependency-model.md"
+    history: "No work-item history rewritten: every WORK-001..WORK-040 entry is byte-identical (W040 stays in-review with acceptance_decision null and its DEC-0052 supersession fields unchanged); W041 has no ledger work_items entry (per LEDGER-RECON-004's recorded convention a W041 entry is added only at delivery); no authorization record is created; the active authorization's baseline_sha moves in lockstep with the snapshot baseline (RECON-002/003/004 pattern, every other field byte-identical) with no in-flight W041 implementation branch to invalidate; no frozen architecture document is modified; the superseded commercial-era labels (issues #83/#84/#85 original titles, PR #49's ACR-004-era roadmap, PR #100, PR #102) remain discoverable"
