@@ -75,14 +75,15 @@ Rules), the authoritative owners W048 must compose — never recreate — are:
 | Local service boundary | `/services` + `/edge` (W025) | **Composed.** The exposure policy (which local services, if any, the lease exposes) is a service-authority concern. |
 | Policy evaluation | `/policy` (W010; deny-by-default) | Composed. Lease/quota/consent decisions route through policy. |
 | Telemetry / observations | `/telemetry` (W026) | Composed. Usage observations originate as telemetry; W048 correlates, never owns. |
-| Commercial control plane | ACR-009 (W041 contract; `Lease`, `UsageRecord`, …) | **Referenced.** The commercial `Lease` is the lifecycle authority; W048 is a local enforcement mechanism that observes it. |
+| Commercial control plane | ACR-009 (W051 CommercialCore contract, issue #83; `Lease`, `UsageRecord`, …) | **Referenced.** The commercial `Lease` is the lifecycle authority; W048 is a local enforcement mechanism that observes it. |
 | Usage authority | ACR-006 / W042 (journal-first) | **Referenced.** W048 emits idempotent usage evidence correlated INTO W042; W048 is never the canonical usage ledger. |
 | NetworkPath authority | ACR-005 / W041 (`discover→validate→activate→retire`) | **Referenced.** W048 activates/retires a path through the existing lifecycle; it creates no new path abstraction. |
 
 ### 1.2 What W041/W042 provide (and why W048 depends on them)
 
-**W041 — NetworkPath (ACR-005).** Ready-candidate, not execution-authorized.
-Provides the `discover→validate→bind→activate→retire` lifecycle, stable
+**W041 — NetworkPath (ACR-005).** Active under WORK-041-CORE-001 (DEC-0052);
+at reconciliation time the W041 implementation itself was still pending. It
+provides the `discover→validate→bind→activate→retire` lifecycle, stable
 `session_id` across path changes, and the physical→platform→ADCOS evidence chain.
 W048 **requires** W041 accepted/merged because every sharing session must
 activate a *validated* NetworkPath and survive path loss/change through W041's
@@ -95,9 +96,31 @@ usage evidence must be correlated *into* W042 idempotently; W048 must not become
 a second usage ledger (ACR-009 invariant 6; W048 authority boundary).
 
 **Hard dependency chain for any future W048 implementation:**
-`WORK-040 dispositioned → WORK-041 accepted/merged → WORK-042 accepted/merged
-→ WORK-048 authorized`. Today none of these are satisfied, which independently
-confirms the design-only outcome.
+`WORK-041 accepted/merged → WORK-042 accepted/merged → W051 CommercialCore
+accepted/merged where consumed → WORK-048 authorized`. Today none of these are
+satisfied, which independently confirms the design-only outcome.
+
+**Dependency reconciliation (LEDGER-RECON-005, 2026-08-31).** This section was
+reconciled against the repository's decided state. The original chain as
+authored read (superseded, preserved verbatim):
+
+> `WORK-040 dispositioned → WORK-041 accepted/merged → WORK-042
+> accepted/merged → WORK-048 authorized`
+
+Two corrections apply. First, **DEC-0051 (ACCEPTED)** decouples WORK-040: it
+is the independent physical validation / evidence track whose findings are
+*advisory experience input* to future W048 authorization review — not a hard
+execution prerequisite, so the `WORK-040 dispositioned` link is removed.
+Second, **DEC-0052 (ACCEPTED)** bound W041 to the ACR-005 NetworkPath contract
+(issue #68) and left the ACR-006 event-driven/journal contract (W042, issue
+#69) live, while the commercial control plane (`Lease`, `UsageRecord`,
+settlement states) is resequenced to **W051 CommercialCore** (issue #83) under
+the canonical model `docs/roadmap/commercial-dependency-model.md`. Throughout
+this document, references to the NetworkPath authority remain **W041**
+(ACR-005) and usage/journal references remain **W042** (ACR-006) — unchanged;
+references that used “W041” for the *commercial Lease/control-plane* sense are
+resequenced to W051 CommercialCore. No authority ownership changes; the
+W048 task remains unauthorized.
 
 ### 1.3 Reusable implementation patterns observed in-repo
 
@@ -140,7 +163,7 @@ ADCOS can expose a *bounded portion* of real provider connectivity to an
 
 1. **The provider consents** (§4). Consent is mandatory, recorded, revocable,
    and supports emergency stop. No consent ⇒ no exposure, fail-closed.
-2. **A commercial Lease exists** (ACR-009 / W041). The lease is the commercial
+2. **A commercial Lease exists** (ACR-009 / W051 CommercialCore). The lease is the commercial
    lifecycle authority; W048 only enforces locally against it.
 3. **A validated NetworkPath exists** (ACR-005 / W041). Discovery alone is
    insufficient; the path must pass `validate→bind→probe` before activation.
@@ -183,13 +206,13 @@ session authority        — /session owns logical session_id
 NetworkPath authority    — ACR-005/W041 owns path lifecycle
 routing authority        — /routing owns path computation/selection
 transport authority      — /transport owns secure transport mappings
-commercial truth authority — ACR-009/W041 owns Lease/UsageRecord/...
+commercial truth authority — ACR-009/W051 CommercialCore owns Lease/UsageRecord/...
 usage authority          — ACR-006/W042 owns the canonical usage journal
 ```
 
 Concretely, W048's runtime:
 
-- **Reads** commercial Lease state from the W041 control plane (it does not
+- **Reads** commercial Lease state from the W051 CommercialCore control plane (it does not
   mint, mutate, or settle leases).
 - **References** a logical `session_id` from `/session` (it does not create
   session identity).
@@ -252,7 +275,7 @@ ProviderConsent:
   enforcement boundary refuses to admit buyer traffic
   (`CONSENT_REQUIRED` / `CONSENT_WITHDRAWN`), and any active session is moved
   to `revoked`.
-- If the lease referenced by the consent is no longer active (W041 authority),
+- If the lease referenced by the consent is no longer active (W051 CommercialCore authority),
   the consent is treated as withdrawn-by-external-state and the session is
   revoked with reason `LEASE_NO_LONGER_ACTIVE`.
 
@@ -260,13 +283,13 @@ ProviderConsent:
 
 ## 5. Lease / quota enforcement
 
-W048 enforces — locally — against the commercial Lease owned by ACR-009/W041.
+W048 enforces — locally — against the commercial Lease owned by ACR-009/W051 CommercialCore.
 The Lease is the authority; W048 is the enforcement mechanism.
 
 ### 5.1 Enforced dimensions
 
 ```
-active lease              — must be ACTIVE in the W041 control plane
+active lease              — must be ACTIVE in the W051 CommercialCore control plane
 expiry                    — time quota; no traffic after expiry
 byte quota                — no traffic after bytes consumed
 time quota                — no traffic after duration
@@ -300,12 +323,13 @@ revocation                — consent withdrawal / lease termination
 ### 5.3 Relationship to the commercial Lease
 
 - W048 **reads** `Lease.state`, `Lease.expiry`, `Lease.byte_quota`,
-  `Lease.buyer`, `Lease.pricing_policy_version` from W041.
+  `Lease.buyer`, `Lease.pricing_policy_version` from W051 CommercialCore.
 - W048 **never** mutates Lease state. If W048 detects lease expiry/quota
   exhaustion, it (a) revokes the sharing session locally and (b) emits a usage
-  evidence event into W042 that the W041 control plane may observe to advance
-  the commercial lifecycle (e.g. `DELIVERY_COMPLETED` / `BILLABLE_FINAL`). W041
-  remains the commercial lifecycle authority.
+  evidence event into W042 that the W051 CommercialCore control plane may
+  observe to advance the commercial lifecycle (e.g. `DELIVERY_COMPLETED` /
+  `BILLABLE_FINAL`). W051 CommercialCore remains the commercial lifecycle
+  authority.
 
 ---
 
@@ -473,7 +497,7 @@ state machine:
 | From | To | Reason (examples) | Authority consulted |
 |---|---|---|---|
 | (init) | `prepared` | `SESSION_PREPARED` | local |
-| `prepared` | `authorized` | `CONSENT_GRANTED` + `LEASE_ACTIVE` + `PATH_VALIDATED` | consent §4, W041 lease, W041 path |
+| `prepared` | `authorized` | `CONSENT_GRANTED` + `LEASE_ACTIVE` + `PATH_VALIDATED` | consent §4, W051 lease, W041 path |
 | `prepared` | (rejected) | `CONSENT_REQUIRED` / `OVER_RESERVATION` / `ISOLATION_UNAVAILABLE` / `CAPABILITY_UNSUPPORTED` | consent §4, §5, §6, §7 |
 | `authorized` | `active` | `ISOLATION_ESTABLISHED` + `PATH_ACTIVATED` | W041 path activate, §6 |
 | `active` | `paused` | `PROVIDER_PAUSE` / `QUOTA_PAUSE` | consent §4, §5 |
@@ -626,7 +650,7 @@ reason class.
    reason `CONSENT_WITHDRAWN`; traffic dropped.
 
 ### 12.2 Lease & quota
-4. `active_lease_required` — lease not ACTIVE in W041 ⇒ `prepared` rejected,
+4. `active_lease_required` — lease not ACTIVE in W051 CommercialCore ⇒ `prepared` rejected,
    `LEASE_NOT_ACTIVE`.
 5. `lease_expiry_revokes` — `time_quota` reached ⇒ `expired`,
    `TIME_QUOTA_REACHED`; isolation torn down.
@@ -726,7 +750,7 @@ the application chose not to send it.
 | CI | docs-only governance PR; `docs/` is a `GOVERNANCE_PREFIX` so ARCH-08 provenance gate does not require a W048 authorization. `tools/spec_check.py` passes on base. |
 | Known unsupported platforms | Any platform without a determinable OS/network isolation primitive (e.g. a platform exposing only an application-level API with no namespace/VRF/VPN scope) ⇒ `unsupported`, fail-closed, no exposure. |
 | Architectural findings | §11: isolation layer presents a genuine Option A (composition, no ACR) vs Option B (new ACR-010 "Traffic Containment Boundary") decision. Recommended Option B if the Architect judges isolation risk warrants a first-class contract. W048 must not bypass this decision. |
-| Hard dependency chain | W040 dispositioned → W041 accepted/merged → W042 accepted/merged → W048 authorized. None satisfied today. |
+| Hard dependency chain | W041 accepted/merged → W042 accepted/merged → W051 CommercialCore accepted/merged where consumed → W048 authorized. None satisfied today. (W040: advisory only per DEC-0051; original chain preserved in §1.2's reconciliation note.) |
 | Self-merge | Prohibited (review-protocol §7). The Architect merges. |
 
 ---
@@ -741,7 +765,8 @@ the application chose not to send it.
 bounded quota, explicit isolation, W042-correlated usage, and a `supported`
 platform capability all hold. The runtime described here is the local
 enforcement mechanism; the commercial/path/usage authorities remain with
-W041/W042/ACR-005.
+W041 (NetworkPath, ACR-005) / W042 (usage journal, ACR-006) / W051
+CommercialCore (ACR-009) per the canonical dependency model.
 
 **The one open architectural question** is whether the isolation layer should
 be a composed property (Option A) or a first-class `ContainmentBoundary`

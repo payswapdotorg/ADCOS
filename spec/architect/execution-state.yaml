@@ -8,6 +8,15 @@
 # NetworkPath/platform boundary) is the active Work Item. W042/W043/W048 remain
 # unauthorized. The frozen dependency DAG is unchanged.
 #
+# Commercial roadmap reconciliation (LEDGER-RECON-005, 2026-08-31): the
+# persistent planning pointers are reconciled to the DEC-0052 binding
+# (W041 = ACR-005 NetworkPath contract / issue #68; W042 = ACR-006 contract /
+# issue #69) and the commercial chain is resequenced to W051/W052/W053
+# (issues #83/#84/#85); W043 is retired from commercial use (unassigned).
+# The canonical model is docs/roadmap/commercial-dependency-model.md. No
+# authorization is created or altered by the planning reconciliation; the
+# commercial items all carry authorization "none".
+#
 # schema: spec/architect/ (execution state v1); verified by ARCH-02/ARCH-03.
 schema_version: 1
 package: "persistent-architect"
@@ -15,8 +24,8 @@ last_updated: "2026-08-31"
 
 repository:
   canonical: "github.com/pectoraux/ADCOS"
-  main_sha: 1f8833e5cfbb3e1a17bac5c718070a31a7f67775
-  main_sha_semantics: "current main after PR #101 merged DEC-0051 ratification; DEC-0052 atomic handoff reconciles the persistent state to this mainline and transfers the single active execution slot from WORK-040-CORRECTION-001 to WORK-041-CORE-001"
+  main_sha: bb964a1bd94176fdc55f6870ffcdaf75445cc657
+  main_sha_semantics: "current main after PR #103 merged the DEC-0052 atomic handoff and DEC-0053 single-Architect authority, plus the W041 implementation-directive docs commit (bb964a1); LEDGER-RECON-005 reconciles the persistent state (including the active WORK-041-CORE-001 baseline) to this mainline and reconciles the commercial roadmap planning pointers"
 
 versions:
   architecture_version_reference: "1.0"
@@ -31,6 +40,8 @@ execution:
   halted_reason: "Atomic handoff (DEC-0052): WORK-040-CORRECTION-001 superseded; WORK-041-CORE-001 is the single active authorization. W041 implements the ACR-005 NetworkPath/platform boundary. W040 remains an independent physical validation track (in-review, NOT accepted; EVID-007 PARTIAL, EVID-008 NOT-TESTABLE remain OPEN and W040-owned) and may resume under a future evidence-continuation authorization. W042/W043/W048 remain unauthorized pending their own repository-local authorizations."
   next_required_decisions:
     - "Implement WORK-041 (ACR-005 NetworkPath/platform boundary) under WORK-041-CORE-001"
+    - "Ratify the commercial roadmap dependency model (docs/roadmap/commercial-dependency-model.md): W051/W052/W053 resequencing, W043 retirement, W049 unification (#98 canonical, #95 superseded), W050 capability-matrix boundary"
+    - "Disposition superseded governance threads: PR #100 (W041=CommercialCore contract reconciliation, superseded by DEC-0052's NetworkPath binding) and PR #102 (handoff analysis, superseded by merged PR #103)"
     - "Resume W040 physical validation under a future type: evidence-continuation authorization once physical evidence (real device, real 5G path) is available; EVID-007/EVID-008 remain OPEN"
     - "Disposition W035 physical-evidence PRs 45, 46, 47"
     - "After W041 is accepted/merged, create repository-local authorization for W042 (W041->W042 interface dependency remains hard)"
@@ -71,6 +82,14 @@ open_prs:
     head: "arch/acr-009-commercial-control-plane"
     subject: "ACR-009 Commercial Connectivity Control Plane"
     disposition: "accepted by DEC-0050 and merged; acceptance reconciliation recorded by this governance transition"
+  - pr: 100
+    head: "governance/reconcile-w041-w042-contracts"
+    subject: "governance: reconcile W041/W042 contracts and post-RECON-003 baseline"
+    disposition: "superseded by DEC-0052 (which bound W041 to the ACR-005 NetworkPath contract, the opposite binding) and by the commercial roadmap resequencing; pending Architect disposition (close)"
+  - pr: 102
+    head: "governance/w040-w041-atomic-handoff"
+    subject: "governance: W040→W041 execution handoff review (analysis only)"
+    disposition: "superseded by merged PR #103 which implemented the atomic handoff as DEC-0052; pending Architect disposition (close)"
 
 open_acrs: []
 
@@ -101,20 +120,74 @@ accepted_work_items:
 
 planned_work_items:
   - work_item: WORK-041
-    issue: 83
+    issue: 68
     status: "active"
     contract: "spec/architect/work-items/WORK-041.md"
     authorization: "WORK-041-CORE-001"
     prerequisite: "Active (DEC-0052 atomic handoff). W040 physical validation findings are advisory input (DEC-0051); W041 is the active Work Item under WORK-041-CORE-001."
   - work_item: WORK-042
-    issue: 84
+    issue: 69
     status: "ready-candidate"
     contract: "spec/architect/work-items/WORK-042.md"
     authorization: "none"
     prerequisite: "WORK-041 accepted/merged where its interfaces are consumed"
-  - work_item: WORK-043
+  - work_item: WORK-044
+    issue: 88
+    status: "ready-candidate"
+    contract: "issue #88"
+    authorization: "none"
+    prerequisite: "W051 CommercialCore and W053 EconomicAllocation accepted/merged where their interfaces are consumed (commercial-era W041/W042/W043 references in the issue body are superseded by the canonical model)"
+  - work_item: WORK-045
+    issue: 89
+    status: "ready-candidate"
+    contract: "issue #89"
+    authorization: "none"
+    prerequisite: "W051/W053 accepted/merged where consumed; W044 payment/eligibility capability boundary where exposed"
+  - work_item: WORK-046
+    issue: 90
+    status: "ready-candidate"
+    contract: "issue #90"
+    authorization: "none"
+    prerequisite: "W051/W052/W053 accepted/merged where consumed; W044/W045 boundaries where provider onboarding is exposed"
+  - work_item: WORK-047
+    issue: 91
+    status: "ready-candidate"
+    contract: "issue #91"
+    authorization: "none"
+    prerequisite: "W051 accepted/merged where consumed; W044/W045/W046 capability boundaries where paid offers are presented; handoff to W041 NetworkPath validation (issue body's 'W040/ACR-005' reference is superseded: W040 is the physical evidence track, ACR-005/W041 owns path validation)"
+  - work_item: WORK-048
+    issue: 92
+    status: "ready-candidate (design-only, PR #97)"
+    contract: "issue #92"
+    authorization: "none"
+    prerequisite: "W041 NetworkPath accepted/merged + W042 usage/journal accepted/merged + W051 CommercialCore (Lease authority) where consumed; W040 physical validation advisory only (DEC-0051)"
+  - work_item: WORK-049
+    issue: 98
+    status: "ready-candidate"
+    contract: "issue #98"
+    authorization: "none"
+    prerequisite: "W048/W047/W046 accepted/merged where their interfaces are consumed; canonical definition unifies the duplicate W049 (issue #95 is the superseded definition)"
+  - work_item: WORK-050
+    issue: 96
+    status: "ready-candidate"
+    contract: "issue #96"
+    authorization: "none"
+    prerequisite: "capability/isolation matrix consumed by W048/W049; not an implementation vehicle for W048"
+  - work_item: WORK-051
+    issue: 83
+    status: "ready-candidate"
+    contract: "issue #83"
+    authorization: "none"
+    prerequisite: "ACR-009 accepted (DEC-0050); W041 NetworkPath accepted/merged where NetworkPath references are consumed; W040 physical validation advisory (DEC-0051)"
+  - work_item: WORK-052
+    issue: 84
+    status: "ready-candidate"
+    contract: "issue #84"
+    authorization: "none"
+    prerequisite: "W051 accepted/merged where its interfaces are consumed; W042 journal-first discipline where consumed"
+  - work_item: WORK-053
     issue: 85
     status: "ready-candidate"
     contract: "issue #85"
     authorization: "none"
-    prerequisite: "W041/W042 accepted/merged where their interfaces are consumed"
+    prerequisite: "W051/W052 accepted/merged where their interfaces are consumed"

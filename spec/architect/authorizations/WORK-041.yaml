@@ -1,5 +1,12 @@
 # ADCOS Work Item authorization record — WORK-041 active implementation.
 #
+# Baseline reconciliation (LEDGER-RECON-005, 2026-08-31): baseline_sha moves
+# 1f8833e -> bb964a1 (post-PR-#103 mainline reconciliation, per the
+# RECON-002/003/004 pattern). The authorized scope, the governing decision
+# (DEC-0052), the dependencies, and every other field are unchanged. No
+# in-flight W041 implementation branch existed at reconciliation time; a
+# future implementation PR branches from a main carrying this exact record.
+#
 # WORK-041-CORE-001 (issued by DEC-0052): the Architect's repository-local
 # authorization for WORK-041 (First-Class Network Path and Platform
 # Integration, ACR-005). This record is the sole durable authority for
@@ -32,7 +39,7 @@ authorized: true
 type: implementation
 authorization_id: "WORK-041-CORE-001"
 authorization_decision: DEC-0052
-baseline_sha: 1f8833e5cfbb3e1a17bac5c718070a31a7f67775
+baseline_sha: bb964a1bd94176fdc55f6870ffcdaf75445cc657
 review_basis: "DEC-0052 atomic handoff: WORK-040-CORRECTION-001 superseded; W041 activated as the single active Work Item. ACR-005 (DEC-0047) is the architecture basis; W041 ready-candidate contract gates implementation. W040 physical validation continues independently; EVID-007/EVID-008 remain OPEN and W040-owned."
 
 dependencies:
