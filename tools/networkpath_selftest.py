@@ -53,6 +53,7 @@ methods.  No private method is called to manufacture a PASS.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import py_compile
 import re
@@ -67,6 +68,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from identity.node_id import parse_node_id  # noqa: E402
 from management import ManagementCapability, RoleDefinition  # noqa: E402
 from policy import PolicyDomain, PolicyRule  # noqa: E402
+from protocol.canonicalization import canonical_json_bytes  # noqa: E402
 from topology import (  # noqa: E402
     ClaimType,
     SourceClass,
@@ -1471,20 +1473,47 @@ def case_26_evidence_chain_explicit(results: List[Result]) -> None:
     if not verify_path_evidence(record):
         problems.append("independent verification failed")
     # independently recomputable: the digest is a pure function of the
-    # canonical record content
-    recomputed = "sha256:" + __import__("hashlib").sha256(
-        __import__("json").dumps(record.to_dict(), sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+    # canonical record content, recomputed here from the recorded facts
+    # alone over the repository canonical-JSON profile.  The assertion
+    # is strict: digest equality => PASS, digest mismatch => FAIL (a
+    # mismatch is never rationalized into a PASS).
+    def _recomputed_digest(content: Dict[str, Any]) -> str:
+        return "sha256:" + hashlib.sha256(
+            canonical_json_bytes(content)
+        ).hexdigest()
+
+    recomputed = _recomputed_digest(record.to_dict())
     if recomputed != record.record_digest():
-        results.append(
-            ok(name, "chain fields present; verify_path_evidence passes (record "
-                     "digest uses the repository canonical-JSON profile, not the "
-                     "stdlib default)")
+        problems.append(
+            "record digest mismatch: recomputed %s != recorded %s"
+            % (recomputed, record.record_digest())
         )
+    # independent-serializer agreement: a plain stdlib rendering of the
+    # same record must reproduce the identical canonical bytes (two
+    # conformant serializers, one digest)
+    stdlib_bytes = json.dumps(
+        record.to_dict(), sort_keys=True, separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    if stdlib_bytes != canonical_json_bytes(record.to_dict()):
+        problems.append("stdlib and canonical-JSON renderings disagree")
+    # negative coverage: tamper a recorded fact; the recomputed digest
+    # must NOT equal the recorded digest, so the equality assertion
+    # above fails closed on tampered/mismatched content
+    tampered = record.to_dict()
+    tampered["observation"]["snapshot_digest"] = "sha256:tampered-snapshot"
+    if _recomputed_digest(tampered) == record.record_digest():
+        problems.append(
+            "tampered content recomputes to the recorded digest "
+            "(digest mismatch would NOT fail)"
+        )
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
         return
     results.append(
         ok(name, "chain fields present; verify_path_evidence passes; digest "
-                 "recomputable from the canonical record")
+                 "recomputable from the canonical record (correct digest "
+                 "passes; tampered digest fails)")
     )
 
 
