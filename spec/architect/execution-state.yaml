@@ -1,10 +1,12 @@
 # ADCOS execution state — persisted by the Architect.
 #
-# Reconciled after the ACR-009 acceptance merge. WORK-040 remains the sole active
-# authorized Work Item; W041/W042/W043 are prepared candidates only. The
-# WORK-040-CORRECTION-001 baseline is formally reconciled to this mainline by
-# LEDGER-RECON-003.
-# ACR-009 is accepted by DEC-0050 but does not itself authorize implementation.
+# Atomic W040->W041 handoff (DEC-0052, 2026-08-31): the single active
+# execution slot transfers from WORK-040-CORRECTION-001 to WORK-041-CORE-001.
+# WORK-040-CORRECTION-001 is superseded (status: superseded); WORK-040 is NOT
+# accepted (execution-ledger lifecycle remains in-review, acceptance_decision
+# null). EVID-007/EVID-008 remain OPEN and W040-owned. W041 (ACR-005
+# NetworkPath/platform boundary) is the active Work Item. W042/W043/W048 remain
+# unauthorized. The frozen dependency DAG is unchanged.
 #
 # schema: spec/architect/ (execution state v1); verified by ARCH-02/ARCH-03.
 schema_version: 1
@@ -13,8 +15,8 @@ last_updated: "2026-08-31"
 
 repository:
   canonical: "github.com/pectoraux/ADCOS"
-  main_sha: 03f19c5e7fee3acc209f8e48701493e109685921
-  main_sha_semantics: "actual current main after PR #82 merged ACR-009 and compensating cleanup removed a temporary direct-write artifact; this governance reconciliation records DEC-0050 acceptance and preserves the rule that ACR acceptance does not authorize implementation"
+  main_sha: 1f8833e5cfbb3e1a17bac5c718070a31a7f67775
+  main_sha_semantics: "current main after PR #101 merged DEC-0051 ratification; DEC-0052 atomic handoff reconciles the persistent state to this mainline and transfers the single active execution slot from WORK-040-CORRECTION-001 to WORK-041-CORE-001"
 
 versions:
   architecture_version_reference: "1.0"
@@ -24,13 +26,14 @@ versions:
 
 execution:
   mode: "implementing"
-  active_work_item: WORK-040
-  active_authorization: "WORK-040-CORRECTION-001"
-  halted_reason: "Correction-only implementing: WORK-040 remains CHANGES_REQUIRED (DEC-0046); only WORK-040-CORRECTION-001 may proceed. ACR-009 is accepted (DEC-0050); W040 was decoupled as a non-blocking prerequisite for downstream software work by DEC-0051 (ACCEPTED) — W040 physical validation findings are advisory input to future W041/W042/W048 authorization decisions, not a prerequisite. W041/W042/W043 remain unauthorized pending their own repository-local implementation authorization."
+  active_work_item: WORK-041
+  active_authorization: "WORK-041-CORE-001"
+  halted_reason: "Atomic handoff (DEC-0052): WORK-040-CORRECTION-001 superseded; WORK-041-CORE-001 is the single active authorization. W041 implements the ACR-005 NetworkPath/platform boundary. W040 remains an independent physical validation track (in-review, NOT accepted; EVID-007 PARTIAL, EVID-008 NOT-TESTABLE remain OPEN and W040-owned) and may resume under a future evidence-continuation authorization. W042/W043/W048 remain unauthorized pending their own repository-local authorizations."
   next_required_decisions:
-    - "Review the W040 correction PR after physical evidence work under WORK-040-CORRECTION-001"
+    - "Implement WORK-041 (ACR-005 NetworkPath/platform boundary) under WORK-041-CORE-001"
+    - "Resume W040 physical validation under a future type: evidence-continuation authorization once physical evidence (real device, real 5G path) is available; EVID-007/EVID-008 remain OPEN"
     - "Disposition W035 physical-evidence PRs 45, 46, 47"
-    - "Create repository-local authorization for W041 (W040 is no longer a blocking prerequisite per DEC-0051; W041 may proceed after its own authorization)"
+    - "After W041 is accepted/merged, create repository-local authorization for W042 (W041->W042 interface dependency remains hard)"
 
 in_review:
   - work_item: WORK-040
@@ -99,10 +102,10 @@ accepted_work_items:
 planned_work_items:
   - work_item: WORK-041
     issue: 83
-    status: "ready-candidate"
+    status: "active"
     contract: "spec/architect/work-items/WORK-041.md"
-    authorization: "none"
-    prerequisite: "W040 physical validation findings are advisory input (DEC-0051); WORK-041 execution requires its own repository-local authorization"
+    authorization: "WORK-041-CORE-001"
+    prerequisite: "Active (DEC-0052 atomic handoff). W040 physical validation findings are advisory input (DEC-0051); W041 is the active Work Item under WORK-041-CORE-001."
   - work_item: WORK-042
     issue: 84
     status: "ready-candidate"

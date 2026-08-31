@@ -466,18 +466,18 @@ ARCH_CASES: List[Case] = [
             (
                 "replace",
                 "spec/architect/execution-state.yaml",
-                '  active_authorization: "WORK-040-CORRECTION-001"',
+                '  active_authorization: "WORK-041-CORE-001"',
                 "  active_authorization: null",
             ),
             (
                 "replace",
-                "spec/architect/authorizations/WORK-040.yaml",
+                "spec/architect/authorizations/WORK-041.yaml",
                 "status: active",
                 "status: in-review",
             ),
             (
                 "replace",
-                "spec/architect/authorizations/WORK-040.yaml",
+                "spec/architect/authorizations/WORK-041.yaml",
                 "authorized: true",
                 "authorized: false",
             ),
@@ -488,8 +488,8 @@ ARCH_CASES: List[Case] = [
     {
         # An active authorization whose baseline no longer matches the
         # recorded main baseline is stale. The fixture base already
-        # carries the active WORK-040-CORRECTION-001 authorization
-        # (baseline 03f19c5e since the LEDGER-RECON-003 post-PR-82
+        # carries the active WORK-041-CORE-001 authorization
+        # (baseline 1f8833e since the LEDGER-RECON-004 post-PR-#101
         # reconciliation); corrupting the recorded main baseline
         # makes it stale.
         "name": "architect-stale-authorization-detected",
@@ -497,7 +497,7 @@ ARCH_CASES: List[Case] = [
             (
                 "replace",
                 "spec/architect/execution-state.yaml",
-                "  main_sha: 03f19c5e7fee3acc209f8e48701493e109685921",
+                "  main_sha: 1f8833e5cfbb3e1a17bac5c718070a31a7f67775",
                 "  main_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
         ],
@@ -614,21 +614,21 @@ PROVENANCE_CASES: List[Case] = [
     {
         # Self-authorization: the PR modifies the inherited authorization
         # record itself instead of inheriting it byte-identically from
-        # main. Since DEC-0046 the base already carries the active
-        # WORK-040-CORRECTION-001 authorization, so self-authorization now
+        # main. Since DEC-0052 the base already carries the active
+        # WORK-041-CORE-001 authorization, so self-authorization now
         # means altering that record inside the PR (here: replacing the
         # authorization id with a fabricated successor).
         "name": "provenance-self-authorization-fails",
         "ops": [
             (
                 "replace",
-                "spec/architect/authorizations/WORK-040.yaml",
-                "authorization_id: \"WORK-040-CORRECTION-001\"",
-                "authorization_id: \"WORK-040-SELF-AUTHORIZED-002\"",
+                "spec/architect/authorizations/WORK-041.yaml",
+                "authorization_id: \"WORK-041-CORE-001\"",
+                "authorization_id: \"WORK-041-SELF-AUTHORIZED-002\"",
             ),
             (
                 "create",
-                "pilot/self_authorized_probe.py",
+                "networkpath/self_authorized_probe.py",
                 "# implementation file under a PR-altered authorization\n",
             ),
         ],
@@ -655,24 +655,24 @@ PROVENANCE_CASES: List[Case] = [
             (
                 "replace",
                 "spec/architect/execution-state.yaml",
-                "  active_work_item: WORK-040",
+                "  active_work_item: WORK-041",
                 "  active_work_item: null",
             ),
             (
                 "replace",
                 "spec/architect/execution-state.yaml",
-                '  active_authorization: "WORK-040-CORRECTION-001"',
+                '  active_authorization: "WORK-041-CORE-001"',
                 "  active_authorization: null",
             ),
             (
                 "replace",
-                "spec/architect/authorizations/WORK-040.yaml",
+                "spec/architect/authorizations/WORK-041.yaml",
                 "status: active",
                 "status: in-review",
             ),
             (
                 "replace",
-                "spec/architect/authorizations/WORK-040.yaml",
+                "spec/architect/authorizations/WORK-041.yaml",
                 "authorized: true",
                 "authorized: false",
             ),
@@ -680,7 +680,7 @@ PROVENANCE_CASES: List[Case] = [
         "ops": [
             (
                 "create",
-                "pilot/reconstruction_probe.py",
+                "networkpath/reconstruction_probe.py",
                 "# in-review continuation inside the declared areas\n",
             )
         ],
@@ -692,20 +692,20 @@ PROVENANCE_CASES: List[Case] = [
         # PA-001 (DEC-0045): an implementation delta passes ONLY under an
         # active authorization inherited byte-identically from the base,
         # with the exact recorded baseline and the delta inside scope.
-        # Since DEC-0046 the fixture base IS the Architect's activated
-        # state on main (WORK-040-CORRECTION-001 landed through the PR #61
-        # reconciliation), so no base_ops are needed: the case now
+        # Since DEC-0052 the fixture base IS the Architect's activated
+        # state on main (WORK-041-CORE-001 landed through the DEC-0052
+        # governance transition), so no base_ops are needed: the case now
         # exercises the real repository activation end-to-end.
         "name": "provenance-authorized-implementation-passes",
         "base_ops": [],
         "ops": [
             (
                 "create",
-                "pilot/authorized_probe.py",
+                "networkpath/authorized_probe.py",
                 "# implementation inside the authorized scope\n",
             )
         ],
-        "branch": "work-040-continuation",
+        "branch": "work-041-networkpath",
         "expect_exit": 0,
         "expect_check": None,
     },
@@ -715,7 +715,7 @@ PROVENANCE_CASES: List[Case] = [
         "ops": [
             (
                 "create",
-                "pilot/package_tamper_probe.py",
+                "networkpath/package_tamper_probe.py",
                 "# implementation file\n",
             ),
             (
@@ -725,7 +725,7 @@ PROVENANCE_CASES: List[Case] = [
                 "## Resume rule (modified by the implementation PR)",
             ),
         ],
-        "branch": "work-040-pilot-deployment",
+        "branch": "work-041-networkpath",
         "expect_exit": 1,
         "expect_check": "ARCH-08",
     },

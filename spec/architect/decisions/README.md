@@ -63,6 +63,7 @@ Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-
 | DEC-0049 | architecture | null | ACCEPTED | ACCEPTED | ACR-007: mission-immutable, architecture-evolvable governance |
 | DEC-0050 | architecture | null | ACCEPTED | ACCEPTED | ACR-009: commercial connectivity control plane |
 | DEC-0051 | governance | null | ACCEPTED | ACCEPTED | Work Item dependency decoupling (W040 decoupled as non-blocking prerequisite for downstream software work) |
+| DEC-0052 | governance | WORK-040 | ACCEPTED | ACCEPTED | Atomic W040→W041 execution handoff (supersede WORK-040-CORRECTION-001; activate WORK-041-CORE-001; preserve W040 evidence ownership) |
 
 ## Rules
 

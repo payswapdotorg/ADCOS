@@ -25,11 +25,25 @@
 # reconciliation). The correction-only scope, the governing decision
 # (DEC-0046), the dependencies, and every other field are unchanged.
 #
+# Supersession (DEC-0052, 2026-08-31): status moves active -> superseded
+# and authorized moves true -> false, transferring the single active
+# execution slot to WORK-041-CORE-001 (atomic handoff per DEC-0052).
+# The correction-cycle scope, the governing decision (DEC-0046), the
+# dependencies, evidence_classes, acceptance_criteria, required_corrections,
+# authority_inputs, authority_outputs, out_of_scope, acceptance_gate, and
+# the DEC-0046 reference are PRESERVED UNCHANGED. WORK-040 is NOT accepted
+# by this supersession (execution-ledger lifecycle remains in-review,
+# acceptance_decision null). EVID-007/EVID-008 remain OPEN, W040-owned.
+# The correction cycle may resume later under a type: evidence-continuation
+# authorization once physical evidence becomes available.
+#
 # schema: spec/architect/authorizations/ (v1); verified by tools/spec_check.py (ARCH-03).
 
 work_item: WORK-040
-status: active
-authorized: true
+status: superseded
+authorized: false
+superseded_by: "WORK-041-CORE-001"
+supersession_decision: DEC-0052
 type: implementation
 authorization_id: "WORK-040-CORRECTION-001"
 authorization_decision: DEC-0046
