@@ -64,9 +64,9 @@ silently skipping it.
    scope. An **in-review ledger entry is descriptive only — it records
    what was delivered for review and never authorizes anything** (PA-001,
    `DEC-0045`). CI check `ARCH-08` (provenance mode) enforces this
-   mechanically; the reviewer verifies the authorization was **inherited
-   from `main`**, not introduced or modified by the PR itself
-   (self-authorization).
+   mechanically; the Architect verifies that the authorization was
+   inherited from `main`, not introduced or modified by the implementation
+   PR itself (self-authorization).
 2. **Implementation PRs must not modify `spec/architect/`.** The Architect
    owns the persistent state. Verdicts, ledger transitions, decision records,
    and authorizations are persisted by the Architect, not by the
@@ -120,7 +120,17 @@ review venue, but the repository artifact is the authority.
 - A governance improvement that would change frozen architecture must be
   stopped and converted into an ACR.
 
-## 7. Self-merge prohibition
+## 7. Single-Architect review and merge authority
 
-Z.ai must never merge its own PR (workflow.md §6). The Architect merges.
+The Architect is the sole review and acceptance authority for ADCOS. No
+separate reviewer identity, second human approval, or independent GitHub
+account is required. The Architect may review, approve, and merge a PR when
+acting under the persistent Architect role.
+
+This does **not** weaken the authorization gate: implementation requires an
+active repository-local authorization inherited from `main`; authorship does
+not create authority. The implementation agent must not bypass review,
+verification, provenance, or persistence requirements merely because the
+same operator or account is used for implementation and architecture.
+
 The persistent ledger records the merge SHA at merge time.

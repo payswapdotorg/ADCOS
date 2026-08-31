@@ -101,7 +101,7 @@ For each Work Item the Architect performs the review defined in `spec/dependency
 9. require corrections where any mismatch exists;
 10. approve only when the definition of done is satisfied.
 
-Corrections loop back to step 1 until resolved. A passing test suite cannot override an architecture violation, and successful simulator/reference-peer tests cannot override a missing independent implementation or hardware evidence requirement.
+The Architect is the sole review authority. No separate reviewer identity, second human approval, or independent GitHub account is required. When the Architect is also operating the implementation agent, the role distinction is procedural: implementation evidence is reviewed against the persisted architecture and governance rules before acceptance. A passing test suite cannot override an architecture violation, and successful simulator/reference-peer tests cannot override a missing independent implementation or hardware evidence requirement.
 
 ## 5. Verification Requirements
 
@@ -117,7 +117,7 @@ The specification consistency checks are deterministic and run offline with no e
 
 ## 6. Acceptance
 
-A Work Item is complete only after its PR is reviewed, all requested corrections are resolved, required verification passes, all frozen Definition-of-Done requirements are accounted for, and the Architect explicitly accepts it. Acceptance unblocks dependent Work Items per the dependency graph. Z.ai must not claim completion before acceptance criteria and required verification are satisfied, and must not merge its own PR.
+A Work Item is complete only after its PR is reviewed, all requested corrections are resolved, required verification passes, all frozen Definition-of-Done requirements are accounted for, and the Architect explicitly accepts it. Acceptance unblocks dependent Work Items per the dependency graph. The Architect may review and merge the PR under the single-Architect governance model; no separate reviewer identity is required. Z.ai must not bypass the review/persistence gate merely by virtue of authorship.
 
 Acceptance records should explicitly state:
 

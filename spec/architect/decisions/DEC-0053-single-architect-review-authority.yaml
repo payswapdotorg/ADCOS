@@ -1,0 +1,45 @@
+# ADCOS Architect decision record.
+# schema: spec/architect/decision-record-template.md; verified by tools/spec_check.py (ARCH-04).
+#
+# This governance decision makes the single-Architect model explicit. It removes
+# the process requirement for a separate reviewer identity while preserving the
+# repository-local authorization gate, evidence discipline, persistence gate,
+# and single active execution slot.
+decision_id: DEC-0053
+type: governance
+work_item: null
+acr: null
+pr: null
+reviewed_sha: 1f8833e5cfbb3e1a17bac5c718070a31a7f67775
+decision: ACCEPTED
+status: ACCEPTED
+reviewer: "Architect (pectoraux)"
+timestamp: 2026-08-31T10:45:00Z
+findings:
+  - "ADCOS has one persistent Architect authority; requiring a separate reviewer identity is an operational constraint, not an architectural invariant."
+  - "The authorization gate remains mandatory: implementation still requires a repository-local active authorization inherited from main with exact baseline and scope coverage."
+  - "The review gate remains mandatory: every PR is still subjected to the full Architect review dimensions, deterministic verification, evidence-class discipline, and persistence requirements."
+  - "Removing the separate-identity requirement does not create a second authority, weaken provenance, or permit implementation to self-authorize."
+  - "The one-Work-Item-at-a-time and one-active-authorization invariants remain unchanged."
+blockers: []
+required_corrections: []
+evidence:
+  merge_sha: null
+  ci_run: null
+  artifacts:
+    - "spec/workflow.md"
+    - "spec/architect/review-protocol.md"
+accepted_scope:
+  - "Make the Architect the sole review, acceptance, and merge authority for ADCOS; no separate reviewer identity is required."
+  - "Preserve repository-local authorization, provenance, verification, evidence, and persistence gates unchanged in substance."
+  - "Replace the self-merge prohibition with an explicit rule that the Architect may review and merge under the single-Architect governance model."
+rejected_scope:
+  - "Removing or weakening the no-authorization-no-implementation invariant."
+  - "Allowing authorship alone to create repository-local implementation authority."
+  - "Allowing implementation agents to bypass review, verification, provenance, or persistent acceptance."
+  - "Changing frozen architecture semantics, Work Item dependencies, or evidence-class rules."
+downstream_effect:
+  - "Future ADCOS implementation and governance PRs require one Architect review authority rather than a separate reviewer identity."
+  - "PR merge and Architect acceptance remain governed by the persisted review and decision records."
+  - "Existing single-active-authorization and evidence obligations remain unchanged."
+resolved_by: null
