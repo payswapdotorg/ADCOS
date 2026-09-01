@@ -24,6 +24,24 @@
 # authorization is created or altered by the planning reconciliation; the
 # commercial items all carry authorization "none".
 #
+# ACR-011 commercial phase registry extension (PROPOSED, vehicle PR #111,
+# 2026-08-31): the W042 implementation delivery is merged (PR #110, head
+# 708a432, merge 207d70e, CI run 33444952103 SUCCESS) and the registry
+# boundary recurs (WORK-042 is unrepresentable while the frozen registry
+# stops at WORK-041). ACR-011 proposes the synchronized one-time extension
+# of the frozen registry through the canonical commercial phase: register
+# WORK-042 (Phase 9) and WORK-044..WORK-053 (Phase 10) in
+# spec/work-items.md and spec/dependency-graph.md, expect 52 registered
+# items with the recorded WORK-043 retired slot in tools/spec_check.py,
+# and append the WORK-042 implemented delivery entry plus ten registered-
+# only ledger entries. ACR-011 creates NO acceptance and NO authorization:
+# WORK-042's acceptance remains a separate Architect decision and every
+# commercial item stays authorization "none" until its own repository-
+# local authorization issues. The snapshot baseline (main_sha 96db8aa,
+# LEDGER-RECON-006) is deliberately NOT moved by this ACR; the next
+# reconciliation records the post-PR-#110 mainline per the standing RECON
+# convention.
+#
 # schema: spec/architect/ (execution state v1); verified by ARCH-02/ARCH-03.
 schema_version: 1
 package: "persistent-architect"
@@ -44,9 +62,10 @@ execution:
   mode: "implementing"
   active_work_item: WORK-042
   active_authorization: "WORK-042-CORE-001"
-  halted_reason: "Atomic transition (DEC-0054 + DEC-0055): WORK-041 is accepted-merged (DEC-0054; PR #107 head 4ce5a42, merge 96db8aa, CI 33426900730 SUCCESS); WORK-041-CORE-001 is superseded; WORK-042-CORE-001 is the single active authorization. W042 implements the ACR-006 event-driven platform integration and journal-first recovery model, consuming the accepted W041 NetworkPath interfaces where needed. W040 remains an independent physical validation track (in-review, NOT accepted; EVID-007 PARTIAL, EVID-008 NOT-TESTABLE remain OPEN and W040-owned) and may resume under a future evidence-continuation authorization. W043/W048 and the commercial items remain unauthorized pending their own repository-local authorizations."
+  halted_reason: "Atomic transition (DEC-0054 + DEC-0055): WORK-041 is accepted-merged (DEC-0054; PR #107 head 4ce5a42, merge 96db8aa, CI 33426900730 SUCCESS); WORK-041-CORE-001 is superseded; WORK-042-CORE-001 is the single active authorization. W042 implements the ACR-006 event-driven platform integration and journal-first recovery model, consuming the accepted W041 NetworkPath interfaces where needed. The W042 implementation delivery is merged on main (PR #110, head 708a432, merge 207d70e, CI run 33444952103 SUCCESS); its Architect acceptance review is pending as a separate decision, and ACR-011 (PROPOSED, PR #111) carries the synchronized registry extension that makes WORK-042 and the canonical commercial phase machine-representable in the frozen backlog, the dependency graph, and the execution ledger. W040 remains an independent physical validation track (in-review, NOT accepted; EVID-007 PARTIAL, EVID-008 NOT-TESTABLE remain OPEN and W040-owned) and may resume under a future evidence-continuation authorization. W043/W048 and the commercial items remain unauthorized pending their own repository-local authorizations."
   next_required_decisions:
-    - "Implement WORK-042 (ACR-006 event-driven platform integration and journal-first recovery) under WORK-042-CORE-001"
+    - "Decide ACR-011 (commercial phase registry extension: register WORK-042 and WORK-044..WORK-053 in spec/work-items.md and spec/dependency-graph.md; expected Work Item count 41 -> 52 registered items with the recorded WORK-043 retired slot; WORK-042 ledger entry lifecycle implemented; ten registered-only commercial entries) — PROPOSED on PR #111"
+    - "Render the WORK-042 acceptance review on the merged delivery (PR #110, head 708a432, merge 207d70e, CI run 33444952103 SUCCESS): record the Architect acceptance decision (DEC-NNNN) and transition the WORK-042 ledger entry from implemented to accepted-merged, or require corrections; WORK-042-CORE-001 remains the single active authorization until a separate supersession decision"
     - "Disposition the superseded PR #108 (ACR-010 frozen Work Item registry extension): its scope was applied directly by the DEC-0054/DEC-0055 transition (LEDGER-RECON-006); close as superseded"
     - "Ratify the commercial roadmap dependency model (docs/roadmap/commercial-dependency-model.md): W051/W052/W053 resequencing, W043 retirement, W049 unification (#98 canonical, #95 superseded), W050 capability-matrix boundary"
     - "Disposition superseded governance threads: PR #100 (W041=CommercialCore contract reconciliation, superseded by DEC-0052's NetworkPath binding) and PR #102 (handoff analysis, superseded by merged PR #103)"
@@ -103,7 +122,11 @@ open_prs:
     subject: "governance: ACR-010 — extend the frozen Work Item registry beyond WORK-040 (register WORK-041; count 40 → 41)"
     disposition: "superseded by the DEC-0054/DEC-0055 transition (this governance change), which applies the registry-extension scope directly (LEDGER-RECON-006); pending Architect disposition (close)"
 
-open_acrs: []
+open_acrs:
+  - acr: "ACR-011"
+    status: "PROPOSED"
+    subject: "Commercial phase registry extension (register WORK-042 and the canonical commercial phase WORK-044..WORK-053 in the frozen backlog/DAG; expected Work Item count 41 -> 52 registered items with the recorded WORK-043 retired slot; WORK-042 ledger entry lifecycle implemented; ten registered-only commercial entries; no acceptance and no authorization created)"
+    vehicle_pr: 111
 
 accepted_acrs:
   - acr: "ACR-005"
@@ -133,10 +156,10 @@ accepted_work_items:
 planned_work_items:
   - work_item: WORK-042
     issue: 69
-    status: "active"
+    status: "delivered (PR #110 merged; registration and implemented ledger entry carried by ACR-011 PROPOSED; Architect acceptance review pending)"
     contract: "spec/architect/work-items/WORK-042.md"
     authorization: "WORK-042-CORE-001"
-    prerequisite: "Satisfied (DEC-0055 atomic activation): W041 is accepted-merged (DEC-0054, PR #107) so its interfaces may be consumed; WORK-012/013/014/033/035 are accepted-merged. W042 is the active Work Item under WORK-042-CORE-001 (DEC-0055)."
+    prerequisite: "Satisfied (DEC-0055 atomic activation): W041 is accepted-merged (DEC-0054, PR #107) so its interfaces may be consumed; WORK-012/013/014/033/035 are accepted-merged. W042 is the active Work Item under WORK-042-CORE-001 (DEC-0055). The delivery is merged (PR #110, head 708a432, merge 207d70e, CI run 33444952103 SUCCESS); acceptance is NOT rendered (review-protocol §5: a separate decision record identifying the exact reviewed SHA is required)."
   - work_item: WORK-044
     issue: 88
     status: "ready-candidate"

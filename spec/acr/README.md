@@ -23,6 +23,7 @@ The ACR process, its required elements, and the record template are defined in `
 - `ACR-006-event-driven-platform-and-journal-first-recovery.md` — accepted architectural direction for event-driven platform integration and journal-first recovery.
 - `ACR-007-mission-immutable-architecture-evolvable.md` — accepted governance change establishing the permanent mission as the stable objective and architecture as a versioned, evidence-driven hypothesis that may evolve through accepted ACRs.
 - `ACR-009-commercial-connectivity-control-plane.md` — proposed commercial control-plane architecture for connectivity offers, usage, transactions, developer/provider revenue allocation, settlement, and jurisdiction-aware eligibility.
+- `ACR-011-commercial-phase-registry-extension.md` — PROPOSED synchronized extension of the frozen Work Item registry through the canonical commercial phase: registers WORK-042 (delivery merged by PR #110) plus WORK-044..WORK-053 in `spec/work-items.md` and `spec/dependency-graph.md`, records the machine-checked expected Work Item count as 52 registered items with the recorded WORK-043 retirement (retired-slot set), and appends the WORK-042 delivery ledger entry plus ten registered-only entries; awaiting Architect decision.
 
 ## Mission and architecture evolution
 

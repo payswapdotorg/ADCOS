@@ -768,6 +768,205 @@ work_items:
     lifecycle: accepted-merged
     note: "delivery entry recorded per the LEDGER-RECON-004 convention (a W041 ledger entry is added once W041 has a delivery PR and is registered in the frozen registry), converted directly to accepted-merged by DEC-0054 within the DEC-0054/DEC-0055 transition. Delivered under WORK-041-CORE-001 (DEC-0052; authorization baseline bb964a1 as reconciled by LEDGER-RECON-005; implementation branch cut from ece53db, which carries the authorization record byte-identically from main). PR #107 review: round 1 found one blocking evidence-digest defect (networkpath_selftest case_26 inverted assertion); the correction landed at head 4ce5a42; round 2 verified the fix — authoritative CI run 33426900730 (spec-check) on 4ce5a42 is SUCCESS — and the Architect merged PR #107 at 96db8aa (2026-08-31T19:15:03Z). DEC-0054 (2026-08-31) accepts the W041 contract scope on the exact reviewed head 4ce5a42 with SOFTWARE-class evidence only (docs/WORK-041-evidence.md); no PHYSICAL claim is made (EVID-007/EVID-008 remain OPEN and W040-owned). The same transition registers WORK-041 in the frozen registry (spec/work-items.md and spec/dependency-graph.md Phase 9; expected Work Item count 41; W001..W040 byte-identical) and supersedes the ACR-010 proposal (PR #108) by applying its scope directly. WORK-041-CORE-001 is superseded by DEC-0055 (status superseded, authorized false, scope and provenance preserved), transferring the single active execution slot to WORK-042-CORE-001; W042 is NOT registered in the frozen backlog. No W001..W040 entry is rewritten."
 
+  - work_item: WORK-042
+    title: "Event-Driven Platform Integration and Journal-First Recovery"
+    phase: 9
+    branch: "work-042-platform-journal-core"
+    baseline_sha: 96db8aa4423dff845a223e0c93c67f3dc14e314d
+    pr: 110
+    pr_head: 708a432b5e3cc4e57e5bedea5381fe3c7fcd8dc2
+    reviewed_sha: null
+    merge_sha: 207d70e20b8a05cb2f5149ff4e492e17c9a9189e
+    merged_at: 2026-08-31T22:54:17Z
+    ci_run: 33444952103
+    review_rounds: 0
+    acceptance_decision: null
+    correction_decisions: []
+    handoff: docs/WORK-042-handoff.md
+    handoff_required: true
+    lifecycle: implemented
+    note: "delivery entry added by ACR-011 (frozen Work Item registry extension through the canonical commercial phase) exactly per the convention recorded by LEDGER-RECON-004/006: a ledger entry is added once the Work Item has a delivery PR and is registered in the frozen registry. Delivered under WORK-042-CORE-001 (DEC-0055; authorization baseline 96db8aa = the LEDGER-RECON-006 snapshot baseline; implementation branch cut from the post-PR-#109 mainline 1909479, which carries the active authorization record, ARCH-08 provenance verified on the PR). PR #110 delivery: authoritative CI run 33444952103 (spec-check, pull_request) on head 708a432 is SUCCESS (the platform battery step ran and passed 32/32); the push-run on the merge commit 207d70e (33448347826) is also SUCCESS; the Architect merged PR #110 at 207d70e (2026-08-31T22:54:17Z). The Work Item is NOT accepted: lifecycle stays implemented, acceptance_decision stays null, reviewed_sha stays null until an Architect acceptance decision record identifies the exact reviewed SHA (review-protocol §5). WORK-042-CORE-001 remains the single active authorization (acceptance/supersession is a separate future Architect decision); the frozen-registry registration (spec/work-items.md Phase 9, spec/dependency-graph.md Phase 9 node/edges) is applied by the same ACR-011 governance change. The snapshot baseline (main_sha 96db8aa, LEDGER-RECON-006) is deliberately NOT moved by ACR-011; the next reconciliation records the post-PR-#110 mainline 207d70e per the standing RECON convention. No W001..W041 entry is rewritten."
+  - work_item: WORK-044
+    title: "Payment Provider Adapters & Settlement Gateway"
+    phase: 10
+    branch: null
+    baseline_sha: null
+    pr: null
+    pr_head: null
+    reviewed_sha: null
+    merge_sha: null
+    merged_at: null
+    ci_run: null
+    review_rounds: null
+    acceptance_decision: null
+    correction_decisions: []
+    handoff: null
+    handoff_required: false
+    lifecycle: registered
+    note: "registered-only entry added by ACR-011: WORK-044 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #88 and the canonical commercial dependency model (docs/roadmap/commercial-dependency-model.md, LEDGER-RECON-005; ACR-009 accepted by DEC-0050). Dependencies (hard, declared in spec/work-items.md): WORK-051, WORK-053. Authorization: none — registration is representation only, never authorization (review-protocol §3.1, ARCH-03/ARCH-08); the item stays a ready-candidate until its own repository-local authorization issues. WORK-043 is retired and its slot stays vacant."
+  - work_item: WORK-045
+    title: "Connectivity Eligibility, Provider Trust & Jurisdiction Policy"
+    phase: 10
+    branch: null
+    baseline_sha: null
+    pr: null
+    pr_head: null
+    reviewed_sha: null
+    merge_sha: null
+    merged_at: null
+    ci_run: null
+    review_rounds: null
+    acceptance_decision: null
+    correction_decisions: []
+    handoff: null
+    handoff_required: false
+    lifecycle: registered
+    note: "registered-only entry added by ACR-011: WORK-045 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #89 and the canonical commercial dependency model. Dependencies (hard): WORK-051, WORK-053, WORK-044. Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+  - work_item: WORK-046
+    title: "Developer Connectivity API, SDK & Webhook Platform"
+    phase: 10
+    branch: null
+    baseline_sha: null
+    pr: null
+    pr_head: null
+    reviewed_sha: null
+    merge_sha: null
+    merged_at: null
+    ci_run: null
+    review_rounds: null
+    acceptance_decision: null
+    correction_decisions: []
+    handoff: null
+    handoff_required: false
+    lifecycle: registered
+    note: "registered-only entry added by ACR-011: WORK-046 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #90 and the canonical commercial dependency model. Dependencies (hard): WORK-051, WORK-052, WORK-053, WORK-044, WORK-045. Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+  - work_item: WORK-047
+    title: "Connectivity Marketplace Discovery, Proximity & Path Selection"
+    phase: 10
+    branch: null
+    baseline_sha: null
+    pr: null
+    pr_head: null
+    reviewed_sha: null
+    merge_sha: null
+    merged_at: null
+    ci_run: null
+    review_rounds: null
+    acceptance_decision: null
+    correction_decisions: []
+    handoff: null
+    handoff_required: false
+    lifecycle: registered
+    note: "registered-only entry added by ACR-011: WORK-047 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #91 and the canonical commercial dependency model. Dependencies (hard): WORK-051, WORK-044, WORK-045, WORK-046. Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+  - work_item: WORK-048
+    title: "Provider Connectivity Sharing Runtime, Isolation & Quota Enforcement"
+    phase: 10
+    branch: null
+    baseline_sha: null
+    pr: null
+    pr_head: null
+    reviewed_sha: null
+    merge_sha: null
+    merged_at: null
+    ci_run: null
+    review_rounds: null
+    acceptance_decision: null
+    correction_decisions: []
+    handoff: null
+    handoff_required: false
+    lifecycle: registered
+    note: "registered-only entry added by ACR-011: WORK-048 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet; the design-only exploration PR #97 (docs/WORK-048-provider-sharing-runtime-design.md) predates registration and is not a delivery. Definition source: tracking issue #92 and the canonical commercial dependency model. Hard dependencies (preserved exactly): WORK-041, WORK-042, WORK-051 (NetworkPath accepted/merged + usage/journal accepted/merged + CommercialCore Lease authority where consumed). WORK-050 is deliberately NOT a hard dependency: its capability/isolation matrix is advisory capability input, not a gate (the W050 -> W048 DAG edge is an advisory edge sanctioned by ACR-011). WORK-040 is advisory only (DEC-0051). Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+  - work_item: WORK-049
+    title: "Provider & Buyer Connectivity Client Runtime"
+    phase: 10
+    branch: null
+    baseline_sha: null
+    pr: null
+    pr_head: null
+    reviewed_sha: null
+    merge_sha: null
+    merged_at: null
+    ci_run: null
+    review_rounds: null
+    acceptance_decision: null
+    correction_decisions: []
+    handoff: null
+    handoff_required: false
+    lifecycle: registered
+    note: "registered-only entry added by ACR-011: WORK-049 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #98 (the canonical definition; issue #95 is the superseded duplicate, left discoverable per LEDGER-RECON-005 §4.1) and the canonical commercial dependency model. Dependencies (hard): WORK-046, WORK-047, WORK-048. WORK-050 is deliberately NOT a hard dependency: advisory capability input, not a gate (the W050 -> W049 DAG edge is an advisory edge sanctioned by ACR-011). Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+  - work_item: WORK-050
+    title: "Platform Connectivity Sharing Capability & Isolation Matrix"
+    phase: 10
+    branch: null
+    baseline_sha: null
+    pr: null
+    pr_head: null
+    reviewed_sha: null
+    merge_sha: null
+    merged_at: null
+    ci_run: null
+    review_rounds: null
+    acceptance_decision: null
+    correction_decisions: []
+    handoff: null
+    handoff_required: false
+    lifecycle: registered
+    note: "registered-only entry added by ACR-011: WORK-050 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #96 and the canonical commercial dependency model. Dependencies: none. Boundary (LEDGER-RECON-005 §4.2): a capability model consumed BY WORK-048/WORK-049 — NOT an implementation vehicle for WORK-048; the W050 -> W048/W049 edges are advisory capability-input edges, not hard gates. Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+  - work_item: WORK-051
+    title: "CommercialCore: connectivity intent, offers, reservation, lease, and transaction lifecycle"
+    phase: 10
+    branch: null
+    baseline_sha: null
+    pr: null
+    pr_head: null
+    reviewed_sha: null
+    merge_sha: null
+    merged_at: null
+    ci_run: null
+    review_rounds: null
+    acceptance_decision: null
+    correction_decisions: []
+    handoff: null
+    handoff_required: false
+    lifecycle: registered
+    note: "registered-only entry added by ACR-011: WORK-051 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Canonical identity: issue #83, CommercialCore, ACR-009 / DEC-0050. It owns the canonical commercial state lifecycle ConnectivityIntent, OfferSelected, ReservationHeld, SessionAuthorized, PathActive, DeliveryStarted, UsageAccruing, DeliveryCompleted, BillableFinal, SettlementPending, Settled (with compensating states/events), referencing — never owning — logical session, NetworkPath, and delivery evidence identities. Dependencies: none (chain head; ACR-009 acceptance is its architectural precondition, not a Work Item dependency). Authorization: none — ACR-011 does NOT activate WORK-051; it stays a ready-candidate until its own repository-local authorization issues."
+  - work_item: WORK-052
+    title: "UsageLedger: delivered-usage metering, billable finality, and append-only reconciliation"
+    phase: 10
+    branch: null
+    baseline_sha: null
+    pr: null
+    pr_head: null
+    reviewed_sha: null
+    merge_sha: null
+    merged_at: null
+    ci_run: null
+    review_rounds: null
+    acceptance_decision: null
+    correction_decisions: []
+    handoff: null
+    handoff_required: false
+    lifecycle: registered
+    note: "registered-only entry added by ACR-011: WORK-052 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #84 and the canonical commercial dependency model. Dependencies (hard): WORK-051 (interfaces consumed; WORK-042 journal-first discipline where consumed is a discipline reference, not a Work Item dependency edge). Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+  - work_item: WORK-053
+    title: "EconomicAllocation: developer/provider/ADCOS revenue-share policy and external payment boundary"
+    phase: 10
+    branch: null
+    baseline_sha: null
+    pr: null
+    pr_head: null
+    reviewed_sha: null
+    merge_sha: null
+    merged_at: null
+    ci_run: null
+    review_rounds: null
+    acceptance_decision: null
+    correction_decisions: []
+    handoff: null
+    handoff_required: false
+    lifecycle: registered
+    note: "registered-only entry added by ACR-011: WORK-053 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #85 and the canonical commercial dependency model. Dependencies (hard): WORK-052 (billable-final usage facts consumed). Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+
 reconciliations:
   - reconciliation_id: LEDGER-RECON-001
     recorded_by: DEC-0046

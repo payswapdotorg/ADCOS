@@ -64,6 +64,17 @@ flowchart TD
   W039[W039 Federation Scale]
   W040[W040 Pilot]
   W041[W041 NetworkPath/Platform Boundary]
+  W042[W042 Platform Events/Journal Recovery]
+  W044[W044 Payment Adapters/Settlement]
+  W045[W045 Eligibility/Trust/Jurisdiction]
+  W046[W046 Developer API/SDK/Webhooks]
+  W047[W047 Marketplace Discovery/Path Selection]
+  W048[W048 Provider Sharing Runtime]
+  W049[W049 Provider/Buyer Client Runtime]
+  W050[W050 Capability/Isolation Matrix]
+  W051[W051 CommercialCore]
+  W052[W052 UsageLedger]
+  W053[W053 EconomicAllocation]
 
   W001 --> W002 --> W003 --> W004 --> W005 --> W006 --> W007
   W005 --> W008
@@ -192,6 +203,35 @@ flowchart TD
   W018 --> W041
   W033 --> W041
   W034 --> W041
+  W012 --> W042
+  W013 --> W042
+  W014 --> W042
+  W033 --> W042
+  W035 --> W042
+  W041 --> W042
+  W051 --> W052 --> W053
+  W051 --> W044
+  W053 --> W044
+  W051 --> W045
+  W053 --> W045
+  W044 --> W045
+  W051 --> W046
+  W052 --> W046
+  W053 --> W046
+  W044 --> W046
+  W045 --> W046
+  W051 --> W047
+  W044 --> W047
+  W045 --> W047
+  W046 --> W047
+  W041 --> W048
+  W042 --> W048
+  W051 --> W048
+  W046 --> W049
+  W047 --> W049
+  W048 --> W049
+  W050 --> W048
+  W050 --> W049
 ```
 
 ---
@@ -242,9 +282,14 @@ These establish simulation, conformance, and the Linux reference Agent.
 The architecture is not considered future-proof until `W038` proves a hypothetical 6G/future-access implementation can be added without changing the core protocol.
 
 ### Phase 9 — Governed architecture evolution
-`W041`
+`W041 → W042`
 
-Architectural execution units registered beyond the original 40-item snapshot (per the DEC-0054/DEC-0055 governance transition) belong to this evolution lane. `W041` implements the accepted ACR-005 network-path/platform boundary; it is a parallel evolution track whose hard dependencies are satisfied, not a member of the generation/scale lane, and it places no ordering obligation on any earlier item.
+Architectural execution units registered beyond the original 40-item snapshot (per the DEC-0054/DEC-0055 governance transition) belong to this evolution lane. `W041` implements the accepted ACR-005 network-path/platform boundary; `W042` implements the accepted ACR-006 event-driven platform integration and journal-first recovery model (registered by ACR-011 after its delivery merged by PR #110). Both are parallel evolution tracks whose hard dependencies are satisfied, not members of the generation/scale lane, and they place no ordering obligation on any earlier item.
+
+### Phase 10 — Canonical commercial phase
+`W051 → W052 → W053`, then `W044`, `W045`, `W046`, `W047`, then `W050`, then `W048`, `W049`
+
+The commercial phase implements the accepted ACR-009 commercial connectivity control plane (DEC-0050) per the canonical dependency model (docs/roadmap/commercial-dependency-model.md); its members are registered by ACR-011 and all carry authorization "none" until their own repository-local authorizations issue. WORK-043 is retired from commercial use and left unassigned (its slot is intentionally vacant, represented by the recorded retired set in tools/spec_check.py). The `W050 → W048` and `W050 → W049` edges are advisory capability-input edges: W050's capability declarations constrain sharing modes but do NOT gate W048/W049 execution, authorization, or review — the hard execution gates are the `Dependencies:` declarations in spec/work-items.md, which deliberately do not list WORK-050 for W048/W049 (the two resulting ADV-01 advisories are sanctioned by ACR-011). WORK-040 remains the independent physical validation / evidence track (DEC-0051: advisory experience input to future commercial authorization reviews, NOT a hard execution prerequisite for any item in this phase).
 
 ---
 
@@ -275,7 +320,7 @@ W001
  → W040
 ```
 
-This is intentionally not the only path. Wi-Fi, fixed backhaul, simulator, telemetry, and resilience can evolve in parallel when their graph dependencies are met. WORK-041 (Phase 9) is likewise not on this critical path: it is a governed architecture-evolution track, not a dependency of the pilot or of any critical-path member.
+This is intentionally not the only path. Wi-Fi, fixed backhaul, simulator, telemetry, and resilience can evolve in parallel when their graph dependencies are met. WORK-041 and WORK-042 (Phase 9) are likewise not on this critical path: they are governed architecture-evolution tracks, not dependencies of the pilot or of any critical-path member. The Phase 10 commercial items are also not on this critical path: they are a commercial-plane track that composes with (and consumes interfaces from) the accepted connectivity authorities.
 
 ---
 
@@ -336,7 +381,7 @@ A passing test suite cannot override an architecture violation.
 
 ## 8. Completion Criterion
 
-ADCOS is architecturally complete only when all 41 Work Items are Architect-accepted and the final conformance/interop/pilot evidence demonstrates:
+ADCOS is architecturally complete only when all 52 registered Work Items are Architect-accepted (the registered set spans WORK-001..WORK-053 with WORK-043 retired and its slot intentionally vacant, per ACR-011) and the final conformance/interop/pilot evidence demonstrates:
 
 ```text
 5G today
