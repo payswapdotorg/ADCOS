@@ -165,8 +165,14 @@ CASES: List[Case] = [
             (
                 "replace",
                 "spec/work-items.md",
-                "Dependencies: none",
-                "Dependencies: WORK-040",
+                # Unique W001-scoped anchor: the commercial phase (ACR-011)
+                # legitimately declares "Dependencies: none" for WORK-050 and
+                # WORK-051 as well, so the bare line is no longer unique.
+                # The mutation semantics are unchanged: W001's declared
+                # dependency becomes WORK-040, which closes the cycle
+                # W001 -> ... -> W040 -> W001 in the DEPS-02 union graph.
+                "### WORK-001 — Protocol specification/governance foundation\nObjective: Establish repository structure, specification conventions, versioning policy, change-control process, terminology, and machine-readable schema locations.\nDependencies: none",
+                "### WORK-001 — Protocol specification/governance foundation\nObjective: Establish repository structure, specification conventions, versioning policy, change-control process, terminology, and machine-readable schema locations.\nDependencies: WORK-040",
             )
         ],
         "expect_exit": 1,
@@ -526,14 +532,19 @@ ARCH_CASES: List[Case] = [
             (
                 "replace",
                 "spec/architect/execution-ledger.yaml",
-                "    merge_sha: null",
-                "    merge_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                # W040-scoped anchor: the commercial phase (ACR-011) adds ten
+                # registered-only entries whose merge_sha/merged_at are
+                # legitimately null, so the bare lines are no longer unique.
+                # The mutation semantics are unchanged: the in-review WORK-040
+                # entry claims a merge it does not have.
+                "    pr_head: ee9b356020b6450d85837f60e60c41d08f0ec09a\n    reviewed_sha: null\n    merge_sha: null",
+                "    pr_head: ee9b356020b6450d85837f60e60c41d08f0ec09a\n    reviewed_sha: null\n    merge_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             ),
             (
                 "replace",
                 "spec/architect/execution-ledger.yaml",
-                "    merged_at: null",
-                "    merged_at: 2026-08-30T00:00:00Z",
+                "    merge_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n    merged_at: null",
+                "    merge_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n    merged_at: 2026-08-30T00:00:00Z",
             ),
         ],
         "expect_exit": 1,

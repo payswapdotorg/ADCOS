@@ -211,16 +211,33 @@ GOVERNANCE_ARTIFACTS: List[str] = [
     ".github/PULL_REQUEST_TEMPLATE.md",
 ]
 
-# Work Items are frozen as WORK-001 .. WORK-041 (spec/dependency-graph.md §8:
-# "all 41 Work Items"). The backlog was extended from 40 to 41 items by the
-# DEC-0054/DEC-0055 governance transition (LEDGER-RECON-006; registering
-# WORK-041 — ACR-005 NetworkPath/platform boundary, authorization
-# WORK-041-CORE-001, delivery merged by PR #107, accepted by DEC-0054) with
-# the synchronized registry/DAG/ledger updates in the same governance change;
-# it supersedes the ACR-010 proposal (PR #108), whose scope that transition
-# applies directly. Changing the backlog size is an architecture change and
-# requires a synchronized update of this expectation.
-EXPECTED_WORK_ITEM_COUNT = 41
+# Work Items are frozen as the 52 registered items of the extended registry:
+# WORK-001..WORK-042 and WORK-044..WORK-053, with WORK-043 retired from
+# commercial use and left unassigned (LEDGER-RECON-005: never reused or
+# renumbered, so no future reader can bind the superseded commercial-era
+# "W043" label to a live artifact). The registry was extended from 41 to 52
+# registered items by ACR-011 (registering WORK-042 — ACR-006 event-driven
+# platform integration and journal-first recovery, authorization
+# WORK-042-CORE-001, delivery merged by PR #110 — together with the
+# canonical commercial phase WORK-044..WORK-053 derived from the ACR-009
+# commercial dependency model, docs/roadmap/commercial-dependency-model.md)
+# with the synchronized registry/DAG/ledger updates in the same governance
+# change. RETIRED_WORK_ITEM_IDS is the ONLY sanctioned gap in the WORK-NNN
+# sequence: it is a durable machine representation of the recorded W043
+# retirement, and every other gap, duplicate, count drift, or revival of a
+# retired slot still fails closed exactly as before. Changing the backlog
+# size or the retired set is an architecture change and requires a
+# synchronized update of these expectations.
+EXPECTED_WORK_ITEM_COUNT = 52
+RETIRED_WORK_ITEM_IDS = frozenset({"WORK-043"})
+
+# The registered ID space spans WORK-001..WORK-(COUNT + len(RETIRED)) with
+# exactly the retired IDs vacant, so the registered set is fully determined
+# by the count and the retired set.
+EXPECTED_WORK_ITEM_IDS = frozenset(
+    "WORK-%03d" % n
+    for n in range(1, EXPECTED_WORK_ITEM_COUNT + len(RETIRED_WORK_ITEM_IDS) + 1)
+) - RETIRED_WORK_ITEM_IDS
 
 VERSION_KIND_TERMS = [
     "**Architecture Version**",
@@ -708,13 +725,20 @@ def check_backlog(report: Report, texts: Dict[str, str]) -> Dict[str, Dict]:
         problems.append("duplicate Work Item IDs in spec/work-items.md")
     numbers = sorted(int(wid[-3:]) for wid in set(ids))
     if numbers:
-        expected = list(range(1, EXPECTED_WORK_ITEM_COUNT + 1))
-        if numbers != expected:
+        expected_numbers = sorted(int(wid[-3:]) for wid in EXPECTED_WORK_ITEM_IDS)
+        if numbers != expected_numbers:
             problems.append(
-                "Work Item IDs must be exactly WORK-001..WORK-%03d without gaps "
-                "(found %d items; changing the backlog size is an architecture "
-                "change requiring a synchronized tooling update)"
-                % (EXPECTED_WORK_ITEM_COUNT, len(numbers))
+                "Work Item IDs must be exactly the %d registered items "
+                "(WORK-001..WORK-%03d minus the retired set %s; only the "
+                "recorded retirement may leave a vacant slot) — found %d "
+                "items; changing the backlog size or the retired set is an "
+                "architecture change requiring a synchronized tooling update"
+                % (
+                    EXPECTED_WORK_ITEM_COUNT,
+                    expected_numbers[-1],
+                    ", ".join(sorted(RETIRED_WORK_ITEM_IDS)),
+                    len(numbers),
+                )
             )
     for wid, item in sorted(items.items()):
         if not item["objective"]:
@@ -909,8 +933,13 @@ DEC_ID_RE = re.compile(r"^DEC-\d{4}$")
 EVID_ID_RE = re.compile(r"^EVID-\d{3}$")
 ACR_ID_RE = re.compile(r"^ACR-\d{3}$")
 
+# "registered" (ACR-011) is the lifecycle of a frozen-registry Work Item
+# with NO delivery yet: the entry accounts for the item's existence in the
+# registry while every delivery/review fact must stay null (fail-closed
+# against fabricated deliveries). The delivery lifecycles keep requiring
+# branch/pr exactly as before.
 LEDGER_LIFECYCLES = {
-    "implemented", "verified", "in-review", "accepted-merged",
+    "registered", "implemented", "verified", "in-review", "accepted-merged",
     "rejected", "superseded", "withdrawn",
 }
 DECISION_TYPES = {"acceptance", "correction", "rejection", "governance"}
@@ -1315,12 +1344,41 @@ def _validate_ledger(ledger: object, problems: List[str]) -> Optional[Dict]:
             problems.append("%s: title missing" % where)
         if not isinstance(entry.get("phase"), int):
             problems.append("%s: phase must be an integer" % where)
-        if not isinstance(entry.get("branch"), str) or not entry.get("branch"):
-            problems.append("%s: branch missing" % where)
+        lifecycle = entry.get("lifecycle")
+        if lifecycle not in LEDGER_LIFECYCLES:
+            problems.append(
+                "%s: lifecycle must be one of %s" % (where, sorted(LEDGER_LIFECYCLES))
+            )
+        if lifecycle == "registered":
+            # A registered-only entry (ACR-011) represents a frozen-registry
+            # Work Item with NO delivery yet: it must not claim any branch,
+            # PR, review, merge, or acceptance fact, and a non-empty
+            # correction list is impossible before any delivery/review. This
+            # fails closed against fabricated deliveries: the delivery
+            # fields become claimable only when the lifecycle advances to a
+            # delivery state backed by a real PR.
+            for field in (
+                "branch", "pr", "pr_head", "reviewed_sha", "merge_sha",
+                "merged_at", "ci_run", "review_rounds", "acceptance_decision",
+            ):
+                if entry.get(field) is not None:
+                    problems.append(
+                        "%s: registered-only entries must not claim %s "
+                        "(no delivery exists yet; advance the lifecycle through "
+                        "a real delivery first)" % (where, field)
+                    )
+            if entry.get("correction_decisions"):
+                problems.append(
+                    "%s: registered-only entries cannot carry correction "
+                    "decisions (no review has happened yet)" % where
+                )
+        else:
+            if not isinstance(entry.get("branch"), str) or not entry.get("branch"):
+                problems.append("%s: branch missing" % where)
+            if not isinstance(entry.get("pr"), int):
+                problems.append("%s: pr must be an integer" % where)
         if entry.get("baseline_sha") is not None and not _is_sha(entry.get("baseline_sha")):
             problems.append("%s: baseline_sha must be a 40-hex SHA or null" % where)
-        if not isinstance(entry.get("pr"), int):
-            problems.append("%s: pr must be an integer" % where)
         if entry.get("pr_head") is not None and not _is_sha(entry.get("pr_head")):
             problems.append("%s: pr_head must be a 40-hex SHA or null" % where)
         if entry.get("reviewed_sha") is not None and not _is_sha(entry.get("reviewed_sha")):
@@ -1333,11 +1391,6 @@ def _validate_ledger(ledger: object, problems: List[str]) -> Optional[Dict]:
             problems.append("%s: review_rounds must be an integer or null" % where)
         if not isinstance(entry.get("handoff_required"), bool):
             problems.append("%s: handoff_required must be a boolean" % where)
-        lifecycle = entry.get("lifecycle")
-        if lifecycle not in LEDGER_LIFECYCLES:
-            problems.append(
-                "%s: lifecycle must be one of %s" % (where, sorted(LEDGER_LIFECYCLES))
-            )
         if lifecycle == "accepted-merged":
             for field in ("merge_sha", "merged_at", "reviewed_sha", "acceptance_decision"):
                 if not entry.get(field):
@@ -1364,7 +1417,7 @@ def _validate_ledger(ledger: object, problems: List[str]) -> Optional[Dict]:
                 problems.append("%s: correction_decisions entries must be DEC-NNNN" % where)
         if entry.get("handoff") is not None and not isinstance(entry.get("handoff"), str):
             problems.append("%s: handoff must be a path string or null" % where)
-    expected = {"WORK-%03d" % n for n in range(1, EXPECTED_WORK_ITEM_COUNT + 1)}
+    expected = set(EXPECTED_WORK_ITEM_IDS)
     if seen and seen != expected:
         missing = sorted(expected - seen)
         extra = sorted(seen - expected)
@@ -2168,7 +2221,8 @@ CHECK_TITLES: Dict[str, str] = {
     "MARK-01": "Document headings and role markers",
     "MARK-02": "Frozen-status markers on architecture-authority documents",
     "VERS-01": "Version-kind distinction; single architecture-version declaration site (declarations vs references)",
-    "BACKLOG-01": "Work Item backlog integrity (WORK-001..WORK-%03d)" % EXPECTED_WORK_ITEM_COUNT,
+    "BACKLOG-01": "Work Item backlog integrity (%d registered items; retired slots: %s)"
+    % (EXPECTED_WORK_ITEM_COUNT, ", ".join(sorted(RETIRED_WORK_ITEM_IDS)) or "none"),
     "DEPS-01": "Dependency references resolve to known Work Items",
     "DEPS-02": "Dependency graph is acyclic",
     "DEPS-03": "Execution phases and critical path respect the dependency DAG",
