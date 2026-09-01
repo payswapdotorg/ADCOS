@@ -1,11 +1,9 @@
 # WORK-052 Architect Handoff — UsageLedger
 
-**Issued by:** Architect
-**Work Item:** WORK-052
-**Authorization:** WORK-052-CORE-001
-**Decision:** DEC-0059
-**Baseline:** fe6e6e35a49cb2113315d0ec1569f7e93a3cf200
-**Implementer:** Z.ai
+**Issued by:** Architect  
+**Work Item:** WORK-052  
+**Implementer:** Z.ai  
+**Status:** Architect work order issued; implementation is gated on the repository-local W051 acceptance → W052 activation transition.
 
 ## Objective
 
@@ -32,6 +30,9 @@ Implement canonical records and deterministic state/reconciliation behavior for:
 7. Billable finality is explicit and cannot rewrite prior facts.
 8. Corrections are append-only compensating records.
 9. Commerce cannot mutate connectivity, session, path, routing, or transport authorities.
+10. Unknown, fabricated, stale, or unauthorized evidence fails closed.
+11. Provider/payment observations are data, not proof of delivery.
+12. Restart and replay reproduce the same ledger projection byte-for-byte.
 
 ## Authority boundary
 
@@ -66,10 +67,16 @@ The delivery PR must include the implementation-level handoff and evidence manif
 
 ## Scope
 
-The authorization permits changes only to the UsageLedger implementation/test/evidence surfaces necessary to satisfy the WORK-052 contract. Do not modify frozen architecture semantics, unrelated Work Items, existing accepted networking authorities, payment rails, or other commercial Work Items.
+The eventual W052 authorization is intended to permit only the UsageLedger implementation/test/evidence surfaces necessary to satisfy the WORK-052 contract. Do not modify frozen architecture semantics, unrelated Work Items, existing accepted networking authorities, payment rails, or other commercial Work Items.
 
-## Acceptance gate
+## Delivery protocol
 
-This handoff does not accept the implementation. Z.ai must deliver a PR from a branch cut from this authorized baseline. The Architect will review the exact PR head against the nine invariants, dependency readiness, authority ownership, provenance, replay/recovery, failure semantics, deterministic verification, and evidence-class rules before acceptance.
+The repository-local `WORK-052-CORE-001` authorization will be created only by the Architect in the atomic governance transition that accepts W051 and supersedes `WORK-051-CORE-001`. Until that transition is merged to `main`, Z.ai must not create an implementation branch or open an implementation PR for W052.
 
-**No authorization for WORK-053 or any W044–W050 item is granted by this handoff.**
+After activation, Z.ai must branch from the authorized main baseline, preserve the authorization byte-identically, and open one implementation PR. The PR must identify the authorization id and baseline, changed files, authority boundaries, evidence manifest, test results, and SOFTWARE-only evidence classification. It must not modify `spec/architect/`.
+
+The Architect will review the exact delivery head and either issue corrections or record acceptance. CI success alone is not acceptance.
+
+## Evidence class
+
+W052 is a SOFTWARE-class control-plane implementation. It must make no PHYSICAL claim and must not alter the independent W040 physical-evidence obligations.
