@@ -1,10 +1,25 @@
-# ADCOS Work Item authorization record — WORK-042 active implementation.
+# ADCOS Work Item authorization record — WORK-042 superseded (accepted).
+#
+# Supersession (DEC-0058, 2026-09-01): status moves active -> superseded and
+# authorized moves true -> false, transferring the single active execution
+# slot to WORK-051-CORE-001 (atomic transition per DEC-0058, in the same
+# governance change as the WORK-042 acceptance DEC-0057: the W042 delivery
+# PR #110 was accepted on head 708a432, merge 207d70e, CI run 33444952103
+# SUCCESS, and the WORK-042 ledger entry is lifecycle accepted-merged).
+# The authorized scope, the acceptance criteria, the dependency set, the
+# DEC-0055 provenance, the evidence rules, and the physical-evidence
+# separation are PRESERVED UNCHANGED below; this record remains durable
+# provenance of what WORK-042-CORE-001 covered. WORK-042's own obligations
+# are discharged by DEC-0057's acceptance; no open evidence obligation of
+# this authorization survives it (physical claims were never required and
+# remain governed by WORK-040's open EVID-007/EVID-008).
 #
 # WORK-042-CORE-001 (issued by DEC-0055): the Architect's repository-local
 # authorization for WORK-042 (Event-Driven Platform Integration and
 # Journal-First Recovery, ACR-006). This record is the sole durable authority
-# for W042 implementation scope. It becomes the single active authorization
-# at the moment DEC-0055 merges, atomically superseding WORK-041-CORE-001
+# for W042 implementation scope. It became the single active authorization
+# at the moment DEC-0055 merged, atomically superseding
+# WORK-041-CORE-001
 # (whose Work Item is accepted-merged through DEC-0054 in the same
 # governance transition) so the single active execution slot is never vacant
 # (mode implementing + zero active auths = STOP) nor double-occupied (two
@@ -46,8 +61,10 @@
 # schema: spec/architect/authorizations/ (v1); verified by tools/spec_check.py (ARCH-03).
 
 work_item: WORK-042
-status: active
-authorized: true
+status: superseded
+authorized: false
+superseded_by: "WORK-051-CORE-001"
+supersession_decision: DEC-0058
 type: implementation
 authorization_id: "WORK-042-CORE-001"
 authorization_decision: DEC-0055

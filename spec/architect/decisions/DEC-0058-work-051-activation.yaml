@@ -1,0 +1,74 @@
+# ADCOS Architect decision record.
+# schema: spec/architect/decision-record-template.md; verified by tools/spec_check.py (ARCH-04).
+#
+# This record governs the atomic transition WORK-042 active -> WORK-042
+# accepted (DEC-0057) -> WORK-042-CORE-001 authorization superseded ->
+# WORK-051-CORE-001 active. It records the supersession of the
+# WORK-042-CORE-001 authorization (whose Work Item is accepted-merged
+# through DEC-0057 in the same governance transition) and authorizes
+# WORK-051 (CommercialCore: connectivity intent, offers, reservation,
+# lease, and transaction lifecycle, ACR-009) to become the sole active
+# implementation Work Item once its repository-local authorization
+# record is created in the same governance transition.
+#
+# This decision does NOT accept WORK-040 (W040 remains in-review,
+# acceptance_decision: null) and does NOT close W040's PHYSICAL evidence
+# obligations (EVID-007/EVID-008 remain OPEN and W040-owned). It does
+# NOT modify any frozen architecture semantics and does NOT register any
+# Work Item: the frozen registry already represents the whole canonical
+# commercial phase through the accepted ACR-011 (DEC-0056).
+decision_id: DEC-0058
+type: governance
+work_item: WORK-042
+acr: null
+pr: null
+reviewed_sha: fe6e6e35a49cb2113315d0ec1569f7e93a3cf200
+decision: ACCEPTED
+status: ACCEPTED
+reviewer: "Architect (pectoraux)"
+timestamp: 2026-09-01T06:15:00Z
+findings:
+  - "DEC-0057 (ACCEPTED, this same transition) accepts WORK-042 on the exact reviewed PR #110 head 708a432 (merge 207d70e, CI run 33444952103 SUCCESS, merged 2026-08-31T22:54:17Z) with SOFTWARE-class evidence only; the WORK-042 execution-ledger entry transitions to lifecycle accepted-merged. All W041-era and W042-era implementation obligations of the slot are discharged."
+  - "Next-Work-Item eligibility was derived from the live repository, not from numbering. W043 is retired (machine-checked RETIRED_WORK_ITEM_IDS; never reused). After the W042 acceptance, the frozen registry (spec/work-items.md, Phase 10 dependencies as registered by the accepted ACR-011) admits exactly one implementation-chain Work Item whose hard dependencies are all satisfied: WORK-051 (Dependencies: none — the commercial chain head). Every other candidate is hard-blocked on WORK-051 itself: WORK-044 (W051+W053), WORK-045 (W051+W053+W044), WORK-046 (W051+W052+W053+W044+W045), WORK-047 (W051+W044+W045+W046), WORK-048 (W041+W042+W051 — W041 and W042 are now both accepted-merged, W051 is not), WORK-049 (W046+W047+W048), WORK-052 (W051), WORK-053 (W051+W052). WORK-050 also declares Dependencies: none, but its recorded boundary (LEDGER-RECON-005 section 4.2 and the ACR-011 registered entry) is a capability/isolation matrix consumed BY WORK-048/WORK-049 through advisory edges — it is not an implementation vehicle for W048 and gates no other item; the commercial chain head WORK-051 is therefore the highest-leverage eligible Work Item (it gates WORK-044 through WORK-049 and WORK-052/W053 directly or transitively, including the W048 Lease authority requirement)."
+  - "The WORK-051 ready-candidate contract (tracking issue #83, canonical identity per the ACR-011 registered entry and the canonical model docs/roadmap/commercial-dependency-model.md) requires, before implementation: ACR-009 accepted (DEC-0050, merged PR #82 — satisfied); ACR-005 accepted (DEC-0047 — satisfied); ACR-006 accepted (DEC-0048 — satisfied); ACR-007 accepted (DEC-0049 — satisfied); WORK-041 NetworkPath accepted-merged where NetworkPath references are consumed (DEC-0054, PR #107 — satisfied); WORK-040 physical validation advisory only (DEC-0051 — W040 in-review, NOT accepted, EVID-007/EVID-008 OPEN and W040-owned, no blocking effect). The frozen registry declares WORK-051 hard dependencies: none (the chain head; ACR acceptances are architectural preconditions, not Work Item dependencies). The Execution gate requires an ACTIVE repository-local authorization with the exact baseline and scope — which this decision creates."
+  - "ARCH-03 (tools/spec_check.py check_arch_03) enforces exactly one active authorization when execution mode is 'implementing', with the active authorization matching active_work_item, matching the recorded main baseline, hard dependencies accepted-merged in the ledger, and a resolvable handoff. The execution-state schema is single-track: one active_work_item and one active_authorization. The only schema-valid, history-preserving transition for the accepted WORK-042's authorization is active -> superseded (the authorization status vocabulary is frozen at active | in-review | superseded | withdrawn); WORK-042-CORE-001's record is preserved as durable provenance with scope, acceptance criteria, dependency set, DEC-0055 provenance, evidence rules, and physical-evidence separation unchanged."
+  - "The atomic transition preserves the single active execution slot: WORK-042-CORE-001 supersession and WORK-051-CORE-001 activation land in the SAME governance change (never two active authorizations, never zero while mode is implementing, never an active W051 whose architectural preconditions are unmet, never an accepted W042 without a ledger entry)."
+  - "No registry extension is required by this transition: the accepted ACR-011 (DEC-0056, PR #111) already registered WORK-051 in spec/work-items.md and spec/dependency-graph.md (Phase 10, canonical commercial phase) with its execution-ledger entry at lifecycle registered and authorization none. Registration is representation, never authorization (review-protocol section 3.1, ARCH-03/ARCH-08): this decision is the repository-local activation the registered entry explicitly awaits."
+  - "The snapshot baseline reconciliation: the persistent state still referenced the LEDGER-RECON-006 baseline 96db8aa (the ACR-011 proposal deliberately did not move it) while main advanced through PR #110 (W042 delivery, 207d70e), PR #111 (ACR-011 registry extension, merged 810374e), and PR #115 (DEC-0056 persistence, merged fe6e6e3). LEDGER-RECON-007 moves the snapshot baseline (execution-ledger.yaml and execution-state.yaml main_sha) and the new authorization baseline to the current mainline fe6e6e3 in lockstep, per the standing RECON-002/003/004/005/006 convention, so ARCH-03/ARCH-05 hold."
+  - "W040 remains an independent physical validation track: lifecycle in-review, acceptance_decision null, EVID-007 (PARTIAL) and EVID-008 (NOT-TESTABLE) OPEN and W040-owned. Nothing in this transition accepts W040, closes its correction cycle, or transfers its obligations. Anti-promotion discipline is preserved: W042's acceptance makes no PHYSICAL claim (DEC-0057) and W051's authorization makes none."
+blockers: []
+required_corrections: []
+evidence:
+  merge_sha: null
+  ci_run: null
+  artifacts:
+    - "spec/architect/decisions/DEC-0057-work-042-acceptance.yaml"
+    - "spec/architect/authorizations/WORK-042.yaml"
+    - "spec/architect/authorizations/WORK-051.yaml"
+    - "docs/WORK-051-handoff.md"
+accepted_scope:
+  - "Supersede the WORK-042-CORE-001 authorization: spec/architect/authorizations/WORK-042.yaml status active -> superseded, authorized true -> false, with superseded_by: WORK-051-CORE-001 and supersession_decision: DEC-0058 recorded. The authorized scope, acceptance criteria, dependency set, DEC-0055 provenance, evidence rules, and physical-evidence separation are PRESERVED UNCHANGED; the record remains durable provenance."
+  - "Create spec/architect/authorizations/WORK-051.yaml with status: active, authorized: true, authorization_id: WORK-051-CORE-001, authorization_decision: DEC-0058, baseline_sha: fe6e6e35a49cb2113315d0ec1569f7e93a3cf200 (current main, the baseline this governance commit is cut from), type: implementation, work_item: WORK-051, dependencies none (exactly the frozen declaration in spec/work-items.md — the chain head), scope limited to the ACR-009 commercial control-plane core per the WORK-051 ready-candidate contract (issue #83), acceptance criteria quoted verbatim from the contract, and handoff docs/WORK-051-handoff.md (created in this transition)."
+  - "Atomic execution-state transition: active_work_item WORK-042 -> WORK-051 and active_authorization WORK-042-CORE-001 -> WORK-051-CORE-001 in the SAME governance transition, so the single active slot is never vacant (mode implementing + zero active auths = STOP) nor double-occupied (two active auths = ARCH-03 FAIL), and the slot transfers only after the W042 acceptance (DEC-0057) is recorded in the same change."
+  - "Reconcile repository.main_sha in execution-state.yaml and execution-ledger.yaml to fe6e6e35a49cb2113315d0ec1569f7e93a3cf200 (the post-PR-#110/#111/#115 mainline), recorded as LEDGER-RECON-007 in the same transition."
+  - "Register DEC-0057 and DEC-0058 in spec/architect/decisions/README.md; record the ACR-011 acceptance state (DEC-0056, merged PR #111) in execution-state.yaml accepted_acrs, removing the decided proposal from open_acrs."
+  - "Update spec/architect/current-state.md: W042 accepted-merged (DEC-0057); WORK-051 the active authorized implementation track (WORK-051-CORE-001, DEC-0058); W040 unchanged as the independent, not-accepted physical validation track; ACR-011 recorded as accepted."
+rejected_scope:
+  - "Acceptance of WORK-040, closure of its correction cycle, or any change to its PHYSICAL evidence obligations EVID-007 (PARTIAL) and EVID-008 (NOT-TESTABLE). They remain W040-owned, OPEN, with anti-promotion discipline preserved; the track may resume later under a type: evidence-continuation authorization."
+  - "Any change to WORK-042's or WORK-040's acceptance criteria, evidence_classes, authority_inputs, authority_outputs, scope, out_of_scope, or provenance references in their authorization records. These fields are preserved verbatim in the superseded records."
+  - "Authorization of WORK-044 through WORK-050, WORK-052, WORK-053, or any other Work Item. Each still requires its own repository-local WORK-XXX.yaml with status: active before any implementation branch may proceed; every hard dependency edge registered by ACR-011 remains unchanged."
+  - "Any WORK-051 implementation code, module creation, or delivery in this transition. This is a governance-only change: no implementation file changes; the W051 implementation PR is future work under WORK-051-CORE-001, inheriting the authorization byte-identically from main."
+  - "Payment rails, custody, payout execution, KYC/KYB, jurisdiction rules, marketplace discovery, or developer SDKs (later authorized Work Items per the W051 contract non-scope); any new identity/session/routing/transport/federation/policy authority; any wire-schema change; any private authority access."
+  - "Any registry change: WORK-051's frozen registration (spec/work-items.md, spec/dependency-graph.md, expected Work Item count 52 with the WORK-043 retired slot) was applied by the accepted ACR-011 and is untouched by this decision."
+  - "Any weakening of acceptance criteria, evidence-class discipline (workflow section 2.2), or the one-Work-Item-at-a-time rule (workflow section 1, dependency-graph section 6), and any bypass of ARCH-08 provenance enforcement."
+downstream_effect:
+  - "spec/architect/authorizations/WORK-042.yaml: status active -> superseded; authorized true -> false; superseded_by: WORK-051-CORE-001; supersession_decision: DEC-0058. All other fields preserved; WORK-042-CORE-001 is no longer the active authorization but its record remains as durable provenance of the accepted W042 implementation."
+  - "spec/architect/authorizations/WORK-051.yaml: created as the single active authorization (status: active, authorized: true, baseline_sha: fe6e6e3). WORK-051 becomes the active Work Item, implementing the ACR-009 commercial control-plane core (the canonical commercial state lifecycle with compensating states/events) while referencing — never owning or mutating — logical session, NetworkPath, and delivery evidence identities, and keeping payment-provider specifics outside the core."
+  - "docs/WORK-051-handoff.md: created as the governance-level handoff referenced by WORK-051-CORE-001 (the implementation-level handoff will live on the W051 delivery branch and in its PR body, per the WORK-041/W042 precedent)."
+  - "spec/architect/execution-state.yaml: active_work_item WORK-042 -> WORK-051; active_authorization WORK-042-CORE-001 -> WORK-051-CORE-001; repository.main_sha reconciled to fe6e6e3 (LEDGER-RECON-007); halted_reason and next_required_decisions updated; accepted_work_items last WORK-041 -> WORK-042; ACR-011 moved from open_acrs to accepted_acrs (DEC-0056, merged PR #111); the WORK-042 planned entry retired (accepted), the WORK-051 planned entry active/authorized."
+  - "spec/architect/execution-ledger.yaml: WORK-042 entry accepted-merged (DEC-0057); LEDGER-RECON-007 recorded; main_sha reconciled to fe6e6e3; the WORK-051 registered-only entry remains lifecycle registered (its delivery fields stay null until a real delivery exists); no WORK-001..WORK-041 entry rewritten."
+  - "spec/architect/current-state.md: W042 = accepted-merged (DEC-0057); W051 = active authorized implementation (chain head of the canonical commercial phase); W040 = independent physical validation, still not accepted; ACR-011 = accepted (DEC-0056)."
+  - "W040 physical validation continues independently (in-review, not accepted, EVID-007/EVID-008 OPEN) and may resume later under a type: evidence-continuation authorization once physical evidence is available (authorizations/README.md section 4)."
+  - "WORK-052/WORK-053 and WORK-044 through WORK-050 remain unauthorized ready-candidates; their hard dependency edges on WORK-051 (and each other) are unchanged and gate their own future authorizations."
+  - "If the Architect judges on review that this transition alters architectural semantics beyond activation and acceptance bookkeeping, this transition must be re-examined per review-protocol section 6 and change-control.md section 1 before merge."
+resolved_by: null
