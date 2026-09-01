@@ -35,10 +35,25 @@
 # WORK-042-CORE-001 (DEC-0055); W042 is NOT registered in the frozen backlog
 # and the registry can represent it only when its own governance registration
 # issues. No W001..W040 entry is rewritten; no frozen semantic changes.
+#
+# DEC-0057/DEC-0058 (2026-09-01, LEDGER-RECON-007): WORK-042 is accepted
+# (DEC-0057; PR #110, head 708a432, merge 207d70e, CI 33444952103 SUCCESS)
+# and its ledger entry transitions implemented -> accepted-merged with
+# acceptance_decision DEC-0057 and reviewed_sha 708a432 (review round 1,
+# no corrections required). The ACR-011 registry extension (accepted by
+# DEC-0056, PR #111) already represents WORK-042 and the canonical
+# commercial phase, so this transition records no registry change. The
+# single active execution slot transfers from WORK-042-CORE-001 (superseded,
+# DEC-0058, scope and provenance preserved) to WORK-051-CORE-001 (DEC-0058;
+# CommercialCore, ACR-009, chain head, dependencies none) whose registered
+# ledger entry stays lifecycle registered until a real delivery exists.
+# The snapshot baseline is reconciled 96db8aa -> fe6e6e3 (the post-PR-
+# #110/#111/#115 mainline). No W001..W041 entry is rewritten; no frozen
+# semantic changes.
 
 schema_version: 1
-main_sha: 96db8aa4423dff845a223e0c93c67f3dc14e314d
-last_updated: "2026-08-31"
+main_sha: fe6e6e35a49cb2113315d0ec1569f7e93a3cf200
+last_updated: "2026-09-01"
 work_items:
   - work_item: WORK-001
     title: "Protocol specification/governance foundation"
@@ -775,17 +790,17 @@ work_items:
     baseline_sha: 96db8aa4423dff845a223e0c93c67f3dc14e314d
     pr: 110
     pr_head: 708a432b5e3cc4e57e5bedea5381fe3c7fcd8dc2
-    reviewed_sha: null
+    reviewed_sha: 708a432b5e3cc4e57e5bedea5381fe3c7fcd8dc2
     merge_sha: 207d70e20b8a05cb2f5149ff4e492e17c9a9189e
     merged_at: 2026-08-31T22:54:17Z
     ci_run: 33444952103
-    review_rounds: 0
-    acceptance_decision: null
+    review_rounds: 1
+    acceptance_decision: DEC-0057
     correction_decisions: []
     handoff: docs/WORK-042-handoff.md
     handoff_required: true
-    lifecycle: implemented
-    note: "delivery entry added by ACR-011 (frozen Work Item registry extension through the canonical commercial phase) exactly per the convention recorded by LEDGER-RECON-004/006: a ledger entry is added once the Work Item has a delivery PR and is registered in the frozen registry. Delivered under WORK-042-CORE-001 (DEC-0055; authorization baseline 96db8aa = the LEDGER-RECON-006 snapshot baseline; implementation branch cut from the post-PR-#109 mainline 1909479, which carries the active authorization record, ARCH-08 provenance verified on the PR). PR #110 delivery: authoritative CI run 33444952103 (spec-check, pull_request) on head 708a432 is SUCCESS (the platform battery step ran and passed 32/32); the push-run on the merge commit 207d70e (33448347826) is also SUCCESS; the Architect merged PR #110 at 207d70e (2026-08-31T22:54:17Z). The Work Item is NOT accepted: lifecycle stays implemented, acceptance_decision stays null, reviewed_sha stays null until an Architect acceptance decision record identifies the exact reviewed SHA (review-protocol §5). WORK-042-CORE-001 remains the single active authorization (acceptance/supersession is a separate future Architect decision); the frozen-registry registration (spec/work-items.md Phase 9, spec/dependency-graph.md Phase 9 node/edges) is applied by the same ACR-011 governance change. The snapshot baseline (main_sha 96db8aa, LEDGER-RECON-006) is deliberately NOT moved by ACR-011; the next reconciliation records the post-PR-#110 mainline 207d70e per the standing RECON convention. No W001..W041 entry is rewritten."
+    lifecycle: accepted-merged
+    note: "delivery entry added by ACR-011 (frozen Work Item registry extension through the canonical commercial phase) exactly per the convention recorded by LEDGER-RECON-004/006: a ledger entry is added once the Work Item has a delivery PR and is registered in the frozen registry. Delivered under WORK-042-CORE-001 (DEC-0055; authorization baseline 96db8aa = the LEDGER-RECON-006 snapshot baseline; implementation branch cut from the post-PR-#109 mainline 1909479, which carries the active authorization record, ARCH-08 provenance verified on the PR). PR #110 delivery: authoritative CI run 33444952103 (spec-check, pull_request) on head 708a432 is SUCCESS (the platform battery step ran and passed 32/32); the push-run on the merge commit 207d70e (33448347826) is also SUCCESS; the Architect merged PR #110 at 207d70e (2026-08-31T22:54:17Z) with zero correction rounds (one commit, no review comments). DEC-0057 (2026-09-01) is the acceptance review of the exact merged head 708a432 (review round 1, no corrections required): the W042 contract scope is accepted with SOFTWARE-class evidence only (docs/WORK-042-evidence.md — all five contract criteria satisfied; deterministic digest stream; negative fail-closed coverage; no PHYSICAL claim, EVID-007/EVID-008 remain OPEN and W040-owned); the lifecycle transitions to accepted-merged with acceptance_decision DEC-0057 and reviewed_sha 708a432. The same DEC-0057/DEC-0058 transition supersedes WORK-042-CORE-001 (status superseded, authorized false, scope and provenance preserved) and activates WORK-051-CORE-001 (DEC-0058; CommercialCore chain head, dependencies none per the frozen registry) as the single active authorization; the WORK-051 registered-only entry stays lifecycle registered until a real delivery exists. The snapshot baseline is reconciled 96db8aa -> fe6e6e3 by LEDGER-RECON-007. No W001..W041 entry is rewritten."
   - work_item: WORK-044
     title: "Payment Provider Adapters & Settlement Gateway"
     phase: 10
@@ -1012,3 +1027,11 @@ reconciliations:
     to_main_sha: 96db8aa4423dff845a223e0c93c67f3dc14e314d
     reason: "post-PR-#107 mainline reconciliation and atomic governance transition: main advanced to 96db8aa (PR #107 merged the WORK-041 implementation at head 4ce5a42, CI run 33426900730 SUCCESS) while the persistent state still referenced the LEDGER-RECON-005 snapshot baseline bb964a1. This reconciliation moves the snapshot baseline to 96db8aa in lockstep with execution-state.yaml; records the WORK-041 acceptance (DEC-0054: reviewed_sha 4ce5a42, merge_sha 96db8aa, merged_at 2026-08-31T19:15:03Z, acceptance decision ACCEPTED) with its execution-ledger entry at lifecycle accepted-merged; applies the synchronized frozen-registry extension that makes WORK-041 machine-representable (spec/work-items.md Phase 9 registration with the contract dependencies WORK-016/WORK-018/WORK-033/WORK-034, spec/dependency-graph.md Phase 9 node and edges, EXPECTED_WORK_ITEM_COUNT 40 -> 41 in tools/spec_check.py — the scope of the ACR-010 proposal, PR #108, applied directly by this transition and superseding it); supersedes the WORK-041-CORE-001 authorization (status superseded, authorized false, scope/criteria/provenance preserved); and activates WORK-042-CORE-001 (DEC-0055) as the single active authorization with baseline 96db8aa so ARCH-03/ARCH-05 hold. WORK-042 is NOT registered in the frozen backlog (the registry can represent it only when its own governance registration issues)."
     history: "No work-item history rewritten: every WORK-001..WORK-040 entry is byte-identical; the WORK-040 entry (in-review, acceptance_decision null, EVID-007/EVID-008 OPEN and W040-owned) is unchanged. The WORK-041 entry is added (not converted from a prior entry: per LEDGER-RECON-004/005's recorded convention no W041 entry existed before registration) directly at lifecycle accepted-merged with acceptance_decision DEC-0054. The registry extension is registration-only: WORK-001..WORK-040 blocks in spec/work-items.md and spec/dependency-graph.md are byte-identical, no edge is removed or relabeled, no authority ownership changes, and the architecture version stays 1.0 (governance-only change per change-control.md §7). W042's authorization (WORK-042-CORE-001, baseline 96db8aa) is created by DEC-0055 in the same transition; its handoff document (docs/WORK-042-handoff.md) is created with it. No implementation code changes: networkpath/, tools/networkpath_selftest.py, and all other implementation artifacts are byte-identical to 96db8aa; the only tool/workflow change is the synchronized spec_check.py count and the CI wiring of the already-accepted W041 battery (docs/WORK-041-evidence.md §7). PR #108 (ACR-010, base 96db8aa) is superseded by this direct application and remains discoverable as historical proposal evidence."
+
+  - reconciliation_id: LEDGER-RECON-007
+    recorded_by: "DEC-0058 (the atomic W042 acceptance -> W051 activation transition; the W042 acceptance itself is DEC-0057)"
+    recorded_at: 2026-09-01T06:15:00Z
+    from_main_sha: 96db8aa4423dff845a223e0c93c67f3dc14e314d
+    to_main_sha: fe6e6e35a49cb2113315d0ec1569f7e93a3cf200
+    reason: "post-PR-#110/#111/#115 mainline reconciliation and atomic governance transition: main advanced from the LEDGER-RECON-006 snapshot baseline 96db8aa through PR #110 (the WORK-042 implementation merged at head 708a432, CI run 33444952103 SUCCESS), PR #111 (the ACR-011 commercial phase registry extension, merged 810374e, accepted by DEC-0056), and PR #115 (the DEC-0056 acceptance record persistence, merged fe6e6e3) while the persistent state still referenced 96db8aa. This reconciliation moves the snapshot baseline to fe6e6e3 in lockstep with execution-state.yaml; records the WORK-042 acceptance (DEC-0057: reviewed_sha 708a432, merge_sha 207d70e, merged_at 2026-08-31T22:54:17Z, acceptance decision ACCEPTED) with its execution-ledger entry transitioned implemented -> accepted-merged; supersedes the WORK-042-CORE-001 authorization (status superseded, authorized false, scope/criteria/provenance preserved); and activates WORK-051-CORE-001 (DEC-0058; CommercialCore, ACR-009, the commercial chain head with frozen-registry dependencies none) as the single active authorization with baseline fe6e6e3 so ARCH-03/ARCH-05 hold. The WORK-051 registered-only ledger entry (applied by the accepted ACR-011) stays lifecycle registered until a real delivery exists. No registry change is recorded by this reconciliation: WORK-042, WORK-044..WORK-053, and the WORK-043 retired slot are already represented through the accepted ACR-011 (DEC-0056)."
+    history: "No work-item history rewritten: every WORK-001..WORK-041 entry is byte-identical; the WORK-040 entry (in-review, acceptance_decision null, EVID-007/EVID-008 OPEN and W040-owned) is unchanged; the ten registered-only commercial entries (WORK-044..WORK-053) are unchanged. The WORK-042 entry transitions lifecycle implemented -> accepted-merged with acceptance_decision DEC-0057, reviewed_sha 708a432, and review_rounds 1 (the DEC-0057 acceptance review; zero correction rounds existed on the merged PR). No frozen architecture document is modified and no registry file changes: spec/work-items.md, spec/dependency-graph.md, and tools/spec_check.py are byte-identical to the accepted ACR-011 state. No implementation code changes: platform/, tools/platform_selftest.py, networkpath/, and all other implementation artifacts are byte-identical to the merged delivery. The only spec/architect changes are the two decision records (DEC-0057, DEC-0058), the WORK-042.yaml supersession, the new WORK-051.yaml authorization and its handoff document (docs/WORK-051-handoff.md), the WORK-042 ledger entry transition, this LEDGER-RECON-007 record, the snapshot baseline movement, the synchronized execution-state.yaml and current-state.md narrative updates, the decisions README registration, and the spec_check_selftest.py anchor re-pinning to the new live state (mutation semantics unchanged, per the DEC-0054/DEC-0055 transition precedent)."

@@ -1,0 +1,57 @@
+# ADCOS Architect decision record.
+# schema: spec/architect/decision-record-template.md; verified by tools/spec_check.py (ARCH-04).
+#
+# This record accepts WORK-042 (Event-Driven Platform Integration and
+# Journal-First Recovery, ACR-006) as delivered and merged by PR #110 at
+# head 708a432. It is the Architect's durable acceptance of the W042
+# contract scope with SOFTWARE-class evidence only; it makes no physical
+# validation claim (physical evidence is not required for W042
+# implementation and any physical claims remain governed by WORK-040's
+# open PHYSICAL obligations EVID-007/EVID-008). It does NOT accept
+# WORK-040 and does NOT authorize WORK-051 (the activation of the next
+# Work Item is the separate governance decision DEC-0058, rendered in
+# the same atomic transition).
+decision_id: DEC-0057
+type: acceptance
+work_item: WORK-042
+acr: ACR-006
+pr: 110
+reviewed_sha: 708a432b5e3cc4e57e5bedea5381fe3c7fcd8dc2
+decision: ACCEPTED
+status: ACCEPTED
+reviewer: "Architect (pectoraux)"
+timestamp: 2026-09-01T06:10:00Z
+findings:
+  - "PR #110 delivered WORK-042 under WORK-042-CORE-001 (DEC-0055; authorization baseline 96db8aa = the LEDGER-RECON-006 snapshot baseline; branch work-042-platform-journal-core cut from the post-PR-#109 mainline 1909479, which carries the active authorization record byte-identically from main, ARCH-08 provenance verified on the PR). The delivered delta is exactly the authorized scope: platform/ (11 modules, 3827 lines), tools/platform_selftest.py (32-case battery), docs/WORK-042-handoff.md (implementation-level handoff appended to the governance part), docs/WORK-042-evidence.md, and one additive CI workflow step wiring the battery into spec-check."
+  - "The delivery merged cleanly with zero correction rounds: PR #110 carried exactly one commit (708a432), zero review comments, and the authoritative CI run 33444952103 (spec-check workflow, pull_request event) on head 708a432 completed SUCCESS — the platform battery step ran in CI and ended PASS 32/32 (job log verified; CI evidence comment posted on the PR). The push-run on the merge commit 207d70e (33448347826) is also SUCCESS. The Architect merged PR #110 at 207d70e on 2026-08-31T22:54:17Z."
+  - "This acceptance review (round 1, DEC-0057) verifies the merged head 708a432 against the W042 contract: all five acceptance criteria are satisfied with SOFTWARE-class evidence per docs/WORK-042-evidence.md. (1) Platform changes are delivered event-first: the ingestion boundary is push-primary with a change-detected polling fallback that emits nothing on an unchanged sweep (criterion 1, evidence case class); (2) event/snapshot reconciliation is a deterministic pure fold, idempotent on replay, with checkpoint+tail replay byte-identical to the full fold (digest stream md5-stable across fresh runs and PYTHONHASHSEED 0/1/7919/unset); (3) durable state survives process death/suspension: the append-only hash-chained journal persists before acknowledgement, checkpoints are journal-tail-bound with prefix-digest binding, and tamper/reorder/truncation/gap negative tests fail closed; (4) recovery reconstructs state and records session loss honestly — recover() takes no authority parameters, never recreates sessions, and durable session-loss records are idempotently keyed; (5) existing accepted batteries remain green and authority ownership is unchanged (audit table in evidence section 6; battery-pinned structural checks)."
+  - "The delivery made no physical validation claim: PLATFORM evidence disclosure pins physical_device: open; EVID-007 (PARTIAL) and EVID-008 (NOT-TESTABLE) remain OPEN and W040-owned. Anti-promotion discipline (software PASS never becomes physical PASS) is preserved."
+  - "No frozen authority ownership changed and no frozen architecture semantic changed: the W042 delta was confined to the authorized scope (platform/, the selftest, the two W042 docs, one additive CI step), the frozen spec surfaces were byte-identical to origin/main (battery-pinned, evidence case class), and the wire schema is unchanged. The WORK-042 registration in the frozen registry (Phase 9), the WORK-043 retired slot, and the canonical commercial phase registration are carried by the accepted ACR-011 (DEC-0056, PR #111) — this acceptance records no registry change."
+  - "Recording the acceptance in the execution ledger is machine-consistent as-is: ACR-011 (accepted by DEC-0056) already registered WORK-042 with its implemented delivery entry, so ARCH-02/ARCH-04 admit the lifecycle transition implemented -> accepted-merged without any further registry extension. No new ACR is required by this acceptance."
+blockers: []
+required_corrections: []
+evidence:
+  merge_sha: 207d70e20b8a05cb2f5149ff4e492e17c9a9189e
+  ci_run: 33444952103
+  artifacts:
+    - "docs/WORK-042-evidence.md"
+    - "docs/WORK-042-handoff.md"
+accepted_scope:
+  - "The WORK-042 contract scope (spec/architect/work-items/WORK-042.md, ACR-006 / DEC-0048, tracking issue #69): the ACR-006 event-driven platform integration and journal-first recovery model — a platform-event ingestion boundary carrying authoritative observations through the platform-adapter boundary (push-primary, change-detected polling fallback); deterministic idempotent event/snapshot reconciliation (events as change notifications, snapshots as state representation); an append-only journal with periodic compact snapshots; durable restart/suspension recovery reconciling reconstructed state with the current platform observation; preserved stable logical session identity and existing recovery/session-loss semantics — accepted on PR #110 head 708a432 (merge 207d70e) with SOFTWARE-class conformance and deterministic-verification evidence."
+  - "The W042 delivery delta: platform/ package (11 modules), tools/platform_selftest.py (32 cases), docs/WORK-042-handoff.md, docs/WORK-042-evidence.md, and the one additive spec-check CI workflow step — exactly the WORK-042-CORE-001 scope."
+  - "The WORK-042 execution-ledger entry at lifecycle accepted-merged (reviewed_sha 708a432, merge_sha 207d70e, merged_at 2026-08-31T22:54:17Z, pr 110, pr_head 708a432, ci_run 33444952103, review_rounds 1, phase 9) with acceptance_decision DEC-0057 — the registration itself was applied by the accepted ACR-011 (DEC-0056) and is unchanged by this decision."
+rejected_scope:
+  - "Any PHYSICAL-class acceptance claim for W042 or any other Work Item. Physical-device evidence is not required for W042 implementation; EVID-007 (PARTIAL) and EVID-008 (NOT-TESTABLE) remain OPEN and W040-owned with anti-promotion discipline unchanged."
+  - "Acceptance of WORK-040. W040 remains in-review (execution-ledger lifecycle in-review, acceptance_decision null); the independent physical validation track is unaffected by this acceptance."
+  - "Authorization of WORK-051 or any other Work Item by this decision. Activation of the next Work Item is DEC-0058 in the same atomic transition; every other Work Item still requires its own repository-local authorization."
+  - "Any change to WORK-040's or any other Work Item's acceptance criteria, evidence obligations, ledger history, or frozen semantics. WORK-001..WORK-041 ledger entries are byte-identical; the registered-only commercial entries (WORK-044..WORK-053) are unchanged."
+  - "Any wire-schema or frozen-architecture-semantic change. The architecture version stays 1.0 (change-control.md section 7: governance-only changes may leave the architecture version unchanged)."
+  - "Any change to the WORK-042-CORE-001 authorization record's scope, acceptance criteria, or provenance. The supersession of that authorization (if rendered) is DEC-0058's scope, preserving the record as durable provenance."
+downstream_effect:
+  - "spec/architect/execution-ledger.yaml: the WORK-042 entry transitions lifecycle implemented -> accepted-merged with acceptance_decision DEC-0057, reviewed_sha 708a432b5e3cc4e57e5bedea5381fe3c7fcd8dc2, review_rounds 1; LEDGER-RECON-007 records the snapshot-baseline reconciliation (96db8aa -> fe6e6e3, the post-PR-#110/#111/#115 mainline); no WORK-001..WORK-041 entry is rewritten."
+  - "The W042 hard-dependency obligations of downstream items are satisfied where consumed: WORK-048 requires WORK-041 + WORK-042 + WORK-051, and WORK-052 requires WORK-051 (W052's journal-first discipline reference is a discipline reference, not a Work Item dependency edge) — all downstream items remain unauthorized until their own repository-local authorizations issue."
+  - "The battery tools/platform_selftest.py is now an accepted W042 battery and stays wired into CI (the additive spec-check workflow step delivered with PR #110)."
+  - "WORK-042-CORE-001 is superseded by DEC-0058 in the same atomic transition (status superseded, authorized false, scope/criteria/provenance preserved); the single active execution slot transfers to WORK-051-CORE-001 so the slot is never vacant nor double-occupied."
+  - "spec/architect/execution-state.yaml and spec/architect/current-state.md record the acceptance (W042 accepted-merged, accepted_work_items last WORK-041 -> WORK-042) and the atomic activation transition in the same governance change."
+  - "EVID-007/EVID-008 remain OPEN and W040-owned; WORK-040 remains in-review and NOT accepted; the W040 track is unaffected."
+resolved_by: null

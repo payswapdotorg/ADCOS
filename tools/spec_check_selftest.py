@@ -464,26 +464,26 @@ ARCH_CASES: List[Case] = [
     },
     {
         # NO CURRENT AUTHORIZATION = IMPLEMENTATION MUST STOP. The fixture
-        # base is the activated post-DEC-0055 state (implementing under
-        # WORK-042-CORE-001), so the case reverts the authorization to
+        # base is the activated post-DEC-0058 state (implementing under
+        # WORK-051-CORE-001), so the case reverts the authorization to
         # in-review to simulate the stopped state.
         "name": "architect-missing-authorization-blocks-implementation",
         "ops": [
             (
                 "replace",
                 "spec/architect/execution-state.yaml",
-                '  active_authorization: "WORK-042-CORE-001"',
+                '  active_authorization: "WORK-051-CORE-001"',
                 "  active_authorization: null",
             ),
             (
                 "replace",
-                "spec/architect/authorizations/WORK-042.yaml",
+                "spec/architect/authorizations/WORK-051.yaml",
                 "status: active",
                 "status: in-review",
             ),
             (
                 "replace",
-                "spec/architect/authorizations/WORK-042.yaml",
+                "spec/architect/authorizations/WORK-051.yaml",
                 "authorized: true",
                 "authorized: false",
             ),
@@ -494,16 +494,16 @@ ARCH_CASES: List[Case] = [
     {
         # An active authorization whose baseline no longer matches the
         # recorded main baseline is stale. The fixture base already
-        # carries the active WORK-042-CORE-001 authorization
-        # (baseline 96db8aa since the DEC-0054/DEC-0055 LEDGER-RECON-006
-        # post-PR-#107 reconciliation); corrupting the recorded main
-        # baseline makes it stale.
+        # carries the active WORK-051-CORE-001 authorization
+        # (baseline fe6e6e3 since the DEC-0057/DEC-0058 LEDGER-RECON-007
+        # post-PR-#110/#111/#115 reconciliation); corrupting the recorded
+        # main baseline makes it stale.
         "name": "architect-stale-authorization-detected",
         "ops": [
             (
                 "replace",
                 "spec/architect/execution-state.yaml",
-                "  main_sha: 96db8aa4423dff845a223e0c93c67f3dc14e314d",
+                "  main_sha: fe6e6e35a49cb2113315d0ec1569f7e93a3cf200",
                 "  main_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
         ],
@@ -607,8 +607,8 @@ PROVENANCE_CASES: List[Case] = [
     },
     {
         # Implementation outside the authorized scope fails. Since
-        # DEC-0055 the base carries the active WORK-042-CORE-001
-        # authorization (scope: platform/ + its tools/docs areas),
+        # DEC-0058 the base carries the active WORK-051-CORE-001
+        # authorization (scope: commercial/ + its tools/docs areas),
         # so an implementation file under agent/ is out of scope.
         "name": "provenance-unauthorized-implementation-fails",
         "ops": [
@@ -625,8 +625,8 @@ PROVENANCE_CASES: List[Case] = [
     {
         # Self-authorization: the PR modifies the inherited authorization
         # record itself instead of inheriting it byte-identically from
-        # main. Since DEC-0055 the base already carries the active
-        # WORK-042-CORE-001 authorization, so self-authorization now
+        # main. Since DEC-0058 the base already carries the active
+        # WORK-051-CORE-001 authorization, so self-authorization now
         # means altering that record inside the PR (here: replacing the
         # authorization id with a fabricated successor). The probe file
         # sits inside the declared scope so the modified-authorization
@@ -635,13 +635,13 @@ PROVENANCE_CASES: List[Case] = [
         "ops": [
             (
                 "replace",
-                "spec/architect/authorizations/WORK-042.yaml",
-                "authorization_id: \"WORK-042-CORE-001\"",
-                "authorization_id: \"WORK-042-SELF-AUTHORIZED-002\"",
+                "spec/architect/authorizations/WORK-051.yaml",
+                "authorization_id: \"WORK-051-CORE-001\"",
+                "authorization_id: \"WORK-051-SELF-AUTHORIZED-002\"",
             ),
             (
                 "create",
-                "platform/self_authorized_probe.py",
+                "commercial/self_authorized_probe.py",
                 "# implementation file under a PR-altered authorization\n",
             ),
         ],
@@ -652,7 +652,7 @@ PROVENANCE_CASES: List[Case] = [
     {
         # PA-001 (DEC-0045): an in-review ledger entry with a matching
         # branch and areas is DESCRIPTIVE ONLY. The base_ops revert the
-        # post-DEC-0055 activation to simulate the stopped state (no
+        # post-DEC-0058 activation to simulate the stopped state (no
         # active authorization on main), so the continuation delta fails
         # closed — even though the file sits inside the (deactivated)
         # declared scope and the branch matches. This case is the inversion
@@ -668,24 +668,24 @@ PROVENANCE_CASES: List[Case] = [
             (
                 "replace",
                 "spec/architect/execution-state.yaml",
-                "  active_work_item: WORK-042",
+                "  active_work_item: WORK-051",
                 "  active_work_item: null",
             ),
             (
                 "replace",
                 "spec/architect/execution-state.yaml",
-                '  active_authorization: "WORK-042-CORE-001"',
+                '  active_authorization: "WORK-051-CORE-001"',
                 "  active_authorization: null",
             ),
             (
                 "replace",
-                "spec/architect/authorizations/WORK-042.yaml",
+                "spec/architect/authorizations/WORK-051.yaml",
                 "status: active",
                 "status: in-review",
             ),
             (
                 "replace",
-                "spec/architect/authorizations/WORK-042.yaml",
+                "spec/architect/authorizations/WORK-051.yaml",
                 "authorized: true",
                 "authorized: false",
             ),
@@ -693,11 +693,11 @@ PROVENANCE_CASES: List[Case] = [
         "ops": [
             (
                 "create",
-                "platform/reconstruction_probe.py",
+                "commercial/reconstruction_probe.py",
                 "# in-review continuation inside the declared areas\n",
             )
         ],
-        "branch": "work-042-platform",
+        "branch": "work-051-commercial",
         "expect_exit": 1,
         "expect_check": "ARCH-08",
     },
@@ -705,8 +705,8 @@ PROVENANCE_CASES: List[Case] = [
         # PA-001 (DEC-0045): an implementation delta passes ONLY under an
         # active authorization inherited byte-identically from the base,
         # with the exact recorded baseline and the delta inside scope.
-        # Since DEC-0055 the fixture base IS the Architect's activated
-        # state on main (WORK-042-CORE-001 landed through the DEC-0055
+        # Since DEC-0058 the fixture base IS the Architect's activated
+        # state on main (WORK-051-CORE-001 landed through the DEC-0058
         # governance transition), so no base_ops are needed: the case now
         # exercises the real repository activation end-to-end.
         "name": "provenance-authorized-implementation-passes",
@@ -714,23 +714,23 @@ PROVENANCE_CASES: List[Case] = [
         "ops": [
             (
                 "create",
-                "platform/authorized_probe.py",
+                "commercial/authorized_probe.py",
                 "# implementation inside the authorized scope\n",
             )
         ],
-        "branch": "work-042-platform",
+        "branch": "work-051-commercial",
         "expect_exit": 0,
         "expect_check": None,
     },
     {
         # Implementation PRs must not modify the persistent package. The
-        # probe sits inside the active WORK-042-CORE-001 scope (platform/)
+        # probe sits inside the active WORK-051-CORE-001 scope (commercial/)
         # so the package-modification rule is what fires.
         "name": "provenance-implementation-modifies-package-fails",
         "ops": [
             (
                 "create",
-                "platform/package_tamper_probe.py",
+                "commercial/package_tamper_probe.py",
                 "# implementation file\n",
             ),
             (
@@ -740,7 +740,7 @@ PROVENANCE_CASES: List[Case] = [
                 "## Resume rule (modified by the implementation PR)",
             ),
         ],
-        "branch": "work-042-platform",
+        "branch": "work-051-commercial",
         "expect_exit": 1,
         "expect_check": "ARCH-08",
     },
