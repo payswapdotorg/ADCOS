@@ -1,0 +1,34 @@
+decision_id: DEC-0056
+type: governance
+work_item: null
+acr: ACR-011
+pr: 111
+reviewed_sha: d30b2f7a40ed5ee6abdca7e611fbd6bbba47fcb4
+decision: ACCEPTED
+status: ACCEPTED
+reviewer: Architect (pectoraux)
+timestamp: 2026-09-01T05:25:40Z
+findings:
+  - "ACR-011 addresses a machine-checked Work Item registry boundary exposed by the delivered WORK-042 implementation."
+  - "The accepted extension preserves fail-closed backlog, dependency, authorization, and evidence semantics while explicitly representing WORK-043 as retired."
+  - "The synchronized registry extension is consistent with accepted ACR-009 commercial architecture and the canonical commercial dependency model."
+blockers: []
+required_corrections: []
+evidence:
+  merge_sha: 810374ec1d9cf55b82d1b82d59d12ea8aa6f9666
+  ci_run: 33458112038
+  artifacts:
+    - spec/acr/ACR-011-commercial-phase-registry-extension.md
+    - docs/governance/ACR-011-commercial-phase-registry-reconciliation.md
+accepted_scope:
+  - "Register WORK-042 and WORK-044 through WORK-053 as specified by ACR-011, with WORK-043 represented as a retired slot."
+  - "Synchronize the frozen Work Item registry, dependency graph, and machine-checked registry expectations without weakening fail-closed semantics."
+  - "Preserve W040 as an independent physical-validation track and preserve existing Work Item authorization boundaries."
+rejected_scope:
+  - "Acceptance or authorization of WORK-042, WORK-044 through WORK-053 beyond what is separately governed by their own decision records."
+  - "Implementation changes, Mission Authority changes, or protocol authority ownership changes."
+downstream_effect:
+  - "ACR-011 is accepted as the governing architecture change for extending the Work Item registry through the canonical commercial phase."
+  - "PR #111 is accepted and merged as the reviewed ACR-011 proposal."
+  - "Future Work Item acceptance and authorization remain separate repository-local governance decisions."
+resolved_by: null
