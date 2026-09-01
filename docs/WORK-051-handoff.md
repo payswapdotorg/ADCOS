@@ -136,3 +136,121 @@ preserved.
    `commercial/`, `tools/commercial_selftest.py`,
    `docs/WORK-051-handoff.md` (implementation-level append),
    `docs/WORK-051-evidence.md`.
+
+---
+
+# Implementation-level handoff (delivered on the W051 branch)
+
+**Appended by the W051 implementation PR under `WORK-051-CORE-001`
+(the W041/W042 precedent: the governance-level handoff above stays on
+main; this section records what was actually built).**
+
+## Package / API surface
+
+`commercial/` — 8 modules, frozen 52-name public API
+(`commercial/__init__.py` `__all__`, pinned by battery case_29):
+
+- **error model**: `CommercialError` + `CommercialReasonCode` (20
+  typed reasons: input/command integrity, duplicates and conflicts,
+  lifecycle discipline, expiry, compensating gates, settlement
+  integrity, payment separation, reference integrity, journal
+  corruption, store failure, instant validation).
+- **value model** (`model.py`): `CommercialState` (11 canonical states
+  + 4 compensating terminals), `CommercialAction` (15 actions),
+  `LIFECYCLE_TRANSITIONS` (25 edges, 2 state-preserving self-edges:
+  transaction creation and subsequent usage accruals),
+  `CommercialCommand` (idempotency-keyed input with content-derived
+  digest), `CommercialEvent` (append-only journaled fact with
+  content-derived id and full attribution),
+  `CommercialTransaction` (the fold projection), and the
+  `derive_*`/digest helpers (WORK-003 canonical JSON,
+  `sha256:` fingerprints).
+- **reference boundary** (`references.py`): `ReferenceFamily`
+  (session / network-path / delivery-evidence / usage / settlement /
+  payment), `Reference` (id + family + provenance, DATA only),
+  `ReferenceIndex` (immutable caller-built snapshot from public
+  authority reads), `resolve_references` (fail-closed resolvability;
+  the index is the family authority).
+- **admission rules** (`validation.py`): `ACTION_FAMILY_RULES` (the
+  payment/delivery separation table), payload shape validation,
+  reservation-deadline gates, compensating-state gates, and
+  settlement integrity (settlement-family citation + intact
+  delivery-evidence chain).
+- **journal** (`journal.py`): ONE atomic
+  (admitted-command + resulting-event) record per executed command;
+  hash chain over (sequence, content, prev); command digest
+  verification; duplicate command ids rejected at load; canonical-JSON
+  lines; `CommercialStore` seam (`MemoryCommercialStore`,
+  `FileCommercialStore` — the only filesystem-write site,
+  append-binary); persist-then-ack.
+- **lifecycle** (`lifecycle.py`): `CommercialCore` (fresh construction
+  over an EMPTY store; `load` = journal-first recovery), 15 typed
+  command methods, `CommandOutcome` (`appended`/`duplicate`),
+  `apply_record`/`fold_state` (the SINGLE state-derivation function
+  shared by the live manager and replay), `verify_integrity`,
+  `digest_stream`.
+- **digests** (`digest.py`): state/ledger/index digests and
+  `assemble_digest_stream` (the canonical evidence document).
+
+## Lifecycle table
+
+See `commercial/model.py` `LIFECYCLE_TRANSITIONS` and the battery's
+case_02 (exact-table pin). Terminal states: `SETTLED`, `CANCELLED`,
+`EXPIRED`, `PATH_FAILED`, `NON_DELIVERED` (no outgoing edges —
+historical commercial facts are immutable; corrections are
+compensating records).
+
+## Reference boundaries
+
+The core may reference (never own or mutate): logical session ids
+(WORK-012), NetworkPath ids (W041), delivery evidence (delivery
+plane), usage references (the W052 input plane), settlement
+confirmations, and payment observations (external DATA). The
+`ReferenceIndex` is built by the caller from public authority reads
+and injected; no authority object, client, or private accessor ever
+crosses the boundary (battery cases 27/28/31).
+
+## Persistence model
+
+Append-only `commercial-journal.jsonl` (one canonical-JSON line per
+admitted command+event record, hash-chained, content-derived ids);
+the command idempotency ledger is journaled with each record (durable
+across restart); `MemoryCommercialStore` for deterministic
+verification; fresh construction requires an empty store.
+
+## Replay / recovery behavior
+
+`CommercialCore.load(store, clock, references)`: load -> verify the
+full chain (ids, sequence, digests, duplicate command ids) -> fold
+with the single apply function -> resume. Live state == replayed state
+byte-identical by construction; redelivered commands are durable
+no-ops; the reference index is injected fresh at load (future commands
+re-validate citations against the CURRENT index — evicted delivery
+citations fail settlement, never silently). A store failure leaves no
+phantom state (persist-then-ack).
+
+## Extension points for W052 / W053 (advisory only — NOT authorized)
+
+- **W052 UsageLedger** (hard dep on W051): the `usage` reference
+  family and the state-preserving `accrue_usage` journal records are
+  the citation seam; metering itself stays outside W051.
+- **W053 EconomicAllocation** (W051+W052): allocation policy attaches
+  at `BILLABLE_FINAL`/`INITIATE_SETTLEMENT` (the commercial decision
+  points); the payload-DATA discipline (canonical JSON, no floats)
+  keeps economic quantities representable without provider leakage.
+- The compensating-record discipline extends (refund/dispute/
+  chargeback/reversal per ACR-009) as ADDITIONAL compensating records
+  on the same journal — settled history is never rewritten.
+
+## Explicit non-scope (W044-W050, W052, W053)
+
+Payment rails, custody, payout execution, KYC/KYB, jurisdiction rules,
+marketplace discovery, developer SDKs, usage metering, allocation
+policy, and any second authority remain OUTSIDE this delivery and
+require their own repository-local authorizations. Nothing in this PR
+authorizes, activates, or pre-implements them.
+
+## Physical evidence boundary
+
+No PHYSICAL claim. EVID-007/EVID-008 remain OPEN and W040-owned; W040
+stays in-review and NOT accepted.
