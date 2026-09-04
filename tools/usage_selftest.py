@@ -21,7 +21,10 @@ the W042 platform journal:
   evidence fails closed PAYMENT_NOT_DELIVERY at the kind
   table); reservation/lease state never creates usage
   (delivery-eligibility gate TRANSACTION_NOT_DELIVERING plus
-  the reserved/attempted DATA-only classes); provider
+  the reserved/attempted DATA-only classes), and that gate
+  binds ADMISSION AND REPLAY SYMMETRICALLY (case_49: a
+  walk-valid, fully-recomputed chain cannot forge usage
+  against a pre-delivery authority snapshot); provider
   observations are DATA, never proof of delivery
   (PROVIDER_NOT_DELIVERY);
 - idempotency and no-double-charge (criterion 2): exact command
@@ -79,12 +82,17 @@ the W042 platform journal:
   sealed statement / compensation), the event identities, the
   command/fact/attribution bindings, the sealed statement's
   tariff binding to the injected W051 transaction snapshot,
-  and the DELIVERED observations' evidence re-binding -- so
-  WALK-VALID, FULLY-RECOMPUTED-CHAIN fact tampering (mutated
+  the DELIVERED observations' evidence re-binding, and the
+  SAME W051 delivery-eligibility gate admission applies
+  (admission/replay symmetry) -- so WALK-VALID,
+  FULLY-RECOMPUTED-CHAIN fact tampering (mutated
   fact + recomputed fact/event identities + recomputed outer
   hash chain, with or without a cascaded command digest, seal,
-  and compensations) still fails closed JOURNAL_CORRUPT
-  (cases 46/47/48);
+  and compensations) still fails closed JOURNAL_CORRUPT, and
+  so does a fully-recomputed forgery claiming usage against a
+  pre-delivery (RESERVATION_HELD / OFFER_SELECTED) authority
+  snapshot with otherwise-valid matching delivered evidence
+  (cases 46/47/48/49);
 - determinism: the golden scenario's whole digest stream
   (journal, state, command ledger, event list, evidence index)
   is byte-identical across two fresh in-process runs and across
@@ -3815,6 +3823,428 @@ def case_48_walk_valid_recomputed_compensation_tamper(
 
 
 # ---------------------------------------------------------------------------
+# Case 49 -- the admission/replay symmetry vector for the W051
+# delivery-eligibility gate (the architect-specified forged
+# construction): a RESERVATION_HELD (or other pre-delivery)
+# authority snapshot + VALID matching DELIVERED evidence + a
+# WALK-VALID, FULLY-RECOMPUTED command/fact/event/record chain.
+# Admission rejects the observation (case_13); replay must reject
+# the journal that claims it was admitted (fail-closed
+# JOURNAL_CORRUPT) -- the journal cannot contain an observation
+# admission would have rejected, walk-valid or not.
+# ---------------------------------------------------------------------------
+
+
+def _forge_pre_delivery_journal(
+    transaction_id: str,
+    evidence_id: str,
+    *,
+    quantity: int,
+    window_start: str,
+    window_end: str,
+) -> List[Dict[str, Any]]:
+    """Build the WALK-VALID, FULLY-RECOMPUTED three-record forged
+    journal (creation DELIVERED observation -> seal -> refund)
+    claiming delivered usage against the given citation.
+
+    Every content-derived identity (command digest, observation
+    id, event ids, statement id, compensation id) and the ENTIRE
+    outer record chain are recomputed over the forged facts --
+    exactly the adversarial construction a motivated attacker
+    with full journal write access would produce.  The tariff
+    members match the injected snapshot (price 3 / byte), the
+    quantity is bounded by the authoritative evidence, the walk
+    edges are frozen-table legal, and the refund is bounded by
+    the sealed amount: internally self-consistent, so ONLY the
+    authority-side re-binding gates can reject it."""
+    observation_instant = "2026-09-01T14:02:00Z"
+    seal_instant = "2026-09-01T14:03:00Z"
+    refund_instant = "2026-09-01T14:04:00Z"
+    observation_id = derive_observation_id(
+        "forge-obs", transaction_id, "delivered", quantity,
+        evidence_id, window_start, window_end, observation_instant,
+    )
+    observe_command = {
+        "command_id": "forge-obs", "action": "observe-usage",
+        "transaction_id": transaction_id,
+        "payload": {
+            "quantity_class": "delivered", "quantity": quantity,
+            "evidence_id": evidence_id,
+            "window_start": window_start, "window_end": window_end,
+        },
+        "actor": "meter", "source": "usage-collector",
+    }
+    observation_fact = {
+        "kind": "usage-observation-record",
+        "observation_id": observation_id,
+        "command_id": "forge-obs", "transaction_id": transaction_id,
+        "quantity_class": "delivered", "quantity": quantity,
+        "recorded_at": observation_instant,
+        "actor": "meter", "source": "usage-collector",
+        "evidence_id": evidence_id,
+        "window_start": window_start, "window_end": window_end,
+    }
+    observation_record = {
+        "sequence": 1,
+        "command": observe_command,
+        "command_digest": UsageCommand.from_dict(observe_command).digest(),
+        "event": {
+            "transaction_id": transaction_id, "action": "observe-usage",
+            "from_state": "OBSERVING", "to_state": "OBSERVING",
+            "command_id": "forge-obs", "instant": observation_instant,
+            "actor": "meter", "source": "usage-collector",
+            "event_id": "", "fact": observation_fact,
+        },
+        "record_id": "",
+    }
+    _recompute_event_id(observation_record, observation_id)
+    statement_id = derive_statement_id(
+        transaction_id, (observation_id,), seal_instant
+    )
+    seal_command = {
+        "command_id": "forge-seal", "action": "seal-billable",
+        "transaction_id": transaction_id, "payload": {},
+        "actor": "billing", "source": "usage-ledger",
+    }
+    seal_fact = {
+        "kind": "sealed-billable-statement-record",
+        "statement_id": statement_id,
+        "transaction_id": transaction_id,
+        "reserved_quantity": 0, "attempted_quantity": 0,
+        "delivered_quantity": quantity, "billable_quantity": quantity,
+        "unit_price_micros": 3, "amount_micros": quantity * 3,
+        "billable_unit": "byte",
+        "tariff_provenance": "commercial-core-public-read",
+        "contributing_observations": [observation_id],
+        "contributing_evidence": [evidence_id],
+        "sealed_at": seal_instant,
+    }
+    seal_record = {
+        "sequence": 2, "command": seal_command,
+        "command_digest": UsageCommand.from_dict(seal_command).digest(),
+        "event": {
+            "transaction_id": transaction_id, "action": "seal-billable",
+            "from_state": "OBSERVING", "to_state": "BILLABLE_FINAL",
+            "command_id": "forge-seal", "instant": seal_instant,
+            "actor": "billing", "source": "usage-ledger",
+            "event_id": "", "fact": seal_fact,
+        },
+        "record_id": "",
+    }
+    _recompute_event_id(seal_record, statement_id)
+    compensation_id = derive_compensation_id(
+        transaction_id, "refund", 100, "goodwill credit",
+        statement_id, "forge-refund", refund_instant,
+    )
+    refund_command = {
+        "command_id": "forge-refund", "action": "record-refund",
+        "transaction_id": transaction_id,
+        "payload": {"amount_micros": 100, "reason": "goodwill credit"},
+        "actor": "billing", "source": "usage-ledger",
+    }
+    refund_fact = {
+        "kind": "usage-compensation-record",
+        "compensation_id": compensation_id,
+        "transaction_id": transaction_id,
+        "compensation_kind": "refund", "amount_micros": 100,
+        "reason": "goodwill credit", "statement_id": statement_id,
+        "command_id": "forge-refund", "recorded_at": refund_instant,
+    }
+    refund_record = {
+        "sequence": 3, "command": refund_command,
+        "command_digest": UsageCommand.from_dict(refund_command).digest(),
+        "event": {
+            "transaction_id": transaction_id, "action": "record-refund",
+            "from_state": "BILLABLE_FINAL", "to_state": "BILLABLE_FINAL",
+            "command_id": "forge-refund", "instant": refund_instant,
+            "actor": "billing", "source": "usage-ledger",
+            "event_id": "", "fact": refund_fact,
+        },
+        "record_id": "",
+    }
+    _recompute_event_id(refund_record, compensation_id)
+    return [observation_record, seal_record, refund_record]
+
+
+def case_49_walk_valid_pre_delivery_replay_forgery(
+    results: List[Result],
+) -> None:
+    name = "case_49_walk_valid_pre_delivery_replay_forgery"
+    ledger, index, _clock, fixture, tx = _golden_ledger()
+    runtime, peer, session_id, manager, integrator, shared = fixture
+    references = _references(manager, integrator, session_id)
+    problems: List[str] = []
+
+    # The RESERVATION_HELD authority: a REAL W051 commercial
+    # transaction driven only to the reservation phase, plus VALID
+    # matching DELIVERED evidence correlated to it -- the exact
+    # forged construction admission rejects (case_13) and replay
+    # must reject symmetrically.
+    core_pre = CommercialCore(
+        store=commercial.MemoryCommercialStore(),
+        clock=StepClock("2026-09-01T13:00:00Z", 60),
+        references=references,
+    )
+    out = core_pre.submit_intent(
+        command_id="rr-1", actor="buyer-agent", source="developer-api",
+        intent={"buyer": "buyer-rr"},
+    )
+    tx_reservation = out.transaction_id
+    core_pre.select_offer(
+        command_id="rr-2", transaction_id=tx_reservation,
+        actor="buyer-agent", source="developer-api",
+        offer={"offer_id": "offer-1", "provider": "provider-1",
+               "unit": "byte", "price": "3"},
+    )
+    core_pre.hold_reservation(
+        command_id="rr-3", transaction_id=tx_reservation, actor="platform",
+        source="reservation-service", expires_at="2026-09-01T13:30:00Z",
+    )
+    reservation_evidence_id = _external_id("delivery-evidence", "rr-pre-1")
+    reservation_index = UsageEvidenceIndex(
+        evidence=[
+            DeliveryEvidence(
+                evidence_id=reservation_evidence_id,
+                transaction_id=tx_reservation,
+                delivered_quantity=100, window_start=_W1, window_end=_W3,
+                evidence_kind=EvidenceKind.DELIVERED,
+                provenance="platform-journal",
+            )
+        ],
+        transactions=[
+            CommercialTransactionSnapshot(
+                transaction_id=tx_reservation,
+                commercial_state="RESERVATION_HELD",
+                unit_price_micros=3, billable_unit="byte",
+                tariff_provenance="commercial-core-public-read",
+            )
+        ],
+    )
+    # the OFFER_SELECTED authority (a second pre-delivery phase):
+    # same shape, synthetic citation as in case_13
+    tx_offer = "sha256:" + "8" * 64
+    offer_evidence_id = _external_id("delivery-evidence", "rr-pre-2")
+    offer_index = UsageEvidenceIndex(
+        evidence=[
+            DeliveryEvidence(
+                evidence_id=offer_evidence_id,
+                transaction_id=tx_offer,
+                delivered_quantity=100, window_start=_W1, window_end=_W3,
+                evidence_kind=EvidenceKind.DELIVERED,
+                provenance="platform-journal",
+            )
+        ],
+        transactions=[
+            CommercialTransactionSnapshot(
+                transaction_id=tx_offer,
+                commercial_state="OFFER_SELECTED",
+                unit_price_micros=3, billable_unit="byte",
+                tariff_provenance="commercial-core-public-read",
+            )
+        ],
+    )
+
+    # 1. admission symmetry (self-contained): live admission of
+    #    the same DELIVERED observation against the same
+    #    pre-delivery authorities fails closed exactly as case_13
+    #    proves -- RESERVATION_NOT_USAGE / TRANSACTION_NOT_DELIVERING
+    admission_ledger = UsageLedger(
+        store=MemoryUsageStore(),
+        clock=StepClock("2026-09-01T14:00:00Z", 60),
+        evidence_index=reservation_index,
+    )
+    problem = _expect_usage_error(
+        name, UsageReasonCode.RESERVATION_NOT_USAGE,
+        admission_ledger.observe_usage,
+        command_id="forge-adm-1", transaction_id=tx_reservation,
+        quantity_class=QuantityClass.DELIVERED, quantity=100,
+        evidence_id=reservation_evidence_id,
+        window_start=_W1, window_end=_W3,
+        actor="meter", source="usage-collector",
+    )
+    if problem:
+        problems.append("admission (reservation phase): %s" % problem)
+    admission_ledger_two = UsageLedger(
+        store=MemoryUsageStore(),
+        clock=StepClock("2026-09-01T14:00:00Z", 60),
+        evidence_index=offer_index,
+    )
+    problem = _expect_usage_error(
+        name, UsageReasonCode.TRANSACTION_NOT_DELIVERING,
+        admission_ledger_two.observe_usage,
+        command_id="forge-adm-2", transaction_id=tx_offer,
+        quantity_class=QuantityClass.DELIVERED, quantity=100,
+        evidence_id=offer_evidence_id,
+        window_start=_W1, window_end=_W3,
+        actor="meter", source="usage-collector",
+    )
+    if problem:
+        problems.append("admission (offer phase): %s" % problem)
+
+    # 2. THE VECTOR: the walk-valid, fully-recomputed journals
+    #    claiming that very admission -- replay must reject them
+    #    fail-closed JOURNAL_CORRUPT (the same eligibility gate,
+    #    re-applied against the injected W051 snapshot)
+    reservation_records = _forge_pre_delivery_journal(
+        tx_reservation, reservation_evidence_id,
+        quantity=100, window_start=_W1, window_end=_W3,
+    )
+    problem = _expect_usage_error(
+        name, UsageReasonCode.JOURNAL_CORRUPT,
+        UsageLedger.load,
+        store=FrozenBytesStore(_rechain(reservation_records)),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=reservation_index,
+    )
+    if problem:
+        problems.append(
+            "RESERVATION_HELD walk-valid fully-recomputed forgery: %s"
+            % problem
+        )
+    offer_records = _forge_pre_delivery_journal(
+        tx_offer, offer_evidence_id,
+        quantity=100, window_start=_W1, window_end=_W3,
+    )
+    problem = _expect_usage_error(
+        name, UsageReasonCode.JOURNAL_CORRUPT,
+        UsageLedger.load,
+        store=FrozenBytesStore(_rechain(offer_records)),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=offer_index,
+    )
+    if problem:
+        problems.append(
+            "OFFER_SELECTED walk-valid fully-recomputed forgery: %s"
+            % problem
+        )
+
+    # 3. CONTROL (the forgery is honest-shaped): the IDENTICAL
+    #    forged journal, replayed against an index identical
+    #    except the snapshot state is delivery-eligible
+    #    (DELIVERY_COMPLETED), loads cleanly and folds to the
+    #    expected bill -- proving the rejection in (2) is the
+    #    eligibility gate and ONLY the eligibility gate
+    eligible_index = UsageEvidenceIndex(
+        evidence=[
+            DeliveryEvidence(
+                evidence_id=reservation_evidence_id,
+                transaction_id=tx_reservation,
+                delivered_quantity=100, window_start=_W1, window_end=_W3,
+                evidence_kind=EvidenceKind.DELIVERED,
+                provenance="platform-journal",
+            )
+        ],
+        transactions=[
+            CommercialTransactionSnapshot(
+                transaction_id=tx_reservation,
+                commercial_state="DELIVERY_COMPLETED",
+                unit_price_micros=3, billable_unit="byte",
+                tariff_provenance="commercial-core-public-read",
+            )
+        ],
+    )
+    try:
+        reloaded = UsageLedger.load(
+            store=FrozenBytesStore(
+                _rechain(json.loads(json.dumps(reservation_records)))
+            ),
+            clock=StepClock(_UT0, _USTEP),
+            evidence_index=eligible_index,
+        )
+    except UsageError as error:
+        problems.append(
+            "control (eligible snapshot) rejected the honest-shaped "
+            "journal: %s %s" % (error.reason, error.detail[:80])
+        )
+    else:
+        projection = reloaded.transaction(tx_reservation)
+        statement = projection.statement
+        assert statement is not None
+        if (
+            statement.billable_quantity != 100
+            or statement.amount_micros != 300
+            or statement.unit_price_micros != 3
+        ):
+            problems.append("control fold diverged from the forged tariff")
+        if projection.refunded_amount_micros() != 100:
+            problems.append("control compensation fold diverged")
+
+    # 4. The authority-downgrade vector: the byte-UNMODIFIED
+    #    honest golden journal replayed against an index
+    #    identical to the golden one EXCEPT the golden
+    #    transaction's snapshot state is RESERVATION_HELD (the
+    #    tariff and everything else untouched) -- replay fails
+    #    closed (fail-closed, never fail-open), and the honest
+    #    index still loads it byte-identically
+    honest_bytes = b"".join(
+        record.to_line() for record in ledger.journal_records()
+    )
+    downgraded_transactions = []
+    for tid in index.transaction_ids():
+        snapshot = index.transaction(tid)
+        downgraded_transactions.append(
+            CommercialTransactionSnapshot(
+                transaction_id=snapshot.transaction_id,
+                commercial_state=(
+                    "RESERVATION_HELD" if tid == tx
+                    else snapshot.commercial_state
+                ),
+                unit_price_micros=snapshot.unit_price_micros,
+                billable_unit=snapshot.billable_unit,
+                tariff_provenance=snapshot.tariff_provenance,
+            )
+        )
+    downgraded_index = UsageEvidenceIndex(
+        evidence=[index.evidence(eid) for eid in index.evidence_ids()],
+        transactions=downgraded_transactions,
+    )
+    problem = _expect_usage_error(
+        name, UsageReasonCode.JOURNAL_CORRUPT,
+        UsageLedger.load,
+        store=FrozenBytesStore(honest_bytes),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=downgraded_index,
+    )
+    if problem:
+        problems.append("authority downgrade accepted at replay: %s" % problem)
+    try:
+        honest_reload = UsageLedger.load(
+            store=FrozenBytesStore(honest_bytes),
+            clock=StepClock(_UT0, _USTEP),
+            evidence_index=index,
+        )
+    except UsageError as error:
+        problems.append(
+            "honest journal no longer loads against the honest index: %s %s"
+            % (error.reason, error.detail[:80])
+        )
+    else:
+        if (
+            honest_reload.journal_digest() != ledger.journal_digest()
+            or honest_reload.state_digest() != ledger.state_digest()
+        ):
+            problems.append("honest reload digests diverged")
+
+    if problems:
+        results.append(fail(name, "; ".join(problems[:6])))
+        return
+    results.append(
+        ok(name, "admission/replay symmetry for the W051 delivery-"
+                 "eligibility gate: RESERVATION_HELD and OFFER_SELECTED "
+                 "authorities with VALID matching delivered evidence reject "
+                 "the live observation (RESERVATION_NOT_USAGE / "
+                 "TRANSACTION_NOT_DELIVERING) AND the walk-valid "
+                 "fully-recomputed journal that claims it was admitted "
+                 "(JOURNAL_CORRUPT); the same journal against a "
+                 "delivery-eligible snapshot loads cleanly (the rejection "
+                 "is the eligibility gate alone); a downgraded authority "
+                 "snapshot rejects even the byte-unmodified honest journal "
+                 "(fail-closed), which still reloads byte-identically "
+                 "against the honest index")
+    )
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -3870,6 +4300,7 @@ def main() -> int:
         case_46_walk_valid_recomputed_observation_tamper,
         case_47_walk_valid_recomputed_seal_tamper,
         case_48_walk_valid_recomputed_compensation_tamper,
+        case_49_walk_valid_pre_delivery_replay_forgery,
     ):
         case(results)
     failures = [result for result in results if not result[1]]

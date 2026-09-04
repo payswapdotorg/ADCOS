@@ -46,7 +46,7 @@ accepted).**
 | Path | Content |
 |---|---|
 | `usage/` | The UsageLedger package (8 modules) |
-| `tools/usage_selftest.py` | The deterministic battery (48 cases) |
+| `tools/usage_selftest.py` | The deterministic battery (49 cases) |
 | `docs/WORK-052-handoff.md` | Governance handoff (main) + implementation-level append (this PR) |
 | `docs/WORK-052-evidence.md` | This evidence record |
 
@@ -107,15 +107,22 @@ quantity class citing authoritative delivery evidence:
   case_14): payment-observation evidence is rejected at the kind
   table, and the sealed statement's billable derivation provably
   draws only from delivered-kind evidence citations.
-- **Reservation/lease state never creates usage** (case_13): a
-  DELIVERED observation against a transaction whose cited W051
-  state is `RESERVATION_HELD` fails closed
+- **Reservation/lease state never creates usage** (case_13,
+  case_49): a DELIVERED observation against a transaction whose
+  cited W051 state is `RESERVATION_HELD` fails closed
   `RESERVATION_NOT_USAGE`; any other pre-delivery phase fails
   closed `TRANSACTION_NOT_DELIVERING`. The reserved and attempted
   quantity classes (ACR-009: usage records distinguish reserved /
   attempted / delivered / billable / disputed / refunded /
   reversed quantities) are recorded as DATA for reconciliation and
-  structurally never contribute to billable quantity.
+  structurally never contribute to billable quantity. The
+  delivery-eligibility gate binds **admission and replay
+  symmetrically** (case_49, the second architectural review
+  round): a walk-valid, fully-recomputed journal claiming a
+  DELIVERED observation against a pre-delivery authority snapshot
+  with otherwise-valid matching delivered evidence fails closed
+  `JOURNAL_CORRUPT` at load/fold — the journal cannot contain an
+  observation admission would have rejected.
 - Fabricated evidence ids and fabricated transaction citations
   fail closed `EVIDENCE_UNKNOWN` / `TRANSACTION_UNKNOWN` (case_09);
   cross-transaction evidence fails closed `EVIDENCE_MISMATCH`
@@ -301,7 +308,12 @@ state change):
   statement is re-derived against the **injected W051
   transaction snapshot** (tariff unit price, billable unit,
   provenance, and the exact amount
-  `billable_quantity * unit_price_micros`), the DELIVERED
+  `billable_quantity * unit_price_micros`), the cited W051
+  transaction snapshot must resolve and pass the **SAME
+  delivery-eligibility gate admission applies**
+  (`validate_delivery_eligibility` — reservation/lease and every
+  other pre-delivery state never creates usage, at admission OR
+  at replay; admission/replay symmetry), the DELIVERED
   observations' evidence citations re-resolve against the
   **injected evidence index** (kind table, correlation, window,
   static and cumulative quantity bounds), and compensations
@@ -326,6 +338,24 @@ state change):
   attribution binding, and an action/**fact-kind swap** fails the
   action/fact table. A recomputed outer hash chain cannot make a
   modified economic fact acceptable.
+- **The admission/replay delivery-eligibility asymmetry is
+  closed** (case_49, the second review round's P0): the exact
+  forged construction the architectural review specified — a
+  `RESERVATION_HELD` (or `OFFER_SELECTED`) authority snapshot +
+  VALID matching DELIVERED evidence + a walk-valid,
+  fully-recomputed command/fact/event/record chain (creation
+  observation → seal → refund, every identity and the entire
+  outer chain recomputed, tariff- and bound-consistent) — is
+  **rejected fail-closed `JOURNAL_CORRUPT` at replay** while the
+  identical journal against a delivery-eligible snapshot loads
+  cleanly (the control proves the rejection is the eligibility
+  gate alone), and a downgraded authority snapshot (the
+  byte-unmodified honest journal replayed against an index whose
+  golden transaction state is `RESERVATION_HELD`, tariff
+  untouched) also fails closed — fail-closed, never fail-open.
+  Red/green proof: on the pre-correction head the three forgeries
+  were accepted at replay (the battery FAILed); on this head they
+  fail closed (49/49 PASS).
 - **Persist-then-ack** (case_32): a store failure leaves no
   phantom in-memory state (no journal record, no transaction).
 - **Journal-first recovery** (case_29): `UsageLedger.load` ==
@@ -392,6 +422,9 @@ state change):
 | walk-valid maximal-cascade compensation tamper | PASS — `JOURNAL_CORRUPT` (bounded net) |
 | walk-valid event attribution swap (recomputed chain) | PASS — `JOURNAL_CORRUPT` (attribution binding) |
 | walk-valid action/fact kind swap (recomputed chain) | PASS — `JOURNAL_CORRUPT` (action/fact table) |
+| walk-valid pre-delivery forgery (RESERVATION_HELD + valid evidence + recomputed chain) | PASS — `JOURNAL_CORRUPT` (eligibility re-application) |
+| walk-valid pre-delivery forgery (OFFER_SELECTED + valid evidence + recomputed chain) | PASS — `JOURNAL_CORRUPT` (eligibility re-application) |
+| honest journal against a downgraded (pre-delivery) authority snapshot | PASS — `JOURNAL_CORRUPT` (fail-closed, never fail-open) |
 | store failure phantom state | PASS — none (persist-then-ack) |
 | reserved/attempted class billed | PASS — never (DATA-only) |
 | payment capture creating usage | PASS — never (kind table) |
@@ -400,7 +433,7 @@ All 23 frozen reason codes are exercised (battery case_40).
 
 ## 12. Test results
 
-- `python3 tools/usage_selftest.py`: **PASS 48/48** (two
+- `python3 tools/usage_selftest.py`: **PASS 49/49** (two
   consecutive runs byte-identical; the determinism cases are
   in-process two-run and four-subprocess-hash-seed proofs).
 - `python3 tools/spec_check.py`: **17/17 PASS** on this head (the
@@ -476,17 +509,23 @@ architecture. `spec_check.py --provenance` ARCH-08 PASS.
   delivery.
 - CI success is not acceptance: the Architect's exact-head review
   of this PR is the acceptance gate (DEC-0053 single-Architect
-  authority). This head is the **correction round** responding to
-  the architectural review of the first head (REQUEST CHANGES):
-  the two P0 replay-integrity defects (fact-identity
+  authority). This head is the **second correction round** on the
+  same PR lineage. Round 1 (REQUEST CHANGES on the first head)
+  corrected the two P0 replay-integrity defects (fact-identity
   re-derivation; sealed-bill tariff re-binding) and the three P1
   findings (walk-valid recomputed-chain tamper battery;
   arrival-order claim narrowed to what is proven; refunded /
-  reversed quantity views separated) are corrected on this same
-  PR lineage under `WORK-052-CORE-001`, with the journaled
-  history and every admitted identity byte-unchanged (the golden
-  digest stream is identical across the correction — the
-  corrections add verification, they change no admitted fact).
+  reversed quantity views separated). Round 2 (the re-review's
+  remaining P0) closed the admission/replay delivery-eligibility
+  asymmetry: replay now re-applies the authoritative W051
+  delivery-eligibility gate for every DELIVERED observation,
+  fail-closed `JOURNAL_CORRUPT`, with the `RESERVATION_HELD` and
+  `OFFER_SELECTED` walk-valid fully-recomputed adversarial
+  vectors (case_49) added to the battery. The journaled history
+  and every admitted identity remain byte-unchanged across both
+  correction rounds (the golden digest stream is identical —
+  the corrections add verification, they change no admitted
+  fact).
 - The replay-integrity boundary is stated honestly (§ 10): the
   journal verifies itself plus the injected authority anchors;
   a fully self-consistent within-bounds rewrite is detectable

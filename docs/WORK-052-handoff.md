@@ -88,15 +88,24 @@ W052 is a SOFTWARE-class control-plane implementation. It must make no PHYSICAL 
 **Appended by the W052 implementation PR under `WORK-052-CORE-001`
 (the W041/W042/W051 precedent: the governance-level handoff above
 stays on main; this section records what was actually built).
-Updated in the correction round responding to the architectural
-REQUEST-CHANGES review of the first head: the two P0
-replay-integrity corrections (complete causal fact-identity
-re-derivation on load/replay; sealed-bill re-binding to the
-injected W051 tariff snapshot) and the three P1 corrections
-(walk-valid recomputed-chain tamper battery; arrival-order claim
-narrowed to the economic fold; refunded/reversed quantity views
-separated). The journaled history and every admitted identity
-are byte-unchanged across the correction.**
+Updated across two correction rounds on the same PR lineage
+responding to the architectural reviews. Round 1 (REQUEST CHANGES
+on the first head): the two P0 replay-integrity corrections
+(complete causal fact-identity re-derivation on load/replay;
+sealed-bill re-binding to the injected W051 tariff snapshot) and
+the three P1 corrections (walk-valid recomputed-chain tamper
+battery; arrival-order claim narrowed to the economic fold;
+refunded/reversed quantity views separated). Round 2 (the
+re-review's remaining P0): the admission/replay
+delivery-eligibility asymmetry closed — replay re-applies the
+authoritative W051 delivery-eligibility gate for every DELIVERED
+observation, fail-closed `JOURNAL_CORRUPT`, with the
+`RESERVATION_HELD`/`OFFER_SELECTED` walk-valid fully-recomputed
+adversarial vectors added (case_49). The journaled history and
+every admitted identity are byte-unchanged across both
+correction rounds (the golden digest stream is identical —
+the corrections add verification, they change no admitted
+fact).**
 
 ## Package / API surface
 
@@ -223,6 +232,13 @@ re-derives and verifies, for EVERY journal record —
   `billable_quantity * unit_price_micros` (the zero-bill seal is
   tariff-bound identically) — a recomputed chain cannot reprice
   the billable fact;
+- observations cite a W051 transaction snapshot that RESOLVES
+  against the injected index and passes the SAME
+  delivery-eligibility gate admission applies (round 2's P0:
+  `RESERVATION_HELD` and every other pre-delivery state never
+  creates usage, at admission OR at replay — a walk-valid,
+  fully-recomputed chain cannot forge usage against a
+  pre-delivery authority snapshot);
 - DELIVERED observations' evidence citations re-resolve against
   the INJECTED index (kind table, correlation, window, static and
   cumulative quantity caps; duplicate evidence-window identities
@@ -234,7 +250,13 @@ re-derives and verifies, for EVERY journal record —
 Any mismatch fails closed `JOURNAL_CORRUPT`. The battery proves
 walk-valid, fully-recomputed-chain fact tampering (fact-only and
 maximal-cascade variants for observations, seals, and
-compensations) is still rejected (cases 46/47/48).
+compensations) is still rejected (cases 46/47/48), and the
+pre-delivery forgery vectors — `RESERVATION_HELD` and
+`OFFER_SELECTED` authority snapshots with valid matching
+delivered evidence, fully recomputed chains, an
+eligible-snapshot control, and the honest-journal
+authority-downgrade variant — are rejected symmetrically with
+admission (case_49).
 
 **Honest boundary:** the journal verifies itself plus the
 injected authority anchors; a fully self-consistent

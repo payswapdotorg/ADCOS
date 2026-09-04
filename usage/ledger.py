@@ -43,7 +43,10 @@ replay re-derives and verifies the COMPLETE causal identity web
 statement, compensation), the event identity, the
 command/fact/attribution bindings, the walk linkage, the sealed
 statement's tariff binding to the injected W051 transaction
-snapshot, and the DELIVERED observations' evidence re-binding
+snapshot, the DELIVERED observations' evidence re-binding, and
+the SAME W051 delivery-eligibility gate admission applies
+(admission/replay symmetry: the journal cannot contain an
+observation admission would have rejected, walk-valid or not)
 -- so a fact mutated together with a fully recomputed outer
 hash chain still fails closed ``JOURNAL_CORRUPT``.  The
 per-transaction projection is sorted by observation id, so the
@@ -349,16 +352,22 @@ def _verify_observation_causality(
     evidence_index: UsageEvidenceIndex,
 ) -> None:
     """The command -> observation causal binding + the
-    authoritative evidence re-binding (replay integrity).
+    authoritative evidence and delivery-eligibility re-binding
+    (replay integrity).
 
     The observation fact must be EXACTLY the deterministic
     derivation of its causal command (payload members, event
-    instant, attribution); and a DELIVERED observation's evidence
-    citation must re-resolve against the injected index (kind
-    table, correlation, window, static and cumulative quantity
-    bounds) exactly as admission required -- the journal cannot
-    contain an observation admission would have rejected or
-    de-duplicated.
+    instant, attribution); the cited W051 transaction snapshot
+    must resolve against the injected index and the DELIVERED
+    observation must pass the SAME delivery-eligibility gate
+    admission applies (usage requires an already-authorized
+    delivery path; reservation/lease state never creates usage
+    -- at admission OR at replay); and a DELIVERED observation's
+    evidence citation must re-resolve against the injected index
+    (kind table, correlation, window, static and cumulative
+    quantity bounds) exactly as admission required -- the
+    journal cannot contain an observation admission would have
+    rejected or de-duplicated.
     """
     command = record.command
     event = record.event
@@ -396,6 +405,40 @@ def _verify_observation_causality(
             "a mutated fact with recomputed identities but an untouched "
             "command fails here)",
         )
+    # The authoritative W051 transaction snapshot must resolve at
+    # replay exactly as admission required (admission resolves it
+    # for EVERY command before any evidence work) -- an
+    # observation citing a transaction unresolvable in the
+    # injected authority is a fabricated citation.
+    try:
+        snapshot = evidence_index.transaction(command.transaction_id)
+    except UsageError as error:
+        raise _corrupt(
+            record,
+            "the observation's transaction %s does not resolve against "
+            "the injected W051 authority at replay: %s"
+            % (command.transaction_id, error.detail),
+        ) from error
+    # The SAME delivery-eligibility gate admission applies
+    # (admission step: validate_delivery_eligibility before any
+    # DELIVERED usage is admitted).  Usage requires an
+    # already-authorized delivery path, and reservation/lease
+    # state NEVER creates usage: a DELIVERED observation whose
+    # authoritative snapshot is pre-delivery (RESERVATION_HELD or
+    # any other pre-delivery phase) is a fact admission would
+    # have rejected, so the journal cannot contain it -- even a
+    # walk-valid, fully recomputed chain cannot forge one.
+    # (No-op for non-DELIVERED classes, exactly like admission.)
+    try:
+        validate_delivery_eligibility(command, snapshot)
+    except UsageError as error:
+        raise _corrupt(
+            record,
+            "the DELIVERED observation is not delivery-eligible against "
+            "the injected W051 transaction snapshot at replay (usage "
+            "requires an authorized delivery path; reservation/lease "
+            "never creates usage): %s" % error.detail,
+        ) from error
     if observation.quantity_class == QuantityClass.DELIVERED:
         try:
             evidence = resolve_observation_evidence(command, evidence_index)
@@ -574,12 +617,16 @@ def apply_record(
       its causal command, the folded state, and the event
       instant -- and, for the sealed statement, of the injected
       W051 transaction snapshot (tariff price/unit/provenance
-      and the exact amount), and, for DELIVERED observations, of
-      the authoritative evidence citation re-resolved against
-      the injected index (kind, correlation, window, quantity
-      bounds); compensations must cite the folded sealed
-      statement and stay bounded (net never negative; one open
-      dispute).
+      and the exact amount), and, for observations, of the
+      authoritative W051 snapshot resolution + the SAME
+      delivery-eligibility gate admission applies
+      (RESERVATION_HELD and every other pre-delivery state never
+      creates usage, at admission OR at replay), and, for
+      DELIVERED observations, of the authoritative evidence
+      citation re-resolved against the injected index (kind,
+      correlation, window, quantity bounds); compensations must
+      cite the folded sealed statement and stay bounded (net
+      never negative; one open dispute).
 
     A modified fact therefore cannot be made chain-valid merely
     by recomputing the outer record id/hash chain: every
@@ -813,8 +860,8 @@ def fold_state(
     where replay re-derives and verifies the complete causal
     identity web of every record (fact identities, event
     identities, command/fact/attribution bindings, walk
-    linkage, the W051 tariff/evidence re-binding) -- all
-    fail-closed ``JOURNAL_CORRUPT``.
+    linkage, the W051 tariff/evidence/eligibility re-binding)
+    -- all fail-closed ``JOURNAL_CORRUPT``.
     """
     state: Dict[str, UsageTransaction] = {}
     for record in records:
