@@ -46,7 +46,7 @@ accepted).**
 | Path | Content |
 |---|---|
 | `usage/` | The UsageLedger package (8 modules) |
-| `tools/usage_selftest.py` | The deterministic battery (45 cases) |
+| `tools/usage_selftest.py` | The deterministic battery (48 cases) |
 | `docs/WORK-052-handoff.md` | Governance handoff (main) + implementation-level append (this PR) |
 | `docs/WORK-052-evidence.md` | This evidence record |
 
@@ -149,14 +149,23 @@ state change):
 
 ## 5. Out-of-order and delayed observations (criterion 2)
 
-- **Arrival-order independence** (case_19): the same admitted
-  observation set sealed in any arrival order (including the
-  delayed earliest-window-last permutation) produces the SAME
-  sealed billable quantity, amount, and sorted audit lists — the
-  per-transaction projection is sorted by observation id and the
-  billable derivation is a commutative sum. The journal honestly
-  records admission order (the history); the sealed billable fact
-  is order-independent.
+- **Arrival-order-independent ECONOMIC fold; admission-attributed
+  audit identity** (case_19, narrowed to exactly what is
+  proven): the same admitted observation set sealed in any
+  arrival order (including the delayed earliest-window-last
+  permutation) produces the SAME sealed billable quantity,
+  amount, contributing-evidence multiset, observation count, and
+  net — the per-transaction projection is sorted by observation
+  id and the billable derivation is a commutative sum. The
+  observation identities, the `contributing_observations` audit
+  list, and the statement id are honestly **admission-attributed**
+  (they bind the causal command id and the admission instant),
+  so different arrival orders produce DIFFERENT ids and audit
+  lists — case_19 PROVES this divergence rather than claiming
+  order-independent audit identity. The journal honestly records
+  admission order (the history); the economic billable fact is
+  the order-independent surface, and the evidence record claims
+  exactly that.
 - **Delayed observations after finality fail closed** (case_20):
   once BILLABLE_FINAL, both delivered and data-class observations
   are rejected `USAGE_SEALED` (the sealed fact is immutable;
@@ -165,8 +174,10 @@ state change):
   (case_07 admission; case_04 model; case_31 replay): a fully
   recomputed, chain-valid, table-legal journal record whose
   declared `from_state` does not connect to the folded walk is
-  rejected at load by the walk-linkage verification — the replay
-  verifies the WALK, not merely the chain and each edge.
+  rejected at load — the replay verifies the WALK, not merely
+  the chain and each edge, and the causal identity
+  re-derivation (§ 10) gates fabricated identities even before
+  the walk linkage is reached.
 
 ## 6. Billable finality (criterion 3)
 
@@ -266,12 +277,55 @@ state change):
   isolated baselines byte-for-byte (no shared mutable usage
   state).
 
-## 10. Durability
+## 10. Durability and replay integrity
 
 - The journal is append-only and hash-chained (W042/W051
   discipline): byte tamper, line reorder, tail truncation,
-  sequence gap, command-digest edit, and event-id edit all fail
-  closed `JOURNAL_CORRUPT` at load (case_28).
+  sequence gap, command-digest edit, event-id edit, and
+  non-canonical (float) payload content all fail closed
+  `JOURNAL_CORRUPT` at load (case_28).
+- **The complete causal identity web is re-derived and verified
+  on every replay/load** (the P0 replay-integrity boundary): the
+  single `apply_record` fold — used by BOTH the live manager and
+  replay — verifies, for every journal record, that
+  (a) the event attribution equals the admitted command's
+  attribution; (b) the fact kind matches the action (the
+  action/fact table); (c) each content-derived fact identity
+  (`observation_id` / `statement_id` / `compensation_id`)
+  re-derives from the fact's OWN content; (d) the `event_id`
+  re-derives from the event's content and the fact's identity;
+  (e) the fact is EXACTLY the deterministic derivation of its
+  causal command, the folded walk state, and the event instant;
+  (f) the walk linkage and frozen transition table hold; and
+  (g) the external authority anchors re-bind: the sealed
+  statement is re-derived against the **injected W051
+  transaction snapshot** (tariff unit price, billable unit,
+  provenance, and the exact amount
+  `billable_quantity * unit_price_micros`), the DELIVERED
+  observations' evidence citations re-resolve against the
+  **injected evidence index** (kind table, correlation, window,
+  static and cumulative quantity bounds), and compensations
+  re-verify the bounded-net discipline (cumulative compensation
+  ≤ the sealed amount; one open dispute). Any mismatch fails
+  closed `JOURNAL_CORRUPT`.
+- **Walk-valid, fully-recomputed-chain fact tampering is
+  rejected** (cases 46/47/48, the adversarial class the
+  architectural review required): an observation mutated with a
+  fully recomputed identity cascade and outer chain fails the
+  causal command→fact binding, and a MAXIMAL cascade (mutated
+  command + recomputed digest, re-derived seal and
+  compensations, internally self-consistent quantities/amount at
+  the honest tariff) still fails the injected evidence authority
+  (the cumulative quantity cap); a chain-recomputed **tariff
+  tamper** on the sealed bill (internally arithmetic-consistent
+  repricing) fails the W051 snapshot re-binding — including on
+  the honest zero-bill seal; a compensation payload tamper fails
+  the command→fact binding, and its maximal cascade fails the
+  bounded-net discipline. An event **attribution swap** (forged
+  actor on a chain-recomputed event) fails the event/command
+  attribution binding, and an action/**fact-kind swap** fails the
+  action/fact table. A recomputed outer hash chain cannot make a
+  modified economic fact acceptable.
 - **Persist-then-ack** (case_32): a store failure leaves no
   phantom in-memory state (no journal record, no transaction).
 - **Journal-first recovery** (case_29): `UsageLedger.load` ==
@@ -280,10 +334,30 @@ state change):
   the recovered ledger accepts new commands and both idempotency
   layers survive restart. `FileUsageStore`
   (`usage-journal.jsonl`) is the only filesystem-write site in
-  the usage family.
+  the usage family. Load requires the injected index to resolve
+  every transaction/evidence citation the journal carries (the
+  caller injects an index at least as complete as
+  admission-time; an unresolvable citation at replay is
+  `JOURNAL_CORRUPT` — fail closed).
 - **Replay verification** (case_30): `fold(journal) == live`
   byte-identical by construction (the same single
   `apply_record`); the fold is a pure function.
+- **Honest tamper-boundary disclosure**: the replay gates above
+  verify the journal against itself (the complete internal
+  causal web) and against the injected authority snapshots (the
+  W051 tariff and the delivery evidence). A hypothetical
+  adversary who rewrites the journal AND every cascaded identity
+  AND stays within every authority bound (e.g. a quantity
+  under-statement that remains inside the evidence caps, with a
+  fully re-derived seal and compensations) produces a journal
+  that is indistinguishable from an honest alternative admission
+  history BY THE JOURNAL ALONE; detecting that class is exactly
+  what the externally published digest stream
+  (`journal_digest` / `digest_stream`) is for — operators
+  compare the digest stream against their own out-of-band
+  record. No in-journal mechanism can anchor against a full
+  self-consistent rewrite, and this evidence record does not
+  claim one.
 
 ## 11. Mandated negative cases
 
@@ -309,8 +383,15 @@ state change):
 | compensation before seal | PASS — `COMPENSATION_REQUIRES_FINAL` |
 | over-compensation (net < 0) | PASS — `COMPENSATION_EXCEEDED` |
 | second open dispute | PASS — `DISPUTE_ALREADY_OPEN` |
-| inserted out-of-order journal record | PASS — `JOURNAL_CORRUPT` (walk linkage) |
-| journal tamper (6 vectors) | PASS — `JOURNAL_CORRUPT` |
+| inserted out-of-order journal record | PASS — `JOURNAL_CORRUPT` (causal identity + walk linkage) |
+| journal tamper (7 vectors) | PASS — `JOURNAL_CORRUPT` |
+| walk-valid fact-only tamper w/ recomputed chain (observation) | PASS — `JOURNAL_CORRUPT` (command→fact binding) |
+| walk-valid maximal-cascade observation tamper | PASS — `JOURNAL_CORRUPT` (evidence authority cap) |
+| walk-valid chain-recomputed tariff tamper (incl. zero-bill seal) | PASS — `JOURNAL_CORRUPT` (W051 snapshot binding) |
+| walk-valid fact-only compensation tamper | PASS — `JOURNAL_CORRUPT` (command→fact binding) |
+| walk-valid maximal-cascade compensation tamper | PASS — `JOURNAL_CORRUPT` (bounded net) |
+| walk-valid event attribution swap (recomputed chain) | PASS — `JOURNAL_CORRUPT` (attribution binding) |
+| walk-valid action/fact kind swap (recomputed chain) | PASS — `JOURNAL_CORRUPT` (action/fact table) |
 | store failure phantom state | PASS — none (persist-then-ack) |
 | reserved/attempted class billed | PASS — never (DATA-only) |
 | payment capture creating usage | PASS — never (kind table) |
@@ -319,7 +400,7 @@ All 23 frozen reason codes are exercised (battery case_40).
 
 ## 12. Test results
 
-- `python3 tools/usage_selftest.py`: **PASS 45/45** (two
+- `python3 tools/usage_selftest.py`: **PASS 48/48** (two
   consecutive runs byte-identical; the determinism cases are
   in-process two-run and four-subprocess-hash-seed proofs).
 - `python3 tools/spec_check.py`: **17/17 PASS** on this head (the
@@ -395,7 +476,22 @@ architecture. `spec_check.py --provenance` ARCH-08 PASS.
   delivery.
 - CI success is not acceptance: the Architect's exact-head review
   of this PR is the acceptance gate (DEC-0053 single-Architect
-  authority).
+  authority). This head is the **correction round** responding to
+  the architectural review of the first head (REQUEST CHANGES):
+  the two P0 replay-integrity defects (fact-identity
+  re-derivation; sealed-bill tariff re-binding) and the three P1
+  findings (walk-valid recomputed-chain tamper battery;
+  arrival-order claim narrowed to what is proven; refunded /
+  reversed quantity views separated) are corrected on this same
+  PR lineage under `WORK-052-CORE-001`, with the journaled
+  history and every admitted identity byte-unchanged (the golden
+  digest stream is identical across the correction — the
+  corrections add verification, they change no admitted fact).
+- The replay-integrity boundary is stated honestly (§ 10): the
+  journal verifies itself plus the injected authority anchors;
+  a fully self-consistent within-bounds rewrite is detectable
+  only against the externally published digest stream — no
+  stronger claim is made.
 - W053 (EconomicAllocation) is NOT activated by this delivery;
   roadmap placement never authorizes downstream work. The usage
   ledger exposes exactly the billable-final facts and

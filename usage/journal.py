@@ -45,7 +45,13 @@ journals):
   id, the chain links, the contiguous 1..N sequence, every
   command digest, and duplicate command ids -- any tampered
   byte, reordered line, truncated tail, sequence gap, or
-  duplicate pair fails closed with ``JOURNAL_CORRUPT``.
+  duplicate pair fails closed with ``JOURNAL_CORRUPT``.  The
+  fold (in :mod:`usage.ledger`) then re-derives and verifies
+  the COMPLETE causal identity web of every record (the
+  content-derived fact identities, the event identities, the
+  command/fact/attribution bindings, the walk linkage, and the
+  W051 tariff/evidence re-binding), so a fact mutated together
+  with a fully recomputed outer chain still fails closed.
 - **persist-then-ack**: the journal is persisted BEFORE the
   in-memory record is acknowledged; a store failure leaves no
   phantom in-memory state (``STORE_FAILED``).
@@ -412,21 +418,34 @@ class AppendOnlyUsageJournal:
                     UsageReasonCode.JOURNAL_CORRUPT,
                     "journal line %d is not valid JSON: %s" % (line_no, error),
                 ) from error
-            record = UsageJournalRecord.from_dict(payload)
-            if record.sequence != expected_sequence:
+            try:
+                record = UsageJournalRecord.from_dict(payload)
+                if record.sequence != expected_sequence:
+                    raise UsageError(
+                        UsageReasonCode.JOURNAL_CORRUPT,
+                        "journal sequence gap at line %d: expected %d, found %d"
+                        % (line_no, expected_sequence, record.sequence),
+                    )
+                record.verify_command_digest()
+                record.verify_id(prev_record_id)
+                if record.command.command_id in self._command_ledger:
+                    raise UsageError(
+                        UsageReasonCode.JOURNAL_CORRUPT,
+                        "duplicate command id %r in the stored journal"
+                        % record.command.command_id,
+                    )
+            except UsageError:
+                raise
+            except Exception as error:  # noqa: BLE001 - stored bytes are untrusted
+                # any non-typed failure while parsing/verifying
+                # UNTRUSTED stored bytes (e.g. a canonicalization
+                # failure on a mutated payload) is corruption:
+                # fail closed, never crash open.
                 raise UsageError(
                     UsageReasonCode.JOURNAL_CORRUPT,
-                    "journal sequence gap at line %d: expected %d, found %d"
-                    % (line_no, expected_sequence, record.sequence),
-                )
-            record.verify_command_digest()
-            record.verify_id(prev_record_id)
-            if record.command.command_id in self._command_ledger:
-                raise UsageError(
-                    UsageReasonCode.JOURNAL_CORRUPT,
-                    "duplicate command id %r in the stored journal"
-                    % record.command.command_id,
-                )
+                    "journal line %d failed structural verification: %s: %s"
+                    % (line_no, type(error).__name__, error),
+                ) from error
             self._command_ledger[record.command.command_id] = {
                 "command_digest": record.command_digest,
                 "event_id": record.event.event_id,

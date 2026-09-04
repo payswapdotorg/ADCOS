@@ -937,7 +937,13 @@ class UsageTransaction:
 
     ``state`` is OBSERVING / BILLABLE_FINAL.  ``observations``
     carries the admitted observation records (sorted by
-    observation id -- arrival-order independent).  ``statement``
+    observation id -- a canonical audit order; the observation
+    ids themselves are admission-attributed: they bind the
+    causal command and the admission instant, so the SAME
+    logical observation set admitted in a different arrival
+    order carries different ids and audit lists while the
+    economic fold -- quantities, amount, contributing evidence
+    multiset -- remains identical).  ``statement``
     is the sealed billable-final fact once sealed (else absent).
     ``compensations`` carries the append-only compensating
     records (sorted).  Monetary compensations adjust
@@ -1042,20 +1048,28 @@ class UsageTransaction:
         )
 
     def refunded_quantity(self) -> int:
-        """Monetary compensation expressed in quantity units
-        (floor division of the compensated amount by the unit
-        price; 0 when the unit price is 0).  DATA for the
+        """The REFUND compensation expressed in quantity units
+        (floor division of the refund amount by the unit price;
+        0 when unsealed or the unit price is 0).  DATA for the
         reconciliation statement; the canonical money fact is
-        the amount, not this derived view."""
+        the refund amount, not this derived view.  Derived from
+        the refund amounts ONLY (independent of reversals;
+        floor divisions do not re-add across kinds)."""
         if self.statement is None or self.statement.unit_price_micros == 0:
             return 0
-        return self.compensated_amount_micros() // self.statement.unit_price_micros
+        return self.refunded_amount_micros() // self.statement.unit_price_micros
 
     def reversed_quantity(self) -> int:
-        """Alias of :meth:`refunded_quantity` (reversals and
-        refunds both adjust the net; kept as a separate
-        read so the statement can distinguish them)."""
-        return self.refunded_quantity()
+        """The REVERSAL compensation expressed in quantity units
+        (floor division of the reversal amount by the unit
+        price; 0 when unsealed or the unit price is 0).  DATA
+        for the reconciliation statement; the canonical money
+        fact is the reversal amount, not this derived view.
+        Derived from the reversal amounts ONLY (independent of
+        refunds; floor divisions do not re-add across kinds)."""
+        if self.statement is None or self.statement.unit_price_micros == 0:
+            return 0
+        return self.reversed_amount_micros() // self.statement.unit_price_micros
 
     def refunded_amount_micros(self) -> int:
         return sum(

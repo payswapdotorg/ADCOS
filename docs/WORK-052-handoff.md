@@ -87,7 +87,16 @@ W052 is a SOFTWARE-class control-plane implementation. It must make no PHYSICAL 
 
 **Appended by the W052 implementation PR under `WORK-052-CORE-001`
 (the W041/W042/W051 precedent: the governance-level handoff above
-stays on main; this section records what was actually built).**
+stays on main; this section records what was actually built).
+Updated in the correction round responding to the architectural
+REQUEST-CHANGES review of the first head: the two P0
+replay-integrity corrections (complete causal fact-identity
+re-derivation on load/replay; sealed-bill re-binding to the
+injected W051 tariff snapshot) and the three P1 corrections
+(walk-valid recomputed-chain tamper battery; arrival-order claim
+narrowed to the economic fold; refunded/reversed quantity views
+separated). The journaled history and every admitted identity
+are byte-unchanged across the correction.**
 
 ## Package / API surface
 
@@ -120,7 +129,12 @@ usage/
   digest.py       state_digest, command_ledger_digest,
                   evidence_index_digest, assemble_digest_stream
   ledger.py       UsageLedger (the public surface) + the SINGLE fold
-                  (apply_record / fold_state)
+                  (apply_record / fold_state) — which is also the SINGLE
+                  causal-verification function: replay re-derives every
+                  fact identity, event identity, command/fact binding,
+                  walk edge, the sealed statement against the injected
+                  W051 tariff snapshot, and DELIVERED evidence citations
+                  against the injected index (fail-closed JOURNAL_CORRUPT)
 ```
 
 Public API: 57 frozen names (battery case_39 pins them exactly).
@@ -175,8 +189,9 @@ One append-only hash-chained journal (`usage-journal.jsonl` via
 `FileUsageStore`): one canonical-JSON line per admitted command +
 its derived fact event; record ids bind (sequence, content,
 prev-link); command digests are the durable idempotency ledger;
-load verifies ids, chain, sequence, digests, and duplicate
-command ids (tamper/reorder/truncation/gap all fail closed
+load verifies ids, chain, sequence, digests, duplicate command
+ids, and fails closed on non-canonical payload content
+(tamper/reorder/truncation/gap/float all fail closed
 `JOURNAL_CORRUPT`).
 
 ## Replay / recovery behavior
@@ -188,6 +203,50 @@ replayed state byte-identically by construction; both idempotency
 layers survive restart; the fold verifies the walk linkage (an
 inserted table-legal record whose from_state does not connect to
 the folded walk fails closed).
+
+**The replay integrity boundary (the P0 corrections):** the fold
+re-derives and verifies, for EVERY journal record —
+
+- the event attribution equals the admitted command's
+  attribution;
+- the fact kind matches the action (the action/fact table);
+- each content-derived fact identity (`observation_id` /
+  `statement_id` / `compensation_id`) re-derives from the fact's
+  OWN content;
+- the `event_id` re-derives from the event's content + the fact
+  identity;
+- the fact is EXACTLY the deterministic derivation of its causal
+  command, the folded state, and the event instant;
+- the sealed statement re-derives against the INJECTED W051
+  transaction snapshot: tariff unit price, billable unit,
+  provenance, and the exact amount
+  `billable_quantity * unit_price_micros` (the zero-bill seal is
+  tariff-bound identically) — a recomputed chain cannot reprice
+  the billable fact;
+- DELIVERED observations' evidence citations re-resolve against
+  the INJECTED index (kind table, correlation, window, static and
+  cumulative quantity caps; duplicate evidence-window identities
+  in the journal fail closed — admission de-duplicates, so the
+  journal cannot carry both);
+- compensations re-verify the bounded-net discipline (cumulative
+  ≤ the sealed amount; one open dispute).
+
+Any mismatch fails closed `JOURNAL_CORRUPT`. The battery proves
+walk-valid, fully-recomputed-chain fact tampering (fact-only and
+maximal-cascade variants for observations, seals, and
+compensations) is still rejected (cases 46/47/48).
+
+**Honest boundary:** the journal verifies itself plus the
+injected authority anchors; a fully self-consistent
+within-authority-bounds rewrite is detectable only against the
+externally published digest stream (`journal_digest` /
+`digest_stream`) — that is what the digest stream exists for.
+No stronger claim is made.
+
+Load requires the injected index to resolve every citation the
+journal carries (an index at least as complete as
+admission-time; an unresolvable citation at replay is
+`JOURNAL_CORRUPT` — fail closed).
 
 ## Determinism contract
 

@@ -35,18 +35,31 @@ command is then appended or rejected by a state gate -- the
 read count is a pure function of the command sequence).  All
 ids and digests are content-derived over WORK-003 canonical
 JSON.  The fold (:func:`apply_record`, :func:`fold_state`) is
-the SINGLE state-derivation function used by both the live
-manager and journal replay, so live state and replayed state
-are byte-identical by construction.  The per-transaction
-projection is sorted by observation id, so the projected state
-(and its digest) is arrival-order independent for the same
-admitted observation set (delayed/out-of-order observations
-reconcile deterministically).
+the SINGLE state-derivation AND causal-verification function
+used by both the live manager and journal replay, so live state
+and replayed state are byte-identical by construction, and
+replay re-derives and verifies the COMPLETE causal identity web
+-- every content-derived fact identity (observation, sealed
+statement, compensation), the event identity, the
+command/fact/attribution bindings, the walk linkage, the sealed
+statement's tariff binding to the injected W051 transaction
+snapshot, and the DELIVERED observations' evidence re-binding
+-- so a fact mutated together with a fully recomputed outer
+hash chain still fails closed ``JOURNAL_CORRUPT``.  The
+per-transaction projection is sorted by observation id, so the
+ECONOMIC projection (class quantities, amount, the contributing
+evidence multiset, observation count, net) is arrival-order
+independent for the same admitted observation set
+(delayed/out-of-order observations reconcile deterministically);
+the observation identities themselves are admission-attributed
+(they bind the causal command and the admission instant), so
+different arrival orders honestly produce different observation
+ids, audit lists, and statement ids.
 
 Fresh construction requires an EMPTY store (the W042/W051
 precedent); :meth:`UsageLedger.load` is the only continuation
 path (journal-first recovery: load, verify the full hash chain,
-fold, resume).
+fold with full causal re-verification, resume).
 """
 
 from __future__ import annotations
@@ -172,41 +185,439 @@ class CommandOutcome:
 # The single state-derivation fold (live manager AND journal replay)
 # ---------------------------------------------------------------------------
 
+#: The fact kind each action must carry (the action/fact table;
+#: frozen with the action vocabulary).
+_ACTION_FACT_KIND: Dict[str, str] = {
+    UsageAction.OBSERVE_USAGE: "usage-observation-record",
+    UsageAction.SEAL_BILLABLE: "sealed-billable-statement-record",
+    UsageAction.RECORD_REFUND: "usage-compensation-record",
+    UsageAction.RECORD_REVERSAL: "usage-compensation-record",
+    UsageAction.RECORD_DISPUTE: "usage-compensation-record",
+}
+
+#: The compensation kind each compensation action produces (the
+#: action/kind table; frozen with the compensation vocabulary).
+_COMPENSATION_KIND_BY_ACTION: Dict[str, str] = {
+    UsageAction.RECORD_REFUND: "refund",
+    UsageAction.RECORD_REVERSAL: "reversal",
+    UsageAction.RECORD_DISPUTE: "dispute",
+}
+
+
+def _corrupt(record: UsageJournalRecord, message: str) -> UsageError:
+    """A fail-closed ``JOURNAL_CORRUPT`` error located at one
+    journal record (the replay integrity boundary)."""
+    return UsageError(
+        UsageReasonCode.JOURNAL_CORRUPT,
+        "journal record %d: %s" % (record.sequence, message),
+    )
+
+
+def _parse_fact(record: UsageJournalRecord, event: UsageEvent) -> Any:
+    """Extract the event's fact record through the action/fact
+    kind table, mapping every parse/validation failure to
+    ``JOURNAL_CORRUPT`` (a malformed stored fact is corruption,
+    not an admission error)."""
+    action = event.action
+    expected_kind = _ACTION_FACT_KIND[action]
+    found_kind = event.fact.get("kind")
+    if found_kind != expected_kind:
+        raise _corrupt(
+            record,
+            "a %s event must carry a %s fact (found %r)"
+            % (action, expected_kind, found_kind),
+        )
+    try:
+        if expected_kind == "usage-observation-record":
+            fact: Any = event.observation()
+        elif expected_kind == "sealed-billable-statement-record":
+            fact = event.statement()
+        else:
+            fact = event.compensation()
+    except UsageError as error:
+        raise _corrupt(
+            record,
+            "the stored %s fact is invalid: %s" % (expected_kind, error.detail),
+        ) from error
+    if fact is None:  # pragma: no cover - the kind gate ran above
+        raise _corrupt(record, "missing %s fact" % expected_kind)
+    return fact
+
+
+def _verify_fact_identity(
+    record: UsageJournalRecord, event: UsageEvent, fact: Any
+) -> str:
+    """Re-derive the content-derived fact identity from the fact's
+    OWN content (the identity <-> content binding).
+
+    ``observation_id`` / ``statement_id`` / ``compensation_id``
+    are documented as content-derived fingerprints; this gate
+    mechanically re-derives each one from the fact it claims to
+    identify, so a fact whose content was edited without a
+    fully-consistent identity cascade fails closed here.
+    Returns the fact id (the event identity's fact member).
+    """
+    action = event.action
+    if action == UsageAction.OBSERVE_USAGE:
+        observation: UsageObservationRecord = fact
+        expected = derive_observation_id(
+            observation.command_id,
+            observation.transaction_id,
+            observation.quantity_class,
+            observation.quantity,
+            observation.evidence_id,
+            observation.window_start,
+            observation.window_end,
+            observation.recorded_at,
+        )
+        if observation.observation_id != expected:
+            raise _corrupt(
+                record,
+                "observation id %s does not match the id re-derived from "
+                "its own content %s (tampered observation fact)"
+                % (observation.observation_id, expected),
+            )
+        return observation.observation_id
+    if action == UsageAction.SEAL_BILLABLE:
+        statement: SealedBillableStatement = fact
+        expected = derive_statement_id(
+            statement.transaction_id,
+            statement.contributing_observations,
+            statement.sealed_at,
+        )
+        if statement.statement_id != expected:
+            raise _corrupt(
+                record,
+                "statement id %s does not match the id re-derived from "
+                "its own content %s (tampered sealed statement)"
+                % (statement.statement_id, expected),
+            )
+        return statement.statement_id
+    compensation: CompensationRecord = fact
+    expected = derive_compensation_id(
+        compensation.transaction_id,
+        compensation.compensation_kind,
+        compensation.amount_micros,
+        compensation.reason,
+        compensation.statement_id,
+        compensation.command_id,
+        compensation.recorded_at,
+    )
+    if compensation.compensation_id != expected:
+        raise _corrupt(
+            record,
+            "compensation id %s does not match the id re-derived from "
+            "its own content %s (tampered compensation fact)"
+            % (compensation.compensation_id, expected),
+        )
+    return compensation.compensation_id
+
+
+def _verify_event_identity(
+    record: UsageJournalRecord, event: UsageEvent, fact_id: str
+) -> None:
+    """Re-derive the event id from the event's own content + the
+    fact's identity (the event identity <-> content binding).
+
+    The event id binds the full attribution + walk edge + the
+    causal command + the fact identity + the instant; a fact or
+    event edited with a recomputed outer record chain but an
+    un-cascaded event id fails closed here.
+    """
+    expected = derive_event_id(
+        event.transaction_id,
+        event.action,
+        event.from_state,
+        event.to_state,
+        event.command_id,
+        fact_id,
+        event.instant,
+    )
+    if event.event_id != expected:
+        raise _corrupt(
+            record,
+            "event id %s does not match the id re-derived from its "
+            "content and fact identity %s (tampered event)"
+            % (event.event_id, expected),
+        )
+
+
+def _verify_observation_causality(
+    record: UsageJournalRecord,
+    transaction: Optional[UsageTransaction],
+    observation: UsageObservationRecord,
+    evidence_index: UsageEvidenceIndex,
+) -> None:
+    """The command -> observation causal binding + the
+    authoritative evidence re-binding (replay integrity).
+
+    The observation fact must be EXACTLY the deterministic
+    derivation of its causal command (payload members, event
+    instant, attribution); and a DELIVERED observation's evidence
+    citation must re-resolve against the injected index (kind
+    table, correlation, window, static and cumulative quantity
+    bounds) exactly as admission required -- the journal cannot
+    contain an observation admission would have rejected or
+    de-duplicated.
+    """
+    command = record.command
+    event = record.event
+    payload = command.payload
+    expected_observation_id = derive_observation_id(
+        command.command_id,
+        command.transaction_id,
+        payload.get("quantity_class"),
+        payload.get("quantity"),
+        payload.get("evidence_id"),
+        payload.get("window_start"),
+        payload.get("window_end"),
+        event.instant,
+    )
+    expected: Dict[str, Any] = {
+        "kind": "usage-observation-record",
+        "observation_id": expected_observation_id,
+        "command_id": command.command_id,
+        "transaction_id": command.transaction_id,
+        "quantity_class": payload.get("quantity_class"),
+        "quantity": payload.get("quantity"),
+        "recorded_at": event.instant,
+        "actor": command.actor,
+        "source": command.source,
+    }
+    if payload.get("evidence_id") is not None:
+        expected["evidence_id"] = payload.get("evidence_id")
+        expected["window_start"] = payload.get("window_start")
+        expected["window_end"] = payload.get("window_end")
+    if observation.to_dict() != expected:
+        raise _corrupt(
+            record,
+            "the observation fact is not the deterministic derivation of "
+            "its causal command (fact/content or attribution divergence; "
+            "a mutated fact with recomputed identities but an untouched "
+            "command fails here)",
+        )
+    if observation.quantity_class == QuantityClass.DELIVERED:
+        try:
+            evidence = resolve_observation_evidence(command, evidence_index)
+        except UsageError as error:
+            raise _corrupt(
+                record,
+                "the DELIVERED observation's evidence citation does not "
+                "resolve against the injected index at replay: %s"
+                % error.detail,
+            ) from error
+        try:
+            validate_observation_quantity_cap(command, evidence, transaction)
+        except UsageError as error:
+            raise _corrupt(
+                record,
+                "the DELIVERED observation exceeds the authoritative "
+                "evidence quantity at replay: %s" % error.detail,
+            ) from error
+        if transaction is not None:
+            for existing in transaction.observations:
+                if (
+                    existing.evidence_id == observation.evidence_id
+                    and (
+                        existing.window_start,
+                        existing.window_end,
+                    )
+                    == (observation.window_start, observation.window_end)
+                ):
+                    raise _corrupt(
+                        record,
+                        "duplicate evidence-window identity %s in the "
+                        "journal (admission de-duplicates evidence-window "
+                        "redelivery; the journal cannot carry both)"
+                        % observation.evidence_id,
+                    )
+
+
+def _expected_statement(
+    record: UsageJournalRecord,
+    event: UsageEvent,
+    transaction: Optional[UsageTransaction],
+    evidence_index: UsageEvidenceIndex,
+) -> SealedBillableStatement:
+    """Re-derive the ENTIRE sealed statement from the folded
+    observation history, the event instant, and the injected W051
+    transaction snapshot (the tariff re-binding).
+
+    The sealed billable fact must be exactly: the folded
+    class-distinguished quantities, the sorted contributing
+    observation/evidence audit lists, and the authoritative tariff
+    (unit price, billable unit, provenance) with the exact integer
+    amount ``billable_quantity * unit_price_micros`` -- so a
+    tampered statement that is internally arithmetic-consistent
+    but carries a different price, unit, provenance, audit list,
+    or quantity still fails closed at replay (an outer hash chain
+    cannot reprice the billable fact).
+    """
+    try:
+        snapshot = evidence_index.transaction(event.transaction_id)
+    except UsageError as error:
+        raise _corrupt(
+            record,
+            "the sealed statement cites a transaction unresolvable in the "
+            "injected W051 authority at replay: %s" % error.detail,
+        ) from error
+    observations = (
+        transaction.observations if transaction is not None else ()
+    )
+    if transaction is None:
+        quantities = {
+            QuantityClass.RESERVED: 0,
+            QuantityClass.ATTEMPTED: 0,
+            QuantityClass.DELIVERED: 0,
+        }
+    else:
+        quantities = transaction.quantities()
+    delivered_ids = tuple(
+        sorted(
+            observation.observation_id
+            for observation in observations
+            if observation.is_billable()
+        )
+    )
+    evidence_ids = tuple(
+        sorted(
+            observation.evidence_id
+            for observation in observations
+            if observation.evidence_id is not None
+        )
+    )
+    billable_quantity = quantities[QuantityClass.DELIVERED]
+    return SealedBillableStatement(
+        statement_id=derive_statement_id(
+            event.transaction_id, delivered_ids, event.instant
+        ),
+        transaction_id=event.transaction_id,
+        reserved_quantity=quantities[QuantityClass.RESERVED],
+        attempted_quantity=quantities[QuantityClass.ATTEMPTED],
+        delivered_quantity=billable_quantity,
+        billable_quantity=billable_quantity,
+        unit_price_micros=snapshot.unit_price_micros,
+        amount_micros=billable_quantity * snapshot.unit_price_micros,
+        billable_unit=snapshot.billable_unit,
+        tariff_provenance=snapshot.tariff_provenance,
+        contributing_observations=delivered_ids,
+        contributing_evidence=evidence_ids,
+        sealed_at=event.instant,
+    )
+
+
+def _expected_compensation_dict(
+    record: UsageJournalRecord,
+    event: UsageEvent,
+    statement_id: str,
+) -> Dict[str, Any]:
+    """Re-derive the compensation fact from its causal command,
+    the folded sealed statement, and the event instant (the
+    command -> compensation binding)."""
+    command = record.command
+    compensation_kind = _COMPENSATION_KIND_BY_ACTION[command.action]
+    amount_micros = (
+        command.payload.get("amount_micros")
+        if compensation_kind != "dispute"
+        else 0
+    )
+    return {
+        "kind": "usage-compensation-record",
+        "compensation_id": derive_compensation_id(
+            command.transaction_id,
+            compensation_kind,
+            amount_micros,
+            command.payload.get("reason"),
+            statement_id,
+            command.command_id,
+            event.instant,
+        ),
+        "transaction_id": command.transaction_id,
+        "compensation_kind": compensation_kind,
+        "amount_micros": amount_micros,
+        "reason": command.payload.get("reason"),
+        "statement_id": statement_id,
+        "command_id": command.command_id,
+        "recorded_at": event.instant,
+    }
+
 
 def apply_record(
-    transaction: Optional[UsageTransaction], record: UsageJournalRecord
+    transaction: Optional[UsageTransaction],
+    record: UsageJournalRecord,
+    *,
+    evidence_index: UsageEvidenceIndex,
 ) -> UsageTransaction:
     """Apply ONE journal record to a transaction projection.
 
     THE single state-derivation function: the live manager calls
-    it after append; journal replay calls it in order.  It
-    rebuilds the fact record from the event payload (full model
-    validation on deserialization), verifies the walk linkage
-    (the event's declared predecessor state MUST be the folded
-    current state -- the replay verifies the WALK, not merely
-    the chain and each edge), verifies the table transition, and
-    returns a NEW frozen projection (no in-place mutation; the
-    observations are re-sorted by observation id so the
-    projection is arrival-order independent).
+    it after append; journal replay calls it in order.  It is also
+    THE single causal-verification function (the replay
+    integrity boundary).  Before folding, every record is
+    verified against its COMPLETE causal identity web:
+
+    - the event attribution must equal the admitted command's
+      attribution (actor/source);
+    - the fact kind must match the action (the action/fact
+      table);
+    - the content-derived fact identity
+      (``observation_id`` / ``statement_id`` /
+      ``compensation_id``) must re-derive from the fact's OWN
+      content;
+    - the event id must re-derive from the event's content and
+      the fact's identity;
+    - the walk linkage (the event's declared predecessor state
+      MUST be the folded current state -- the replay verifies
+      the WALK, not merely the chain and each edge) and the
+      frozen transition table;
+    - the fact must be EXACTLY the deterministic derivation of
+      its causal command, the folded state, and the event
+      instant -- and, for the sealed statement, of the injected
+      W051 transaction snapshot (tariff price/unit/provenance
+      and the exact amount), and, for DELIVERED observations, of
+      the authoritative evidence citation re-resolved against
+      the injected index (kind, correlation, window, quantity
+      bounds); compensations must cite the folded sealed
+      statement and stay bounded (net never negative; one open
+      dispute).
+
+    A modified fact therefore cannot be made chain-valid merely
+    by recomputing the outer record id/hash chain: every
+    mismatch fails closed ``JOURNAL_CORRUPT``.  The projection
+    is returned as a NEW frozen record (no in-place mutation;
+    the observations are re-sorted by observation id so the
+    economic fold is arrival-order independent).
     """
     event = record.event
+    command = record.command
     action = event.action
+
+    # --- attribution binding (event == admitted command) ---
+    if event.actor != command.actor or event.source != command.source:
+        raise _corrupt(
+            record,
+            "event attribution (actor %r, source %r) does not match the "
+            "admitted command's attribution (actor %r, source %r)"
+            % (event.actor, event.source, command.actor, command.source),
+        )
+
+    # --- fact extraction + identity <-> content bindings ---
+    fact = _parse_fact(record, event)
+    fact_id = _verify_fact_identity(record, event, fact)
+    _verify_event_identity(record, event, fact_id)
 
     if transaction is None:
         if action == UsageAction.OBSERVE_USAGE:
-            observation = event.observation()
-            if observation is None:
-                raise UsageError(
-                    UsageReasonCode.JOURNAL_CORRUPT,
-                    "the first record for transaction %s must carry a usage "
-                    "observation fact" % event.transaction_id,
-                )
+            observation: UsageObservationRecord = fact
+            _verify_observation_causality(
+                record, transaction, observation, evidence_index
+            )
             if (
                 event.from_state != UsageTransactionState.OBSERVING
                 or event.to_state != UsageTransactionState.OBSERVING
             ):
-                raise UsageError(
-                    UsageReasonCode.JOURNAL_CORRUPT,
+                raise _corrupt(
+                    record,
                     "the creation record must be the OBSERVING self-edge "
                     "(found %s -> %s)" % (event.from_state, event.to_state),
                 )
@@ -221,36 +632,29 @@ def apply_record(
         if action == UsageAction.SEAL_BILLABLE:
             # the explicit zero-observation seal (an honest zero bill:
             # a delivery-eligible transaction with no recorded usage
-            # seals to quantity 0 / amount 0)
-            statement = event.statement()
-            if statement is None:
-                raise UsageError(
-                    UsageReasonCode.JOURNAL_CORRUPT,
-                    "seal_billable journal record carries no statement fact",
+            # seals to quantity 0 / amount 0, priced by the snapshot
+            # tariff like every other seal)
+            statement: SealedBillableStatement = fact
+            expected_statement = _expected_statement(
+                record, event, None, evidence_index
+            )
+            if statement.to_dict() != expected_statement.to_dict():
+                raise _corrupt(
+                    record,
+                    "the zero-observation creation seal is not the "
+                    "deterministic derivation of an empty observation "
+                    "history and the injected W051 tariff snapshot "
+                    "(quantities, audit lists, tariff, or amount diverge)",
                 )
             if (
                 event.from_state != UsageTransactionState.OBSERVING
                 or event.to_state != UsageTransactionState.BILLABLE_FINAL
             ):
-                raise UsageError(
-                    UsageReasonCode.JOURNAL_CORRUPT,
+                raise _corrupt(
+                    record,
                     "the zero-observation creation seal must be the "
                     "OBSERVING -> BILLABLE_FINAL edge (found %s -> %s)"
                     % (event.from_state, event.to_state),
-                )
-            if (
-                statement.contributing_observations != ()
-                or statement.contributing_evidence != ()
-                or statement.delivered_quantity != 0
-                or statement.reserved_quantity != 0
-                or statement.attempted_quantity != 0
-                or statement.amount_micros != 0
-            ):
-                raise UsageError(
-                    UsageReasonCode.JOURNAL_CORRUPT,
-                    "the zero-observation creation seal must derive from an "
-                    "empty observation history (deterministic "
-                    "reconciliation)",
                 )
             return UsageTransaction(
                 transaction_id=event.transaction_id,
@@ -258,17 +662,16 @@ def apply_record(
                 observations=(),
                 statement=statement,
             )
-        raise UsageError(
-            UsageReasonCode.JOURNAL_CORRUPT,
+        raise _corrupt(
+            record,
             "journal record for transaction %s has no usage history before "
             "action %r (usage transactions are created by observations or "
-            "the zero-observation seal only)"
-            % (event.transaction_id, action),
+            "the zero-observation seal only)" % (event.transaction_id, action),
         )
 
     if event.transaction_id != transaction.transaction_id:
-        raise UsageError(
-            UsageReasonCode.JOURNAL_CORRUPT,
+        raise _corrupt(
+            record,
             "record applied to transaction %s belongs to %s"
             % (transaction.transaction_id, event.transaction_id),
         )
@@ -280,25 +683,19 @@ def apply_record(
     # out-of-order, inserted, or forged records whose event declares a
     # table-legal edge that does not connect to the actual walk.
     if event.from_state != transaction.state:
-        raise UsageError(
-            UsageReasonCode.JOURNAL_CORRUPT,
-            "journal record %d for transaction %s declares from_state "
-            "%s but the folded state is %s (out-of-order or inserted "
-            "record; the replay walk must be contiguous)"
-            % (
-                record.sequence,
-                event.transaction_id,
-                event.from_state,
-                transaction.state,
-            ),
+        raise _corrupt(
+            record,
+            "journal record for transaction %s declares from_state %s but "
+            "the folded state is %s (out-of-order or inserted record; the "
+            "replay walk must be contiguous)"
+            % (event.transaction_id, event.from_state, transaction.state),
         )
     if transition_target(event.from_state, action) != event.to_state:
-        raise UsageError(
-            UsageReasonCode.JOURNAL_CORRUPT,
-            "journal record %d for transaction %s declares %s -> %s via "
-            "%s which is not a frozen-table transition"
+        raise _corrupt(
+            record,
+            "journal record for transaction %s declares %s -> %s via %s "
+            "which is not a frozen-table transition"
             % (
-                record.sequence,
                 event.transaction_id,
                 event.from_state,
                 event.to_state,
@@ -307,12 +704,10 @@ def apply_record(
         )
 
     if action == UsageAction.OBSERVE_USAGE:
-        observation = event.observation()
-        if observation is None:
-            raise UsageError(
-                UsageReasonCode.JOURNAL_CORRUPT,
-                "observe_usage journal record carries no observation fact",
-            )
+        observation = fact
+        _verify_observation_causality(
+            record, transaction, observation, evidence_index
+        )
         observations = tuple(
             sorted(
                 transaction.observations + (observation,),
@@ -327,36 +722,18 @@ def apply_record(
         )
 
     if action == UsageAction.SEAL_BILLABLE:
-        statement = event.statement()
-        if statement is None:
-            raise UsageError(
-                UsageReasonCode.JOURNAL_CORRUPT,
-                "seal_billable journal record carries no statement fact",
-            )
-        delivered = [
-            observation
-            for observation in transaction.observations
-            if observation.is_billable()
-        ]
-        if sorted(statement.contributing_observations) != sorted(
-            observation.observation_id for observation in delivered
-        ):
-            raise UsageError(
-                UsageReasonCode.JOURNAL_CORRUPT,
-                "sealed statement contributing observations do not match "
-                "the folded delivered observations (the sealed billable "
-                "fact must derive exactly from the recorded evidence)",
-            )
-        quantities = transaction.quantities()
-        if (
-            statement.delivered_quantity != quantities[QuantityClass.DELIVERED]
-            or statement.reserved_quantity != quantities[QuantityClass.RESERVED]
-            or statement.attempted_quantity != quantities[QuantityClass.ATTEMPTED]
-        ):
-            raise UsageError(
-                UsageReasonCode.JOURNAL_CORRUPT,
-                "sealed statement quantities do not match the folded "
-                "observation totals (deterministic reconciliation)",
+        statement = fact
+        expected_statement = _expected_statement(
+            record, event, transaction, evidence_index
+        )
+        if statement.to_dict() != expected_statement.to_dict():
+            raise _corrupt(
+                record,
+                "the sealed statement is not the deterministic derivation "
+                "of the folded observation history and the injected W051 "
+                "tariff snapshot (quantities, audit lists, tariff "
+                "price/unit/provenance, or the exact amount diverge; a "
+                "recomputed outer chain cannot reprice the billable fact)",
             )
         return UsageTransaction(
             transaction_id=transaction.transaction_id,
@@ -367,25 +744,45 @@ def apply_record(
         )
 
     # the compensation family
-    compensation = event.compensation()
-    if compensation is None:
-        raise UsageError(
-            UsageReasonCode.JOURNAL_CORRUPT,
-            "%s journal record carries no compensation fact" % action,
+    compensation: CompensationRecord = fact
+    if transaction.statement is None:
+        raise _corrupt(
+            record,
+            "%s journal record arrives with no folded sealed statement "
+            "(compensations append against finality)" % action,
         )
-    if compensation.statement_id != (
-        transaction.statement.statement_id if transaction.statement else ""
-    ):
-        raise UsageError(
-            UsageReasonCode.JOURNAL_CORRUPT,
-            "compensation cites statement %s but the folded sealed "
-            "statement is %s"
-            % (
-                compensation.statement_id,
-                transaction.statement.statement_id
-                if transaction.statement
-                else "<none>",
-            ),
+    expected_compensation = _expected_compensation_dict(
+        record, event, transaction.statement.statement_id
+    )
+    if compensation.to_dict() != expected_compensation:
+        raise _corrupt(
+            record,
+            "the compensation fact is not the deterministic derivation of "
+            "its causal command and the folded sealed statement (amount, "
+            "reason, kind, citation, or attribution divergence)",
+        )
+    compensation_kind = expected_compensation["compensation_kind"]
+    if compensation_kind in ("refund", "reversal"):
+        cumulative = (
+            transaction.refunded_amount_micros()
+            + transaction.reversed_amount_micros()
+        )
+        if (
+            cumulative + expected_compensation["amount_micros"]
+            > transaction.statement.amount_micros
+        ):
+            raise _corrupt(
+                record,
+                "the journaled compensation exceeds the sealed amount at "
+                "replay (the journal cannot contain an over-compensation "
+                "admission would have rejected; the net never goes "
+                "negative)",
+            )
+    if compensation_kind == "dispute" and transaction.disputed():
+        raise _corrupt(
+            record,
+            "a second dispute record in the journal (admission would have "
+            "rejected it; one open dispute per transaction)",
         )
     compensations = tuple(
         sorted(
@@ -403,19 +800,28 @@ def apply_record(
 
 
 def fold_state(
-    records: Tuple[UsageJournalRecord, ...]
+    records: Tuple[UsageJournalRecord, ...],
+    *,
+    evidence_index: UsageEvidenceIndex,
 ) -> Dict[str, UsageTransaction]:
     """Fold a verified journal into the usage state.
 
     Deterministic: records in journal order, one apply per
     record, projections keyed by transaction id.  The live
     manager's state and this fold are byte-identical by
-    construction (the same :func:`apply_record`).
+    construction (the same :func:`apply_record`), and the fold is
+    where replay re-derives and verifies the complete causal
+    identity web of every record (fact identities, event
+    identities, command/fact/attribution bindings, walk
+    linkage, the W051 tariff/evidence re-binding) -- all
+    fail-closed ``JOURNAL_CORRUPT``.
     """
     state: Dict[str, UsageTransaction] = {}
     for record in records:
         transaction = state.get(record.event.transaction_id)
-        projection = apply_record(transaction, record)
+        projection = apply_record(
+            transaction, record, evidence_index=evidence_index
+        )
         state[projection.transaction_id] = projection
     return state
 
@@ -498,7 +904,9 @@ class UsageLedger:
         ledger._journal = AppendOnlyUsageJournal(store=store)
         ledger._clock = clock
         ledger._evidence_index = evidence_index
-        ledger._state = fold_state(ledger._journal.records())
+        ledger._state = fold_state(
+            ledger._journal.records(), evidence_index=evidence_index
+        )
         return ledger
 
     # ------------------------------------------------------------------
@@ -626,10 +1034,14 @@ class UsageLedger:
         return statement
 
     def verify_replay(self) -> None:
-        """Fold the journal from scratch and compare against the
-        live state (byte-identical by construction; any drift is
+        """Fold the journal from scratch -- re-deriving and
+        verifying the complete causal identity web of every
+        record -- and compare against the live state
+        (byte-identical by construction; any drift is
         JOURNAL_CORRUPT fail-closed)."""
-        folded = fold_state(self._journal.records())
+        folded = fold_state(
+            self._journal.records(), evidence_index=self._evidence_index
+        )
         if sorted(folded) != sorted(self._state):
             raise UsageError(
                 UsageReasonCode.JOURNAL_CORRUPT,
@@ -910,7 +1322,13 @@ class UsageLedger:
         self._journal.append(record)
 
         # 12. fold the state with the SINGLE derivation function
-        projection = apply_record(self._state.get(command.transaction_id), record)
+        #     (which also re-verifies the complete causal identity
+        #     web of the record it just appended)
+        projection = apply_record(
+            self._state.get(command.transaction_id),
+            record,
+            evidence_index=self._evidence_index,
+        )
         self._state[projection.transaction_id] = projection
 
         return CommandOutcome(

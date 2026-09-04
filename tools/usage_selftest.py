@@ -32,14 +32,19 @@ the W042 platform journal:
   cap bounds windowed sub-metering to the authoritative
   delivered quantity;
 - out-of-order and delayed observations (criterion 2): the
-  projection is sorted (arrival-order independent billable
-  derivation: the same admitted set in any arrival order seals
-  the same billable quantity/amount/audit lists), delayed
-  observations reconcile deterministically, late observations
-  after the seal fail closed USAGE_SEALED, and an inserted
-  out-of-order journal record fails closed at replay
-  (walk-linkage verification -- the replay verifies the WALK,
-  not merely the chain and each edge);
+  projection is sorted and the ECONOMIC fold is arrival-order
+  independent (the same admitted set in any arrival order seals
+  the same billable quantity/amount/evidence multiset), while
+  the observation identities are honestly ADMISSION-ATTRIBUTED
+  (they bind the causal command and the admission instant, so
+  different arrival orders carry different ids/audit lists and
+  the battery PROVES the divergence rather than claiming
+  stronger determinism), delayed observations reconcile
+  deterministically, late observations after the seal fail
+  closed USAGE_SEALED, and an inserted out-of-order journal
+  record fails closed at replay (walk-linkage verification --
+  the replay verifies the WALK, not merely the chain and each
+  edge);
 - billable finality (criterion 3): the explicit SEAL transition
   (including the honest zero-observation zero-bill seal), the
   immutable sealed statement (re-seal fails FINAL_IMMUTABLE; no
@@ -68,7 +73,18 @@ the W042 platform journal:
   all fail closed JOURNAL_CORRUPT), persist-then-ack (a store
   failure leaves no phantom state), journal-first recovery
   (load == live, byte-identical; durable idempotency survives
-  restart), replay verification (fold == live state);
+  restart), replay verification (fold == live state), AND the
+  full replay integrity boundary: the fold re-derives and
+  verifies every content-derived fact identity (observation /
+  sealed statement / compensation), the event identities, the
+  command/fact/attribution bindings, the sealed statement's
+  tariff binding to the injected W051 transaction snapshot,
+  and the DELIVERED observations' evidence re-binding -- so
+  WALK-VALID, FULLY-RECOMPUTED-CHAIN fact tampering (mutated
+  fact + recomputed fact/event identities + recomputed outer
+  hash chain, with or without a cascaded command digest, seal,
+  and compensations) still fails closed JOURNAL_CORRUPT
+  (cases 46/47/48);
 - determinism: the golden scenario's whole digest stream
   (journal, state, command ledger, event list, evidence index)
   is byte-identical across two fresh in-process runs and across
@@ -192,7 +208,12 @@ from usage.journal import (  # noqa: E402
     record_content,
 )
 from usage.ledger import CommandOutcome, fold_state  # noqa: E402
-from usage.model import derive_event_id, derive_observation_id  # noqa: E402
+from usage.model import (  # noqa: E402
+    derive_compensation_id,
+    derive_event_id,
+    derive_observation_id,
+    derive_statement_id,
+)
 
 Result = Tuple[str, bool, str]
 
@@ -2002,6 +2023,7 @@ def case_19_out_of_order_delayed(results: List[Result]) -> None:
     name = "case_19_out_of_order_delayed_observations"
     problems: List[str] = []
     worlds: List[Tuple[str, Dict[str, Any]]] = []
+    audit_identity: List[Tuple[str, Dict[str, Any]]] = []
     # three worlds: the SAME three delivered observations admitted
     # in three different orders (one delayed: the earliest window
     # arrives last)
@@ -2067,6 +2089,17 @@ def case_19_out_of_order_delayed(results: List[Result]) -> None:
                 },
             )
         )
+        # the ADMISSION-ATTRIBUTED audit identity: recorded per
+        # world, NOT compared across worlds (see below)
+        audit_identity.append(
+            (
+                label,
+                {
+                    "observation_ids": list(statement.contributing_observations),
+                    "statement_id": statement.statement_id,
+                },
+            )
+        )
     baseline = worlds[0][1]
     for label, summary in worlds[1:]:
         if summary != baseline:
@@ -2075,14 +2108,44 @@ def case_19_out_of_order_delayed(results: List[Result]) -> None:
             )
     if baseline["delivered"] != 360 or baseline["amount"] != 1080:
         problems.append("baseline summary wrong: %r" % baseline)
+    # HONEST divergence proof: the audit identity (observation
+    # ids + statement id) is admission-attributed -- the same
+    # logical observation set admitted in a different order
+    # carries DIFFERENT ids (they bind the causal command id and
+    # the admission instant), so the battery proves the
+    # divergence instead of claiming order-independent audit
+    # identity.  The economic fold above is the order-independent
+    # surface; this is the honest boundary between them.
+    diverged = {
+        tuple(sorted(identity["observation_ids"])) for _, identity in audit_identity
+    }
+    diverged_statement_ids = {
+        identity["statement_id"] for _, identity in audit_identity
+    }
+    if len(diverged) != len(audit_identity):
+        problems.append(
+            "audit identity unexpectedly identical across arrival orders "
+            "(the observation ids are admission-attributed; the battery "
+            "expects divergence)"
+        )
+    if len(diverged_statement_ids) != len(audit_identity):
+        problems.append(
+            "statement ids unexpectedly identical across arrival orders "
+            "(the statement id binds the admission-attributed observation "
+            "ids; the battery expects divergence)"
+        )
     if problems:
         results.append(fail(name, "; ".join(problems[:5])))
         return
     results.append(
         ok(name, "the same admitted set in any arrival order (including the "
-                 "delayed earliest-window-last) seals the SAME billable "
-                 "quantity/amount/audit lists (arrival-order independent "
-                 "billable derivation); every world replays clean")
+                 "delayed earliest-window-last) seals the SAME ECONOMIC "
+                 "derivation (billable quantity/amount/evidence multiset/"
+                 "count/net -- arrival-order independent); the observation "
+                 "and statement identities are admission-attributed (they "
+                 "bind the causal command and the admission instant) and "
+                 "honestly DIVERGE across arrival orders (proven, not "
+                 "claimed); every world replays clean")
     )
 
 
@@ -2233,8 +2296,20 @@ def case_23_compensation_family(results: List[Result]) -> None:
         problems.append("net amount wrong")
     if not projection.disputed():
         problems.append("dispute flag missing")
-    if projection.refunded_quantity() != 100:
+    # the SEPARATED quantity views: each derived from its OWN
+    # compensation kind's amounts (floor division by the unit
+    # price; independent derivations, no conflation)
+    if projection.refunded_quantity() != 66:  # 200 // 3
         problems.append("refunded quantity view wrong")
+    if projection.reversed_quantity() != 33:  # 100 // 3
+        problems.append("reversed quantity view wrong")
+    if (
+        projection.refunded_quantity()
+        == projection.reversed_quantity()
+        and projection.refunded_amount_micros()
+        != projection.reversed_amount_micros()
+    ):
+        problems.append("quantity views conflated (equal views for unequal amounts)")
     compensations = projection.compensations
     if [c.compensation_kind for c in compensations] != [
         "refund",
@@ -2255,7 +2330,9 @@ def case_23_compensation_family(results: List[Result]) -> None:
     results.append(
         ok(name, "refund 200 + reversal 100 against the sealed statement "
                  "(net 630), dispute flag set, every compensation cites the "
-                 "immutable statement id")
+                 "immutable statement id; the refunded/reversed quantity "
+                 "views are SEPARATELY derived (66 and 33 quantity units at "
+                 "price 3; floor division per kind, amounts are canonical)")
     )
 
 
@@ -2365,6 +2442,13 @@ def case_26_deterministic_reconciliation(results: List[Result]) -> None:
         or first["disputed"] is not True
     ):
         problems.append("statement values wrong: %r" % first)
+    # the SEPARATED per-kind quantity views (floor division by
+    # the unit price; independent derivations, no conflation)
+    if (
+        first["refunded_quantity"] != 66
+        or first["reversed_quantity"] != 33
+    ):
+        problems.append("separated quantity views wrong: %r" % first)
     if problems:
         results.append(fail(name, "; ".join(problems[:5])))
         return
@@ -2445,6 +2529,14 @@ def case_28_tampered_journal(results: List[Result]) -> None:
     variants["event-id-edit"] = b"\n".join(
         lines[:1] + [json.dumps(payload).encode("utf-8")] + lines[2:]
     ) + b"\n"
+    # non-canonical payload member (a float): the recomputed
+    # command digest canonicalization fails on untrusted bytes
+    # and must fail CLOSED (not crash open)
+    payload = json.loads(lines[1].decode("utf-8"))
+    payload["command"]["payload"]["quantity"] = 90.5
+    variants["float-payload"] = b"\n".join(
+        lines[:1] + [json.dumps(payload).encode("utf-8")] + lines[2:]
+    ) + b"\n"
     for label, mutated in sorted(variants.items()):
         problem = _expect_usage_error(
             name, UsageReasonCode.JOURNAL_CORRUPT,
@@ -2460,7 +2552,8 @@ def case_28_tampered_journal(results: List[Result]) -> None:
         return
     results.append(
         ok(name, "byte flip, reorder, truncation, sequence gap, digest edit, "
-                 "and event-id edit all fail closed JOURNAL_CORRUPT at load")
+                 "event-id edit, and non-canonical (float) payload content "
+                 "all fail closed JOURNAL_CORRUPT at load")
     )
 
 
@@ -2529,7 +2622,9 @@ def case_30_replay_verification(results: List[Result]) -> None:
     name = "case_30_replay_verification"
     ledger, index, _clock, _fixture, tx = _golden_ledger()
     problems: List[str] = []
-    folded = fold_state(ledger.journal_records())
+    folded = fold_state(
+        ledger.journal_records(), evidence_index=index
+    )
     live = {
         transaction.transaction_id: transaction.to_dict()
         for transaction in ledger.transactions()
@@ -2537,7 +2632,9 @@ def case_30_replay_verification(results: List[Result]) -> None:
     replayed = {key: value.to_dict() for key, value in folded.items()}
     if live != replayed:
         problems.append("fold != live state")
-    if fold_state(ledger.journal_records()) != folded:
+    if fold_state(
+        ledger.journal_records(), evidence_index=index
+    ) != folded:
         problems.append("fold not deterministic")
     ledger.verify_replay()
     if problems:
@@ -2635,7 +2732,11 @@ def case_31_inserted_out_of_order_record(results: List[Result]) -> None:
     results.append(
         ok(name, "a fully-recomputed, chain-valid, table-legal record whose "
                  "from_state does not connect to the folded walk is rejected "
-                 "at replay (the walk-linkage verification)")
+                 "at replay (the causal identity re-derivation and the "
+                 "walk-linkage verification both gate inserted records; a "
+                 "fabricated compensation id that does not re-derive from its "
+                 "content fails the fact identity gate, and a connected "
+                 "fabrication would still fail the walk gate)")
     )
 
 
@@ -3311,6 +3412,409 @@ def case_45_fresh_world_independence(results: List[Result]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Walk-valid, fully-recomputed-chain fact tampering (the P0
+# replay-integrity adversarial class): mutate a stored fact,
+# recompute EVERY identity the implementation itself derives
+# (fact id, event id, and the entire outer record hash chain,
+# optionally the command digest and every downstream fact that
+# transitively binds the mutated identity), keep the state walk
+# valid -- and prove replay still rejects the unauthorized fact
+# mutation (fail-closed JOURNAL_CORRUPT).
+# ---------------------------------------------------------------------------
+
+
+def _golden_journal_lines(ledger: UsageLedger) -> List[Dict[str, Any]]:
+    """The golden journal parsed into mutable record dicts (the
+    tampering substrate)."""
+    return [
+        json.loads(line.decode("utf-8"))
+        for line in b"".join(
+            record.to_line() for record in ledger.journal_records()
+        ).split(b"\n")[:-1]
+    ]
+
+
+def _rechain(records: List[Dict[str, Any]]) -> bytes:
+    """Recompute the FULL outer hash chain (every record id and
+    sequence link) over mutated record dicts -- the adversarial
+    'recomputed chain' primitive: the tampered journal is
+    structurally chain-valid, exactly as a motivated attacker
+    would produce."""
+    prev = GENESIS_RECORD_ID
+    for position, record in enumerate(records):
+        record["sequence"] = position + 1
+        content = record_content(
+            UsageCommand.from_dict(record["command"]),
+            record["command_digest"],
+            UsageEvent.from_dict(record["event"]),
+        )
+        record["record_id"] = derive_record_id(position + 1, content, prev)
+        prev = record["record_id"]
+    return b"".join(
+        (json.dumps(record) + "\n").encode("utf-8") for record in records
+    )
+
+
+def _recompute_event_id(record: Dict[str, Any], fact_id: str) -> None:
+    """Recompute one record's event id over its (mutated) fact
+    identity (the identity cascade)."""
+    event = record["event"]
+    event["event_id"] = derive_event_id(
+        event["transaction_id"],
+        event["action"],
+        event["from_state"],
+        event["to_state"],
+        event["command_id"],
+        fact_id,
+        event["instant"],
+    )
+
+
+def case_46_walk_valid_recomputed_observation_tamper(
+    results: List[Result],
+) -> None:
+    name = "case_46_walk_valid_recomputed_chain_observation_tamper"
+    ledger, index, _clock, _fixture, tx = _golden_ledger()
+    problems: List[str] = []
+    lines = _golden_journal_lines(ledger)
+
+    # Variant A -- fact-only mutation with the FULL identity
+    # cascade (recomputed observation id, event id, and the
+    # entire outer chain), the command + its digest UNTOUCHED,
+    # the walk untouched: only the causal command->fact binding
+    # can catch it.
+    records = json.loads(json.dumps(lines))
+    fact = records[1]["event"]["fact"]
+    fact["quantity"] = 95
+    fact["observation_id"] = derive_observation_id(
+        records[1]["command"]["command_id"],
+        tx,
+        fact["quantity_class"],
+        fact["quantity"],
+        fact["evidence_id"],
+        fact["window_start"],
+        fact["window_end"],
+        fact["recorded_at"],
+    )
+    _recompute_event_id(records[1], fact["observation_id"])
+    problem = _expect_usage_error(
+        name, UsageReasonCode.JOURNAL_CORRUPT,
+        UsageLedger.load,
+        store=FrozenBytesStore(_rechain(records)),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=index,
+    )
+    if problem:
+        problems.append("fact-only observation tamper accepted: %s" % problem)
+
+    # Variant B -- the MAXIMAL cascade: the command payload is
+    # mutated too (quantity 90 -> 95, digest recomputed), the
+    # observation fact + all identities recomputed, the sealed
+    # statement re-derived over the mutated fold (quantities
+    # 315, amount 945 at the honest price, audit list
+    # recomputed, statement id recomputed), the compensations
+    # re-derived over the new statement id, and the entire
+    # outer chain recomputed.  The journal is internally
+    # self-consistent AND tariff-consistent; the EXTERNAL
+    # authority anchor (the injected evidence index: cumulative
+    # observed 120 + 95 exceeds the authoritative 210) is the
+    # only gate that can reject it -- and it does.
+    records = json.loads(json.dumps(lines))
+    observation_record = records[1]
+    command = observation_record["command"]
+    command["payload"]["quantity"] = 95
+    observation_record["command_digest"] = UsageCommand.from_dict(
+        command
+    ).digest()
+    fact = observation_record["event"]["fact"]
+    fact["quantity"] = 95
+    old_observation_id = fact["observation_id"]
+    new_observation_id = derive_observation_id(
+        command["command_id"],
+        tx,
+        fact["quantity_class"],
+        fact["quantity"],
+        fact["evidence_id"],
+        fact["window_start"],
+        fact["window_end"],
+        fact["recorded_at"],
+    )
+    fact["observation_id"] = new_observation_id
+    _recompute_event_id(observation_record, new_observation_id)
+    # cascade the seal over the mutated fold
+    seal = records[5]
+    seal_fact = seal["event"]["fact"]
+    seal_fact["delivered_quantity"] = 315
+    seal_fact["billable_quantity"] = 315
+    seal_fact["amount_micros"] = 945
+    seal_fact["contributing_observations"] = sorted(
+        new_observation_id if oid == old_observation_id else oid
+        for oid in seal_fact["contributing_observations"]
+    )
+    new_statement_id = derive_statement_id(
+        tx,
+        tuple(seal_fact["contributing_observations"]),
+        seal_fact["sealed_at"],
+    )
+    seal_fact["statement_id"] = new_statement_id
+    _recompute_event_id(seal, new_statement_id)
+    # cascade the compensations (they cite the statement id)
+    for compensation_record in records[6:9]:
+        compensation_fact = compensation_record["event"]["fact"]
+        compensation_fact["statement_id"] = new_statement_id
+        compensation_fact["compensation_id"] = derive_compensation_id(
+            tx,
+            compensation_fact["compensation_kind"],
+            compensation_fact["amount_micros"],
+            compensation_fact["reason"],
+            new_statement_id,
+            compensation_fact["command_id"],
+            compensation_fact["recorded_at"],
+        )
+        _recompute_event_id(
+            compensation_record, compensation_fact["compensation_id"]
+        )
+    problem = _expect_usage_error(
+        name, UsageReasonCode.JOURNAL_CORRUPT,
+        UsageLedger.load,
+        store=FrozenBytesStore(_rechain(records)),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=index,
+    )
+    if problem:
+        problems.append("maximal-cascade observation tamper accepted: %s" % problem)
+
+    # Variant C -- an attribution swap on the event (actor forged
+    # to a different principal than the admitted command's),
+    # chain recomputed, walk untouched: the event/command
+    # attribution binding gate catches it.
+    records = json.loads(json.dumps(lines))
+    records[1]["event"]["actor"] = "attacker"
+    problem = _expect_usage_error(
+        name, UsageReasonCode.JOURNAL_CORRUPT,
+        UsageLedger.load,
+        store=FrozenBytesStore(_rechain(records)),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=index,
+    )
+    if problem:
+        problems.append("attribution swap accepted: %s" % problem)
+
+    # Variant D -- a fact-kind swap (an observe-usage event whose
+    # fact claims to be a compensation record), chain recomputed,
+    # walk untouched: the action/fact table gate catches it.
+    records = json.loads(json.dumps(lines))
+    records[1]["event"]["fact"] = {
+        "kind": "usage-compensation-record",
+        "compensation_id": "sha256:" + "a" * 64,
+        "transaction_id": tx,
+        "compensation_kind": "refund",
+        "amount_micros": 1,
+        "reason": "kind swap",
+        "statement_id": "sha256:" + "b" * 64,
+        "command_id": records[1]["command"]["command_id"],
+        "recorded_at": records[1]["event"]["instant"],
+    }
+    problem = _expect_usage_error(
+        name, UsageReasonCode.JOURNAL_CORRUPT,
+        UsageLedger.load,
+        store=FrozenBytesStore(_rechain(records)),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=index,
+    )
+    if problem:
+        problems.append("fact-kind swap accepted: %s" % problem)
+
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    results.append(
+        ok(name, "an observation mutated with a fully recomputed identity "
+                 "cascade and outer chain (walk valid) is rejected at "
+                 "replay: fact-only tampering fails the causal command->fact "
+                 "binding; a MAXIMAL cascade (mutated command + digest, "
+                 "re-derived seal and compensations, fully self-consistent "
+                 "quantities/amount at the honest tariff) still fails the "
+                 "injected evidence authority (cumulative 120 + 95 exceeds "
+                 "the authoritative 210); an attribution swap fails the "
+                 "event/command attribution binding; a fact-kind swap fails "
+                 "the action/fact table")
+    )
+
+
+def case_47_walk_valid_recomputed_seal_tamper(results: List[Result]) -> None:
+    name = "case_47_walk_valid_recomputed_chain_seal_tamper"
+    ledger, index, _clock, _fixture, tx = _golden_ledger()
+    problems: List[str] = []
+    lines = _golden_journal_lines(ledger)
+
+    # Variant A -- a walk-valid, fully chain-recomputed tariff
+    # tamper on the sealed bill: unit price 3 -> 30 with the
+    # amount made INTERNALLY arithmetic-consistent (9300 =
+    # 310 * 30).  The statement id (which binds tx + audit list
+    # + sealed_at, not the price) is unchanged, so no cascade
+    # beyond the outer chain is even needed; only the tariff
+    # re-binding to the injected W051 snapshot can catch it.
+    records = json.loads(json.dumps(lines))
+    seal_fact = records[5]["event"]["fact"]
+    seal_fact["unit_price_micros"] = 30
+    seal_fact["amount_micros"] = 9300
+    problem = _expect_usage_error(
+        name, UsageReasonCode.JOURNAL_CORRUPT,
+        UsageLedger.load,
+        store=FrozenBytesStore(_rechain(records)),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=index,
+    )
+    if problem:
+        problems.append("tariff tamper accepted: %s" % problem)
+
+    # Variant B -- an internally-INCONSISTENT amount (honest
+    # price, wrong total): the fact model arithmetic gate
+    # rejects it as corruption at replay.
+    records = json.loads(json.dumps(lines))
+    records[5]["event"]["fact"]["amount_micros"] = 931
+    problem = _expect_usage_error(
+        name, UsageReasonCode.JOURNAL_CORRUPT,
+        UsageLedger.load,
+        store=FrozenBytesStore(_rechain(records)),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=index,
+    )
+    if problem:
+        problems.append("inconsistent-amount tamper accepted: %s" % problem)
+
+    # Variant C -- the same tariff tamper on the honest
+    # zero-observation seal (amount pinned to 0; only the unit
+    # price drifts): the zero-seal re-derivation binds it to
+    # the injected snapshot exactly like every other seal.
+    runtime, peer, session_id, manager, integrator, shared = _usage_world()
+    references = _references(manager, integrator, session_id)
+    core, tx_zero = _commercial_thread(
+        references, StepClock(_UT0, 60), prefix="zt-"
+    )
+    zero_index = _evidence_index(
+        integrator, core, tx_zero, with_distractor=False
+    )
+    empty = UsageLedger(
+        store=MemoryUsageStore(), clock=StepClock(_UT0, _USTEP),
+        evidence_index=zero_index,
+    )
+    empty.seal_billable(
+        command_id="zero-seal", transaction_id=tx_zero, actor="billing",
+        source="usage-ledger",
+    )
+    zero_lines = _golden_journal_lines(empty)
+    zero_lines[0]["event"]["fact"]["unit_price_micros"] = 30
+    problem = _expect_usage_error(
+        name, UsageReasonCode.JOURNAL_CORRUPT,
+        UsageLedger.load,
+        store=FrozenBytesStore(_rechain(zero_lines)),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=zero_index,
+    )
+    if problem:
+        problems.append("zero-seal tariff tamper accepted: %s" % problem)
+
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    results.append(
+        ok(name, "the sealed bill is re-bound to the authoritative tariff at "
+                 "replay: a walk-valid chain-recomputed repricing (internally "
+                 "arithmetic-consistent) fails the W051 snapshot binding; an "
+                 "internally inconsistent amount fails the fact arithmetic; "
+                 "and the zero-bill seal is tariff-bound exactly like every "
+                 "other seal (a recomputed outer chain cannot reprice the "
+                 "billable fact)")
+    )
+
+
+def case_48_walk_valid_recomputed_compensation_tamper(
+    results: List[Result],
+) -> None:
+    name = "case_48_walk_valid_recomputed_chain_compensation_tamper"
+    ledger, index, _clock, _fixture, tx = _golden_ledger()
+    problems: List[str] = []
+    lines = _golden_journal_lines(ledger)
+
+    # Variant A -- fact-only compensation payload tamper with
+    # the FULL identity cascade (recomputed compensation id,
+    # event id, outer chain), command + digest untouched, walk
+    # untouched: only the causal command->fact binding catches
+    # it.
+    records = json.loads(json.dumps(lines))
+    refund_fact = records[6]["event"]["fact"]
+    refund_fact["amount_micros"] = 400
+    refund_fact["compensation_id"] = derive_compensation_id(
+        tx,
+        refund_fact["compensation_kind"],
+        refund_fact["amount_micros"],
+        refund_fact["reason"],
+        refund_fact["statement_id"],
+        refund_fact["command_id"],
+        refund_fact["recorded_at"],
+    )
+    _recompute_event_id(records[6], refund_fact["compensation_id"])
+    problem = _expect_usage_error(
+        name, UsageReasonCode.JOURNAL_CORRUPT,
+        UsageLedger.load,
+        store=FrozenBytesStore(_rechain(records)),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=index,
+    )
+    if problem:
+        problems.append("fact-only compensation tamper accepted: %s" % problem)
+
+    # Variant B -- the MAXIMAL cascade: the refund command
+    # payload is mutated too (amount 200 -> 950, digest
+    # recomputed), the fact + identities recomputed, the chain
+    # recomputed.  Internally self-consistent; the bounded-net
+    # discipline (cumulative compensation 950 exceeds the
+    # sealed 930) is the gate that rejects it.
+    records = json.loads(json.dumps(lines))
+    refund_record = records[6]
+    refund_command = refund_record["command"]
+    refund_command["payload"]["amount_micros"] = 950
+    refund_record["command_digest"] = UsageCommand.from_dict(
+        refund_command
+    ).digest()
+    refund_fact = refund_record["event"]["fact"]
+    refund_fact["amount_micros"] = 950
+    refund_fact["compensation_id"] = derive_compensation_id(
+        tx,
+        refund_fact["compensation_kind"],
+        refund_fact["amount_micros"],
+        refund_fact["reason"],
+        refund_fact["statement_id"],
+        refund_fact["command_id"],
+        refund_fact["recorded_at"],
+    )
+    _recompute_event_id(refund_record, refund_fact["compensation_id"])
+    problem = _expect_usage_error(
+        name, UsageReasonCode.JOURNAL_CORRUPT,
+        UsageLedger.load,
+        store=FrozenBytesStore(_rechain(records)),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=index,
+    )
+    if problem:
+        problems.append("maximal-cascade compensation tamper accepted: %s" % problem)
+
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    results.append(
+        ok(name, "a compensation mutated with a fully recomputed identity "
+                 "cascade and outer chain (walk valid) is rejected at "
+                 "replay: fact-only tampering fails the causal command->fact "
+                 "binding; a MAXIMAL cascade (mutated command + digest, "
+                 "self-consistent fact) still fails the bounded-net "
+                 "discipline (950 exceeds the sealed 930)")
+    )
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -3363,6 +3867,9 @@ def main() -> int:
         case_43_frozen_spec_intact,
         case_44_pr_delta_shape,
         case_45_fresh_world_independence,
+        case_46_walk_valid_recomputed_observation_tamper,
+        case_47_walk_valid_recomputed_seal_tamper,
+        case_48_walk_valid_recomputed_compensation_tamper,
     ):
         case(results)
     failures = [result for result in results if not result[1]]
