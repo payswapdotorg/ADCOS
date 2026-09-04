@@ -1,4 +1,4 @@
-name: temporary-governance-transition
+name: temporary-governance-cleanup
 
 on:
   push:
@@ -9,123 +9,66 @@ permissions:
   contents: write
 
 jobs:
-  transition:
+  cleanup:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Apply transition
+      - name: Canonicalize governance transition and remove temporary machinery
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re, subprocess
+          from datetime import datetime, timezone
+          import re
+
           ROOT=Path('.')
           MAIN='bcaf0d0677437d1ffca8f5e493cab516c87e7194'
           REVIEWED='7d883b227e9792b98efdbc1916d413491d20d458'
           CI='33926974221'
           OLD='39d40b752f9129ac898fb74da1e485c20c6fbdc6'
-          HIST='c9a1f8589cddbbeb21756bdd8f72ed57ea515173'
-          def R(p): return (ROOT/p).read_text()
-          def W(p,s): (ROOT/p).write_text(s)
 
-          # W052 auth supersession.
-          p='spec/architect/authorizations/WORK-052.yaml'; s=R(p)
-          s=s.replace('status: active\n','status: superseded\n',1).replace('authorized: true\n','authorized: false\n',1)
-          if 'superseded_by:' not in s:
-              s=s.replace('authorization_decision: DEC-0059\n','authorization_decision: DEC-0059\nsuperseded_by: "WORK-053-CORE-001"\nsupersession_decision: DEC-0061\n',1)
-          W(p,s)
+          # Remove the duplicate transition header if a prior runner invocation added it twice.
+          p=ROOT/'spec/architect/execution-ledger.yaml'
+          text=p.read_text()
+          hdr='# DEC-0061 / LEDGER-RECON-010: W052 acceptance -> W053 activation on post-W052 merge bcaf0d0.\n'
+          while text.startswith(hdr+hdr):
+              text=text[len(hdr):]
 
-          # Fresh W053 auth/handoff from the historical canonical work order, with current provenance.
-          old_auth=subprocess.check_output(['git','show',HIST+':spec/architect/authorizations/WORK-053.yaml'],text=True)
-          auth=old_auth.replace('Issued by DEC-0060 after W052 acceptance.','Issued by DEC-0061 after Architect acceptance of W052 PR #149.')
-          auth=auth.replace('authorization_decision: DEC-0060','authorization_decision: DEC-0061')
-          auth=re.sub(r'^baseline_sha: .*$', 'baseline_sha: '+MAIN, auth, flags=re.M)
-          auth=re.sub(r'^review_basis: .*$', 'review_basis: "DEC-0061 accepts W052 on PR #149 exact reviewed head '+REVIEWED+', merged as '+MAIN+'; W053 issue #85 is the next hard-dependent commercial Work Item. This fresh authorization is issued against the post-W052-merge mainline."', auth, flags=re.M)
-          auth=auth.replace('WORK-052 UsageLedger (accepted-merged by DEC-0060)','WORK-052 UsageLedger (accepted-merged by DEC-0061)')
-          W('spec/architect/authorizations/WORK-053.yaml',auth)
-          old_handoff=subprocess.check_output(['git','show',HIST+':docs/WORK-053-handoff.md'],text=True)
-          handoff=old_handoff.split('\n---\n',1)[0]
-          handoff=handoff.replace('Status: Architect work order issued; implementation remains gated on the repository-local W052 acceptance -> W053 activation transition.','Status: ACTIVE IMPLEMENTATION AUTHORIZATION — W052 is accepted/merged and WORK-053-CORE-001 is active on the current mainline.')
-          handoff=handoff.replace('The Architect must first persist W052 acceptance, supersede `WORK-052-CORE-001`, and activate exactly one `WORK-053-CORE-001` repository-local authorization on `main`. Until that transition is merged, Z.ai must not create a W053 implementation branch or implementation PR.','The Architect has persisted W052 acceptance and this governance transition activates exactly one `WORK-053-CORE-001` repository-local authorization on `main`. Z.ai may now create the single W053 implementation branch from the exact live mainline carrying that authorization.')
-          handoff += '\n\n## Current activation packet\n\n**Activation decision:** `DEC-0061` (atomic W052 acceptance → W053 activation).\n**Authorized main baseline:** `'+MAIN+'`.\n**Work Item:** `WORK-053`.\n**Authorization:** `WORK-053-CORE-001`.\n**Dependencies:** `WORK-052` (accepted/merged at this transition).\n**Implementation branch:** `work-053-economic-allocation`.\n**Implementation PR:** one PR only.\n**Historical note:** former PR #124 / merge `c9a1f858` belongs to a superseded lineage and is not current implementation state.\n'
-          W('docs/WORK-053-handoff.md',handoff)
+          # Canonicalize LEDGER-RECON-010 to exactly one block and preserve every prior reconciliation unchanged.
+          marker='\nreconciliations:\n'
+          if marker not in text:
+              raise SystemExit('missing reconciliations section')
+          prefix, body=text.split(marker,1)
+          lines=body.splitlines(True)
+          blocks=[]; cur=[]
+          for line in lines:
+              if line.startswith('  - reconciliation_id: '):
+                  if cur: blocks.append(cur)
+                  cur=[line]
+              else:
+                  cur.append(line)
+          if cur: blocks.append(cur)
+          blocks=[b for b in blocks if not any('reconciliation_id: LEDGER-RECON-010' in x for x in b)]
+          recon='''  - reconciliation_id: LEDGER-RECON-010\n    recorded_by: DEC-0061\n    recorded_at: 2026-09-04T23:01:09Z\n    from_main_sha: 39d40b752f9129ac898fb74da1e485c20c6fbdc6\n    to_main_sha: bcaf0d0677437d1ffca8f5e493cab516c87e7194\n    reason: "Atomic W052 acceptance -> W053 activation: W052 exact reviewed head 7d883b2 accepted and merged as bcaf0d0 with CI 33926974221 SUCCESS; W052 transitions to accepted-merged, its authorization is superseded, and the sole active execution slot transfers to fresh WORK-053-CORE-001. W053 remains registered-only until its own implementation is delivered and accepted."\n    history: "No prior Work Item history is silently rewritten; prior reconciliation entries remain intact. W040 remains independent and in-review; frozen architecture semantics are unchanged. Historical W053 PR #124 is not reused."\n'''.splitlines(True)
+          body=''.join(recon)+''.join(''.join(b) for b in blocks)
+          p.write_text(text.split(marker,1)[0]+marker+body)
 
-          # Ledger: replace W052/W053 records and add formal reconciliation.
-          p='spec/architect/execution-ledger.yaml'; ledger=R(p)
-          ledger=ledger.replace('main_sha: '+OLD,'main_sha: '+MAIN,1)
-          def block(text,wid,nextwid):
-              a=text.index('  - work_item: '+wid+'\n')
-              b=text.index('  - work_item: '+nextwid+'\n',a) if nextwid else text.index('\nreconciliations:\n',a)
-              return a,b
-          a,b=block(ledger,'WORK-052','WORK-053')
-          w052='''  - work_item: WORK-052\n    title: "UsageLedger: delivered-usage metering, billable finality, and append-only reconciliation"\n    phase: 10\n    branch: "work-052-usage-ledger-2"\n    baseline_sha: 39d40b752f9129ac898fb74da1e485c20c6fbdc6\n    pr: 149\n    pr_head: 7d883b227e9792b98efdbc1916d413491d20d458\n    reviewed_sha: 7d883b227e9792b98efdbc1916d413491d20d458\n    merge_sha: bcaf0d0677437d1ffca8f5e493cab516c87e7194\n    merged_at: 2026-09-04T23:01:09Z\n    ci_run: 33926974221\n    review_rounds: 3\n    acceptance_decision: DEC-0061\n    correction_decisions: []\n    handoff: docs/WORK-052-handoff.md\n    handoff_required: true\n    lifecycle: accepted-merged\n    note: "Architect-accepted after three review rounds on one PR lineage: 23cca95 -> a783078 -> 7d883b2. Exact reviewed head 7d883b227e9792b98efdbc1916d413491d20d458; merged as bcaf0d0677437d1ffca8f5e493cab516c87e7194; CI 33926974221 SUCCESS. WORK-052-CORE-001 superseded by DEC-0061; scope/provenance preserved."\n'''
-          ledger=ledger[:a]+w052+ledger[b:]
-          a,b=block(ledger,'WORK-053',None)
-          w053='''  - work_item: WORK-053\n    title: "EconomicAllocation: developer/provider/ADCOS revenue-share policy and external payment boundary"\n    phase: 10\n    branch: null\n    baseline_sha: null\n    pr: null\n    pr_head: null\n    reviewed_sha: null\n    merge_sha: null\n    merged_at: null\n    ci_run: null\n    review_rounds: null\n    acceptance_decision: null\n    correction_decisions: []\n    handoff: docs/WORK-053-handoff.md\n    handoff_required: true\n    lifecycle: registered\n    note: "Registered-only W053 now has the sole active repository-local authorization WORK-053-CORE-001 under DEC-0061 at exact main baseline bcaf0d0677437d1ffca8f5e493cab516c87e7194. No implementation has yet been delivered or accepted. Historical PR #124 is superseded lineage and is not current implementation state."\n'''
-          ledger=ledger[:a]+w053+ledger[b:]
-          recon='''\n  - reconciliation_id: LEDGER-RECON-010\n    recorded_by: DEC-0061\n    recorded_at: 2026-09-04T23:01:09Z\n    from_main_sha: 39d40b752f9129ac898fb74da1e485c20c6fbdc6\n    to_main_sha: bcaf0d0677437d1ffca8f5e493cab516c87e7194\n    reason: "Atomic W052 acceptance -> W053 activation: W052 exact reviewed head 7d883b2 accepted and merged as bcaf0d0 with CI 33926974221 SUCCESS; W052 transitions to accepted-merged, its authorization is superseded, and the sole active execution slot transfers to fresh WORK-053-CORE-001. W053 remains registered-only until its own implementation is delivered and accepted."\n    history: "No prior Work Item history is silently rewritten; prior reconciliation entries remain intact. W040 remains independent and in-review; frozen architecture semantics are unchanged. Historical W053 PR #124 is not reused."\n'''
-          marker='\nreconciliations:\n'; before,after=ledger.split(marker,1); ledger=before+marker+recon+after
-          W(p,'# DEC-0061 / LEDGER-RECON-010: W052 acceptance -> W053 activation on post-W052 merge bcaf0d0.\n'+ledger)
+          # Sanity: W052/W053 active-state facts are present before cleanup.
+          ledger=p.read_text()
+          assert ledger.count('reconciliation_id: LEDGER-RECON-010')==1
+          assert ledger.count('  - work_item: WORK-052\n')==1
+          assert ledger.count('  - work_item: WORK-053\n')==1
 
-          # Execution state.
-          p='spec/architect/execution-state.yaml'; es=R(p).replace('  main_sha: '+OLD,'  main_sha: '+MAIN,1)
-          a=es.index('execution:\n'); b=es.index('\nin_review:\n',a)
-          execution=f'''execution:\n  mode: "implementing"\n  active_work_item: WORK-053\n  active_authorization: "WORK-053-CORE-001"\n  halted_reason: "Atomic transition DEC-0061: W052 is accepted-merged at exact reviewed head {REVIEWED}, merge {MAIN}, CI {CI} SUCCESS; WORK-052-CORE-001 is superseded. The sole active execution slot transfers to W053 at the exact post-W052-merge mainline {MAIN}. W053 is authorized only for its frozen EconomicAllocation scope and has not yet been implemented. W040 remains an independent physical validation track; W043 is retired; all other unaccepted commercial items remain unauthorized."\n  next_required_decisions:\n    - "Review the WORK-053 implementation PR on the exact active authorization baseline and require the frozen EconomicAllocation contract, authority boundaries, deterministic battery, replay integrity, and exact conservation proofs."\n    - "After WORK-053 acceptance/merge, evaluate the next authorized Work Item in the frozen commercial DAG; W044 and W045 remain hard-gated by W053 and preceding dependencies."\n    - "Resume W040 only under a future evidence-continuation authorization when physical evidence is available; EVID-007/EVID-008 remain OPEN."\n'''
-          es=es[:a]+execution+es[b:]; W(p,es)
-
-          # Current state projection.
-          p='spec/architect/current-state.md'; cs=R(p)
-          cs=cs.replace('**Persistent Architect snapshot — reconciled after the atomic WORK-051 acceptance → W052 activation (DEC-0059, LEDGER-RECON-008) and the WORK-052 baseline-advancement-only reconciliation (DEC-0060, LEDGER-RECON-009); WORK-052 (UsageLedger) is the active implementation track under WORK-052-CORE-001.**','**Persistent Architect snapshot — reconciled by DEC-0061 / LEDGER-RECON-010 after Architect acceptance and merge of W052; WORK-053 (EconomicAllocation) is the sole active implementation track under WORK-053-CORE-001.**')
-          cs=cs.replace('- Active Work Item: `WORK-052`','- Active Work Item: `WORK-053`')
-          cs=cs.replace('- Active authorization: `WORK-052-CORE-001` (DEC-0059)', '- Active authorization: `WORK-053-CORE-001` (DEC-0061)',1)
-          cs=re.sub(r'- W052 status: `active`.*?fresh activation packet', '- W052 status: `accepted-merged` — UsageLedger accepted by DEC-0061 on exact reviewed head `7d883b2`, merged as `'+MAIN+'` with CI run `'+CI+'` SUCCESS; its authorization is superseded and delivery/evidence history is preserved', cs, count=1, flags=re.S)
-          if '- W053 status:' not in cs:
-              cs=cs.replace('- W052 Architect work order: `docs/WORK-052-handoff.md`','- W052 Architect work order: `docs/WORK-052-handoff.md`\n- W053 status: `active-authorized` — EconomicAllocation is the sole active Work Item under `WORK-053-CORE-001` / DEC-0061 at baseline `'+MAIN+'`; implementation not yet delivered\n- W053 Architect handoff: `docs/WORK-053-handoff.md`')
-          cs=cs.replace('`WORK-052` is the **active authorized** chain successor','`WORK-052` is **accepted-merged**')
-          cs=cs.replace('`WORK-053` EconomicAllocation (issue #85) remains a ready-candidate, unauthorized (hard-gated on W052).','`WORK-053` EconomicAllocation (issue #85) is the **active authorized** chain successor under `WORK-053-CORE-001` (DEC-0061, baseline `'+MAIN+'`) and is the sole current implementation target.')
-          cs=cs.replace('The active authorization is scoped to WORK-052 only and does not authorize WORK-043 (retired), WORK-044–WORK-050, WORK-053','The active authorization is scoped to WORK-053 only and does not authorize WORK-043 (retired), WORK-044–WORK-052')
-          W(p,cs)
-
-          # Canonical roadmap.
-          p='spec/architect/roadmap.yaml'; rm=R(p)
-          rm=re.sub(r'^last_reconciled_main_sha: .*$', 'last_reconciled_main_sha: '+MAIN, rm, flags=re.M)
-          rm=re.sub(r'^  WORK-052: .*$', '  WORK-052: {title: UsageLedger: delivered-usage metering, billable finality, and append-only reconciliation, status: accepted-merged, authorization: none, dependencies: [WORK-051], dependency_type: [hard], contract: issue-84+docs/WORK-052-handoff.md, decision: DEC-0061}', rm, flags=re.M)
-          rm=re.sub(r'^  WORK-053: .*$', '  WORK-053: {title: EconomicAllocation: developer/provider/ADCOS revenue-share policy and external payment boundary, status: active-authorized, authorization: WORK-053-CORE-001, dependencies: [WORK-051, WORK-052], dependency_type: [hard, hard], contract: issue-85+docs/WORK-053-handoff.md, architecture_basis: ACR-009}', rm, flags=re.M)
-          rm=re.sub(r'^  active: WORK-052$', '  active: WORK-053', rm, flags=re.M)
-          rm=re.sub(r'^  next_after_active: \[WORK-053\]$', '  next_after_active: []', rm, flags=re.M)
-          W(p,rm)
-
-          # Human roadmap.
-          p='spec/architect/roadmap.md'; rmd=R(p)
-          rmd=rmd.replace('Live main at governance-branch cut: `2e87cb35643b72a94be39aa3eb96ceed1a3e18da`','Live main at W052 acceptance/transition: `'+MAIN+'`')
-          rmd=rmd.replace('Active Work Item: **WORK-052 UsageLedger**','Active Work Item: **WORK-053 EconomicAllocation**')
-          rmd=rmd.replace('Active authorization: **WORK-052-CORE-001**','Active authorization: **WORK-053-CORE-001**')
-          rmd=rmd.replace('Authorized baseline: **39d40b752f9129ac898fb74da1e485c20c6fbdc6**','Authorized baseline: **'+MAIN+'**')
-          rmd=rmd.replace('W052: active-authorized, implementation not yet delivered','W052: accepted/merged at exact reviewed head `7d883b2`, merge `'+MAIN+'`')
-          rmd=rmd.replace('W053: accepted/merged','W053: active-authorized; implementation not yet delivered')
-          rmd=rmd.replace('Accepted / merged | W001–W039, W041, W042, W044–W051, W053','Accepted / merged | W001–W039, W041, W042, W044–W052')
-          rmd=rmd.replace('Active / authorized | W052','Active / authorized | W053')
-          rmd=rmd.replace('## W052 execution packet','## W053 execution packet')
-          rmd=rmd.replace('Contract: `spec/work-items.md` WORK-052 + `docs/WORK-052-handoff.md` + `spec/architect/authorizations/WORK-052.yaml`.','Contract: `spec/work-items.md` WORK-053 + `docs/WORK-053-handoff.md` + `spec/architect/authorizations/WORK-053.yaml`.')
-          rmd=rmd.replace('Exactly one Work Item may be active-authorized. The current target is W052. After W052 is accepted/merged, W053 is the next hard-gated commercial item only after a fresh governance transition issues its own authorization. Roadmap placement alone never activates W053 or any other downstream item.','Exactly one Work Item may be active-authorized. The current target is W053 under `WORK-053-CORE-001`. Roadmap placement alone never authorizes W044 or any other downstream item.')
-          W(p,rmd)
-
-          # Decision registry and decision record.
-          p='spec/architect/decisions/README.md'; dr=R(p)
-          if '| DEC-0061 |' not in dr:
-              line='| DEC-0061 | governance | WORK-052 | ACCEPTED | ACCEPTED | W052 acceptance on PR #149 exact reviewed head 7d883b2 / merge bcaf0d0 and atomic activation of fresh WORK-053-CORE-001 on the post-W052 mainline; W052 authorization superseded, W053 implementation remains unaccepted |'
-              idx=dr.index('\n', dr.index('| DEC-0060 |'))+1; dr=dr[:idx]+line+'\n'+dr[idx:]
-          W(p,dr)
-          decision=f'''decision_id: DEC-0061\ntype: governance\ndecision: ACCEPTED\nstatus: ACCEPTED\nwork_item: WORK-052\npr: 149\nreviewed_sha: {REVIEWED}\ntimestamp: 2026-09-04T23:01:09Z\nevidence:\n  merge_sha: {MAIN}\n  artifacts:\n    - "PR #149 exact-head Architect acceptance of W052"\n    - "W052 correction lineage: 23cca95 -> a783078 -> {REVIEWED}"\n    - "CI run {CI}: SUCCESS"\n    - "Issue #84 completed"\nfindings:\n  - "Round-2 replay delivery-eligibility P0 corrected and proven by case_49."\n  - "W052 satisfies its frozen contract within WORK-052-CORE-001."\nblockers: []\nrequired_corrections: []\naccepted_scope:\n  - "WORK-052-CORE-001 implementation at exact reviewed head {REVIEWED}."\nrejected_scope:\n  - "No WORK-053 implementation is accepted by this decision."\ndownstream_effect:\n  - "WORK-052 transitions registered -> accepted-merged."\n  - "WORK-052-CORE-001 is superseded."\n  - "WORK-053-CORE-001 becomes the sole active implementation authorization at main baseline {MAIN}."\n  - "Historical W053 PR #124 is superseded lineage and is not reused."\nresolved_by: null\n'''
-          W('spec/architect/decisions/DEC-0061-w052-acceptance-w053-activation.yaml',decision)
-          print('transition complete')
+          # Remove temporary files; no temporary workflow survives the governance PR.
+          for path in ['.github/workflows/_tmp_w052_w053_governance.yml','governance/.w052-w053-transition-trigger']:
+              q=ROOT/path
+              if q.exists(): q.unlink()
+          print('governance state canonicalized; temporary automation removed')
           PY
-      - name: Commit governance state
-        run: |
           git config user.name "ADCOS Architect Governance"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add spec/architect docs/WORK-053-handoff.md
+          git add -A
           git diff --cached --check
-          git commit -m "governance: accept W052 and activate W053 (DEC-0061)"
+          git commit -m "governance: finalize W052 acceptance and W053 activation"
           git push origin HEAD:governance/w052-acceptance-w053-activation
