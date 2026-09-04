@@ -1,3 +1,4 @@
+# DEC-0061 / LEDGER-RECON-010: W052 acceptance -> W053 activation on post-W052 merge bcaf0d0.
 # ADCOS execution ledger — machine-readable, persisted by the Architect.
 #
 # Lifecycle states are DISTINCT: implemented -> verified -> in-review ->
@@ -84,7 +85,7 @@
 # semantic changes.
 
 schema_version: 1
-main_sha: 39d40b752f9129ac898fb74da1e485c20c6fbdc6
+main_sha: bcaf0d0677437d1ffca8f5e493cab516c87e7194
 last_updated: "2026-09-04"
 work_items:
   - work_item: WORK-001
@@ -980,21 +981,21 @@ work_items:
   - work_item: WORK-052
     title: "UsageLedger: delivered-usage metering, billable finality, and append-only reconciliation"
     phase: 10
-    branch: null
-    baseline_sha: 41b338080fbeb79627bff45cd79ddf09bf5cbb29
-    pr: null
-    pr_head: null
-    reviewed_sha: null
-    merge_sha: null
-    merged_at: null
-    ci_run: null
-    review_rounds: null
-    acceptance_decision: null
+    branch: "work-052-usage-ledger-2"
+    baseline_sha: 39d40b752f9129ac898fb74da1e485c20c6fbdc6
+    pr: 149
+    pr_head: 7d883b227e9792b98efdbc1916d413491d20d458
+    reviewed_sha: 7d883b227e9792b98efdbc1916d413491d20d458
+    merge_sha: bcaf0d0677437d1ffca8f5e493cab516c87e7194
+    merged_at: 2026-09-04T23:01:09Z
+    ci_run: 33926974221
+    review_rounds: 3
+    acceptance_decision: DEC-0061
     correction_decisions: []
     handoff: docs/WORK-052-handoff.md
     handoff_required: true
-    lifecycle: registered
-    note: "registered-only entry added by ACR-011: WORK-052 is formally registered in the frozen registry (Phase 10, canonical commercial phase). Definition source: tracking issue #84 and the canonical commercial dependency model. Dependencies (hard): WORK-051 (interfaces consumed; WORK-042 journal-first discipline where consumed is a discipline reference, not a Work Item dependency edge). The Architect-issued W052 handoff (docs/WORK-052-handoff.md) was merged documentation-only by PR #118 at 5eb198b23bdf3b780230d296c16760048cf7b470 — the handoff is a work order, NOT an implementation; the entry stays lifecycle registered with null delivery fields until a real delivery PR exists. WORK-052-CORE-001 (DEC-0059, baseline 41b3380 = the post-W051-merge mainline reconciled by LEDGER-RECON-008) is the single active repository-local authorization: usage derives only from authoritative delivered-traffic evidence (payment capture never creates usage; reservation/lease state never creates usage; provider/payment observation is never delivery proof); the UsageLedger scope is usage/, tools/usage_selftest.py, docs/WORK-052-handoff.md, docs/WORK-052-evidence.md, and the additive CI wiring; the implementation PR must branch from the mainline carrying the authorization and must not modify spec/architect/. DEC-0060 / LEDGER-RECON-009 (2026-09-04) advance the active authorization baseline 41b3380 -> 39d40b7 (the post-PR-#146 governance mainline; the issuance baseline 41b3380 recorded above is preserved as provenance) in lockstep with the snapshot baseline after the accidental direct-main DEC-0060 write (ten commits 1c6f4dd..6b3d0fd) was removed by the Architect cleanup 9561fe8 — the reconciliation is baseline-advancement-only: this entry stays lifecycle registered with null delivery fields, no implementation exists, and the W052 implementation PR branches from the exact live authorization-bearing main only after the Architect merges the reconciliation and issues the fresh activation packet."
+    lifecycle: accepted-merged
+    note: "Architect-accepted after three review rounds on one PR lineage: 23cca95 -> a783078 -> 7d883b2. Exact reviewed head 7d883b227e9792b98efdbc1916d413491d20d458; merged as bcaf0d0677437d1ffca8f5e493cab516c87e7194; CI 33926974221 SUCCESS. WORK-052-CORE-001 superseded by DEC-0061; scope/provenance preserved."
   - work_item: WORK-053
     title: "EconomicAllocation: developer/provider/ADCOS revenue-share policy and external payment boundary"
     phase: 10
@@ -1009,12 +1010,20 @@ work_items:
     review_rounds: null
     acceptance_decision: null
     correction_decisions: []
-    handoff: null
-    handoff_required: false
+    handoff: docs/WORK-053-handoff.md
+    handoff_required: true
     lifecycle: registered
-    note: "registered-only entry added by ACR-011: WORK-053 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #85 and the canonical commercial dependency model. Dependencies (hard): WORK-052 (billable-final usage facts consumed). Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+    note: "Registered-only W053 now has the sole active repository-local authorization WORK-053-CORE-001 under DEC-0061 at exact main baseline bcaf0d0677437d1ffca8f5e493cab516c87e7194. No implementation has yet been delivered or accepted. Historical PR #124 is superseded lineage and is not current implementation state."
 
 reconciliations:
+  - reconciliation_id: LEDGER-RECON-010
+    recorded_by: DEC-0061
+    recorded_at: 2026-09-04T23:01:09Z
+    from_main_sha: 39d40b752f9129ac898fb74da1e485c20c6fbdc6
+    to_main_sha: bcaf0d0677437d1ffca8f5e493cab516c87e7194
+    reason: "Atomic W052 acceptance -> W053 activation: W052 exact reviewed head 7d883b2 accepted and merged as bcaf0d0 with CI 33926974221 SUCCESS; W052 transitions to accepted-merged, its authorization is superseded, and the sole active execution slot transfers to fresh WORK-053-CORE-001. W053 remains registered-only until its own implementation is delivered and accepted."
+    history: "No prior Work Item history is silently rewritten; prior reconciliation entries remain intact. W040 remains independent and in-review; frozen architecture semantics are unchanged. Historical W053 PR #124 is not reused."
+
   - reconciliation_id: LEDGER-RECON-001
     recorded_by: DEC-0046
     recorded_at: 2026-08-30T04:02:23Z

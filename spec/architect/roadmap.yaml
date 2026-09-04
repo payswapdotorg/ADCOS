@@ -1,7 +1,7 @@
 schema_version: 1
 kind: canonical_implementation_roadmap
 status: authoritative
-last_reconciled_main_sha: 2e87cb35643b72a94be39aa3eb96ceed1a3e18da
+last_reconciled_main_sha: bcaf0d0677437d1ffca8f5e493cab516c87e7194
 architecture_authority:
   frozen: spec/architecture.md
   lock: spec/architecture-lock.md
@@ -80,11 +80,11 @@ work_items:
   WORK-049: {title: Provider & Buyer Connectivity Client Runtime, status: accepted-merged, authorization: none, dependencies: [WORK-046, WORK-047, WORK-048], dependency_type: [hard, hard, hard], contract: issue-98+authorization-history, architecture_basis: ACR-009, advisory_inputs: [WORK-050]}
   WORK-050: {title: Platform Connectivity Sharing Capability & Isolation Matrix, status: accepted-merged, authorization: none, dependencies: [], dependency_type: [], contract: issue-96+authorization-history, architecture_basis: ACR-009+ACR-012, note: advisory capability input; not an enforcement authority}
   WORK-051: {title: CommercialCore: connectivity intent, offers, reservation, lease, and transaction lifecycle, status: accepted-merged, authorization: none, dependencies: [], dependency_type: [], contract: issue-83+docs/WORK-051-handoff.md, architecture_basis: ACR-009}
-  WORK-052: {title: UsageLedger: delivered-usage metering, billable finality, and append-only reconciliation, status: active-authorized, authorization: WORK-052-CORE-001, dependencies: [WORK-051], dependency_type: [hard], contract: issue-84+docs/WORK-052-handoff.md, baseline: 39d40b752f9129ac898fb74da1e485c20c6fbdc6, decision: DEC-0059}
-  WORK-053: {title: EconomicAllocation: developer/provider/ADCOS revenue-share policy and external payment boundary, status: accepted-merged, authorization: none, dependencies: [WORK-051, WORK-052], dependency_type: [hard, hard], contract: issue-85+authorization-history, architecture_basis: ACR-009}
+  WORK-052: {title: UsageLedger: delivered-usage metering, billable finality, and append-only reconciliation, status: accepted-merged, authorization: none, dependencies: [WORK-051], dependency_type: [hard], contract: issue-84+docs/WORK-052-handoff.md, decision: DEC-0061}
+  WORK-053: {title: EconomicAllocation: developer/provider/ADCOS revenue-share policy and external payment boundary, status: active-authorized, authorization: WORK-053-CORE-001, dependencies: [WORK-051, WORK-052], dependency_type: [hard, hard], contract: issue-85+docs/WORK-053-handoff.md, architecture_basis: ACR-009}
 execution_order:
-  active: WORK-052
-  next_after_active: [WORK-053]
+  active: WORK-053
+  next_after_active: []
   commercial_hard_gates:
     WORK-053: [WORK-052]
     WORK-044: [WORK-051, WORK-053]

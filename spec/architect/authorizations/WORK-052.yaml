@@ -56,11 +56,13 @@
 # schema: spec/architect/authorizations/ (v1); verified by tools/spec_check.py (ARCH-03).
 
 work_item: WORK-052
-status: active
-authorized: true
+status: superseded
+authorized: false
 type: implementation
 authorization_id: "WORK-052-CORE-001"
 authorization_decision: DEC-0059
+superseded_by: "WORK-053-CORE-001"
+supersession_decision: DEC-0061
 baseline_sha: 39d40b752f9129ac898fb74da1e485c20c6fbdc6
 baseline_reconciliation_decision: DEC-0060
 review_basis: "DEC-0059 atomic transition: WORK-051 accepted-merged (PR #145 head e247b4e, merge 41b3380, CI run 33838171573 SUCCESS, the conformance completion over the original PR #117 core delivery); WORK-051-CORE-001 superseded; WORK-052-CORE-001 is the single active authorization. ACR-009 (DEC-0050) is the architecture basis; the frozen WORK-052 contract (spec/work-items.md, issue #84) and the Architect-issued handoff (docs/WORK-052-handoff.md, PR #118) gate implementation. W051 CommercialCore interfaces are consumed (accepted-merged, DEC-0059); W041 NetworkPath identities are referenced, never owned (accepted-merged, DEC-0054); W042 journal-first/recovery discipline is reused where applicable (accepted-merged, DEC-0057); the WORK-033 clock seam is reused. W040 physical validation is advisory only (DEC-0051) and continues independently (in-review, NOT accepted; EVID-007/EVID-008 remain OPEN and W040-owned). The authorization baseline is reconciled to 39d40b752f9129ac898fb74da1e485c20c6fbdc6 (the post-PR-#146 governance mainline) by DEC-0060 / LEDGER-RECON-009 with the DEC-0059 issuance provenance (baseline 41b3380) preserved; the reconciliation is baseline-advancement-only and changes no other authorization field."
