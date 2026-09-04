@@ -1,5 +1,4 @@
 # DEC-0061 / LEDGER-RECON-010: W052 acceptance -> W053 activation on post-W052 merge bcaf0d0.
-# DEC-0061 / LEDGER-RECON-010: W052 acceptance -> W053 activation on post-W052 merge bcaf0d0.
 # ADCOS execution ledger — machine-readable, persisted by the Architect.
 #
 # Lifecycle states are DISTINCT: implemented -> verified -> in-review ->
@@ -1017,7 +1016,6 @@ work_items:
     note: "Registered-only W053 now has the sole active repository-local authorization WORK-053-CORE-001 under DEC-0061 at exact main baseline bcaf0d0677437d1ffca8f5e493cab516c87e7194. No implementation has yet been delivered or accepted. Historical PR #124 is superseded lineage and is not current implementation state."
 
 reconciliations:
-
   - reconciliation_id: LEDGER-RECON-010
     recorded_by: DEC-0061
     recorded_at: 2026-09-04T23:01:09Z
@@ -1026,13 +1024,6 @@ reconciliations:
     reason: "Atomic W052 acceptance -> W053 activation: W052 exact reviewed head 7d883b2 accepted and merged as bcaf0d0 with CI 33926974221 SUCCESS; W052 transitions to accepted-merged, its authorization is superseded, and the sole active execution slot transfers to fresh WORK-053-CORE-001. W053 remains registered-only until its own implementation is delivered and accepted."
     history: "No prior Work Item history is silently rewritten; prior reconciliation entries remain intact. W040 remains independent and in-review; frozen architecture semantics are unchanged. Historical W053 PR #124 is not reused."
 
-  - reconciliation_id: LEDGER-RECON-010
-    recorded_by: DEC-0061
-    recorded_at: 2026-09-04T23:01:09Z
-    from_main_sha: bcaf0d0677437d1ffca8f5e493cab516c87e7194
-    to_main_sha: bcaf0d0677437d1ffca8f5e493cab516c87e7194
-    reason: "Atomic W052 acceptance -> W053 activation: W052 exact reviewed head 7d883b2 accepted and merged as bcaf0d0 with CI 33926974221 SUCCESS; W052 transitions to accepted-merged, its authorization is superseded, and the sole active execution slot transfers to fresh WORK-053-CORE-001. W053 remains registered-only until its own implementation is delivered and accepted."
-    history: "No prior Work Item history is silently rewritten; prior reconciliation entries remain intact. W040 remains independent and in-review; frozen architecture semantics are unchanged. Historical W053 PR #124 is not reused."
   - reconciliation_id: LEDGER-RECON-001
     recorded_by: DEC-0046
     recorded_at: 2026-08-30T04:02:23Z
