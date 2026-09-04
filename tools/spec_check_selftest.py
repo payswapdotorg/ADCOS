@@ -477,13 +477,13 @@ ARCH_CASES: List[Case] = [
             ),
             (
                 "replace",
-                "spec/architect/authorizations/WORK-052.yaml",
+                "spec/architect/authorizations/WORK-053.yaml",
                 "status: active",
                 "status: in-review",
             ),
             (
                 "replace",
-                "spec/architect/authorizations/WORK-052.yaml",
+                "spec/architect/authorizations/WORK-053.yaml",
                 "authorized: true",
                 "authorized: false",
             ),
@@ -636,7 +636,7 @@ PROVENANCE_CASES: List[Case] = [
         "ops": [
             (
                 "replace",
-                "spec/architect/authorizations/WORK-052.yaml",
+                "spec/architect/authorizations/WORK-053.yaml",
                 "authorization_id: \"WORK-053-CORE-001\"",
                 "authorization_id: \"WORK-052-SELF-AUTHORIZED-002\"",
             ),
@@ -669,7 +669,7 @@ PROVENANCE_CASES: List[Case] = [
             (
                 "replace",
                 "spec/architect/execution-state.yaml",
-                "  active_work_item: WORK-052",
+                "  active_work_item: WORK-053",
                 "  active_work_item: null",
             ),
             (
@@ -680,13 +680,13 @@ PROVENANCE_CASES: List[Case] = [
             ),
             (
                 "replace",
-                "spec/architect/authorizations/WORK-052.yaml",
+                "spec/architect/authorizations/WORK-053.yaml",
                 "status: active",
                 "status: in-review",
             ),
             (
                 "replace",
-                "spec/architect/authorizations/WORK-052.yaml",
+                "spec/architect/authorizations/WORK-053.yaml",
                 "authorized: true",
                 "authorized: false",
             ),
@@ -725,7 +725,7 @@ PROVENANCE_CASES: List[Case] = [
     },
     {
         # Implementation PRs must not modify the persistent package. The
-        # probe sits inside the active WORK-053-CORE-001 scope (usage/)
+        # probe sits inside the active WORK-053-CORE-001 scope (allocation/)
         # so the package-modification rule is what fires.
         "name": "provenance-implementation-modifies-package-fails",
         "ops": [
