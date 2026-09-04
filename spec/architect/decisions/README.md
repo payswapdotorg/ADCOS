@@ -6,7 +6,7 @@
 
 Durable Architect decision records live in this directory as `DEC-NNNN-<short-slug>.yaml`, numbered sequentially and stably. Schema: `spec/architect/decision-record-template.md`. Verified by `tools/spec_check.py` (ARCH-04).
 
-Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-001 … WORK-039, reconstructed from repository-durable evidence. Unknown chat-era detail is not invented. Records DEC-0040 … DEC-0059 are corrective/governance/architecture/acceptance decisions whose requirements shape future work.
+Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-001 … WORK-039, reconstructed from repository-durable evidence. Unknown chat-era detail is not invented. Records DEC-0040 … DEC-0060 are corrective/governance/architecture/acceptance decisions whose requirements shape future work.
 
 ## Registry
 
@@ -71,6 +71,7 @@ Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-
 | DEC-0057 | acceptance | WORK-042 | ACCEPTED | ACCEPTED | W042 acceptance: event-driven platform integration + journal-first recovery (PR #110, head 708a432, merge 207d70e, CI 33444952103) |
 | DEC-0058 | governance | WORK-042 | ACCEPTED | ACCEPTED | Atomic W042 acceptance → W051 activation (supersede WORK-042-CORE-001; activate WORK-051-CORE-001 CommercialCore chain head; LEDGER-RECON-007 baseline fe6e6e3; no registry change — ACR-011 already accepted; W040 evidence ownership preserved) |
 | DEC-0059 | acceptance | WORK-051 | ACCEPTED | ACCEPTED | W051 acceptance: CommercialCore conformance completion (PR #145, head e247b4e, merge 41b3380, CI 33838171573; battery 38/38; the replay walk-linkage and action-target coherence corrections closed fail-closed) — atomic W051 acceptance → W052 activation (supersede WORK-051-CORE-001; activate WORK-052-CORE-001 UsageLedger; LEDGER-RECON-008 baseline 41b3380; no registry change; W040 evidence ownership preserved) |
+| DEC-0060 | governance | WORK-052 | ACCEPTED | ACCEPTED | W052 baseline reconciliation: advance the snapshot + WORK-052-CORE-001 baseline 41b3380 -> 39d40b7 (the post-PR-#146 governance merge) via LEDGER-RECON-009 — the formal routing of the reconciliation after the accidental direct-main DEC-0060 write was removed by the Architect cleanup 9561fe8; no implementation, no scope change |
 
 ## Rules
 

@@ -495,15 +495,16 @@ ARCH_CASES: List[Case] = [
         # An active authorization whose baseline no longer matches the
         # recorded main baseline is stale. The fixture base already
         # carries the active WORK-052-CORE-001 authorization
-        # (baseline 41b3380 since the DEC-0059 LEDGER-RECON-008
-        # post-W051-merge reconciliation); corrupting the recorded
+        # (baseline 39d40b7 since the DEC-0060 LEDGER-RECON-009
+        # post-PR-#146 baseline reconciliation, advanced from the
+        # DEC-0059 issuance baseline 41b3380); corrupting the recorded
         # main baseline makes it stale.
         "name": "architect-stale-authorization-detected",
         "ops": [
             (
                 "replace",
                 "spec/architect/execution-state.yaml",
-                "  main_sha: 41b338080fbeb79627bff45cd79ddf09bf5cbb29",
+                "  main_sha: 39d40b752f9129ac898fb74da1e485c20c6fbdc6",
                 "  main_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             )
         ],

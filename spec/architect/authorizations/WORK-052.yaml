@@ -35,18 +35,23 @@
 # claims remain governed separately by W040's open PHYSICAL obligations
 # EVID-007/EVID-008 (W040 stays in-review and is NOT accepted).
 #
-# Baseline note: baseline_sha is 41b338080fbeb79627bff45cd79ddf09bf5cbb29
-# (the post-W051-merge mainline — the mainline carrying the accepted W051
-# delivery, reconciled by LEDGER-RECON-008 in the same DEC-0059
-# transition). Per the RECON-002/003/004/005/006/007/008 convention it
-# moves in lockstep with the snapshot baseline only through a formally
-# recorded reconciliation; the W052 handoff documentation-only merge
-# 5eb198b (PR #118) and this governance merge sit beyond the recorded
-# baseline without changing persistent state — there is no in-flight W052
-# implementation branch to invalidate at activation time; a future W052
-# implementation PR branches from the mainline carrying this exact record
-# (the W44-established governance-only branch-point offset), preserves it
-# byte-identically, and must not modify spec/architect/.
+# Baseline note: baseline_sha is 39d40b752f9129ac898fb74da1e485c20c6fbdc6
+# (the post-PR-#146 governance mainline — the merge that carried this
+# authorization into main; reconciled by DEC-0060 / LEDGER-RECON-009 on
+# 2026-09-04). The DEC-0059 issuance baseline was
+# 41b338080fbeb79627bff45cd79ddf09bf5cbb29 (the post-W051-merge mainline,
+# reconciled by LEDGER-RECON-008 in the same DEC-0059 transition). Per the
+# RECON-002/003/004/005/006/007/008/009 convention the baseline moves in
+# lockstep with the snapshot baseline only through a formally recorded
+# reconciliation: the initial attempt was accidentally written directly
+# to main (ten commits 1c6f4dd..6b3d0fd creating an invalid DEC-0060
+# record) and removed by the Architect cleanup 9561fe8 (tree
+# byte-identical to the 39d40b7 state); DEC-0060 is the formal,
+# properly-routed record. There is no in-flight W052 implementation
+# branch to invalidate; a future W052 implementation PR branches from the
+# exact live authorization-bearing main re-read at activation time (the
+# W44-established governance-only branch-point offset), preserves this
+# record byte-identically, and must not modify spec/architect/.
 #
 # schema: spec/architect/authorizations/ (v1); verified by tools/spec_check.py (ARCH-03).
 
@@ -56,8 +61,9 @@ authorized: true
 type: implementation
 authorization_id: "WORK-052-CORE-001"
 authorization_decision: DEC-0059
-baseline_sha: 41b338080fbeb79627bff45cd79ddf09bf5cbb29
-review_basis: "DEC-0059 atomic transition: WORK-051 accepted-merged (PR #145 head e247b4e, merge 41b3380, CI run 33838171573 SUCCESS, the conformance completion over the original PR #117 core delivery); WORK-051-CORE-001 superseded; WORK-052-CORE-001 is the single active authorization. ACR-009 (DEC-0050) is the architecture basis; the frozen WORK-052 contract (spec/work-items.md, issue #84) and the Architect-issued handoff (docs/WORK-052-handoff.md, PR #118) gate implementation. W051 CommercialCore interfaces are consumed (accepted-merged, DEC-0059); W041 NetworkPath identities are referenced, never owned (accepted-merged, DEC-0054); W042 journal-first/recovery discipline is reused where applicable (accepted-merged, DEC-0057); the WORK-033 clock seam is reused. W040 physical validation is advisory only (DEC-0051) and continues independently (in-review, NOT accepted; EVID-007/EVID-008 remain OPEN and W040-owned)."
+baseline_sha: 39d40b752f9129ac898fb74da1e485c20c6fbdc6
+baseline_reconciliation_decision: DEC-0060
+review_basis: "DEC-0059 atomic transition: WORK-051 accepted-merged (PR #145 head e247b4e, merge 41b3380, CI run 33838171573 SUCCESS, the conformance completion over the original PR #117 core delivery); WORK-051-CORE-001 superseded; WORK-052-CORE-001 is the single active authorization. ACR-009 (DEC-0050) is the architecture basis; the frozen WORK-052 contract (spec/work-items.md, issue #84) and the Architect-issued handoff (docs/WORK-052-handoff.md, PR #118) gate implementation. W051 CommercialCore interfaces are consumed (accepted-merged, DEC-0059); W041 NetworkPath identities are referenced, never owned (accepted-merged, DEC-0054); W042 journal-first/recovery discipline is reused where applicable (accepted-merged, DEC-0057); the WORK-033 clock seam is reused. W040 physical validation is advisory only (DEC-0051) and continues independently (in-review, NOT accepted; EVID-007/EVID-008 remain OPEN and W040-owned). The authorization baseline is reconciled to 39d40b752f9129ac898fb74da1e485c20c6fbdc6 (the post-PR-#146 governance mainline) by DEC-0060 / LEDGER-RECON-009 with the DEC-0059 issuance provenance (baseline 41b3380) preserved; the reconciliation is baseline-advancement-only and changes no other authorization field."
 
 dependencies:
   - WORK-051
