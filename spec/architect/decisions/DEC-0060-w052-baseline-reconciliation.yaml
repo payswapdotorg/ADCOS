@@ -1,8 +1,6 @@
 # ADCOS Architect decision record.
 # schema: spec/architect/decision-record-template.md; verified by tools/spec_check.py (ARCH-04).
-#
 # Baseline-advancement-only reconciliation after DEC-0059 W052 activation.
-# No implementation, new authorization, or frozen architecture mutation.
 decision_id: DEC-0060
 type: reconciliation
 work_item: WORK-052
@@ -17,7 +15,6 @@ findings:
   - "Live main is 39d40b752f9129ac898fb74da1e485c20c6fbdc6."
   - "WORK-052-CORE-001 is the sole active implementation authorization under DEC-0059."
   - "The recorded 41b3380 baseline is the prior reconciliation anchor; the current implementation base is live main 39d40b7."
-  - "Main advanced after DEC-0059 through two no-tree-change commits; this reconciliation preserves that history and re-pins persistent state to the actual mainline."
 blockers: []
 required_corrections: []
 evidence:
@@ -25,14 +22,11 @@ evidence:
   ci_run: null
   artifacts: []
 accepted_scope:
-  - "Advance the persistent Architect baseline from 41b338080fbeb79627bff45cd79ddf09bf5cbb29 to 39d40b752f9129ac898fb74da1e485c20c6fbdc6."
-  - "Preserve WORK-052-CORE-001 identity, DEC-0059 authority, dependency WORK-051, literal implementation scope, acceptance criteria, and evidence separation unchanged."
-  - "Record 39d40b752f9129ac898fb74da1e485c20c6fbdc6 as the only valid W052 implementation branch base."
+  - "Advance persistent state baseline from 41b338080fbeb79627bff45cd79ddf09bf5cbb29 to live main 39d40b752f9129ac898fb74da1e485c20c6fbdc6."
+  - "Preserve WORK-052-CORE-001, DEC-0059, dependency WORK-051, literal W052 scope and acceptance criteria unchanged."
 rejected_scope:
-  - "Any W052 implementation code."
-  - "Any frozen architecture/protocol/schema or Work Item semantic change."
-  - "Any authorization ownership change or second active authorization."
-  - "Any PHYSICAL claim or W040 acceptance."
+  - "Any W052 implementation code or frozen architecture/protocol/schema change."
+  - "Any second authorization, W040 acceptance, or physical evidence promotion."
 downstream_effect:
   - "A governance reconciliation PR must advance execution-state.yaml, execution-ledger.yaml, current-state.md, and WORK-052.yaml to the live main SHA."
-  - "Only after that PR merges and the Architect re-reads live state may resident Z.ai branch and implement W052."
+  - "After that reconciliation merges and the Architect re-reads live state, resident Z.ai may branch from the exact live main and implement W052."
