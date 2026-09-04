@@ -1,0 +1,84 @@
+# ADCOS Architect decision record.
+# schema: spec/architect/decision-record-template.md; verified by tools/spec_check.py (ARCH-02/ARCH-04).
+#
+# This record is the formal, properly-routed persistence of the WORK-052
+# baseline-advancement-only reconciliation (LEDGER-RECON-009). The DEC-0059
+# atomic W051 acceptance -> W052 activation transition merged into main as
+# PR #146 at 39d40b752f9129ac898fb74da1e485c20c6fbdc6, so the repository's
+# actual mainline advanced beyond the LEDGER-RECON-008 snapshot baseline
+# 41b338080fbeb79627bff45cd79ddf09bf5cbb29 while the persistent state
+# (execution-state.yaml, execution-ledger.yaml, current-state.md, and
+# authorizations/WORK-052.yaml) still referenced 41b3380. Per the standing
+# RECON convention (LEDGER-RECON-002/003/004/005/006/007/008 and the
+# DEC-0074/DEC-0077/DEC-0079 baseline-reconciliation pattern) the snapshot
+# baseline and the active WORK-052-CORE-001 authorization baseline move in
+# lockstep to the post-transition governance mainline only through a
+# formally recorded reconciliation entering the repository by governance
+# branch / PR / Architect review / merge.
+#
+# ROUTING CORRECTION — the reason this record exists as a fresh formal
+# record: an earlier attempt to create this reconciliation was mistakenly
+# written directly onto main (ten direct-to-main commits,
+# 1c6f4dd49a0d7c0f220e3665cd0754a10b170d2f through
+# 6b3d0fdcd8431cf49d8252b012bd1f9f65514703, 2026-09-04T16:51:09Z to
+# 16:52:57Z) creating a DEC-0060 file whose schema was invalid (type
+# reconciliation / decision RECONCILED are not legal decision-record
+# enums — the machine checks failed ARCH-02 and ARCH-08 provenance on the
+# accidental tip 6b3d0fd) and advancing none of the four persistent files.
+# The Architect removed that material with the cleanup commit
+# 9561fe848572615991e678c6e410a98700a11024 (2026-09-04T17:52:24Z; the
+# resulting tree is byte-identical to the 39d40b7 post-transition state),
+# classified the direct-main writes as unauthorized governance noise, and
+# re-issued the reconciliation through this governance branch / PR path
+# (the issue #84 Architect corrections of 2026-09-04T17:12:17Z and
+# 17:52:36Z). The accidental commits remain in main history as the
+# transparent record of exactly what happened and exactly what was
+# corrected; no history was rewritten and no replacement history is
+# fabricated by this record.
+#
+# This decision does NOT implement WORK-052, does not alter the frozen
+# WORK-052 contract or any frozen architecture/protocol/schema surface,
+# and does not accept, authorize, or supersede any Work Item: the already
+# active WORK-052-CORE-001 (DEC-0059) is preserved exactly as issued.
+decision_id: DEC-0060
+type: governance
+work_item: WORK-052
+acr: null
+pr: 146
+reviewed_sha: 39d40b752f9129ac898fb74da1e485c20c6fbdc6
+decision: ACCEPTED
+status: ACCEPTED
+reviewer: "Architect (pectoraux)"
+timestamp: 2026-09-04T16:44:22Z
+findings:
+  - "The DEC-0059 atomic W051 acceptance -> W052 activation transition was merged by the Architect as PR #146 at merge commit 39d40b752f9129ac898fb74da1e485c20c6fbdc6 on 2026-09-04T16:44:22Z (parents cdf633bb155bdc4af8939a55a17548fe30736b64 and 72b728af52a293e40c732efe7378abbfaa91b3af, the corrected governance head; the GitHub merge event is recorded at 2026-09-04T16:44:23Z). That merge is the authorization-bearing post-transition mainline: it carries WORK-052-CORE-001 (DEC-0059) as the sole active authorization together with the durable W051 acceptance facts."
+  - "After that merge the persistent state still referenced the LEDGER-RECON-008 snapshot baseline 41b338080fbeb79627bff45cd79ddf09bf5cbb29 (the post-W051-merge mainline) in execution-state.yaml, execution-ledger.yaml, current-state.md, and authorizations/WORK-052.yaml, while the mainline carrying the activation is 39d40b7 — exactly the standing RECON condition: the issuance baseline is deliberately not moved by the transition itself; a follow-up baseline-advancement-only reconciliation re-pins it (LEDGER-RECON-002/003/004/005/006/007/008 and the DEC-0074/DEC-0077/DEC-0079 convention)."
+  - "The initial attempt to record this reconciliation was mistakenly written directly onto main: ten direct-to-main commits (1c6f4dd49a0d7c0f220e3665cd0754a10b170d2f, 2173719a8a25777e0c734564b2d757e05794f439, 3c6503197e3c217436f0fb494943620b4df534b2, 06fd3422c520b5f14b5a165d71dbd2bfbe3f7ab1, f82c5c54d5420400b6c15ec248bd46830403ead1, 7eb7dcbd0b68fdbc876ed28eb171d0719c4ee773, 6ca3c06b9907a91a75e0441fa65e473bf6d2a7ac, 3ca7eeda20fb760d956eb9104f1f6cb4a3f5342f, a67a75de2eb5efb6ee7ba600bf26e949086a46ed, 6b3d0fdcd8431cf49d8252b012bd1f9f65514703; 2026-09-04T16:51:09Z through 16:52:57Z) whose cumulative delta from 39d40b7 is exactly one invalid DEC-0060 file (+30 lines; illegal type/decision enums, so the machine checks failed on the accidental tip 6b3d0fd) and none of the four persistent files advanced. The Architect removed the file with the cleanup commit 9561fe848572615991e678c6e410a98700a11024 (2026-09-04T17:52:24Z; tree byte-identical to the 39d40b7 post-transition state; the only mainline movement beyond the PR #146 merge is this removed accidental material), classified the direct-main writes as unauthorized governance noise, and directed the reconciliation through the normal governance branch / PR / review / merge path (issue #84). The accidental commits are retained in history as the transparent record of the mutation error and its correction; this record is the formal replacement — the accidental material is not treated as an accepted architectural decision merely because a file existed."
+  - "Live main at the time this reconciliation was prepared is 9561fe848572615991e678c6e410a98700a11024 (tree 2e41ab7ad9c713278f726aaa1c07e0d67fcb9984, verified byte-identical to the 39d40b7 post-transition tree by empty diff). On that mainline WORK-052-CORE-001 is the sole active authorization (authorizations/WORK-052.yaml status active, authorized true, authorization_decision DEC-0059); WORK-051 is accepted-merged and WORK-051-CORE-001 superseded; WORK-053 and WORK-044..WORK-050 remain unauthorized; W040 remains independent, in-review, and NOT accepted (EVID-007 PARTIAL and EVID-008 NOT-TESTABLE remain OPEN and W040-owned); no W052 implementation exists (no usage/ package, no usage battery, no W052 evidence document); the machine checks on the clean mainline are green (spec_check 17/17, provenance 2/2, spec_check_selftest 32/32, the W051 commercial battery 38/38, the W050 platformcaps battery 32/32 in the local invocation)."
+  - "The reconciled baseline is 39d40b752f9129ac898fb74da1e485c20c6fbdc6 — the post-PR-#146 governance merge, the mainline that carries the active WORK-052-CORE-001 authorization. The 41b3380 issuance baseline recorded by LEDGER-RECON-008 is preserved as provenance in the WORK-052 ledger entry; the cleanup commit 9561fe8 and this reconciliation merge itself sit beyond the reconciled baseline without changing the authorization-bearing content (the standing governance-only branch-point offset). The W052 implementation PR branches from the exact live authorization-bearing main re-read at activation time — never from a stale historical SHA — after the Architect merges this reconciliation, re-reads the live state, and issues the fresh activation packet (the issue #84 activation-condition protocol)."
+blockers: []
+required_corrections: []
+evidence:
+  merge_sha: 39d40b752f9129ac898fb74da1e485c20c6fbdc6
+  ci_run: null
+  artifacts:
+    - "spec/architect/execution-state.yaml"
+    - "spec/architect/execution-ledger.yaml"
+    - "spec/architect/current-state.md"
+    - "spec/architect/authorizations/WORK-052.yaml"
+accepted_scope:
+  - "Advance the persistent Architect snapshot baseline and the WORK-052-CORE-001 authorization baseline from 41b338080fbeb79627bff45cd79ddf09bf5cbb29 to 39d40b752f9129ac898fb74da1e485c20c6fbdc6 in lockstep across execution-state.yaml (repository.main_sha and its semantics), execution-ledger.yaml (main_sha, LEDGER-RECON-009, and the WORK-052 entry note append), current-state.md (the reconciled snapshot narrative), and authorizations/WORK-052.yaml (baseline_sha with baseline_reconciliation_decision DEC-0060) so ARCH-03/ARCH-05 hold."
+  - "Preserve WORK-052-CORE-001 exactly as issued by DEC-0059: the authorization id and type, the governing decision reference, dependencies (WORK-051), the literal UsageLedger scope, all acceptance criteria, evidence classes, authority inputs/outputs, out-of-scope declarations, and the acceptance gate are unchanged; the reconciliation is baseline-advancement-only."
+  - "Record LEDGER-RECON-009 (from 41b338080fbeb79627bff45cd79ddf09bf5cbb29 to 39d40b752f9129ac898fb74da1e485c20c6fbdc6) with reason and history statements documenting the PR #146 advancement, the accidental direct-main write and its cleanup, and the byte-preservation guarantees; re-pin the tools/spec_check_selftest.py mutation anchors to the reconciled state with mutation semantics unchanged (the DEC-0054/DEC-0055/DEC-0058/DEC-0059 transition precedent)."
+rejected_scope:
+  - "Any WORK-052 implementation: no usage/ package, no usage battery, no W052 evidence document, and no W052 implementation branch or PR is created by this reconciliation; the implementation PR remains future work under WORK-052-CORE-001, gated on the Architect fresh post-reconciliation activation packet (the resident worker stays stopped until then)."
+  - "Any change to DEC-0059, the WORK-051 acceptance facts, the WORK-051-CORE-001 supersession, the frozen WORK-052 contract, the frozen registry (spec/work-items.md, spec/dependency-graph.md), the frozen architecture/protocol/schema/ACR surfaces, or the tools/spec_check.py expectations."
+  - "Any WORK-053 activation, WORK-044..WORK-050 authorization, second authorization, W040 acceptance or evidence-status change (W040 stays in-review, unaccepted, EVID-007/EVID-008 OPEN and W040-owned), or physical-evidence promotion."
+  - "Any rewriting of the ten accidental direct-main commits, the cleanup commit 9561fe848572615991e678c6e410a98700a11024, the WORK-001..WORK-050 ledger history, or any prior reconciliation record (durable history: the accidental material is documented, never silently erased or replaced by a fabricated history)."
+downstream_effect:
+  - "spec/architect/execution-state.yaml: repository.main_sha advances to 39d40b752f9129ac898fb74da1e485c20c6fbdc6 with reconciliation semantics and a DEC-0060 header block; the execution block stays mode implementing with active_work_item WORK-052 and active_authorization WORK-052-CORE-001 (unchanged); halted_reason records the reconciliation, the routing correction, and the worker gate (implementation remains stopped pending the Architect post-reconciliation live-state re-read and fresh activation packet)."
+  - "spec/architect/execution-ledger.yaml: main_sha advances to 39d40b752f9129ac898fb74da1e485c20c6fbdc6; the WORK-052 registered entry note appends the baseline advancement (issuance baseline 41b3380 preserved as provenance; the entry stays lifecycle registered with null delivery fields — the handoff is a work order, not an implementation); LEDGER-RECON-009 is appended; no WORK-001..WORK-050 entry and no prior reconciliation record is rewritten."
+  - "spec/architect/authorizations/WORK-052.yaml: baseline_sha advances to 39d40b752f9129ac898fb74da1e485c20c6fbdc6 with baseline_reconciliation_decision DEC-0060 recorded and the baseline note updated; every other field is unchanged (the sole active authorization, exactly as DEC-0059 issued it)."
+  - "spec/architect/current-state.md and spec/architect/decisions/README.md record the reconciliation (DEC-0060 registered; W052 active with the reconciled baseline; W051 accepted-merged; W053 unauthorized; W040 independent and unaccepted)."
+  - "After this reconciliation merges, the Architect re-reads the live state (live main SHA, active authorization, authorization baseline, execution state, execution ledger, current state), verifies WORK-052-CORE-001 is still the sole active authorization, and issues the fresh W052 activation packet; only then does the resident worker transition to READY_FOR_IMPLEMENTATION, branch from the exact live authorization-bearing main, and open exactly one W052 implementation PR (the issue #84 activation-condition protocol; DEC-0053 single-Architect review and merge authority)."
+resolved_by: null
