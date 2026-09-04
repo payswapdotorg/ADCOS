@@ -1,13 +1,29 @@
-# ADCOS Work Item authorization record — WORK-051 active implementation.
+# ADCOS Work Item authorization record — WORK-051 superseded (accepted).
+#
+# Supersession (DEC-0059, 2026-09-04): status moves active -> superseded and
+# authorized moves true -> false, transferring the single active execution
+# slot to WORK-052-CORE-001 (atomic transition per DEC-0059, in the same
+# governance change as the WORK-051 acceptance: the W051 delivery was
+# accepted on the exact reviewed PR #145 head e247b4e — the conformance
+# completion over the original PR #117 core implementation — merge
+# 41b3380, CI run 33838171573 SUCCESS, and the WORK-051 ledger entry is
+# lifecycle accepted-merged). The authorized scope, the acceptance
+# criteria, the dependency set, the DEC-0058 provenance, the evidence
+# rules, and the physical-evidence separation are PRESERVED UNCHANGED
+# below; this record remains durable provenance of what WORK-051-CORE-001
+# covered. WORK-051's own obligations are discharged by DEC-0059's
+# acceptance; no open evidence obligation of this authorization survives
+# it (physical claims were never required and remain governed by WORK-040's
+# open EVID-007/EVID-008).
 #
 # WORK-051-CORE-001 (issued by DEC-0058): the Architect's repository-local
 # authorization for WORK-051 (CommercialCore: connectivity intent, offers,
-# reservation, lease, and transaction lifecycle, ACR-009). This record is
-# the sole durable authority for W051 implementation scope. It becomes the
-# single active authorization at the moment DEC-0058 merges, atomically
+# reservation, lease, and transaction lifecycle, ACR-009). This record was
+# the sole durable authority for W051 implementation scope. It became the
+# single active authorization at the moment DEC-0058 merged, atomically
 # superseding WORK-042-CORE-001 (whose Work Item is accepted-merged through
 # DEC-0057 in the same governance transition) so the single active
-# execution slot is never vacant (mode implementing + zero active auths =
+# execution slot was never vacant (mode implementing + zero active auths =
 # STOP) nor double-occupied (two active auths = ARCH-03 FAIL).
 #
 # Scope is the ACR-009 commercial control-plane core per the WORK-051
@@ -50,8 +66,10 @@
 # schema: spec/architect/authorizations/ (v1); verified by tools/spec_check.py (ARCH-03).
 
 work_item: WORK-051
-status: active
-authorized: true
+status: superseded
+authorized: false
+superseded_by: "WORK-052-CORE-001"
+supersession_decision: DEC-0059
 type: implementation
 authorization_id: "WORK-051-CORE-001"
 authorization_decision: DEC-0058

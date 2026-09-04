@@ -1,0 +1,140 @@
+# ADCOS Work Item authorization record — WORK-052 active implementation.
+#
+# WORK-052-CORE-001 (issued by DEC-0059): the Architect's repository-local
+# authorization for WORK-052 (UsageLedger: delivered-usage metering,
+# billable finality, and append-only reconciliation, ACR-009). This record
+# is the sole durable authority for W052 implementation scope. It becomes
+# the single active authorization at the moment DEC-0059 merges,
+# atomically superseding WORK-051-CORE-001 (whose Work Item is
+# accepted-merged through the same DEC-0059 transition) so the single
+# active execution slot is never vacant (mode implementing + zero active
+# auths = STOP) nor double-occupied (two active auths = ARCH-03 FAIL).
+#
+# Scope is the UsageLedger boundary per the frozen WORK-052 contract
+# (spec/work-items.md; tracking issue #84; ACR-009 / DEC-0050) and the
+# Architect-issued handoff (docs/WORK-052-handoff.md, merged
+# documentation-only by PR #118): derive billable usage from authoritative
+# delivered-traffic evidence — NEVER from payment capture and NEVER from
+# reservation/lease state — as canonical records and deterministic
+# state/reconciliation behavior for usage observations, correlation to
+# authorized delivery/path evidence, billable finality, reconciliation
+# from observed delivery to billable quantity/amount, and compensating
+# refunds/reversals/disputes.
+#
+# UsageLedger owns usage/economic ledger state ONLY. It may consume the
+# authoritative references exposed by W051 CommercialCore (accepted-merged
+# DEC-0059), W041 NetworkPath (accepted-merged DEC-0054), W042
+# journal-first/recovery discipline (accepted-merged DEC-0057), and the
+# established WORK-033 clock seam. It must never create, mutate, or
+# shadow the identity, session, NetworkPath, routing, transport, payment,
+# or delivery authorities. Provider/payment observations are data, never
+# proof of delivery. W052 does NOT authorize WORK-044 through WORK-050,
+# WORK-053, or any other Work Item; every registered dependency edge
+# remains hard and unchanged. W052 makes NO physical validation claim:
+# W052 is a SOFTWARE-class control-plane implementation and any physical
+# claims remain governed separately by W040's open PHYSICAL obligations
+# EVID-007/EVID-008 (W040 stays in-review and is NOT accepted).
+#
+# Baseline note: baseline_sha is 41b338080fbeb79627bff45cd79ddf09bf5cbb29
+# (the post-W051-merge mainline — the mainline carrying the accepted W051
+# delivery, reconciled by LEDGER-RECON-008 in the same DEC-0059
+# transition). Per the RECON-002/003/004/005/006/007/008 convention it
+# moves in lockstep with the snapshot baseline only through a formally
+# recorded reconciliation; the W052 handoff documentation-only merge
+# 5eb198b (PR #118) and this governance merge sit beyond the recorded
+# baseline without changing persistent state — there is no in-flight W052
+# implementation branch to invalidate at activation time; a future W052
+# implementation PR branches from the mainline carrying this exact record
+# (the W44-established governance-only branch-point offset), preserves it
+# byte-identically, and must not modify spec/architect/.
+#
+# schema: spec/architect/authorizations/ (v1); verified by tools/spec_check.py (ARCH-03).
+
+work_item: WORK-052
+status: active
+authorized: true
+type: implementation
+authorization_id: "WORK-052-CORE-001"
+authorization_decision: DEC-0059
+baseline_sha: 41b338080fbeb79627bff45cd79ddf09bf5cbb29
+review_basis: "DEC-0059 atomic transition: WORK-051 accepted-merged (PR #145 head e247b4e, merge 41b3380, CI run 33838171573 SUCCESS, the conformance completion over the original PR #117 core delivery); WORK-051-CORE-001 superseded; WORK-052-CORE-001 is the single active authorization. ACR-009 (DEC-0050) is the architecture basis; the frozen WORK-052 contract (spec/work-items.md, issue #84) and the Architect-issued handoff (docs/WORK-052-handoff.md, PR #118) gate implementation. W051 CommercialCore interfaces are consumed (accepted-merged, DEC-0059); W041 NetworkPath identities are referenced, never owned (accepted-merged, DEC-0054); W042 journal-first/recovery discipline is reused where applicable (accepted-merged, DEC-0057); the WORK-033 clock seam is reused. W040 physical validation is advisory only (DEC-0051) and continues independently (in-review, NOT accepted; EVID-007/EVID-008 remain OPEN and W040-owned)."
+
+dependencies:
+  - WORK-051
+
+authority_inputs:
+  - "ACR-009 accepted (DEC-0050) — Commercial Connectivity Control Plane (the architecture basis: usage integrity, billable finality derived from delivered-traffic evidence, provider abstraction)"
+  - "WORK-051 CommercialCore accepted-merged (DEC-0059; PR #145 head e247b4e, merge 41b3380) — the commercial lifecycle, Lease authority, and billable-final commercial facts consumed where their interfaces are exposed"
+  - "WORK-041 NetworkPath accepted-merged (DEC-0054) — NetworkPath identities referenced, never owned"
+  - "WORK-042 platform integration and journal-first recovery accepted-merged (DEC-0057) — journal-first/recovery discipline reused where applicable"
+  - "WORK-033 Linux Agent clock seam — the established deterministic clock convention (no wall-clock reads)"
+  - "WORK-012 Logical Sessions (logical session identities referenced, never owned)"
+
+authority_outputs:
+  - "the usage/economic ledger state ONLY: canonical records and deterministic state/reconciliation behavior for usage observations, correlation to authorized delivery/path evidence, billable finality, reconciliation from observed delivery to billable quantity/amount, and compensating refunds/reversals/disputes — billable usage as an append-only, deterministic, auditable derivation from authoritative delivered-traffic evidence, separable from payment state; no new identity/session/routing/path/transport/federation/policy/payment/delivery authority is created, mutated, or shadowed"
+
+scope:
+  - "usage/"
+  - "tools/usage_selftest.py"
+  - "docs/WORK-052-handoff.md"
+  - "docs/WORK-052-evidence.md"
+  - ".github/workflows/spec-check.yml"
+
+required_corrections: []
+
+acceptance_criteria:
+  - "Usage requires authorized delivery evidence; payment capture and reservation/lease state never create usage."
+  - "Duplicate observations do not double-charge; out-of-order observations do not produce nondeterministic ledger state; delayed observations reconcile deterministically."
+  - "Billable finality is explicit, immutable, and cannot rewrite prior facts; corrections are append-only compensating records."
+  - "Usage records correlate delivered quantity to an authorized delivery/path evidence record and remain auditable end to end."
+  - "Commerce cannot mutate connectivity/session/path/routing/transport authorities."
+
+evidence_classes:
+  - criterion: "Software/architecture conformance"
+    class: SOFTWARE
+    allowed_statuses:
+      - PASS
+      - PARTIAL
+      - NOT-TESTABLE
+      - OPEN
+  - criterion: "Deterministic automated verification"
+    class: SOFTWARE
+    allowed_statuses:
+      - PASS
+      - PARTIAL
+      - NOT-TESTABLE
+      - OPEN
+  - criterion: "Physical-device evidence (not required for W052 implementation: the usage ledger is a pure software control-plane model; any physical claims remain governed separately)"
+    class: PHYSICAL
+    allowed_statuses:
+      - PASS
+      - PARTIAL
+      - NOT-TESTABLE
+      - OPEN
+
+out_of_scope:
+  - "payment-provider rails, payout execution, custody of regulated funds, KYC/KYB, jurisdiction policy, marketplace discovery, and developer SDKs (later authorized Work Items per the WORK-052 contract explicit non-scope)"
+  - "creating, mutating, or shadowing the identity, session, NetworkPath, routing, transport, payment, or delivery authorities (UsageLedger owns usage/economic ledger state only)"
+  - "treating payment capture as usage evidence"
+  - "treating reservation or lease state as usage evidence"
+  - "treating provider/payment observation as delivery proof (provider observations are data, never proof of delivery)"
+  - "rewriting historical delivery observations or usage facts (corrections are append-only compensating records)"
+  - "W040 continuation (W040 remains an independent physical validation track, in-review and NOT accepted; EVID-007/EVID-008 remain W040-owned and OPEN)"
+  - "WORK-044 through WORK-051, WORK-053, or any other Work Item (each requires its own repository-local authorization; every registered dependency edge remains hard)"
+  - "modifying spec/architect/ in the implementation PR (the implementation PR inherits this authorization byte-identically from the mainline carrying it)"
+  - "private authority access (and private-method fallbacks for ledger or evidence)"
+  - "synthetic physical evidence presented as physical PASS"
+  - "wire-schema changes unless separately authorized"
+  - "modifying frozen spec semantics"
+
+acceptance_gate:
+  status: "Architect review required after implementation"
+  required_evidence:
+    - "criteria 1-5 of the WORK-052 contract satisfied with SOFTWARE-class conformance evidence"
+    - "deterministic automated verification PASS covering at minimum: valid usage ingestion; missing/invalid delivery evidence rejection; duplicate ingestion with zero double-charge; delayed and out-of-order observations; immutable historical observations; explicit BillableFinal transition; reconciliation and audit trail; refund/reversal/dispute compensation; tamper detection; replay/recovery equivalence; payment-to-usage negative cases; reservation/lease-to-usage negative cases; authority-boundary/import discipline; deterministic two-run and hash-seed checks"
+    - "restart and replay reproduce the same ledger projection byte-for-byte (the repository's canonical JSON/id/digest conventions and the WORK-033 clock seam; no randomness, no wall-clock reads, no vendor SDK coupling; exact redelivery idempotent; conflicting reuse of an observation identity fails closed)"
+    - "existing accepted batteries remain green (W050 platformcaps 76/76 and W051 commercial 38/38 among the relevant accepted batteries); no authority ownership changes"
+    - "exact execution SHA and evidence manifest; all relevant CI checks green"
+
+handoff: docs/WORK-052-handoff.md
+handoff_required: true
