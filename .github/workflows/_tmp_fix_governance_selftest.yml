@@ -1,0 +1,54 @@
+name: temporary-governance-selftest-fix
+
+on:
+  push:
+    branches:
+      - governance/w052-acceptance-w053-activation
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Update current active authorization assumptions
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tools/spec_check_selftest.py')
+          s=p.read_text(encoding='utf-8')
+          replacements={
+              'WORK-052-CORE-001':'WORK-053-CORE-001',
+              'work-052-usage':'work-053-economic-allocation',
+              'usage/authorized_probe.py':'allocation/authorized_probe.py',
+              'usage/package_tamper_probe.py':'allocation/package_tamper_probe.py',
+              'usage/self_authorized_probe.py':'allocation/self_authorized_probe.py',
+              'usage/reconstruction_probe.py':'allocation/reconstruction_probe.py',
+              '  main_sha: 39d40b752f9129ac898fb74da1e485c20c6fbdc6':'  main_sha: bcaf0d0677437d1ffca8f5e493cab516c87e7194',
+              'DEC-0059 the base carries':'DEC-0061 the base carries',
+              'Since DEC-0059':'Since DEC-0061',
+              'post-DEC-0059':'post-DEC-0061',
+              'WORK-052-CORE-001 authorization':'WORK-053-CORE-001 authorization',
+              'WORK-052-CORE-001 scope':'WORK-053-CORE-001 scope',
+              'WORK-052-CORE-001 landed through the DEC-0059':'WORK-053-CORE-001 activated through DEC-0061',
+          }
+          changed=0
+          for old,new in replacements.items():
+              if old in s:
+                  s=s.replace(old,new)
+                  changed+=1
+          # Current authorization comments should identify the new active work item.
+          p.write_text(s,encoding='utf-8')
+          print('replacements applied:', changed)
+          PY
+          rm -f .github/workflows/_tmp_fix_governance_selftest.yml governance/.selftest-fix-trigger
+          git config user.name "ADCOS Architect Governance"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "governance: align spec selftest with W053 activation"
+          git push origin HEAD:governance/w052-acceptance-w053-activation
