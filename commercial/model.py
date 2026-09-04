@@ -689,6 +689,20 @@ class CommercialEvent:
                 "event transition %s -> %s is not in the frozen lifecycle "
                 "table" % (self.from_state, self.to_state),
             )
+        # Action-target coherence (the admission image): an event
+        # claiming action A must land in A's canonical target state.
+        # Honest events satisfy this by construction (admission derives
+        # to_state from ACTION_TARGET_STATE[action]); enforcing it at
+        # the model gate means a deserialized journal can never carry
+        # an incoherent attribution (e.g. a settle event landing in
+        # OFFER_SELECTED), whatever its chain integrity.
+        if self.to_state != ACTION_TARGET_STATE[self.action]:
+            raise CommercialError(
+                CommercialReasonCode.EVENT_INVALID,
+                "event action %s must land in its canonical target state "
+                "%s (found to_state %s)"
+                % (self.action, ACTION_TARGET_STATE[self.action], self.to_state),
+            )
         _require_text(self.command_id, "command_id")
         if not isinstance(self.causal_references, tuple):
             raise CommercialError(

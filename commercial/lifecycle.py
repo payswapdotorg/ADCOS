@@ -162,6 +162,16 @@ def _project_initial_transaction(record: JournalRecord) -> CommercialTransaction
             CommercialReasonCode.JOURNAL_CORRUPT,
             "submit_intent journal record carries no intent payload",
         )
+    if (
+        event.from_state != CommercialState.CONNECTIVITY_INTENT
+        or event.to_state != CommercialState.CONNECTIVITY_INTENT
+    ):
+        raise CommercialError(
+            CommercialReasonCode.JOURNAL_CORRUPT,
+            "submit_intent journal record must be the creation self-edge "
+            "CONNECTIVITY_INTENT -> CONNECTIVITY_INTENT (found %s -> %s)"
+            % (event.from_state, event.to_state),
+        )
     return CommercialTransaction(
         transaction_id=event.transaction_id,
         state=event.to_state,
@@ -215,6 +225,27 @@ def apply_record(
             CommercialReasonCode.JOURNAL_CORRUPT,
             "record applied to transaction %s belongs to %s"
             % (transaction.transaction_id, event.transaction_id),
+        )
+
+    # Walk-linkage verification (fail closed): the event's declared
+    # predecessor state MUST be the folded current state.  Honest
+    # journals are contiguous walks by construction (admission emits
+    # from_state = the live transaction state), so this rejects only
+    # out-of-order, inserted, or forged records whose event declares a
+    # table-legal edge that does not connect to the actual walk (the
+    # replay must verify the walk, not merely the chain and each edge).
+    if event.from_state != transaction.state:
+        raise CommercialError(
+            CommercialReasonCode.JOURNAL_CORRUPT,
+            "journal record %d for transaction %s declares from_state "
+            "%s but the folded state is %s (out-of-order or inserted "
+            "record; the replay walk must be contiguous)"
+            % (
+                record.sequence,
+                event.transaction_id,
+                event.from_state,
+                transaction.state,
+            ),
         )
 
     refs = event.causal_references

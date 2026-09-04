@@ -254,3 +254,75 @@ authorizes, activates, or pre-implements them.
 
 No PHYSICAL claim. EVID-007/EVID-008 remain OPEN and W040-owned; W040
 stays in-review and NOT accepted.
+
+---
+
+# Conformance-completion delivery (the W050 merge-isolation era)
+
+Appended by the second WORK-051-CORE-001 delivery session (the
+sections above are the PR #117 implementation-level handoff, preserved
+unchanged). Context: the Architect's W050 merge-isolation directive
+merged the isolated WORK-050 delivery onto the authoritative mainline
+(`fc3ace9` + the four reconstructed W050 stages = main
+`815f4febbc64d55d3576386e65adaa6244c4f7cb`); WORK-051 execution
+resumed from that exact SHA under the authorization present on it.
+
+## What this delivery is
+
+Reconnaissance against the post-W050 mainline found the canonical
+CommercialCore implementation already merged there (PR #117, in the
+`fc3ace9` ancestry) and conforming to the frozen contract. This
+delivery completes the permanent conformance battery around the
+directive's fourteen named categories and corrects the one real gap
+the new vectors exposed:
+
+1. **The out-of-order replay correction** (fail-closed only):
+   `apply_record` verifies the walk linkage at replay (an event's
+   declared `from_state` must be the folded current state; the
+   creation record must be the `CONNECTIVITY_INTENT` self-edge) and
+   `CommercialEvent` enforces action-target coherence at the model
+   gate (an event claiming action A must land in
+   `ACTION_TARGET_STATE[A]`). Before the correction, a fully
+   recomputed, table-legal, chain-valid record whose declared
+   predecessor did not connect to the folded walk was accepted at
+   `CommercialCore.load` (empirically demonstrated; see
+   docs/WORK-051-evidence.md §15.2). Honest journals are contiguous
+   walks by construction and are unaffected; the golden digest
+   stream is byte-identical.
+2. **Three named battery vectors** making the three implicitly
+   covered directive categories explicit: case_36 (out-of-order
+   events at admission, the model gate, and replay), case_37
+   (delivery immutability: no compensating action after
+   DELIVERY_COMPLETED, no evidence re-pointing, delivery events
+   survive byte-identically through settlement), case_38
+   (fresh-world independence: interleaved coexisting worlds
+   reproduce their isolated baselines byte-for-byte). The battery is
+   now 38 cases; the full fourteen-category mapping is in the
+   evidence record §15.3.
+
+## Delivery facts
+
+- Branch: `work-051-conformance-completion`, cut from main
+  `815f4febbc64d55d3576386e65adaa6244c4f7cb` (the post-W050 mainline
+  carrying the WORK-051-CORE-001 authorization byte-identically).
+- Scope: `commercial/lifecycle.py`, `commercial/model.py`,
+  `tools/commercial_selftest.py`, `docs/WORK-051-evidence.md`,
+  `docs/WORK-051-handoff.md` — exactly the WORK-051-CORE-001 scope;
+  no CI wiring change (the battery step is already wired); no
+  spec/ change (ARCH-08/case_34 enforce).
+- Verification: battery 38/38; two consecutive runs byte-identical;
+  PYTHONHASHSEED=0/1/7919/unset byte-identical; spec_check 17/17;
+  provenance PASS; the W050 platformcaps battery 76/76 unchanged.
+- No governance change: the WORK-051 acceptance transition (DEC
+  record, ledger update, supersession, next activation) remains the
+  Architect's; this delivery awaits Architect acceptance.
+
+## Next implementer's first steps (unchanged in substance)
+
+Read the authorization record and current-state; re-run
+`python3 tools/commercial_selftest.py` and `python3
+tools/spec_check.py` on the exact delivery head; the acceptance
+review should check the fourteen-category mapping (evidence §15.3)
+against the vectors, the §15.2 correction against the original PR
+#117 behavior, and the honest-disclosure conditions (evidence
+§15.4/§15.5).
