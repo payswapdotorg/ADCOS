@@ -62,7 +62,23 @@ WORK-042 platform journal:
   every other submission consumes exactly one; no wall-clock
   module is imported in the commercial family);
 - secret hygiene: journal and digest bytes carry no key
-  material, credentials, or secret-like tokens.
+  material, credentials, or secret-like tokens;
+- conformance completion (the three explicitly named
+  order/immutability/isolation dimensions): out-of-order events
+  fail closed at every layer (an early forward command at
+  admission with zero journal drift; an incoherent action/target
+  attribution at the model gate; a fully-recomputed,
+  table-legal, chain-valid record whose declared from_state does
+  not connect to the folded walk is rejected at replay by the
+  walk-linkage verification -- the replay verifies the WALK, not
+  merely the chain and each edge), delivery facts are immutable
+  (no compensating action after DELIVERY_COMPLETED, no
+  re-pointing of the delivery evidence, the recorded delivery
+  events survive byte-identically through settlement), and
+  fresh-world independence (every vector builds its own fixture
+  world; interleaved coexisting worlds reproduce their isolated
+  baselines byte-for-byte -- no shared mutable commercial
+  state).
 
 The battery exercises the PUBLIC production path only: the
 ordinary AgentRuntime session establishment chain, the
@@ -153,8 +169,14 @@ from commercial.digest import (
     command_ledger_digest,
     state_digest,
 )
-from commercial.journal import journal_bytes_for  # noqa: E402
+from commercial.journal import (  # noqa: E402
+    GENESIS_RECORD_ID,
+    derive_record_id,
+    journal_bytes_for,
+    record_content,
+)
 from commercial.lifecycle import fold_state  # noqa: E402
+from commercial.model import derive_event_id  # noqa: E402
 
 Result = Tuple[str, bool, str]
 
@@ -683,59 +705,66 @@ def _expect_commercial_error(
 # ---------------------------------------------------------------------------
 
 
-def _golden_scenario(store, references, clock) -> Tuple[CommercialCore, str]:
+def _golden_scenario(
+    store, references, clock, *, intent=None, prefix="cmd-"
+) -> Tuple[CommercialCore, str]:
     """Drive the full canonical lifecycle to SETTLED on one
-    transaction over the composed world."""
+    transaction over the composed world.  The optional ``intent``
+    and ``prefix`` select a structurally different transaction (the
+    fresh-world vector): with the defaults the scenario is the
+    canonical golden run byte-for-byte."""
     core = CommercialCore(store=store, clock=clock, references=references)
     out = core.submit_intent(
-        command_id="cmd-01",
+        command_id=prefix + "01",
         actor="buyer-agent",
         source="developer-api",
-        intent={"buyer": "buyer-1", "want": "connectivity", "region": "gh"},
+        intent=intent if intent is not None else {
+            "buyer": "buyer-1", "want": "connectivity", "region": "gh",
+        },
     )
     tx = out.transaction_id
     core.select_offer(
-        command_id="cmd-02", transaction_id=tx, actor="buyer-agent",
+        command_id=prefix + "02", transaction_id=tx, actor="buyer-agent",
         source="developer-api",
         offer={"offer_id": "offer-1", "provider": "provider-1",
                "unit": "GB", "price": "10"},
     )
     core.hold_reservation(
-        command_id="cmd-03", transaction_id=tx, actor="platform",
+        command_id=prefix + "03", transaction_id=tx, actor="platform",
         source="reservation-service", expires_at=_DEADLINE,
         payment_refs=(_payment_ref(),),
     )
     core.authorize_session(
-        command_id="cmd-04", transaction_id=tx, actor="platform",
+        command_id=prefix + "04", transaction_id=tx, actor="platform",
         source="session-service", session_ref=_session_ref(references),
     )
     core.activate_path(
-        command_id="cmd-05", transaction_id=tx, actor="platform",
+        command_id=prefix + "05", transaction_id=tx, actor="platform",
         source="path-service", path_ref=_path_ref(references),
     )
     delivery = sorted(_delivery_refs(references))
     core.start_delivery(
-        command_id="cmd-06", transaction_id=tx, actor="platform",
+        command_id=prefix + "06", transaction_id=tx, actor="platform",
         source="delivery-service", evidence_refs=(delivery[0],),
     )
     core.accrue_usage(
-        command_id="cmd-07", transaction_id=tx, actor="platform",
+        command_id=prefix + "07", transaction_id=tx, actor="platform",
         source="usage-service", usage_refs=(_usage_ref(references),),
     )
     core.complete_delivery(
-        command_id="cmd-08", transaction_id=tx, actor="platform",
+        command_id=prefix + "08", transaction_id=tx, actor="platform",
         source="delivery-service", evidence_refs=(delivery[-1],),
     )
     core.finalize_billable(
-        command_id="cmd-09", transaction_id=tx, actor="platform",
+        command_id=prefix + "09", transaction_id=tx, actor="platform",
         source="billing-service",
     )
     core.initiate_settlement(
-        command_id="cmd-10", transaction_id=tx, actor="platform",
+        command_id=prefix + "10", transaction_id=tx, actor="platform",
         source="settlement-service", payment_refs=(_payment_ref(),),
     )
     core.settle(
-        command_id="cmd-11", transaction_id=tx, actor="platform",
+        command_id=prefix + "11", transaction_id=tx, actor="platform",
         source="settlement-service", settlement_refs=(_settlement_ref(),),
     )
     return core, tx
@@ -2918,6 +2947,368 @@ def case_35_pr_delta_shape(results: List[Result]) -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# Conformance-completion vectors (the permanent battery around the
+# fourteen directive categories: the three dimensions the original
+# 35-case battery covered only implicitly are made explicit here --
+# out-of-order events at every layer, delivery immutability as a
+# named dimension, and fresh-world independence).
+# ---------------------------------------------------------------------------
+
+
+def _forged_discontinuous_journal(store, references, tx) -> bytes:
+    """Rebuild the golden journal bytes with an INSERTED record whose
+    event is table-legal, action-coherent, family-correct, and fully
+    recomputed (event_id, command digest, hash chain, sequences) but
+    whose declared from_state does not connect to the folded walk:
+    activate_path SESSION_AUTHORIZED -> PATH_ACTIVE inserted while
+    the walk is at OFFER_SELECTED (the out-of-order event)."""
+    lines = store.journal_bytes().split(b"\n")[:-1]
+    records = [json.loads(line.decode("utf-8")) for line in lines]
+    path_ref = _path_ref(references)
+    causal = (
+        Reference(path_ref, ReferenceFamily.NETWORK_PATH,
+                  "networkpath-manager"),
+    )
+    command = CommercialCommand(
+        command_id="forged-activate",
+        action=CommercialAction.ACTIVATE_PATH,
+        transaction_id=tx,
+        references=causal,
+        payload={"forged": True},
+        actor="platform",
+        source="path-service",
+    )
+    event = CommercialEvent(
+        event_id=derive_event_id(
+            tx, CommercialAction.ACTIVATE_PATH,
+            CommercialState.SESSION_AUTHORIZED, CommercialState.PATH_ACTIVE,
+            command.command_id, _CT0,
+        ),
+        transaction_id=tx,
+        action=CommercialAction.ACTIVATE_PATH,
+        from_state=CommercialState.SESSION_AUTHORIZED,
+        to_state=CommercialState.PATH_ACTIVE,
+        command_id=command.command_id,
+        causal_references=causal,
+        actor="platform",
+        source="path-service",
+        instant=_CT0,
+    )
+    forged = {
+        "sequence": 3,
+        "record_id": "",
+        "command": command.to_dict(),
+        "command_digest": command.digest(),
+        "event": event.to_dict(),
+    }
+    new_records = records[:2] + [forged] + records[2:]
+    prev = GENESIS_RECORD_ID
+    for index, record in enumerate(new_records):
+        record["sequence"] = index + 1
+        content = record_content(
+            CommercialCommand.from_dict(record["command"]),
+            record["command_digest"],
+            CommercialEvent.from_dict(record["event"]),
+        )
+        record["record_id"] = derive_record_id(index + 1, content, prev)
+        prev = record["record_id"]
+    return b"".join(
+        (json.dumps(record) + "\n").encode("utf-8")
+        for record in new_records
+    )
+
+
+def case_36_out_of_order_events(results: List[Result]) -> None:
+    """Out-of-order events fail closed at EVERY layer: admission
+    (a forward command whose required state has not been reached),
+    the model gate (an incoherent action/target attribution), and
+    replay (a fully-recomputed, table-legal record whose declared
+    from_state does not connect to the folded walk)."""
+    name = "case_36_out_of_order_events"
+    runtime, peer, session_id, manager, integrator, shared = _world()
+    references = _references(manager, integrator, session_id)
+    problems: List[str] = []
+
+    # (1) admission: the completion command arrives while the
+    # transaction is still at RESERVATION_HELD; the settlement
+    # command arrives while it is at OFFER_SELECTED.  Both fail
+    # closed with zero journal drift.
+    core, tx = _thread_at("RESERVATION_HELD", references)
+    before = (core.journal_digest(), core.tail_sequence())
+    problem = _expect_commercial_error(
+        name, CommercialReasonCode.LIFECYCLE_ILLEGAL,
+        lambda: core.complete_delivery(
+            command_id="oo-1", transaction_id=tx, actor="platform",
+            source="delivery-service",
+            evidence_refs=(sorted(_delivery_refs(references))[0],),
+        ),
+    )
+    if problem:
+        problems.append("out-of-order complete_delivery: %s" % problem)
+    core2, tx2 = _thread_at("OFFER_SELECTED", references)
+    problem = _expect_commercial_error(
+        name, CommercialReasonCode.LIFECYCLE_ILLEGAL,
+        lambda: core2.settle(
+            command_id="oo-2", transaction_id=tx2, actor="platform",
+            source="settlement-service", settlement_refs=(_settlement_ref(),),
+        ),
+    )
+    if problem:
+        problems.append("out-of-order settle: %s" % problem)
+    for probe_core, probe_before in ((core, before),):
+        after = (probe_core.journal_digest(), probe_core.tail_sequence())
+        if after != probe_before:
+            problems.append("a rejected out-of-order command drifted the journal")
+
+    # (2) model gate: a settle event landing in OFFER_SELECTED (a
+    # table-legal edge with an incoherent action/target pair) fails
+    # closed at construction.
+    problem = _expect_commercial_error(
+        name, CommercialReasonCode.EVENT_INVALID,
+        lambda: CommercialEvent(
+            event_id=derive_event_id(
+                "sha256:" + "0" * 64, CommercialAction.SETTLE,
+                CommercialState.CONNECTIVITY_INTENT,
+                CommercialState.OFFER_SELECTED, "oo-3", _CT0,
+            ),
+            transaction_id="sha256:" + "0" * 64,
+            action=CommercialAction.SETTLE,
+            from_state=CommercialState.CONNECTIVITY_INTENT,
+            to_state=CommercialState.OFFER_SELECTED,
+            command_id="oo-3",
+            causal_references=(),
+            actor="platform",
+            source="settlement-service",
+            instant=_CT0,
+        ),
+    )
+    if problem:
+        problems.append("incoherent action/target event: %s" % problem)
+
+    # (3) replay: a fully-recomputed forged record (valid chain,
+    # valid sequences, valid digests, table-legal edge, coherent
+    # action/target, correct families) whose declared from_state
+    # does not connect to the folded walk fails closed at load.
+    store = commercial.MemoryCommercialStore()
+    core3, tx3 = _golden_scenario(store, references, StepClock(_CT0, _CSTEP))
+    forged = _forged_discontinuous_journal(store, references, tx3)
+    problem = _expect_commercial_error(
+        name, CommercialReasonCode.JOURNAL_CORRUPT,
+        CommercialCore.load,
+        store=FrozenBytesStore(forged),
+        clock=StepClock(_CT0, _CSTEP),
+        references=references,
+    )
+    if problem:
+        problems.append("discontinuous walk accepted at replay: %s" % problem)
+
+    # (4) regression guard: the honest journal still loads (the
+    # walk-linkage verification accepts the contiguous walk).
+    honest = CommercialCore.load(
+        store=store, clock=StepClock(_CT0, _CSTEP), references=references,
+    )
+    if not honest.transaction(tx3).settled():
+        problems.append("the honest golden journal no longer loads to SETTLED")
+
+    if problems:
+        results.append(fail(name, "; ".join(problems[:5])))
+        return
+    results.append(ok(
+        name, "out-of-order events fail closed at every layer: an early "
+              "forward command is rejected at admission with zero journal "
+              "drift, an incoherent action/target attribution is rejected "
+              "at the model gate, and a fully-recomputed record whose "
+              "declared from_state does not connect to the folded walk is "
+              "rejected at replay (the walk-linkage verification); the "
+              "honest contiguous journal still loads"
+    ))
+
+
+def case_37_delivery_immutability(results: List[Result]) -> None:
+    """Delivery facts are immutable: once DELIVERY_COMPLETED, no
+    compensating action can undo the delivery, the delivery record
+    cannot be re-pointed at different evidence, and the recorded
+    delivery events survive byte-identically through settlement."""
+    name = "case_37_delivery_immutability"
+    runtime, peer, session_id, manager, integrator, shared = _world()
+    references = _references(manager, integrator, session_id)
+    problems: List[str] = []
+    core, tx = _thread_at("DELIVERY_COMPLETED", references)
+    before_digest = core.journal_digest()
+    before_tail = core.tail_sequence()
+    delivery = sorted(_delivery_refs(references))
+
+    # (1) no compensating action can undo a completed delivery
+    compensating_probes = (
+        ("cancel", lambda: core.cancel(
+            command_id="di-1", transaction_id=tx, actor="platform",
+            source="operator-console",
+        ), CommercialReasonCode.LIFECYCLE_ILLEGAL),
+        ("expire", lambda: core.expire(
+            command_id="di-2", transaction_id=tx, actor="platform",
+            source="reservation-service",
+        ), CommercialReasonCode.LIFECYCLE_ILLEGAL),
+        ("record_path_failure", lambda: core.record_path_failure(
+            command_id="di-3", transaction_id=tx, actor="platform",
+            source="path-service",
+        ), CommercialReasonCode.PATH_FAILURE_REJECTED),
+        ("record_non_delivery", lambda: core.record_non_delivery(
+            command_id="di-4", transaction_id=tx, actor="platform",
+            source="delivery-service",
+        ), CommercialReasonCode.NON_DELIVERY_REJECTED),
+    )
+    for label, probe, expected in compensating_probes:
+        problem = _expect_commercial_error(name, expected, probe)
+        if problem:
+            problems.append("compensating %s after completion: %s"
+                            % (label, problem))
+
+    # (2) the delivery record cannot be re-pointed at different
+    # evidence (a second completion with a different citation and a
+    # fresh command id fails closed)
+    other_evidence = delivery[-1] if len(delivery) > 1 else delivery[0]
+    problem = _expect_commercial_error(
+        name, CommercialReasonCode.LIFECYCLE_ILLEGAL,
+        lambda: core.complete_delivery(
+            command_id="di-5", transaction_id=tx, actor="platform",
+            source="delivery-service", evidence_refs=(other_evidence,),
+        ),
+    )
+    if problem:
+        problems.append("delivery re-pointing: %s" % problem)
+    after = (core.journal_digest(), core.tail_sequence())
+    if after != (before_digest, before_tail):
+        problems.append("a rejected delivery mutation drifted the journal")
+
+    # (3) the recorded delivery events survive byte-identically
+    # through settlement (history is append-only; the delivery
+    # facts are never rewritten by later commercial events)
+    delivery_events = {
+        record.sequence: record.event.to_dict()
+        for record in core.journal_records()
+        if record.event.action in (
+            CommercialAction.START_DELIVERY,
+            CommercialAction.COMPLETE_DELIVERY,
+        )
+    }
+    core.finalize_billable(
+        command_id="di-6", transaction_id=tx, actor="platform",
+        source="billing-service",
+    )
+    core.initiate_settlement(
+        command_id="di-7", transaction_id=tx, actor="platform",
+        source="settlement-service", payment_refs=(_payment_ref(),),
+    )
+    core.settle(
+        command_id="di-8", transaction_id=tx, actor="platform",
+        source="settlement-service", settlement_refs=(_settlement_ref(),),
+    )
+    if not core.transaction(tx).settled():
+        problems.append("the transaction did not settle after completion")
+    settled_events = {
+        record.sequence: record.event.to_dict()
+        for record in core.journal_records()
+        if record.event.action in (
+            CommercialAction.START_DELIVERY,
+            CommercialAction.COMPLETE_DELIVERY,
+        )
+    }
+    if settled_events != delivery_events:
+        problems.append("the delivery events were rewritten after settlement")
+    transaction = core.transaction(tx)
+    if not transaction.delivery_evidence_refs:
+        problems.append("the settled transaction lost its delivery citations")
+    if problems:
+        results.append(fail(name, "; ".join(problems[:5])))
+        return
+    results.append(ok(
+        name, "delivery facts are immutable: every compensating action is "
+              "rejected after DELIVERY_COMPLETED with zero journal drift, "
+              "the delivery record cannot be re-pointed at different "
+              "evidence, and the recorded delivery events survive "
+              "byte-identically through settlement (append-only history)"
+    ))
+
+
+def case_38_fresh_world_independence(results: List[Result]) -> None:
+    """Fresh-world independence: every vector constructs its own
+    fixture world, and coexisting interleaved worlds (separate
+    stores, separate clocks, structurally different transactions)
+    produce byte-identical results to their isolated runs -- no
+    shared mutable commercial state exists."""
+    name = "case_38_fresh_world_independence"
+    problems: List[str] = []
+
+    # isolated baselines over two independent worlds (A uses the
+    # same stepwise machinery as its interleaved run; B uses the
+    # golden variant with a structurally different intent)
+    world_a = _world()
+    references_a = _references(world_a[3], world_a[4], world_a[2])
+    core_a = _fresh_core(references_a)
+    tx_a = ""
+    for step in _STATE_STEPS[CommercialState.SETTLED]:
+        out = _apply_step(core_a, tx_a, step, references_a)
+        tx_a = out.transaction_id
+    stream_a = core_a.digest_stream()
+
+    world_b = _world()
+    references_b = _references(world_b[3], world_b[4], world_b[2])
+    store_b = commercial.MemoryCommercialStore()
+    core_b, tx_b = _golden_scenario(
+        store_b, references_b, StepClock(_CT0, _CSTEP),
+        intent={"buyer": "buyer-2", "want": "connectivity", "region": "gh"},
+        prefix="alt-",
+    )
+    stream_b = core_b.digest_stream()
+
+    if tx_a == tx_b:
+        problems.append("structurally different intents produced one transaction")
+    if stream_a == stream_b:
+        problems.append("the two worlds produced identical streams (no independence)")
+
+    # interleaved execution: A pauses at DELIVERY_STARTED, B runs to
+    # SETTLED, then A resumes to SETTLED -- both must land on their
+    # isolated baselines byte-for-byte
+    core_i_a = _fresh_core(references_a)
+    tx_i_a = ""
+    paused = False
+    for step in _STATE_STEPS[CommercialState.DELIVERY_STARTED]:
+        out = _apply_step(core_i_a, tx_i_a, step, references_a)
+        tx_i_a = out.transaction_id
+        paused = True
+    if not paused or core_i_a.transaction(tx_i_a).state != "DELIVERY_STARTED":
+        problems.append("the interleaved world A did not pause at DELIVERY_STARTED")
+    store_i_b = commercial.MemoryCommercialStore()
+    core_i_b, tx_i_b = _golden_scenario(
+        store_i_b, references_b, StepClock(_CT0, _CSTEP),
+        intent={"buyer": "buyer-2", "want": "connectivity", "region": "gh"},
+        prefix="alt-",
+    )
+    for step in (
+        "accrue", "complete", "billable", "initiate", "settle",
+    ):
+        _apply_step(core_i_a, tx_i_a, step, references_a)
+    if core_i_a.digest_stream() != stream_a:
+        problems.append("the interleaved world A diverged from its isolated baseline")
+    if core_i_b.digest_stream() != stream_b:
+        problems.append("the interleaved world B diverged from its isolated baseline")
+    if not core_i_a.transaction(tx_i_a).settled():
+        problems.append("the interleaved world A did not settle")
+
+    if problems:
+        results.append(fail(name, "; ".join(problems[:5])))
+        return
+    results.append(ok(
+        name, "fresh-world independence holds: every vector builds its own "
+              "fixture world, two structurally different worlds produce "
+              "distinct streams, and interleaved coexisting worlds "
+              "(A paused at DELIVERY_STARTED while B settled, then A "
+              "resumed) reproduce their isolated baselines byte-for-byte "
+              "-- no shared mutable commercial state"
+    ))
+
+
 def main() -> int:
     results: List[Result] = []
     for case in (
@@ -2956,6 +3347,9 @@ def main() -> int:
         case_33_py_compile,
         case_34_frozen_spec_intact,
         case_35_pr_delta_shape,
+        case_36_out_of_order_events,
+        case_37_delivery_immutability,
+        case_38_fresh_world_independence,
     ):
         case(results)
     failures = [result for result in results if not result[1]]

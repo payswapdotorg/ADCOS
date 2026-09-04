@@ -334,3 +334,143 @@ and the W051 contract require.
 - CI results (spec-check run on the PR head) are authoritative for
   the acceptance gate; this record's local results were produced with
   the same tooling on the same tree.
+
+## 15. Conformance-completion delivery (the W050 merge-isolation era)
+
+Appended by the WORK-051-CORE-001 conformance-completion session. The
+sections above are the original PR #117 delivery record, preserved
+byte-identically; this section is the second delivery under the same
+authorization, appended per the W041/W042 delivery-record convention.
+
+### 15.1 Context and reconnaissance findings
+
+The Architect's W050 merge-isolation directive reconstructed the
+accepted WORK-050 delivery onto the authoritative mainline
+`fc3ace9c45b77bae36fe757a5629bc197fd906e4` (retaining exactly the four
+accepted W050 stages, none of the 129-commit unrelated commercial
+ancestry) and merged it: the resulting mainline is
+`815f4febbc64d55d3576386e65adaa6244c4f7cb`. WORK-051 execution then
+resumed from that exact SHA under WORK-051-CORE-001 (the authorization
+present on that mainline, byte-identically inherited).
+
+Reconnaissance against `815f4fe` found:
+
+- The canonical CommercialCore implementation (the eight-module
+  `commercial/` package, this battery, and these two documents) is
+  ALREADY ON that mainline: it was delivered on branch
+  `work-051-commercial-core` (head `9474328`) and merged by PR #117
+  into the `fc3ace9` ancestry. Its battery passed 35/35 on the
+  post-W050 mainline; `tools/spec_check.py` passes 17/17 there; the
+  lifecycle, boundary, and determinism semantics conform to the
+  directive's frozen contract (verified section by section below).
+- The governance ledger still records WORK-051 as `registered`/active
+  with no accepted delivery (the PR #117 merge predates any acceptance
+  transition record); per the standing convention the acceptance
+  transition is the Architect's, not this delivery's. This delivery
+  therefore changes no governance record.
+
+### 15.2 The out-of-order replay finding and the correction
+
+The directive's permanent-battery obligations include the named
+category **out-of-order events**. Building that vector empirically
+exposed a real gap in the ORIGINAL core, demonstrated before the fix
+by a constructed probe: a journal record whose event is table-legal,
+action-coherent, family-correct, and fully recomputed (event_id,
+command digest, hash chain, contiguous sequences all valid) but whose
+declared `from_state` does not connect to the folded walk — e.g.
+`activate_path SESSION_AUTHORIZED -> PATH_ACTIVE` inserted while the
+walk is at `OFFER_SELECTED` — was **ACCEPTED** by
+`CommercialCore.load`; the folded history silently skipped states.
+The existing integrity checks (chain, sequence, digests, per-edge
+table legality, command/event pairing) verified the CHAIN and each
+EDGE but never the WALK.
+
+The correction (fail-closed only, no API change, no behavior change
+for honest journals, which are contiguous walks by construction
+because admission emits `from_state` = the live transaction state):
+
+1. `commercial/lifecycle.py` — `apply_record` now verifies the
+   walk linkage at replay: the event's declared `from_state` MUST be
+   the folded current state (`JOURNAL_CORRUPT` otherwise), and the
+   creation record must be the `CONNECTIVITY_INTENT` self-edge.
+2. `commercial/model.py` — `CommercialEvent` now enforces
+   action-target coherence at the model gate: an event claiming
+   action A must land in `ACTION_TARGET_STATE[A]` (an incoherent
+   attribution such as a settle event landing in `OFFER_SELECTED`
+   fails closed `EVENT_INVALID`, at construction AND at
+   deserialization, whatever the chain integrity).
+
+The replay now verifies the WALK, not merely the chain and each edge.
+All 35 original cases pass unchanged on the corrected core (the
+golden digest stream is byte-identical: `e347b02d75b92410cd70c595`).
+
+### 15.3 The fourteen-category permanent-battery mapping
+
+| Directive category | Covering battery vectors |
+|---|---|
+| lifecycle completeness | case_02, case_05, case_06 |
+| transition legality | case_02, case_06, case_07 (all 130 illegal pairs) |
+| idempotency | case_12, case_22 (durable across restart) |
+| duplicate events | case_12, case_13, case_20 (duplicate command ids at load/append) |
+| out-of-order events | **case_36** (admission, model gate, replay walk-linkage) + case_07 + case_20 (byte-level disorder) |
+| compensating events | case_08, case_09, case_10, case_11 |
+| reservation/payment ≠ delivery | case_16, case_02 (table structure), case_14 |
+| delivery immutability | **case_37** + case_15, case_02, case_10/11 gates |
+| cross-authority reference integrity | case_17, case_31, case_32 |
+| authority/import boundaries | case_27, case_28, case_34 |
+| determinism | case_24, case_18, case_03/04 (content-derived ids) |
+| hash-seed independence | case_25 |
+| fresh-world independence | **case_38** + per-vector fresh `_world()` fixtures |
+| replay/recovery integrity | case_22, case_23, case_21, case_36(3) |
+
+The three bolded vectors are this delivery's additions (case_36,
+case_37, case_38); the remaining eleven categories were already
+explicitly covered by the original battery and are unchanged.
+
+### 15.4 Test results (this delivery, on the delivery branch)
+
+- `python3 tools/commercial_selftest.py`: **PASS (38/38 cases)**.
+- Determinism: two consecutive in-process runs byte-identical;
+  PYTHONHASHSEED=0/1/7919/unset full-battery subprocess runs all
+  byte-identical to the in-process baseline.
+- `python3 tools/spec_check.py`: **PASS (17/17)** — the delivery
+  delta is confined to the WORK-051-CORE-001 scope
+  (`commercial/lifecycle.py`, `commercial/model.py`,
+  `tools/commercial_selftest.py`, this document, and the handoff
+  append), covered by the active authorization inherited
+  byte-identically from the base.
+- `python3 tools/spec_check.py --provenance`: **PASS (2/2)**.
+- The platformcaps battery (the merged WORK-050 delivery) passes
+  76/76 on this branch, byte-identical output.
+- Known sibling-battery conditions (inherited, disclosed, the
+  documented successor-file/PR-context guard class — the same class
+  the original delivery disclosed in §11): on this delivery branch,
+  six sibling batteries fail exactly ONE guard case each, every one
+  of them a delta-shape/frozen-spec guard correctly reacting to
+  ANOTHER work item's delivery files on the branch:
+  `energy` case_26 and `telemetry` case_24 (frozen-docs whitelist:
+  this delivery's two documents are W051 files), `networkpath`
+  case_35 and `platform` case_30 (delta outside THEIR authorized
+  scopes), `management` case_32 and `simulator` case_38 (PR-delta
+  expectations vacuous outside their own delivery PR). All six pass
+  on the base mainline for energy/networkpath/platform/telemetry
+  (measured: the 815f4fe mainline runs them green) and resolve on
+  merge; management/simulator remain the chronic main-checkout
+  artifacts documented above. No substantive case fails anywhere:
+  every failing case is a scope guard, and the delivery's own
+  battery plus every substantive sibling case passes.
+
+### 15.5 Honest disclosure
+
+- This delivery makes NO governance change: no ACR, no decision
+  record, no ledger/state edit, no spec/ change (case_34 enforces
+  byte-identity of the frozen surfaces against the base). The WORK-051
+  acceptance transition remains the Architect's.
+- The §15.2 finding is disclosed as a correction to the PR #117
+  delivery's core (two fail-closed checks added; nothing rewritten,
+  no historical journal invalidated — every honest journal ever
+  produced by the original core remains a contiguous walk and loads
+  unchanged).
+- SOFTWARE-class evidence only; no PHYSICAL claim. W040 stays
+  in-review, NOT accepted; EVID-007/EVID-008 remain OPEN and
+  W040-owned.
