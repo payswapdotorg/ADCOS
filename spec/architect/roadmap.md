@@ -7,13 +7,13 @@ Frozen architecture remains authoritative in `spec/architecture.md`, `spec/archi
 
 ## Current execution state
 
-- Live main at governance-branch cut: `2e87cb35643b72a94be39aa3eb96ceed1a3e18da`
-- Active Work Item: **WORK-052 UsageLedger**
-- Active authorization: **WORK-052-CORE-001**
-- Authorized baseline: **39d40b752f9129ac898fb74da1e485c20c6fbdc6**
+- Live main at W052 acceptance/transition: `bcaf0d0677437d1ffca8f5e493cab516c87e7194`
+- Active Work Item: **WORK-053 EconomicAllocation**
+- Active authorization: **WORK-053-CORE-001**
+- Authorized baseline: **bcaf0d0677437d1ffca8f5e493cab516c87e7194**
 - W051: accepted/merged
-- W052: active-authorized, implementation not yet delivered
-- W053: accepted/merged
+- W052: accepted/merged at exact reviewed head `7d883b2`, merge `bcaf0d0677437d1ffca8f5e493cab516c87e7194`
+- W053: active-authorized; implementation not yet delivered
 - W040: independent physical-validation/evidence track, in-review and not accepted
 - W043: retired/unassigned
 
@@ -87,14 +87,14 @@ W043 is retired and intentionally unassigned.
 
 | State | Work Items |
 |---|---|
-| Accepted / merged | W001–W039, W041, W042, W044–W051, W053 |
-| Active / authorized | W052 |
+| Accepted / merged | W001–W039, W041, W042, W044–W052 |
+| Active / authorized | W053 |
 | In review / not accepted | W040 |
 | Retired | W043 |
 
-## W052 execution packet
+## W053 execution packet
 
-Contract: `spec/work-items.md` WORK-052 + `docs/WORK-052-handoff.md` + `spec/architect/authorizations/WORK-052.yaml`.
+Contract: `spec/work-items.md` WORK-053 + `docs/WORK-053-handoff.md` + `spec/architect/authorizations/WORK-053.yaml`.
 
 Scope: `usage/`, `tools/usage_selftest.py`, `docs/WORK-052-handoff.md`, `docs/WORK-052-evidence.md`, and one additive CI battery step. The implementation PR must not modify `spec/architect/`.
 
@@ -104,7 +104,7 @@ Acceptance: authoritative delivery evidence only; payment capture never creates 
 
 ## Next-order rule
 
-Exactly one Work Item may be active-authorized. The current target is W052. After W052 is accepted/merged, W053 is the next hard-gated commercial item only after a fresh governance transition issues its own authorization. Roadmap placement alone never activates W053 or any other downstream item.
+Exactly one Work Item may be active-authorized. The current target is W053 under `WORK-053-CORE-001`. Roadmap placement alone never authorizes W044 or any other downstream item.
 
 ## Fresh-architect recovery
 

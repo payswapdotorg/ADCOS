@@ -1,0 +1,30 @@
+decision_id: DEC-0061
+type: governance
+decision: ACCEPTED
+status: ACCEPTED
+work_item: WORK-052
+pr: 149
+reviewed_sha: 7d883b227e9792b98efdbc1916d413491d20d458
+timestamp: 2026-09-04T23:01:09Z
+evidence:
+  merge_sha: bcaf0d0677437d1ffca8f5e493cab516c87e7194
+  artifacts:
+    - "PR #149 exact-head Architect acceptance of W052"
+    - "W052 correction lineage: 23cca95 -> a783078 -> 7d883b227e9792b98efdbc1916d413491d20d458"
+    - "CI run 33926974221: SUCCESS"
+    - "Issue #84 completed"
+findings:
+  - "Round-2 replay delivery-eligibility P0 corrected and proven by case_49."
+  - "W052 satisfies its frozen contract within WORK-052-CORE-001."
+blockers: []
+required_corrections: []
+accepted_scope:
+  - "WORK-052-CORE-001 implementation at exact reviewed head 7d883b227e9792b98efdbc1916d413491d20d458."
+rejected_scope:
+  - "No WORK-053 implementation is accepted by this decision."
+downstream_effect:
+  - "WORK-052 transitions registered -> accepted-merged."
+  - "WORK-052-CORE-001 is superseded."
+  - "WORK-053-CORE-001 becomes the sole active implementation authorization at main baseline bcaf0d0677437d1ffca8f5e493cab516c87e7194."
+  - "Historical W053 PR #124 is superseded lineage and is not reused."
+resolved_by: null

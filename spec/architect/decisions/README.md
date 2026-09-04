@@ -72,6 +72,7 @@ Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-
 | DEC-0058 | governance | WORK-042 | ACCEPTED | ACCEPTED | Atomic W042 acceptance → W051 activation (supersede WORK-042-CORE-001; activate WORK-051-CORE-001 CommercialCore chain head; LEDGER-RECON-007 baseline fe6e6e3; no registry change — ACR-011 already accepted; W040 evidence ownership preserved) |
 | DEC-0059 | acceptance | WORK-051 | ACCEPTED | ACCEPTED | W051 acceptance: CommercialCore conformance completion (PR #145, head e247b4e, merge 41b3380, CI 33838171573; battery 38/38; the replay walk-linkage and action-target coherence corrections closed fail-closed) — atomic W051 acceptance → W052 activation (supersede WORK-051-CORE-001; activate WORK-052-CORE-001 UsageLedger; LEDGER-RECON-008 baseline 41b3380; no registry change; W040 evidence ownership preserved) |
 | DEC-0060 | governance | WORK-052 | ACCEPTED | ACCEPTED | W052 baseline reconciliation: advance the snapshot + WORK-052-CORE-001 baseline 41b3380 -> 39d40b7 (the post-PR-#146 governance merge) via LEDGER-RECON-009 — the formal routing of the reconciliation after the accidental direct-main DEC-0060 write was removed by the Architect cleanup 9561fe8; no implementation, no scope change |
+| DEC-0061 | governance | WORK-052 | ACCEPTED | ACCEPTED | W052 acceptance on PR #149 exact reviewed head 7d883b2 / merge bcaf0d0 and atomic activation of fresh WORK-053-CORE-001 on the post-W052 mainline; W052 authorization superseded, W053 implementation remains unaccepted |
 
 ## Rules
 
