@@ -1,6 +1,4 @@
 # ADCOS Architect decision record.
-# schema: spec/architect/decision-record-template.md; verified by tools/spec_check.py (ARCH-04).
-# Baseline-advancement-only reconciliation after DEC-0059 W052 activation.
 decision_id: DEC-0060
 type: reconciliation
 work_item: WORK-052
