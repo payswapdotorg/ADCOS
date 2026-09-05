@@ -1,12 +1,7 @@
 # ADCOS execution state — persisted by the Architect.
 # This snapshot is a current-state projection, not historical delivery authority.
 # Current source of truth: spec/architect/roadmap.yaml + accepted decisions + ledger.
-#
-# Reconciled by DEC-0084 (R1 governance reconciliation) on 2026-09-05:
-# R0 was accepted and merged as PR #8 and the durable projections were reconciled.
-# DEC-0085 activated the first fresh R2 Work Item under exactly one authorization.
-# DEC-0086 reconciles the post-activation live-main merge pointer without
-# rewriting DEC-0085's historical decision baseline.
+# Reconciled by DEC-0088 on 2026-09-05: WORK-054 accepted/merged and R3 WORK-055 activated.
 
 schema_version: 1
 package: "persistent-architect"
@@ -14,8 +9,8 @@ last_updated: "2026-09-05"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: 461d1482180222f4b63f780d6d9ea1d54c49d643
-  main_sha_semantics: "Actual live main SHA verified after R2 activation: 461d1482180222f4b63f780d6d9ea1d54c49d643. DEC-0085's 13bfbda baseline is preserved as the pre-activation decision baseline; DEC-0086 records the post-activation projection reconciliation."
+  main_sha: 57963858e5a2b9d11faed94b50f94e058cede0a8
+  main_sha_semantics: "Post-W054 acceptance baseline used for the R3 governance transition; the resulting governance merge will require the normal mainline snapshot reconciliation."
   lifecycle_ledger_snapshot_sha: 13bfbda54eece391306ddb774e0700c9d862339a
 
 versions:
@@ -26,21 +21,23 @@ versions:
 
 execution:
   mode: implementing
-  active_work_item: WORK-054
-  active_authorization: WORK-054-CORE-001
+  active_work_item: WORK-055
+  active_authorization: WORK-055-CORE-001
   halted_reason: null
   next_required_decisions:
-    - "WORK-054 delivery must be cut from the live authorization-bearing main baseline 461d1482180222f4b63f780d6d9ea1d54c49d643 and remain confined to its authorized implementation surfaces."
-    - "Architect review is required before WORK-054 can transition to accepted-merged and before a subsequent Work Item can activate."
+    - "WORK-055 delivery must be cut from the exact post-W054 merge baseline 57963858e5a2b9d11faed94b50f94e058cede0a8 and remain confined to its authorized implementation surfaces."
+    - "Architect adversarial review is required before WORK-055 can transition to accepted-merged and before R4/R5 can activate."
     - "W040 remains independently in-review and unaccepted; EVID-007 and EVID-008 remain open, physical, and W040-owned."
+    - "Any frozen protocol semantic change discovered as necessary is blocked pending the ACR/change-control process."
 
 reconciliation:
   r0_status: "R0 accepted and merged as PR #8."
-  r1_status: "R1 complete under DEC-0084 on main 13bfbda."
-  r2_status: "R2 active under DEC-0085 with WORK-054 and the single authorization WORK-054-CORE-001; DEC-0086 reconciles the live post-activation main pointer."
-  r2_objective: "Prove the complete commercial/connectivity composition without introducing a second authority."
+  r1_status: "R1 complete under DEC-0084."
+  r2_status: "R2 complete under DEC-0088; WORK-054 accepted and merged as PR #13, merge 57963858e5a2b9d11faed94b50f94e058cede0a8."
+  r3_status: "R3 active under DEC-0088 with WORK-055 and the single authorization WORK-055-CORE-001."
+  r3_objective: "Complete the production conformance layer required before declaring wire compatibility."
   w040_status: "W040 remains in-review and unaccepted; W040 physical evidence remains independent and open."
-  authorization_state: "Exactly one implementation authorization exists and is active: WORK-054-CORE-001. All historical authorizations remain superseded/false."
+  authorization_state: "Exactly one implementation authorization exists and is active: WORK-055-CORE-001. WORK-054-CORE-001 is superseded."
 
 in_review:
   - work_item: WORK-040
@@ -80,6 +77,9 @@ open_prs:
   - pr: 108
     head: "governance/acr-010-work-item-registry-extension"
     disposition: "superseded by DEC-0054/DEC-0055 application"
+  - pr: 13
+    head: "work-054-system-composition-conformance"
+    disposition: "accepted/merged under DEC-0088"
 open_acrs: []
 open_architectural_questions: []
 
@@ -97,14 +97,14 @@ accepted_acrs:
 
 accepted_work_items:
   first: "WORK-001"
-  last: "WORK-053"
-  active: "WORK-054"
-  note: "WORK-001..WORK-039, WORK-041, WORK-042, and W051-W053 are accepted-merged in the durable ledger/history. DEC-0080 records durable acceptance facts for W044-W050; R0 restored the accepted W044-W049 trees except the explicitly disclosed W048 accepted-not-restored material; DEC-0084 reconciled those projections. WORK-054 is newly activated for R2 by DEC-0085 and is not yet accepted. WORK-040 remains in-review and unaccepted."
+  last: "WORK-054"
+  active: "WORK-055"
+  note: "WORK-001..WORK-053 remain accepted according to durable history; WORK-054 is accepted-merged by DEC-0088 with merge 57963858e5a2b9d11faed94b50f94e058cede0a8. WORK-055 is newly active for R3. WORK-040 remains in-review and unaccepted."
 
 mainline_integrity:
-  status: RECONCILED
-  reconciliation_decision: DEC-0086
-  current_execution_decision: DEC-0085
+  status: RECONCILED_PENDING_GOVERNANCE_MERGE
+  reconciliation_decision: DEC-0088
+  current_execution_decision: DEC-0088
   required_recovery_source: "Repository Git history / accepted delivery heads; no chat or external artifact may be used as the source for reconstruction."
   recovery_rule: "Recover exact accepted delivery artifacts and CI/evidence surfaces; do not import unrelated ancestry; do not alter frozen architecture semantics."
 
