@@ -5,7 +5,8 @@
 ## Repository
 
 - Repository: `github.com/pectoraux/ADCOS`
-- Canonical mainline after R0: `7fb47bb312708d06f3b3c1ba0496104362c7d135`
+- Canonical live `main`: `09d77dae84b430ad4a6bb22a6f01c2b7d8533cdd`
+- Lifecycle ledger snapshot: `7fb47bb312708d06f3b3c1ba0496104362c7d135` (R0 restoration checkpoint)
 - Roadmap: `spec/architect/roadmap.yaml` — **FROZEN, Version 1.1, sole program-roadmap authority**
 - Architecture: `1.0` frozen
 - Protocol: `1.0`
@@ -14,7 +15,7 @@
 
 - R0: `COMPLETED` — PR #157
 - R1: `BLOCKED`
-- Governing corrections: `DEC-0081`, `DEC-0082`
+- Governing decisions: `DEC-0081`, `DEC-0082`
 - Active Work Item: none
 - Active authorization: none
 - Active implementation authorization count: zero
@@ -22,19 +23,19 @@
 
 ## R0 result
 
-The accepted W044-W049 implementation packages, deterministic selftests, evidence surfaces, handoffs where historically present, and required CI invocation wiring are restored on the current mainline. The restoration was isolated from unrelated historical ancestry and changed no frozen architecture/protocol semantics or `spec/architect/` governance state.
+The accepted W044-W049 implementation packages, deterministic selftests, evidence surfaces, historical handoffs, and required CI invocation wiring are restored on the canonical mainline. The clean restoration was isolated from unrelated historical ancestry and changed no frozen architecture/protocol semantics.
 
 ## R1 remaining blockers
 
 ### W044-W049 lifecycle reconciliation
 
-The current execution ledger still carries the pre-restoration registered-only representation for W044-W049 even though durable repository history contains their accepted reviewed heads and merges. Those lifecycle facts must be reconciled explicitly without deleting or rewriting prior records.
+The authoritative execution ledger still contains the earlier registered-only W044-W049 lifecycle representation even though durable repository history records their accepted reviewed heads and merges. This must be reconciled explicitly, preserving every previous reconciliation and every historical field that is not deliberately superseded.
 
 ### W050 acceptance provenance
 
-W050 implementation-stage artifacts and its permanent deterministic battery are present, but no discrete durable W050 acceptance decision is corroborated in the current authoritative decision registry/execution ledger. `DEC-0082` therefore changes the frozen roadmap to record W050 as `implementation-present_acceptance-unresolved` rather than infer acceptance.
+W050 implementation-stage artifacts and its permanent deterministic battery are present. However, the current authoritative decision registry and execution ledger do not contain a discrete corroborated Work Item acceptance decision. DEC-0082 therefore requires fail-closed treatment: W050 is implementation-present but acceptance-unresolved until the repository evidence is sufficient.
 
-No implementation authorization may be issued until both blockers are resolved.
+No implementation authorization may be issued while either condition remains unresolved.
 
 ## Independent physical evidence
 
@@ -42,7 +43,7 @@ W040 remains `in-review`, unaccepted, and independent. Its physical evidence obl
 
 ## Source of truth
 
-A clean clone of `main` must be sufficient to reconstruct ADCOS. Chat history, model memory, prompts, issue prose, PR discussion, external roadmaps, and stale handoff documents have zero authority.
+A clean clone of `main` is sufficient to reconstruct ADCOS. Chat history, model memory, prompts, issue prose, PR discussion, external roadmaps, and stale handoff documents have zero authority.
 
 Authority chain:
 
