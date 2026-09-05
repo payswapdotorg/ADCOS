@@ -1,0 +1,35 @@
+name: W054 record hardening
+on:
+  push:
+    branches:
+      - governance/w054-record-hardening-20260905
+permissions:
+  contents: write
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Normalize W054 machine record
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('spec/architect/execution-ledger.yaml')
+          s = p.read_text()
+          pattern = r'(  - work_item: WORK-054\n    title: "System Composition Conformance and Developer Connectivity Composition"\n    phase: )[^\n]+'
+          s2, count = re.subn(pattern, r'\g<1>10', s, count=1)
+          if count != 1:
+              raise SystemExit(f'expected one W054 ledger phase field, found {count}')
+          p.write_text(s2)
+          PY
+          rm .github/workflows/w054-record-hardening.yml
+          git config user.name 'ADCOS Architect'
+          git config user.email '150378018+payswapdotorg@users.noreply.github.com'
+          git add spec/architect/execution-ledger.yaml .github/workflows/w054-record-hardening.yml
+          git commit -m 'governance: normalize W054 machine record [skip ci]'
+          git push origin HEAD:governance/w054-record-hardening-20260905
