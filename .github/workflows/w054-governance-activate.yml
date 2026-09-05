@@ -1,0 +1,121 @@
+name: W054 governance activation
+on:
+  push:
+    branches:
+      - governance/w054-activation-20260905
+permissions:
+  contents: write
+jobs:
+  activate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Register and authorize W054
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root = Path('.')
+          main_sha = 'ba3717fad3cc4a5894ff3fece4768e47e7db584c'
+
+          # Frozen Work Item registry extension.
+          p = root/'spec/work-items.md'; s = p.read_text()
+          if '### WORK-054 — System Composition Conformance and Developer Connectivity Composition' not in s:
+              s = s.rstrip() + '''\n\n### WORK-054 — System Composition Conformance and Developer Connectivity Composition\nObjective: Prove and implement the minimum end-to-end composition seam that lets an external application drive the already-accepted ADCOS commercial and connectivity authorities through one coherent developer-facing control flow, without introducing a second source of truth or a new routing/session/payment/containment authority.\nDependencies: WORK-041, WORK-042, WORK-044, WORK-045, WORK-046, WORK-047, WORK-048, WORK-049, WORK-050, WORK-051, WORK-052, WORK-053\nAcceptance criteria:\n- The canonical composition chain is executable and auditable: external application intent → Developer API → policy/eligibility → offer/reservation/lease → candidate selection → NetworkPath validation → containment → session → delivered traffic → UsageLedger → BILLABLE_FINAL → EconomicAllocation → external payment reference/reconciliation → canonical API/webhook observation.\n- Every stage invokes the existing authority that owns that state; WORK-054 owns orchestration/composition evidence, not replacement state. No duplicated connectivity, routing, session, containment, payment, usage, allocation, eligibility, or marketplace authority is introduced.\n- Payment success cannot create connectivity; reservation/lease success cannot imply reachability; marketplace discovery cannot activate a path; W050 capability declaration cannot enforce containment; W049 client state cannot become canonical state; API/webhook observation cannot become a second source of truth.\n- The composition boundary is deterministic and idempotent under retry, duplicate, and out-of-order observations, and exposes canonical reason/status state without rewriting authoritative history.\n- External applications can drive and observe the composition through the accepted Developer API surface without adopting an ADCOS UI or knowing provider/access/path/payment implementation details.\n- Failure/recovery paths preserve the same authority boundaries and reconcile through the accepted journal/finality and canonical ledgers.\nRequired verification: dedicated deterministic composition battery, end-to-end positive and negative proofs for every mandatory invariant, duplicate/out-of-order/retry/recovery tests, exact authority/import audit, scope audit, canonical API/webhook parity tests, hash-seed determinism, and fresh-world/order-independence verification.\nOut of scope: new payment rails/custody/KYC/KYB/jurisdiction authority; new routing, NetworkPath, session, containment, marketplace, usage, allocation, or client-runtime authorities; direct physical-connectivity claims; frozen wire-schema or architecture changes; modification of spec/architect/ from the implementation PR.\nDefinition of done: One external-application composition flow is proven end-to-end across the accepted authorities with no second authority, with canonical state remaining in its existing owners and all mandatory negative proofs passing.\n'''
+              p.write_text(s)
+
+          # Frozen dependency graph.
+          p = root/'spec/dependency-graph.md'; s = p.read_text()
+          if 'W054[W054 System Composition Conformance]' not in s:
+              s = s.replace('  W053[W053 EconomicAllocation]\n', '  W053[W053 EconomicAllocation]\n  W054[W054 System Composition Conformance]\n', 1)
+              s = s.replace('  W050 --> W048\n  W050 --> W049\n', '  W050 --> W048\n  W050 --> W049\n  W041 --> W054\n  W042 --> W054\n  W044 --> W054\n  W045 --> W054\n  W046 --> W054\n  W047 --> W054\n  W048 --> W054\n  W049 --> W054\n  W050 --> W054\n  W051 --> W054\n  W052 --> W054\n  W053 --> W054\n', 1)
+              s = s.replace('# Phase 10 — Canonical commercial phase\n', '# Phase 10 — Canonical commercial phase\n', 1)
+              s = s.replace('The `W050 → W048` and `W050 → W049` edges are advisory capability-input edges: W050\'s capability declarations constrain sharing modes but do NOT gate W048/W049 execution, authorization, or review — the hard execution gates are the `Dependencies:` declarations in spec/work-items.md, which deliberately do not list WORK-050 for W048/W049 (the two resulting ADV-01 advisories are sanctioned by ACR-011).', 'The `W050 → W048` and `W050 → W049` edges are advisory capability-input edges: W050\'s capability declarations constrain sharing modes but do NOT gate W048/W049 execution, authorization, or review — the hard execution gates are the `Dependencies:` declarations in spec/work-items.md. W054 is the post-commercial composition/conformance Work Item and depends on all component authorities in the chain it composes.', 1)
+              s = s.replace('### Phase 10 — Canonical commercial phase\n', '### Phase 10 — Canonical commercial phase\n', 1)
+              insert = '''\n### Phase 10.5 — System composition conformance\n`W054` composes the already-accepted commercial, NetworkPath, containment, session, usage, allocation, payment-reference, journal/recovery, marketplace, capability, and Developer API authorities into one externally consumable control flow. It is an orchestration/conformance Work Item, not a new domain authority.\n'''
+              marker='### Phase 10 — Canonical commercial phase\n'
+              idx=s.find(marker)
+              if idx>=0:
+                  # insert after the existing Phase 10 section by placing before Critical Path
+                  cp=s.find('## 4. Critical Path')
+                  if cp>=0 and '### Phase 10.5 — System composition conformance' not in s:
+                      s=s[:cp]+insert+'\n'+s[cp:]
+              s=s.replace('all 52 registered Work Items','all 53 registered Work Items',1)
+              p.write_text(s)
+
+          # Checker registry count.
+          p=root/'tools/spec_check.py'; s=p.read_text()
+          s=s.replace('EXPECTED_WORK_ITEM_COUNT = 52','EXPECTED_WORK_ITEM_COUNT = 53',1)
+          s=s.replace('# Work Items are frozen as the 52 registered items','## Work Items are frozen as the 53 registered items',1)
+          s=s.replace('all 52 registered items','all 53 registered items',1)
+          p.write_text(s)
+
+          # Ledger registration.
+          p=root/'spec/architect/execution-ledger.yaml'; s=p.read_text()
+          if '- work_item: WORK-054' not in s:
+              block='''  - work_item: WORK-054\n    title: "System Composition Conformance and Developer Connectivity Composition"\n    phase: 10.5\n    branch: "work-054-system-composition-conformance"\n    baseline_sha: '''+main_sha+'''\n    pr: null\n    pr_head: null\n    reviewed_sha: null\n    merge_sha: null\n    merged_at: null\n    ci_run: null\n    review_rounds: null\n    acceptance_decision: null\n    correction_decisions: []\n    handoff: docs/WORK-054-handoff.md\n    handoff_required: true\n    lifecycle: registered\n    note: "Registered and authorized by DEC-0084 against the exact post-R1 mainline '''+main_sha+'''. This is the sole active implementation Work Item. W054 owns composition/conformance orchestration and evidence only; canonical commercial/connectivity state remains with the accepted component authorities."\n'''
+              pos=s.index('reconciliations:\n')
+              s=s[:pos]+block+s[pos:]
+              p.write_text(s)
+
+          # Decision and authorization.
+          (root/'spec/architect/decisions/DEC-0084-w054-system-composition-activation.yaml').write_text('''# ADCOS Decision Record — DEC-0084\n# Register and authorize W054 for R2 system composition conformance\n\ndecision_id: DEC-0084\ntype: governance\nstatus: ACCEPTED\nwork_item: WORK-054\ndate: "2026-09-05"\nsubject: "Register and authorize W054 as the R2 system-composition conformance Work Item"\n\ncontext:\n  preceding_decision: DEC-0083\n  canonical_main_sha: "ba3717fad3cc4a5894ff3fece4768e47e7db584c"\n  roadmap_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE\n  thesis: "The next product milestone is composition of existing accepted authorities behind the Developer API, not creation of a second connectivity control plane."\n\nruling:\n  - "WORK-054 is registered in the frozen Work Item registry and dependency graph as the R2 system-composition/conformance Work Item."\n  - "WORK-054 is authorized to implement only composition/orchestration seams and conformance evidence over existing authority-owned state."\n  - "WORK-054 shall not create or become authoritative for identity, routing, NetworkPath, session, containment, eligibility, marketplace, usage, allocation, payment, or client state."\n  - "The mandatory R2 negative proofs are acceptance gates, not advisory documentation."\n  - "Exactly one implementation authorization is active: WORK-054-CORE-001."\n  - "W040 physical evidence remains independent and is not closed by R2 software evidence."\n\nmandatory_negative_proofs:\n  - "payment success cannot create connectivity"\n  - "reservation success cannot imply reachability"\n  - "marketplace discovery cannot activate a path"\n  - "W050 capability declaration cannot enforce containment"\n  - "W049 client state cannot become canonical state"\n  - "API/webhook observation cannot become a second source of truth"\n  - "software evidence cannot close physical evidence"\n\nimplementation_effect: "ACTIVE_WORK_ITEM_WORK-054"\nauthorization_id: WORK-054-CORE-001\n''')
+
+          (root/'spec/architect/authorizations/WORK-054-CORE-001.yaml').write_text('''# ADCOS Work Item authorization record — WORK-054 active implementation.\n# Issued by DEC-0084 after R1 reconciliation under DEC-0083.\nwork_item: WORK-054\nstatus: active\nauthorized: true\ntype: implementation\nauthorization_id: "WORK-054-CORE-001"\nauthorization_decision: DEC-0084\nbaseline_sha: ba3717fad3cc4a5894ff3fece4768e47e7db584c\nreview_basis: "R1 is complete under DEC-0083. W044-W053 are accepted and reconciled; R2 is the next program gate. The exact baseline is the freshly re-read post-R1 mainline ba3717fad3cc4a5894ff3fece4768e47e7db584c."\ndependencies:\n  - WORK-041\n  - WORK-042\n  - WORK-044\n  - WORK-045\n  - WORK-046\n  - WORK-047\n  - WORK-048\n  - WORK-049\n  - WORK-050\n  - WORK-051\n  - WORK-052\n  - WORK-053\nauthority_inputs:\n  - "WORK-046 Developer API/SDK/Webhooks"\n  - "WORK-051 CommercialCore"\n  - "WORK-052 UsageLedger"\n  - "WORK-053 EconomicAllocation"\n  - "WORK-044 Payment Provider boundary"\n  - "WORK-045 Eligibility/Trust/Jurisdiction policy"\n  - "WORK-047 Marketplace discovery/path-selection handoff"\n  - "WORK-048 Provider sharing runtime"\n  - "WORK-049 Provider/Buyer client runtime"\n  - "WORK-041 NetworkPath validation/binding boundary"\n  - "WORK-042 journal-first platform event/recovery boundary"\n  - "WORK-050 platform capability declaration"\nauthority_outputs:\n  - "Composition command/orchestration seam and conformance evidence; canonical state remains owned by existing authorities."\nscope:\n  - "composition/"\n  - "developerapi/"\n  - "tools/composition_selftest.py"\n  - "docs/WORK-054-handoff.md"\n  - "docs/WORK-054-evidence.md"\n  - ".github/workflows/spec-check.yml"\nacceptance_criteria:\n  - "End-to-end canonical composition chain executes through existing authority-owned public seams."\n  - "All seven mandatory negative proofs pass."\n  - "Retry/duplicate/out-of-order/recovery semantics are deterministic and idempotent without duplicate side effects."\n  - "External application can request and observe the flow through Developer API without ADCOS UI dependency."\n  - "No second authority is introduced; all canonical reads/writes remain in existing owners."\n  - "Dedicated deterministic battery is byte-identical across repeated runs, required hash seeds, and reversed vector order."\nout_of_scope:\n  - "new routing/NetworkPath/session/containment/eligibility/marketplace/usage/allocation/payment/client authorities"\n  - "payment custody, regulated funds movement, KYC/KYB, jurisdiction legal authority"\n  - "physical connectivity evidence"\n  - "frozen architecture/protocol/wire-schema changes"\n  - "modifying spec/architect/ from the implementation PR"\nacceptance_gate:\n  status: "Architect review required after implementation"\n  required_evidence:\n    - "dedicated deterministic end-to-end composition battery"\n    - "all mandatory negative proofs with exact authority attribution"\n    - "exact reviewed delivery SHA, scope/import audit, CI/provenance, replay and hash-seed determinism"\nhandoff: docs/WORK-054-handoff.md\nhandoff_required: true\n''')
+
+          (root/'docs/WORK-054-handoff.md').write_text('''# WORK-054 Architect Handoff — System Composition Conformance and Developer Connectivity Composition\n\n**Authorization:** WORK-054-CORE-001\n**Decision:** DEC-0084\n**Baseline:** ba3717fad3cc4a5894ff3fece4768e47e7db584c\n\n## Mission\n\nMake the accepted ADCOS authorities compose into one externally consumable product flow. WORK-054 is an orchestration/conformance boundary, not a new domain authority.\n\n## Required chain\n\n`external application intent → Developer API → policy/eligibility → offer/reservation/lease → candidate selection → NetworkPath validation → containment → session → delivered traffic → UsageLedger → BILLABLE_FINAL → EconomicAllocation → external payment reference/reconciliation → canonical API/webhook observation`\n\n## Hard invariants\n\n1. Payment success cannot create connectivity.\n2. Reservation/lease success cannot imply reachability.\n3. Marketplace discovery cannot activate a path.\n4. W050 capability declaration cannot enforce containment.\n5. W049 client state cannot become canonical state.\n6. API/webhook observation cannot become a second source of truth.\n7. Software evidence cannot close physical evidence.\n\n## Implementation boundary\n\nUse existing public seams. Do not copy, wrap, or reimplement authority internals merely to make composition convenient. The composition layer may sequence commands and normalize transport-facing orchestration results, but canonical state transitions remain with their current owners.\n\n## Product outcome\n\nAn external application can request connectivity and observe its canonical lifecycle through stable API/webhook primitives without needing an ADCOS UI or understanding whether the underlying path uses cellular, Wi-Fi, fixed, satellite, mesh, or another adapter.\n\n## Verification\n\nThe implementation PR must provide an exact deterministic composition battery, negative proofs for all seven invariants, retry/duplicate/out-of-order/recovery tests, authority/import audit, scope audit, canonical API parity, replay determinism, hash-seed determinism, and fresh-world/order-independence evidence.\n''')
+
+          # Roadmap activation + execution-state + current-state projections.
+          p=root/'spec/architect/roadmap.yaml'; s=p.read_text()
+          s=s.replace('roadmap_version: "1.2"','roadmap_version: "1.3"',1)
+          s=s.replace('supersedes_roadmap_version: "1.1"','supersedes_roadmap_version: "1.2"',1)
+          s=s.replace('superseding_decision: DEC-0083','superseding_decision: DEC-0084',1)
+          s=s.replace('actual_main_sha: 338af793923e1267ff3523de4310be273d75a2cd','actual_main_sha: '+main_sha,1)
+          s=s.replace('last_reconciled_snapshot_sha: 338af793923e1267ff3523de4310be273d75a2cd','last_reconciled_snapshot_sha: '+main_sha,1)
+          s=s.replace('program_state: R2_SYSTEM_COMPOSITION_CONFORMANCE_READY','program_state: R2_SYSTEM_COMPOSITION_CONFORMANCE_ACTIVE',1)
+          s=s.replace('execution_mode: ready','execution_mode: active',1)
+          s=s.replace('active_work_item: null','active_work_item: WORK-054',1)
+          s=s.replace('active_authorization: null','active_authorization: WORK-054-CORE-001',1)
+          s=s.replace('halt_reason: "R1 reconciliation is complete under DEC-0083. No implementation authorization is active. R2 requires a fresh repository-local Work Item and authorization."','halt_reason: "R2 WORK-054 is authorized and active under DEC-0084."',1)
+          s=s.replace('next_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE','next_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE',1)
+          s=s.replace('  - id: R2_SYSTEM_COMPOSITION_CONFORMANCE\n    status: READY','  - id: R2_SYSTEM_COMPOSITION_CONFORMANCE\n    status: ACTIVE\n    active_work_item: WORK-054\n    active_authorization: WORK-054-CORE-001',1)
+          p.write_text(s)
+
+          p=root/'spec/architect/execution-state.yaml'; s=p.read_text()
+          s=s.replace('roadmap_version_reference: "1.2"','roadmap_version_reference: "1.3"',1)
+          s=s.replace('  mode: ready','  mode: active',1)
+          s=s.replace('  active_work_item: null','  active_work_item: WORK-054',1)
+          s=s.replace('  active_authorization: null','  active_authorization: WORK-054-CORE-001',1)
+          s=s.replace('  halted_reason: "R1 is complete under DEC-0083. No implementation authorization exists. R2 awaits a fresh Work Item and authorization."','  halted_reason: null',1)
+          s=s.replace('ba3717fad3cc4a5894ff3fece4768e47e7db584c','ba3717fad3cc4a5894ff3fece4768e47e7db584c',1)
+          p.write_text(s)
+
+          p=root/'spec/architect/current-state.md'; s=p.read_text()
+          s=s.replace('**READY — R1 governance reconciliation complete; R2 system-composition Work Item pending.**','**ACTIVE — R2 WORK-054 system-composition implementation authorized.**',1)
+          s=s.replace('Roadmap: `spec/architect/roadmap.yaml` — **FROZEN, Version 1.2, sole program-roadmap authority**','Roadmap: `spec/architect/roadmap.yaml` — **FROZEN, Version 1.3, sole program-roadmap authority**',1)
+          s=s.replace('- R2: `READY`','- R2: `ACTIVE` — WORK-054 / WORK-054-CORE-001',1)
+          s=s.replace('- Active Work Item: none','- Active Work Item: WORK-054',1)
+          s=s.replace('- Active authorization: none','- Active authorization: WORK-054-CORE-001',1)
+          s=s.replace('- Active implementation authorization count: zero','- Active implementation authorization count: one',1)
+          s=s.replace('The next governed gate is R2 system composition conformance. It requires a fresh repository-local Work Item and exactly one implementation authorization before implementation begins.','R2 implementation is active under WORK-054-CORE-001. The implementation branch must be cut from the exact authorized baseline and may not modify spec/architect/.',1)
+          s=s.replace('Canonical reconciled checkpoint: `338af793923e1267ff3523de4310be273d75a2cd`','Canonical reconciled checkpoint: `'+main_sha+'`',1)
+          p.write_text(s)
+
+          # Decision index.
+          p=root/'spec/architect/decisions/README.md'; s=p.read_text()
+          if 'DEC-0084' not in s:
+              s=s.rstrip()+'\n\n- `DEC-0084` — registers and authorizes WORK-054 as the active R2 system-composition conformance Work Item.\n'
+              p.write_text(s)
+
+          # Remove temporary workflow before commit.
+          Path('.github/workflows/w054-governance-activate.yml').unlink()
+          PY
+          git config user.name 'ADCOS Architect'
+          git config user.email '150378018+payswapdotorg@users.noreply.github.com'
+          git add spec/work-items.md spec/dependency-graph.md tools/spec_check.py spec/architect docs/WORK-054-handoff.md .github/workflows/w054-governance-activate.yml
+          git commit -m 'governance: register and authorize W054 for R2 [skip ci]'
+          git push origin HEAD:governance/w054-activation-20260905
