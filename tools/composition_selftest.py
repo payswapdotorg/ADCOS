@@ -211,14 +211,22 @@ def full_suite() -> Tuple[int, str]:
     digest_before = frozen_request.digest()
     original["bandwidth_kbps"] = 9000
     assert frozen_request.digest() == digest_before
-    expect_type_error(lambda: frozen_request.intent.__setitem__("x", 1))
+
+    def mutate_request_intent():
+        frozen_request.intent["x"] = 1
+
+    expect_type_error(mutate_request_intent)
     total += 1
 
     metadata = {"note": "immutable"}
     receipt = StageReceipt(stage="DEVELOPER_API", authority="WORK-046", operation="compose", status="accepted", reference="x", metadata=metadata)
     metadata["note"] = "mutated-outside"
     assert receipt.metadata["note"] == "immutable"
-    expect_type_error(lambda: receipt.metadata.__setitem__("note", "forged"))
+
+    def mutate_receipt_metadata():
+        receipt.metadata["note"] = "forged"
+
+    expect_type_error(mutate_receipt_metadata)
     total += 1
 
     return total, a.digest
