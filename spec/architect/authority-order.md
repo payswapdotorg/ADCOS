@@ -1,81 +1,43 @@
 # ADCOS Authority Order
 
-## Status
-
 **ACTIVE — Persistent Governance Authority**
 
-This document defines the single canonical precedence chain among repository authorities. The **Mission Authority is permanently higher than the architecture**. The architecture is the current accepted technical snapshot and may evolve through accepted ACRs. Experience informs architecture but never overrides it directly.
+This document defines precedence. Repository artifacts outrank chat and external context.
 
-Where two authorities appear to conflict, the higher applicable authority governs, and the conflict must be reported through the ACR/change-control process. Chat history has no authority level.
+## Precedence
 
----
+1. `spec/mission.md` — permanent mission authority.
+2. `spec/architecture.md` — current frozen architecture semantics.
+3. `spec/architecture-lock.md` — architecture locks.
+4. accepted ACRs and their frozen successor snapshots.
+5. `spec/dependency-graph.md` — dependency semantics and hard/advisory edges.
+6. `spec/work-items.md` — Work Item contract registry.
+7. `spec/architect/roadmap.yaml` — canonical, frozen execution/program roadmap.
+8. accepted durable decisions in `spec/architect/decisions/` and the lifecycle history in `spec/architect/execution-ledger.yaml`.
+9. `spec/architect/execution-state.yaml` and `current-state.md` — current-state projections; they must agree with the higher authorities and actual main.
+10. `spec/architect/authorizations/` — implementation permission only. An authorization cannot change the roadmap, architecture, Work Item contract, or dependency graph.
+11. implementation evidence and CI results.
+12. narrative documentation, issues, PR prose, handoffs, and worklogs.
+13. **Chat history has zero authority at every level.**
 
-## 1. Canonical precedence chain
+## Roadmap rule
 
-```text
- 1. Permanent Mission Authority
-    spec/mission.md
- 2. Current accepted Architecture snapshot
-    spec/architecture.md and the frozen specification set
- 3. Architecture locks
-    spec/architecture-lock.md
- 4. Accepted ACRs
-    spec/acr/ACR-NNN-*.md with Status: ACCEPTED
- 5. Experience and learning records
-    spec/experience/ (evidence and lessons; no direct authority to amend architecture)
- 6. Canonical dependency graph
-    spec/dependency-graph.md
- 7. Canonical Work Item contract
-    spec/work-items.md
- 8. Persistent review/decision records
-    spec/architect/decisions/ and spec/architect/authorizations/
- 9. Accepted implementation precedent
-10. Verification evidence
-11. Explanatory documentation
-12. Historical worklogs
-```
+`spec/architect/roadmap.yaml` is the sole roadmap authority. `roadmap.md` is its human projection. No other document may create a competing implementation order, milestone, priority, status, or dependency interpretation.
 
-## 2. What each level is
+The roadmap is frozen at Version 1.0. Any change requires a new durable governance decision and a new roadmap version. A chat proposal cannot change it.
 
-1. **Permanent Mission Authority** — `spec/mission.md` defines the enduring objective of ADCOS. It is intentionally immutable through ordinary architecture governance. A proposal to change the mission is not an ordinary ACR.
-2. **Current accepted Architecture snapshot** — `spec/architecture.md`, together with the current frozen specification set, defines the architecture currently in force. `FROZEN` means authoritative for that snapshot, not immutable for the lifetime of the project.
-3. **Architecture locks** — `LOCK-001 … LOCK-025` are the constitutional invariants for the current architecture snapshot.
-4. **Accepted ACRs** — accepted Architecture Change Requests are the durable change records that authorize synchronized evolution of the architecture. The current architecture snapshot remains the operational authority until the accepted changes are incorporated into the synchronized snapshot.
-5. **Experience and learning records** — `spec/experience/` records observations, incidents, implementation lessons, physical experiments, security findings, and relevant research. Experience is evidence for the Architect's reasoning; it cannot directly change architecture.
-6. **Canonical dependency graph** — `spec/dependency-graph.md` is the ordering authority.
-7. **Canonical Work Item contract** — `spec/work-items.md` defines the approved implementation backlog for the current roadmap snapshot.
-8. **Persistent review/decision records** — `spec/architect/` records acceptance, authorization, evidence obligations, and execution state. These records cannot override levels 1–7.
-9. **Accepted implementation precedent** — merged, Architect-accepted implementations inform how accepted contracts were realized but cannot redefine them.
-10. **Verification evidence** — tests, CI, experiments, and external evidence prove or fail to prove claims; they never redefine architecture.
-11. **Explanatory documentation** — READMEs and docs explain the architecture; they never become a second authority.
-12. **Historical worklogs** — historical narrative only; zero authority.
+## Current-state rule
 
-## 3. Learning and evolution rule
+Actual `main` is always checked first. If actual main differs from the persisted execution snapshot or roadmap state cannot be reconciled with the durable decision/ledger record, implementation fails closed. The Architect must persist the reconciliation before any implementation resumes.
 
-The repository must preserve the following loop:
+## Permission rule
 
-```text
-experience / research / incident
-        ↓
-experience record
-        ↓
-Architect assessment
-        ├── guidance
-        ├── rejected
-        └── ACR required
-                 ↓
-          accepted ACR
-                 ↓
-      synchronized new snapshot
-```
+Roadmap membership, Work Item status, GitHub issues, PRs, prior handoffs, and chat designations never authorize implementation. Only a current repository-local authorization with `status: active` and `authorized: true`, inherited by the implementation branch from `main`, does.
 
-The mission remains unchanged throughout ordinary architecture evolution.
+## Historical integrity
 
-## 4. Rules of use
+Accepted historical delivery facts remain true even if a later mainline regresses or omits their artifacts. Such an omission is a mainline-integrity defect. The remedy is explicit restoration and reconciliation, not historical rewriting.
 
-1. A lower level never overrides a higher level.
-2. Chat history has **no authority level**. If a chat decision matters, the Architect must persist it into the appropriate repository artifact.
-3. An `ACCEPTED` ACR is durable change provenance, not permission for an implementation agent to invent missing implementation semantics.
-4. An implementation Work Item still requires explicit repository-local execution authorization.
-5. Experience records must never be rewritten merely to justify a later architectural choice; corrections are appended and historical provenance is preserved.
-6. When an ACR is accepted, the prior architecture snapshot remains discoverable and is superseded only by the synchronized successor snapshot.
+## Fresh-session rule
+
+A new Architect or implementation agent must be able to clone `main` and determine mission, architecture, roadmap, current execution state, accepted history, evidence state, and next action without access to any prior conversation.

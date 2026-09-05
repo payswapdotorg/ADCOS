@@ -1,0 +1,98 @@
+# ADCOS Decision Record — DEC-0080
+# Canonical roadmap freeze and repository-only authority
+
+decision_id: DEC-0080
+type: governance
+status: ACCEPTED
+work_item: null
+date: "2026-09-05"
+subject: "Freeze the ADCOS execution roadmap as the canonical repository authority and prohibit conversational dependency"
+
+context:
+  repository_main_sha_at_decision: a7d913385f866df6da890093c26539ad876f3ee4
+  architecture_version: "1.0"
+  protocol_version: "1.0"
+  finding: "The persistent Architect package already establishes that chat is not authority, but the current mainline contains contradictory execution projections: execution-state activates W044 while durable GitHub history proves W044-W049 accepted deliveries and the current mainline does not contain every accepted implementation package. The repository therefore needs an explicit frozen program authority and fail-closed reconciliation semantics."
+
+rules:
+  - "The Git repository is the sole persistent source of truth for ADCOS. A conversation, prompt, chat transcript, external memory, issue comment, or model recollection has zero authority unless its consequence is persisted in the repository by the Architect."
+  - "spec/architect/roadmap.yaml is the canonical and frozen execution/program roadmap. It is the only authoritative roadmap. roadmap.md is a human-readable projection of roadmap.yaml and may not introduce independent commitments or statuses."
+  - "spec/architect/execution-state.yaml is the canonical current execution snapshot. It may describe the current execution slot and halt state but may not contradict roadmap.yaml or an accepted decision record."
+  - "spec/architect/execution-ledger.yaml is the authoritative lifecycle/history ledger. It records accepted delivery history and reconciliation history; a historical ledger snapshot is not, by itself, permission to implement."
+  - "spec/architect/authorizations/ is the only source of implementation permission. Exactly one active implementation authorization may exist, and only when roadmap.yaml and execution-state.yaml both declare execution as implementing."
+  - "spec/work-items.md remains the frozen Work Item contract authority; spec/dependency-graph.md remains the frozen dependency authority; spec/architecture.md and spec/architecture-lock.md remain frozen architecture authorities."
+  - "An implementation agent must be able to operate from a clean clone of main with no access to this conversation. Any instruction required to implement, review, recover, or accept work must exist in repository-local durable artifacts."
+  - "When actual main differs from the persisted execution snapshot, implementation stops. The Architect must reconcile the snapshot before any new implementation authorization can become active."
+  - "Accepted historical delivery facts are never erased or downgraded merely because their artifacts are absent from the current mainline. Their absence is represented as mainline integrity debt requiring explicit restoration."
+  - "Software evidence never closes a physical evidence obligation. W040 remains independent and W040-owned."
+  - "The single-Architect review and merge authority from DEC-0053 remains unchanged; no separate reviewer is required."
+
+current_finding:
+  state: CANONICAL_MAINLINE_INTEGRITY_BLOCKED
+  actual_main_sha: a7d913385f866df6da890093c26539ad876f3ee4
+  last_persisted_snapshot_sha: bb29c11c8bba6c9db5b87f85b1d62faad0bf7825
+  discrepancy: "Current main is a governance-only continuation beyond the last persisted W053 acceptance snapshot and is missing the accepted W044-W049 implementation artifacts proven in durable repository history."
+  implementation_effect: "STOP — no implementation Work Item is active until the canonical restoration milestone is completed and a fresh repository-local authorization is issued."
+
+accepted_delivery_record:
+  WORK-044:
+    reviewed_sha: 6720d220e390999e17707537ab587c1da3b09eb9
+    merge_sha: 90864ac257a3d93d94852cfa3a74577903f508d3
+    acceptance_record: "PR #127 / subsequent durable transition PR #128"
+  WORK-045:
+    reviewed_sha: 827234ec3a245a6b9f2f2de5d6525afb495684cc
+    merge_sha: a789d9b403d0e2a6e05276bb3cdc2b7d092c6d88
+    acceptance_record: "DEC-0065 / PR #130"
+  WORK-046:
+    reviewed_sha: 09960ea24315e5d0ccfd516d3bdca0802b62d8b7
+    merge_sha: f45be6dd0544a2fd6cbc910805def28bbe0c71eb
+    acceptance_record: "DEC-0067 / PR #133"
+  WORK-047:
+    reviewed_sha: 348154d063c0e0a12d5635cb2093c67a507a4064
+    merge_sha: 7bc31f2899307c56639887416d602b41b4c16f43
+    acceptance_record: "DEC-0070 lineage; exact accepted delivery documented in PR #135"
+  WORK-048:
+    reviewed_sha: e2af4bd20e403c1d4ee9717f7eea8809c16a53cd
+    merge_sha: ce1ccaea328743a05cf8d6fa87a114e69d9e253c
+    acceptance_record: "DEC-0075 / PR #140"
+  WORK-049:
+    reviewed_sha: b8cc17ef21f6c38266152552590dc73f80c056ce
+    merge_sha: 89ad6ff3d168c59256c3e805539eb9ca22f6b3bc
+    acceptance_record: "DEC-0078 / PR #143"
+  WORK-050:
+    accepted_stage_heads:
+      - 4a37408
+      - c5cb509
+      - 279871c
+      - 0fa231c
+    current_mainline_presence: PRESENT
+    acceptance_basis: "Accepted staged W050 implementation reconstructed onto the later mainline, including the permanent deterministic battery."
+
+roadmap_freeze:
+  version: "1.0"
+  authority: "spec/architect/roadmap.yaml"
+  human_projection: "spec/architect/roadmap.md"
+  immutable_without_governance_decision: true
+
+source_of_truth_contract:
+  clone_requirement: "A fresh clone of main must be sufficient to reconstruct mission, frozen architecture, current program phase, current execution state, accepted history, authorization status, evidence obligations, and the next permitted action."
+  chat_dependency: PROHIBITED
+  external_memory_dependency: PROHIBITED
+  issue_comment_as_authority: PROHIBITED
+  roadmap_projection_as_independent_authority: PROHIBITED
+  stale_state_behavior: FAIL_CLOSED
+
+required_next_program_gate: R0_MAINLINE_RESTORATION
+
+preservation:
+  - "No historical Git commit is rewritten or erased."
+  - "No accepted delivery is declared unaccepted because its tree is absent from current main."
+  - "No frozen architecture or protocol semantic change is introduced by this decision."
+  - "No new Work Item is registered by this decision."
+  - "No implementation authorization is issued by this decision."
+
+acceptance_basis:
+  - "Repository and GitHub history were re-read directly."
+  - "Current main was independently verified as a7d913385f866df6da890093c26539ad876f3ee4."
+  - "Persistent Architect package already defines repository-only authority and single-Architect review/merge authority."
+  - "This decision makes the execution roadmap and mismatch handling explicit and machine-readable so future sessions do not depend on conversation context."

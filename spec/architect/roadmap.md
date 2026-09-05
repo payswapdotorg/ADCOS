@@ -1,123 +1,99 @@
-# ADCOS Canonical Implementation Roadmap
+# ADCOS Authoritative Roadmap
 
-**Status: AUTHORITATIVE PROJECTION**
+**FROZEN — Roadmap Version 1.0**
 
-Machine-readable authority: `spec/architect/roadmap.yaml`.
-Frozen architecture remains authoritative in `spec/architecture.md`, `spec/architecture-lock.md`, `spec/work-items.md`, and `spec/dependency-graph.md`. This roadmap does not authorize implementation.
+`spec/architect/roadmap.yaml` is the sole canonical program roadmap. This document is its human-readable projection. Neither this file nor the roadmap grants implementation authority.
 
-## Current execution state
+## Current repository state
 
-- Live main at W053 acceptance/transition: `bb29c11c8bba6c9db5b87f85b1d62faad0bf7825`
-- Active Work Item: **WORK-044 Payment Provider Adapters & Settlement Gateway**
-- Active authorization: **WORK-044-CORE-001**
-- Authorized baseline: **bb29c11c8bba6c9db5b87f85b1d62faad0bf7825**
-- W051: accepted/merged
-- W052: accepted/merged at exact reviewed head `7d883b2`, merge `bcaf0d0677437d1ffca8f5e493cab516c87e7194`
-- W053: accepted/merged at exact reviewed head `4a0021c`, merge `bb29c11c8bba6c9db5b87f85b1d62faad0bf7825`
-- W044: active-authorized; implementation not yet delivered (no W044 code exists yet)
-- W040: independent physical-validation/evidence track, in-review and not accepted
-- W043: retired/unassigned
+Actual `main` at this review: `a7d913385f866df6da890093c26539ad876f3ee4`.
 
-The live baseline was reconciled by DEC-0063 / LEDGER-RECON-011 after the W053 acceptance (PR #152) and the W044 activation. Governance commits beyond the reconciled snapshot (the accidental direct-main transition add/remove pair and this transition's own merge) sit beyond the baseline without changing persistent state; the W044 implementation branch must be cut from the exact live authorization-bearing main re-read at activation time.
+The repository is intentionally **BLOCKED for implementation** pending mainline-integrity restoration. Durable GitHub history proves that W044, W045, W046, W047, W048, and W049 were accepted in their own reviewed/merged deliveries, while the current `main` does not contain all of those accepted implementation packages. W050, W051, W052, and W053 are present on the current line. This is treated as integrity debt, not as permission to reinterpret or erase accepted history.
 
-## Authority model
+The immediate order is:
 
-`roadmap.yaml` answers what Work Items exist, how they depend on one another, and their verified program state. It does **not** authorize implementation.
+`R0 restoration → R1 governance reconciliation → R2 system composition → R3 protocol production conformance → R4/R5 physical + developer platform → R6 provider federation → R7 universal connectivity commerce → R8 resilience/scale → R9 future access adapters`
 
-Authorization is authoritative only through `spec/architect/authorizations/` and the governing decision record. Execution facts are authoritative in `execution-state.yaml` and `execution-ledger.yaml`.
+## Frozen execution roadmap
 
-A Work Item reaches accepted/merged only through Architect review and acceptance of the exact delivery head.
+### R0 — Canonical accepted-mainline restoration
 
-## Program DAG
+Restore the exact accepted W044–W049 implementation packages, evidence manifests, handoffs, and required CI battery wiring onto the current authoritative mainline. The restoration must be additive and provenance-preserving: no unrelated later ancestry, no frozen semantic changes, no fabricated acceptance, no historical rewrite.
 
-```text
-W001 → W002 → W003 → W004 → W005 → W006 → W007
-                               ↘       ↘
-                                W008 → W009 → W010
-W007 + W008 + W009 + W010 → W011 → W012 → W013 → W014
-W004 + W005 + W007 + W010 + W011 → W015
-W003 + W005 + W012 → W016
-W003 + W004 + W012 → W017
-W012 + W017 → W018
-W016 + W017 + W018 → W019 → W020
-W018 + W019 → W021
-W016 + W018 → W022
-W011 + W013 + W022 → W023
-W018 + W019 + W021 + W022 → W024 → W025
-W007 + W008 + W011 + W012 + W016 → W026 → W027
-W004 + W005 + W007 + W010 + W015 + W017 → W028
-W003 + W005 + W016 + W026 → W029
-W010 + W011 + W012 + W015 + W026 → W030
-W007 + W011 + W012 + W013 + W027 → W031
-W003 + W004 + W005 + W007 + W011 + W012 + W015 + W016 + W017 → W032
-W016 + W017 + W018 + W026 + W029 + W030 + W032 → W033
-W020 + W021 + W022 + W023 + W024 + W033 → W034
-W012 + W013 + W018 + W033 → W035
-W024 + W025 + W030 + W033 + W034 → W036
-W019 + W020 + W021 + W032 + W033 → W037
-W016 + W029 + W032 + W033 → W038
-W015 + W031 + W033 + W036 → W039
+Exit gate: the accepted W044–W050/W051–W053 implementation set is physically present in one mainline and the Architect has verified exact file scope, accepted-head provenance, no unauthorized semantic delta, and deterministic batteries.
 
-W016 + W018 + W033 + W034 → W041
-W012 + W013 + W014 + W033 + W035 + W041 → W042
+### R1 — Governance reconciliation
 
-W051 → W052 → W053
-W051 + W053 → W044
-W051 + W053 + W044 → W045
-W051 + W052 + W053 + W044 + W045 → W046
-W051 + W044 + W045 + W046 → W047
-W041 + W042 + W051 → W048
-W046 + W047 + W048 → W049
+Synchronize `execution-state.yaml`, `execution-ledger.yaml`, `current-state.md`, roadmap projections, decisions, authorizations, and evidence references to the restored mainline. Preserve all previous decisions and reconciliations. No historical record is deleted or rewritten.
 
-W050 ──advisory capability input──→ W048
-W050 ──advisory capability input──→ W049
+Exit gate: a fresh clone of `main` reconstructs the same state without conversation access; zero contradictory active-authorization/status projections remain.
 
-W040 is independent of the implementation DAG.
-W043 is retired and intentionally unassigned.
-```
+### R2 — System composition conformance
 
-## Dependency semantics
+Prove the complete connectivity-commercial chain:
 
-**hard** — downstream execution may not be accepted/merged before the dependency is accepted.
+`intent → offer → eligibility → reservation/lease → candidate selection → NetworkPath validation → containment → session → delivered traffic → usage → BILLABLE_FINAL → allocation → external payment reference → reconciliation`
 
-**advisory** — the dependency supplies bounded input but does not gate authorization or execution. W050→W048/W049 is advisory only.
+Mandatory negative proofs include: payment cannot create connectivity; reservation cannot imply reachability; marketplace discovery cannot activate paths; W050 capability declarations cannot enforce containment; W049/client state cannot become canonical truth; API/webhooks cannot become a second authority; software evidence cannot close physical evidence.
 
-**independent** — no execution-order obligation. W040 is the independent physical-evidence track.
+Exit gate: deterministic end-to-end composition and negative-proof battery passes from fresh state and across restart/replay.
 
-## Current Work Item states
+### R3 — Protocol production conformance
 
-| State | Work Items |
-|---|---|
-| Accepted / merged | W001–W039, W041, W042, W045–W053 |
-| Active / authorized | W044 |
-| In review / not accepted | W040 |
-| Retired | W043 |
+Complete the production conformance layer required before declaring wire compatibility. This includes canonicalization and canonical encoding profiles, signature coverage, version negotiation, unknown-extension behavior, idempotency/replay, schema evolution, migration compatibility, and deterministic digest stability.
 
-(The `Accepted / merged` row above carries the pre-existing commercial-era projection quirk inherited from the obsolete downstream lineage roadmap state — WORK-045–WORK-050 are in fact registered-only and unauthorized per the execution ledger; this transition changes only the W053/W044 status fields, mirroring the DEC-0061 minimal-delta precedent, and does not repair the inherited row.)
+Exit gate: protocol conformance is executable, versioned, deterministic, and compatible with the frozen Architecture Version 1.0 / Protocol Version 1.0 contract.
 
-## W044 execution packet
+### R4 — Physical connectivity validation
 
-Contract: `spec/work-items.md` WORK-044 + `docs/WORK-044-handoff.md` + `spec/architect/authorizations/WORK-044.yaml`.
+Continue W040 independently. Produce real hardware/network evidence for the open physical obligations. Software evidence never closes this track.
 
-Scope: the payment adapter implementation and its deterministic battery, the W044 evidence record, and one additive CI battery step — all created by the future W044 implementation PR (none exists yet in this transition); the machine-readable scope list is `spec/architect/authorizations/WORK-044.yaml`. The implementation PR must not modify `spec/architect/`.
+Exit gate: the relevant evidence obligations are actually demonstrated and accepted through the repository evidence process.
 
-Authority: the payment layer owns the provider-neutral adapter boundary only. It consumes public EconomicAllocation settlement/payout projections and public commercial references as DATA; it must not create or mutate identity, session, NetworkPath, routing, transport, usage, allocation, or delivery authority. Provider callbacks are external observations until reconciled; corrections are append-only; no custody or regulated funds movement.
+### R5 — Developer Connectivity Platform
 
-Acceptance: idempotent intent/capture/refund/reversal/payout through the abstract adapter and the deterministic sandbox provider; provider success never creates usage or bypasses billable-final; callback replay/duplicate/out-of-order remain idempotent and append-only; reconciliation detects divergence without rewriting history; capabilities are explicit and versioned; strict import discipline; restart/replay is byte-identical; unknown/fabricated provider state fails closed.
+Use accepted W046 as the foundation for a production developer surface. ADCOS becomes usable like Stripe: an external application requests connectivity through stable APIs and webhooks without adopting an ADCOS UI or knowing provider, access technology, route implementation, or payment-rail internals.
 
-## Next-order rule
+Required capabilities include intent creation, offer/quote access, reservation/lease, activation/status, termination, usage/finalization projections, webhook delivery, idempotency, scoped credentials, sandbox/production separation, and canonical reason-code exposure.
 
-Exactly one Work Item may be active-authorized. The current target is W044 under `WORK-044-CORE-001`. Roadmap placement alone never authorizes W045 or any other downstream item.
+Exit gate: a third-party application can complete the full connectivity lifecycle through the API without an ADCOS-specific UI dependency.
 
-## Fresh-architect recovery
+### R6 — Provider onboarding and federation
 
-To recover after context loss, read in order:
+Enable independently operated networks, ISPs, carriers, enterprises, satellite systems, hotspots, mesh operators, and infrastructure owners to expose connectivity through ADCOS. Provider infrastructure remains provider-controlled.
 
-1. `spec/architect/roadmap.yaml`
-2. `spec/architect/execution-state.yaml`
-3. `spec/architect/execution-ledger.yaml`
-4. the active `spec/architect/authorizations/WORK-XXX.yaml`
-5. its Work Item contract/handoff
-6. the corresponding GitHub issue and open implementation PR
+Required capabilities include adapter certification, capability declarations, commercial contracts/profiles, policy boundaries, service terms, settlement configuration, observability, and federation trust.
 
-The implementation branch must start from the exact live mainline carrying the active authorization. One Work Item, one branch, one implementation PR. No self-authorization and no self-merge.
+Exit gate: at least two independently controlled connectivity providers can interoperate through the same canonical ADCOS interfaces without a shared vendor control plane.
+
+### R7 — Universal connectivity commerce
+
+Normalize heterogeneous connectivity resources into programmable offers selected by intent, policy, evidence, availability, geography, quality, and price. ADCOS coordinates the transaction and lifecycle; it does not need to own the underlying network.
+
+Exit gate: materially different access resources can be exposed, selected, reserved, consumed, measured, and commercially reconciled through the same stable abstraction.
+
+### R8 — Resilience, mobility and scale
+
+Harden failover, multipath, mobility, local-first operation, offline/reconnect, reconciliation, disaster recovery, key rotation/revocation, upgrades, rollback, federation scale, and operational observability.
+
+Exit gate: the fabric remains correct under provider/path changes, partial failure, disconnected operation, replay, and node replacement.
+
+### R9 — Future access technology
+
+Add new access technologies strictly through the adapter boundary without changing the protocol core. Examples include 5G, Wi-Fi, Ethernet/fiber, satellite, mesh/IAB, enterprise WAN, and future IMT/6G systems.
+
+Exit gate: a new access adapter can be certified without modifying core connectivity authority semantics.
+
+## The Stripe-of-connectivity exit criterion
+
+ADCOS is successful when an external application can request connectivity by API; ADCOS can evaluate policy and eligible offers, reserve capacity, select and validate a path, establish controlled connectivity, meter delivered usage, finalize billing, allocate economic value, integrate with an external payment provider, reconcile provider events, and expose canonical status through API/webhooks — while the application remains independent of the underlying access technology, network operator, and payment rail.
+
+## Source-of-truth rule
+
+A clean clone of `main` is the starting point for every new Architect, implementation agent, or recovery operation. Conversation history is never required to discover what to build or whether building is permitted.
+
+The authority chain is:
+
+`mission → frozen architecture/locks → frozen Work Item contract + dependency graph → frozen roadmap.yaml → accepted decisions + execution ledger/state → active authorization → implementation evidence`
+
+`roadmap.md` is only a projection. Issues, PR discussions, chat messages, old handoffs, and external planning documents cannot override `roadmap.yaml`.

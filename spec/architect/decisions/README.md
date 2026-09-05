@@ -74,6 +74,7 @@ Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-
 | DEC-0060 | governance | WORK-052 | ACCEPTED | ACCEPTED | W052 baseline reconciliation: advance the snapshot + WORK-052-CORE-001 baseline 41b3380 -> 39d40b7 (the post-PR-#146 governance merge) via LEDGER-RECON-009 — the formal routing of the reconciliation after the accidental direct-main DEC-0060 write was removed by the Architect cleanup 9561fe8; no implementation, no scope change |
 | DEC-0061 | governance | WORK-052 | ACCEPTED | ACCEPTED | W052 acceptance on PR #149 exact reviewed head 7d883b2 / merge bcaf0d0 and atomic activation of fresh WORK-053-CORE-001 on the post-W052 mainline; W052 authorization superseded, W053 implementation remains unaccepted |
 | DEC-0063 | governance | WORK-053 | ACCEPTED | ACCEPTED | W053 acceptance on PR #152 exact reviewed head 4a0021c / merge bb29c11 (CI 33931905976 SUCCESS; the durable exact-SHA acceptance record is the PR #152 Architect acceptance comment) and atomic activation of fresh WORK-044-CORE-001 on the post-W053 mainline; W053 authorization superseded, no W044 implementation included — governance transition only; the accidental direct-main DEC-0063 write (0e0e321, removed by eddf98e) is superseded by the properly-routed record; the stale PR-#124-era transition record on the obsolete lineage is not the current authority |
+| DEC-0080 | governance | null | ACCEPTED | ACCEPTED | Canonical roadmap freeze, repository-only source of truth, and mainline-integrity fail-closed gate |
 
 ## Rules
 

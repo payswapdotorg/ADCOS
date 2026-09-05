@@ -1,105 +1,180 @@
-schema_version: 1
-kind: canonical_implementation_roadmap
-status: authoritative
-last_reconciled_main_sha: bb29c11c8bba6c9db5b87f85b1d62faad0bf7825
-architecture_authority:
-  frozen: spec/architecture.md
-  lock: spec/architecture-lock.md
-  work_item_registry: spec/work-items.md
-  dependency_graph: spec/dependency-graph.md
-  change_control: spec/change-control.md
-  review_protocol: spec/architect/review-protocol.md
-governance_authorities:
-  execution_state: spec/architect/execution-state.yaml
-  execution_ledger: spec/architect/execution-ledger.yaml
-  decisions: spec/architect/decisions/
-  authorizations: spec/architect/authorizations/
-  work_item_contracts: spec/architect/work-items/
-  current_state_projection: spec/architect/current-state.md
-rules:
-  roadmap_existence_does_not_authorize: true
-  authorization_required_for_implementation: true
-  one_active_implementation_authorization: true
-  completed_requires_architect_acceptance: true
-  no_self_merge: true
-  no_frozen_architecture_mutation_without_acr: true
-  implementation_pr_must_not_mutate_spec_architect: true
-  w040_is_independent_physical_evidence_track: true
-  w050_edges_to_w048_w049_are_advisory_only: true
-retired_work_items:
-  - WORK-043
-work_items:
-  WORK-001: {title: Protocol specification/governance foundation, status: accepted-merged, authorization: none, dependencies: [], dependency_type: [], contract: spec/prompts/WORK-001.md}
-  WORK-002: {title: Core protocol vocabulary and registry model, status: accepted-merged, authorization: none, dependencies: [WORK-001], dependency_type: [hard], contract: spec/prompts/WORK-002.md}
-  WORK-003: {title: Versioned protocol envelope and serialization, status: accepted-merged, authorization: none, dependencies: [WORK-002], dependency_type: [hard], contract: spec/prompts/WORK-003.md}
-  WORK-004: {title: Cryptographic node identity and credential abstraction, status: accepted-merged, authorization: none, dependencies: [WORK-003], dependency_type: [hard], contract: spec/work-items.md#work-004}
-  WORK-005: {title: Capability statements and negotiation, status: accepted-merged, authorization: none, dependencies: [WORK-003, WORK-004], dependency_type: [hard, hard], contract: spec/work-items.md#work-005}
-  WORK-006: {title: Peer discovery, status: accepted-merged, authorization: none, dependencies: [WORK-004, WORK-005], dependency_type: [hard, hard], contract: spec/work-items.md#work-006}
-  WORK-007: {title: Evidence-aware topology graph, status: accepted-merged, authorization: none, dependencies: [WORK-005, WORK-006], dependency_type: [hard, hard], contract: spec/work-items.md#work-007}
-  WORK-008: {title: Resource model and measurements, status: accepted-merged, authorization: none, dependencies: [WORK-005, WORK-007], dependency_type: [hard, hard], contract: spec/work-items.md#work-008}
-  WORK-009: {title: Intent and QoS model, status: accepted-merged, authorization: none, dependencies: [WORK-008], dependency_type: [hard], contract: spec/work-items.md#work-009}
-  WORK-010: {title: Policy engine, status: accepted-merged, authorization: none, dependencies: [WORK-004, WORK-008, WORK-009], dependency_type: [hard, hard, hard], contract: spec/work-items.md#work-010}
-  WORK-011: {title: Path computation and routing engine, status: accepted-merged, authorization: none, dependencies: [WORK-007, WORK-008, WORK-009, WORK-010], dependency_type: [hard, hard, hard, hard], contract: spec/work-items.md#work-011}
-  WORK-012: {title: Logical sessions, status: accepted-merged, authorization: none, dependencies: [WORK-003, WORK-004, WORK-011], dependency_type: [hard, hard, hard], contract: spec/work-items.md#work-012}
-  WORK-013: {title: Multipath session manager, status: accepted-merged, authorization: none, dependencies: [WORK-011, WORK-012], dependency_type: [hard, hard], contract: spec/work-items.md#work-013}
-  WORK-014: {title: Mobility and handover manager, status: accepted-merged, authorization: none, dependencies: [WORK-012, WORK-013], dependency_type: [hard, hard], contract: spec/work-items.md#work-014}
-  WORK-015: {title: Federation protocol, status: accepted-merged, authorization: none, dependencies: [WORK-004, WORK-005, WORK-007, WORK-010, WORK-011], dependency_type: [hard, hard, hard, hard, hard], contract: spec/work-items.md#work-015}
-  WORK-016: {title: Adapter SDK/runtime, status: accepted-merged, authorization: none, dependencies: [WORK-003, WORK-005, WORK-012], dependency_type: [hard, hard, hard], contract: spec/work-items.md#work-016}
-  WORK-017: {title: Secure transport profiles, status: accepted-merged, authorization: none, dependencies: [WORK-003, WORK-004, WORK-012], dependency_type: [hard, hard, hard], contract: spec/work-items.md#work-017}
-  WORK-018: {title: IPv6 and IP integration boundary, status: accepted-merged, authorization: none, dependencies: [WORK-012, WORK-017], dependency_type: [hard, hard], contract: spec/work-items.md#work-018}
-  WORK-019: {title: 5G Core integration adapter, status: accepted-merged, authorization: none, dependencies: [WORK-016, WORK-017, WORK-018], dependency_type: [hard, hard, hard], contract: spec/work-items.md#work-019}
-  WORK-020: {title: 5G RAN/gNB adapter, status: accepted-merged, authorization: none, dependencies: [WORK-019], dependency_type: [hard], contract: spec/work-items.md#work-020}
-  WORK-021: {title: Wi-Fi/non-3GPP access adapter, status: accepted-merged, authorization: none, dependencies: [WORK-018, WORK-019], dependency_type: [hard, hard], contract: spec/work-items.md#work-021}
-  WORK-022: {title: Ethernet/fiber/microwave/satellite adapter family, status: accepted-merged, authorization: none, dependencies: [WORK-016, WORK-018], dependency_type: [hard, hard], contract: spec/work-items.md#work-022}
-  WORK-023: {title: Mesh, IAB, relay, and store-and-forward backhaul, status: accepted-merged, authorization: none, dependencies: [WORK-011, WORK-013, WORK-022], dependency_type: [hard, hard, hard], contract: spec/work-items.md#work-023}
-  WORK-024: {title: Distributed core / local breakout / UPF integration, status: accepted-merged, authorization: none, dependencies: [WORK-018, WORK-019, WORK-021, WORK-022], dependency_type: [hard, hard, hard, hard], contract: spec/work-items.md#work-024}
-  WORK-025: {title: Service registry and edge compute, status: accepted-merged, authorization: none, dependencies: [WORK-009, WORK-010, WORK-015, WORK-024], dependency_type: [hard, hard, hard, hard], contract: spec/work-items.md#work-025}
-  WORK-026: {title: Telemetry and observability, status: accepted-merged, authorization: none, dependencies: [WORK-007, WORK-008, WORK-011, WORK-012, WORK-016], dependency_type: [hard, hard, hard, hard, hard], contract: spec/work-items.md#work-026}
-  WORK-027: {title: Energy-aware control and resilience, status: accepted-merged, authorization: none, dependencies: [WORK-008, WORK-010, WORK-011, WORK-024, WORK-026], dependency_type: [hard, hard, hard, hard, hard], contract: spec/work-items.md#work-027}
-  WORK-028: {title: Threat model and security hardening, status: accepted-merged, authorization: none, dependencies: [WORK-004, WORK-005, WORK-007, WORK-010, WORK-015, WORK-017], dependency_type: [hard, hard, hard, hard, hard, hard], contract: spec/work-items.md#work-028}
-  WORK-029: {title: Upgrade, rollback, and compatibility manager, status: accepted-merged, authorization: none, dependencies: [WORK-003, WORK-005, WORK-016, WORK-026], dependency_type: [hard, hard, hard, hard], contract: spec/work-items.md#work-029}
-  WORK-030: {title: Management API, status: accepted-merged, authorization: none, dependencies: [WORK-010, WORK-011, WORK-012, WORK-015, WORK-026], dependency_type: [hard, hard, hard, hard, hard], contract: spec/work-items.md#work-030}
-  WORK-031: {title: Simulator, status: accepted-merged, authorization: none, dependencies: [WORK-007, WORK-011, WORK-012, WORK-013, WORK-027], dependency_type: [hard, hard, hard, hard, hard], contract: spec/work-items.md#work-031}
-  WORK-032: {title: Conformance, status: accepted-merged, authorization: none, dependencies: [WORK-003, WORK-004, WORK-005, WORK-007, WORK-011, WORK-012, WORK-015, WORK-017, WORK-016], dependency_type: [hard, hard, hard, hard, hard, hard, hard, hard, hard], contract: spec/work-items.md#work-032}
-  WORK-033: {title: Linux Agent, status: accepted-merged, authorization: none, dependencies: [WORK-016, WORK-017, WORK-018, WORK-026, WORK-029, WORK-030, WORK-032], dependency_type: [hard, hard, hard, hard, hard, hard, hard], contract: spec/work-items.md#work-033}
-  WORK-034: {title: Raspberry Pi / EdgeGateway, status: accepted-merged, authorization: none, dependencies: [WORK-020, WORK-021, WORK-022, WORK-023, WORK-024, WORK-033], dependency_type: [hard, hard, hard, hard, hard, hard], contract: spec/work-items.md#work-034}
-  WORK-035: {title: Android, status: accepted-merged, authorization: none, dependencies: [WORK-012, WORK-013, WORK-018, WORK-033], dependency_type: [hard, hard, hard, hard], contract: spec/work-items.md#work-035}
-  WORK-036: {title: Network in a Box, status: accepted-merged, authorization: none, dependencies: [WORK-024, WORK-025, WORK-030, WORK-033, WORK-034], dependency_type: [hard, hard, hard, hard, hard], contract: spec/work-items.md#work-036}
-  WORK-037: {title: Open RAN/Core Interop, status: accepted-merged, authorization: none, dependencies: [WORK-019, WORK-020, WORK-021, WORK-032, WORK-033], dependency_type: [hard, hard, hard, hard, hard], contract: spec/work-items.md#work-037}
-  WORK-038: {title: Future IMT Adapter, status: accepted-merged, authorization: none, dependencies: [WORK-016, WORK-029, WORK-032, WORK-033], dependency_type: [hard, hard, hard, hard], contract: spec/work-items.md#work-038}
-  WORK-039: {title: Federation Scale, status: accepted-merged, authorization: none, dependencies: [WORK-015, WORK-031, WORK-033, WORK-036], dependency_type: [hard, hard, hard, hard], contract: spec/work-items.md#work-039}
-  WORK-040: {title: Pilot deployment / physical validation track, status: in-review, authorization: none, dependencies: [], dependency_type: [], contract: spec/work-items.md#work-040, evidence_authority: W040}
-  WORK-041: {title: First-Class Network Path and Platform Integration, status: accepted-merged, authorization: none, dependencies: [WORK-016, WORK-018, WORK-033, WORK-034], dependency_type: [hard, hard, hard, hard], contract: spec/architect/work-items/WORK-041.md, architecture_basis: ACR-005}
-  WORK-042: {title: Event-Driven Platform Integration and Journal-First Recovery, status: accepted-merged, authorization: none, dependencies: [WORK-012, WORK-013, WORK-014, WORK-033, WORK-035, WORK-041], dependency_type: [hard, hard, hard, hard, hard, hard], contract: spec/architect/work-items/WORK-042.md, architecture_basis: ACR-006}
-  WORK-043: {title: retired-unassigned, status: retired, authorization: none, dependencies: [], dependency_type: [], contract: null}
-  WORK-044: {title: Payment Provider Adapters & Settlement Gateway, status: active-authorized, authorization: WORK-044-CORE-001, dependencies: [WORK-051, WORK-053], dependency_type: [hard, hard], contract: issue-88+docs/WORK-044-handoff.md, architecture_basis: ACR-009, baseline: bb29c11c8bba6c9db5b87f85b1d62faad0bf7825, decision: DEC-0063}
-  WORK-045: {title: Connectivity Eligibility, Provider Trust & Jurisdiction Policy, status: accepted-merged, authorization: none, dependencies: [WORK-051, WORK-053, WORK-044], dependency_type: [hard, hard, hard], contract: issue-89+authorization-history, architecture_basis: ACR-009}
-  WORK-046: {title: Developer Connectivity API, SDK & Webhook Platform, status: accepted-merged, authorization: none, dependencies: [WORK-051, WORK-052, WORK-053, WORK-044, WORK-045], dependency_type: [hard, hard, hard, hard, hard], contract: issue-90+authorization-history, architecture_basis: ACR-009}
-  WORK-047: {title: Connectivity Marketplace Discovery, Proximity & Path Selection, status: accepted-merged, authorization: none, dependencies: [WORK-051, WORK-044, WORK-045, WORK-046], dependency_type: [hard, hard, hard, hard], contract: issue-91+authorization-history, architecture_basis: ACR-009}
-  WORK-048: {title: Provider Connectivity Sharing Runtime, Isolation & Quota Enforcement, status: accepted-merged, authorization: none, dependencies: [WORK-041, WORK-042, WORK-051], dependency_type: [hard, hard, hard], contract: spec/work-items.md#work-048, architecture_basis: ACR-009+ACR-012, advisory_inputs: [WORK-050]}
-  WORK-049: {title: Provider & Buyer Connectivity Client Runtime, status: accepted-merged, authorization: none, dependencies: [WORK-046, WORK-047, WORK-048], dependency_type: [hard, hard, hard], contract: issue-98+authorization-history, architecture_basis: ACR-009, advisory_inputs: [WORK-050]}
-  WORK-050: {title: Platform Connectivity Sharing Capability & Isolation Matrix, status: accepted-merged, authorization: none, dependencies: [], dependency_type: [], contract: issue-96+authorization-history, architecture_basis: ACR-009+ACR-012, note: advisory capability input; not an enforcement authority}
-  WORK-051: {title: CommercialCore: connectivity intent, offers, reservation, lease, and transaction lifecycle, status: accepted-merged, authorization: none, dependencies: [], dependency_type: [], contract: issue-83+docs/WORK-051-handoff.md, architecture_basis: ACR-009}
-  WORK-052: {title: UsageLedger: delivered-usage metering, billable finality, and append-only reconciliation, status: accepted-merged, authorization: none, dependencies: [WORK-051], dependency_type: [hard], contract: issue-84+docs/WORK-052-handoff.md, decision: DEC-0061}
-  WORK-053: {title: EconomicAllocation: developer/provider/ADCOS revenue-share policy and external payment boundary, status: accepted-merged, authorization: none, dependencies: [WORK-051, WORK-052], dependency_type: [hard, hard], contract: issue-85+docs/WORK-053-handoff.md, architecture_basis: ACR-009, decision: DEC-0063}
-execution_order:
-  active: WORK-044
-  next_after_active: []
-  commercial_hard_gates:
-    WORK-053: [WORK-052]
-    WORK-044: [WORK-051, WORK-053]
-    WORK-045: [WORK-051, WORK-053, WORK-044]
-    WORK-046: [WORK-051, WORK-052, WORK-053, WORK-044, WORK-045]
-    WORK-047: [WORK-051, WORK-044, WORK-045, WORK-046]
-    WORK-048: [WORK-041, WORK-042, WORK-051]
-    WORK-049: [WORK-046, WORK-047, WORK-048]
-  advisory_only:
-    - [WORK-050, WORK-048]
-    - [WORK-050, WORK-049]
-  independent_tracks:
-    - WORK-040
-fresh_architect_checkpoint:
-  current_main: 2e87cb35643b72a94be39aa3eb96ceed1a3e18da
-  active_authorization: WORK-052-CORE-001
-  active_baseline: 39d40b752f9129ac898fb74da1e485c20c6fbdc6
-  rule: before implementation branch creation, re-read live main, execution state, execution ledger, authorization, handoff, and open PRs; branch from exact authorization-bearing main; one PR only
+# ADCOS Authoritative Execution Roadmap
+# FROZEN — roadmap version 1.0
+
+schema_version: 2
+roadmap_version: "1.0"
+status: FROZEN_AUTHORITATIVE
+authority: "spec/architect/roadmap.yaml"
+human_projection: "spec/architect/roadmap.md"
+source_of_truth: repository_only
+chat_dependency: prohibited
+external_memory_dependency: prohibited
+
+mission_authority: spec/mission.md
+architecture_authority: spec/architecture.md
+architecture_lock_authority: spec/architecture-lock.md
+work_item_contract_authority: spec/work-items.md
+dependency_authority: spec/dependency-graph.md
+execution_state_authority: spec/architect/execution-state.yaml
+execution_ledger_authority: spec/architect/execution-ledger.yaml
+authorization_authority: spec/architect/authorizations/
+decision_authority: spec/architect/decisions/
+
+governance_rules:
+  roadmap_is_program_authority: true
+  roadmap_does_not_authorize_implementation: true
+  implementation_requires_active_repository_authorization: true
+  exactly_one_active_authorization: true
+  sole_architect_review_merge_authority: true
+  implementation_pr_must_not_modify_spec_architect: true
+  chat_has_zero_authority: true
+  stale_or_conflicting_projection_fails_closed: true
+  historical_records_are_never_rewritten: true
+  software_never_promotes_to_physical: true
+
+current_state:
+  actual_main_sha: a7d913385f866df6da890093c26539ad876f3ee4
+  last_reconciled_snapshot_sha: bb29c11c8bba6c9db5b87f85b1d62faad0bf7825
+  program_state: CANONICAL_MAINLINE_INTEGRITY_BLOCKED
+  execution_mode: blocked
+  active_work_item: null
+  active_authorization: null
+  halt_reason: "Current main differs from the last persisted execution snapshot. Durable accepted history proves W044-W049 were accepted, while their implementation artifacts are not all present on current main. No implementation may start until the accepted mainline is restored and the governance projections are reconciled."
+  next_gate: R0_MAINLINE_RESTORATION
+
+accepted_history:
+  rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history."
+  work_items:
+    - id: WORK-044
+      status: accepted-merged
+      reviewed_sha: 6720d220e390999e17707537ab587c1da3b09eb9
+      merge_sha: 90864ac257a3d93d94852cfa3a74577903f508d3
+      current_mainline: missing
+    - id: WORK-045
+      status: accepted-merged
+      reviewed_sha: 827234ec3a245a6b9f2f2de5d6525afb495684cc
+      merge_sha: a789d9b403d0e2a6e05276bb3cdc2b7d092c6d88
+      current_mainline: missing
+    - id: WORK-046
+      status: accepted-merged
+      reviewed_sha: 09960ea24315e5d0ccfd516d3bdca0802b62d8b7
+      merge_sha: f45be6dd0544a2fd6cbc910805def28bbe0c71eb
+      current_mainline: missing
+    - id: WORK-047
+      status: accepted-merged
+      reviewed_sha: 348154d063c0e0a12d5635cb2093c67a507a4064
+      merge_sha: 7bc31f2899307c56639887416d602b41b4c16f43
+      current_mainline: missing
+    - id: WORK-048
+      status: accepted-merged
+      reviewed_sha: e2af4bd20e403c1d4ee9717f7eea8809c16a53cd
+      merge_sha: ce1ccaea328743a05cf8d6fa87a114e69d9e253c
+      current_mainline: missing
+    - id: WORK-049
+      status: accepted-merged
+      reviewed_sha: b8cc17ef21f6c38266152552590dc73f80c056ce
+      merge_sha: 89ad6ff3d168c59256c3e805539eb9ca22f6b3bc
+      current_mainline: missing
+    - id: WORK-050
+      status: accepted-merged
+      accepted_stage_heads: [4a37408, c5cb509, 279871c, 0fa231c]
+      current_mainline: present
+    - id: WORK-051
+      status: accepted-merged
+      reviewed_sha: e247b4e32e7b1dc345292af5ad7e1b49297cad6f
+      merge_sha: 41b338080fbeb79627bff45cd79ddf09bf5cbb29
+      current_mainline: present
+    - id: WORK-052
+      status: accepted-merged
+      reviewed_sha: 7d883b227e9792b98efdbc1916d413491d20d458
+      merge_sha: bcaf0d0677437d1ffca8f5e493cab516c87e7194
+      current_mainline: present
+    - id: WORK-053
+      status: accepted-merged
+      reviewed_sha: 4a0021c4d464bf1e0e9d9b29ff8a87ed8eb8146a
+      merge_sha: bb29c11c8bba6c9db5b87f85b1d62faad0bf7825
+      current_mainline: present
+
+roadmap:
+  - id: R0_MAINLINE_RESTORATION
+    status: BLOCKED_EXECUTION_GATE
+    objective: "Restore the exact accepted W044-W049 implementation packages and CI/evidence artifacts onto the authoritative mainline without importing unrelated later ancestry or changing frozen semantics."
+    required_output: "One verified mainline containing the accepted W044-W050/W051-W053 implementation set and their durable acceptance/governance records."
+    implementation_authorization: none
+    gate: "Architect verifies exact file set, accepted-head provenance, tree equivalence of recovered packages, no unauthorized semantic delta, and complete repository-local evidence."
+
+  - id: R1_GOVERNANCE_RECONCILIATION
+    status: AFTER_R0
+    objective: "Reconcile roadmap, current-state, execution-state, execution-ledger, decisions, authorizations, and evidence projections to the restored mainline."
+    constraints: "Preserve every prior decision and reconciliation; never rewrite historical records."
+    implementation_authorization: none
+
+  - id: R2_SYSTEM_COMPOSITION_CONFORMANCE
+    status: AFTER_R1
+    objective: "Prove the complete commercial/connectivity composition without introducing a second authority."
+    chain: "intent -> offer -> eligibility -> reservation/lease -> candidate selection -> NetworkPath validation -> containment -> session -> delivered traffic -> usage -> BILLABLE_FINAL -> allocation -> external payment reference -> reconciliation"
+    mandatory_negative_proofs:
+      - "payment success cannot create connectivity"
+      - "reservation success cannot imply reachability"
+      - "marketplace discovery cannot activate a path"
+      - "W050 capability declaration cannot enforce containment"
+      - "W049 client state cannot become canonical state"
+      - "API/webhook observation cannot become a second source of truth"
+      - "software evidence cannot close physical evidence"
+
+  - id: R3_PROTOCOL_PRODUCTION_CONFORMANCE
+    status: AFTER_R2
+    objective: "Complete the production conformance layer required before declaring wire compatibility."
+    required: "canonicalization profile, canonical encoding vectors, signature coverage, version negotiation, unknown-field/extensions behavior, replay/idempotency, schema evolution, compatibility and migration vectors, deterministic digest stability"
+    architecture_rule: "Do not change frozen protocol semantics without the ACR process."
+
+  - id: R4_PHYSICAL_CONNECTIVITY_VALIDATION
+    status: INDEPENDENT_PARALLEL_TRACK
+    objective: "Complete W040 and related open physical-evidence obligations on real hardware/network environments."
+    rule: "Physical evidence is independently collected, classified, and accepted; software batteries cannot close it."
+
+  - id: R5_DEVELOPER_CONNECTIVITY_PLATFORM
+    status: AFTER_R2
+    objective: "Make ADCOS consumable like Stripe: external applications request and manage connectivity through stable APIs without adopting an ADCOS user interface or knowing provider/access/path/payment implementation details."
+    existing_foundation: "Accepted W046 Developer API/SDK/Webhooks implementation is the base. Future work is production hardening and ecosystem exposure, not reimplementation of its authority."
+    required_surface:
+      - "intent creation"
+      - "offer/quote discovery"
+      - "reservation/lease"
+      - "activation and lifecycle status"
+      - "termination/cancellation"
+      - "usage/finalization projections"
+      - "webhooks/events"
+      - "idempotency and scoped credentials"
+      - "sandbox/production isolation"
+      - "developer-visible canonical reason codes"
+
+  - id: R6_PROVIDER_ONBOARDING_AND_FEDERATION
+    status: AFTER_R5
+    objective: "Enable independently operated networks, ISPs, carriers, enterprises, satellite systems, hotspots, mesh operators, and infrastructure owners to expose capacity through ADCOS without surrendering infrastructure authority."
+    required: "adapter certification, capability declaration, commercial contract/profile, policy boundary, service terms, settlement configuration, observability, trust/federation onboarding"
+
+  - id: R7_UNIVERSAL_CONNECTIVITY_COMMERCE
+    status: AFTER_R6
+    objective: "Normalize heterogeneous connectivity resources into programmable offers selected by intent, policy, evidence, availability, quality, geography, and price."
+    principle: "ADCOS coordinates connectivity; it does not need to own the underlying network."
+
+  - id: R8_RESILIENCE_MOBILITY_AND_SCALE
+    status: AFTER_R7
+    objective: "Production-grade failover, multipath, mobility, local-first operation, offline/reconnect, reconciliation, disaster recovery, key rotation/revocation, upgrades, federation scale, and operational resilience."
+
+  - id: R9_FUTURE_ACCESS_TECHNOLOGY
+    status: AFTER_R8
+    objective: "Add or replace access technologies through the adapter boundary without altering the connectivity protocol core."
+    examples: "5G, Wi-Fi, Ethernet/fiber, satellite, mesh/IAB, enterprise WAN, future IMT/6G"
+
+program_exit:
+  stripe_of_connectivity_test: "An external application can request connectivity from ADCOS by API, ADCOS can evaluate policy and eligible offers, reserve capacity, select and validate a path, establish controlled connectivity, meter delivered usage, finalize billing, allocate economic value, integrate with an external payment provider, reconcile provider events, and expose canonical status via API/webhooks — without the application needing an ADCOS UI or knowledge of the underlying access technology/provider."
+  architecture_test: "All success paths and recovery paths preserve the frozen single-authority model, evidence discipline, least authority, access-technology neutrality, and graceful degradation requirements."
+
+freeze_rules:
+  roadmap_changes_require: "A new durable governance decision in spec/architect/decisions/ and an updated roadmap version; no chat-only roadmap change is valid."
+  work_item_changes_require: "The frozen Work Item/ACR process specified by spec/change-control.md and spec/work-items.md."
+  current_execution_change_requires: "A repository-local decision/authorization recorded in spec/architect/."
+  no_implicit_reordering: true
+  no_chat_override: true

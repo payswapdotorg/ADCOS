@@ -4,78 +4,57 @@
 
 **ACTIVE — Persistent Governance Authority**
 
-This package makes the repository — not any chat session — the persistent Architect for ADCOS. A brand-new LLM Architect or Z.ai implementation agent, with zero access to previous conversations, must be able to clone `main`, read this package, and reconstruct what ADCOS is, what mission is permanent, which architecture snapshot is current, which decisions have been accepted, which Work Item is active, which Work Items are blocked, exactly what may be implemented, what evidence remains open, what review/acceptance state exists, and how to resume interrupted work.
+The repository is the persistent Architect. A brand-new Architect or implementation agent must be able to clone `main`, read this package, and reconstruct ADCOS without access to any prior conversation.
 
-The LLM Architect is explicitly ephemeral. The LLM Architect may reason, review, propose, authorize, reject, and accept — but every durable decision must be persisted into this repository. Chat history must never be the sole surviving authority.
+## Canonical authority model
 
-The permanent Mission Authority is `spec/mission.md`. The architecture is a versioned snapshot that may evolve through accepted ACRs. Experience and learning records live in `spec/experience/`; they inform Architect reasoning but do not directly alter architecture or authorize implementation.
+- `spec/mission.md` — permanent Mission Authority.
+- `spec/architecture.md` — frozen Architecture Version 1.0.
+- `spec/architecture-lock.md` — frozen architecture constraints.
+- `spec/work-items.md` — frozen Work Item contracts.
+- `spec/dependency-graph.md` — frozen dependency authority.
+- `spec/architect/roadmap.yaml` — **sole canonical, frozen execution/program roadmap**.
+- `spec/architect/roadmap.md` — human-readable projection only; never an independent authority.
+- `spec/architect/decisions/` — durable Architect decisions.
+- `spec/architect/execution-ledger.yaml` — authoritative lifecycle and reconciliation history.
+- `spec/architect/execution-state.yaml` — authoritative current execution snapshot.
+- `spec/architect/authorizations/` — sole implementation-permission source.
+- `spec/architect/evidence-obligations.yaml` — durable external-evidence state.
+- `spec/architect/resume-protocol.md` — deterministic fresh-session procedure.
 
----
+## Non-negotiable source-of-truth rules
 
-## 1. What this package is (and is not)
+1. **Chat is not authority.** A chat message, prior prompt, memory, handoff, or model recollection has zero authority unless its consequence is persisted in this repository by the Architect.
+2. **Roadmap authority is singular.** `roadmap.yaml` is the only roadmap. `roadmap.md`, issue prose, PR prose, external roadmaps, and conversation plans cannot override it.
+3. **Execution permission is singular.** Only an active repository-local authorization permits implementation. The roadmap never authorizes implementation.
+4. **History is immutable.** Old decisions, accepted-delivery facts, accidental commits, and reconciliations remain in Git history. They are superseded by durable records, never silently rewritten.
+5. **Mismatch fails closed.** If actual `main` differs from the persisted execution snapshot, or authority projections disagree, implementation stops until the Architect persists an explicit reconciliation.
+6. **Fresh-clone sufficiency.** The next LLM must not need this conversation to know what ADCOS is, what is accepted, what is blocked, what may be implemented, or what comes next.
+7. **Evidence classes stay separate.** SOFTWARE evidence never satisfies PHYSICAL evidence.
+8. **Single Architect.** The Architect is the sole review/acceptance/merge authority; a separate reviewer is not required.
 
-The persistent Architect is **not** an LLM inside the repository. It is:
+## Current canonical state
 
-```text
-permanent Mission Authority
-+ canonical current architecture snapshot
-+ architecture locks
-+ durable ACR records
-+ durable experience / learning registry
-+ persistent decision records
-+ work authorization
-+ execution ledger
-+ evidence registry
-+ CI enforcement
-```
+At the repository audit on 2026-09-05, actual `main` is `a7d913385f866df6da890093c26539ad876f3ee4`. The prior persisted snapshot is `bb29c11c8bba6c9db5b87f85b1d62faad0bf7825`. This mismatch is intentionally represented as a blocking integrity condition under `DEC-0080`.
 
-The next LLM becomes an **operator** of this persistent system.
+The first program gate is therefore `R0_MAINLINE_RESTORATION` in `roadmap.yaml`. No Work Item is currently authorized.
 
-## 2. Package map
+## Fresh-session reading order
 
-| Artifact | Role |
-|---|---|
-| `spec/mission.md` | Permanent Mission Authority |
-| `spec/experience/` | Durable experience and learning registry |
-| `spec/architect/current-state.md` | Single current-state snapshot |
-| `spec/architect/authority-order.md` | Canonical precedence chain |
-| `spec/architect/execution-state.yaml` | Machine-readable current execution state |
-| `spec/architect/execution-ledger.yaml` | Per-Work-Item lifecycle ledger |
-| `spec/architect/evidence-obligations.yaml` | External evidence registry |
-| `spec/architect/review-protocol.md` | Architect review protocol |
-| `spec/architect/resume-protocol.md` | Deterministic new-session resume procedure |
-| `spec/architect/work-item-template.md` | Canonical Work Item handoff template |
-| `spec/architect/decision-record-template.md` | Canonical decision schema |
-| `spec/architect/decisions/` | Durable decisions |
-| `spec/architect/authorizations/` | Repository-local execution authorizations |
-
-## 3. Core invariants
-
-1. **Mission is permanent.** The Mission Authority is stable through the lifetime of ADCOS and is not changed through ordinary architecture ACRs.
-2. **Architecture is evolvable.** `FROZEN` architecture means authoritative for the current accepted snapshot/version. A semantic improvement requires an accepted ACR and synchronized successor snapshot.
-3. **Learning is durable.** Material lessons from implementation, verification, security review, deployment, physical experiments, and research belong in `spec/experience/` and survive LLM session loss.
-4. **Experience does not directly change architecture.** An Architect must assess experience and either retain it as guidance, reject it, or use it to motivate an ACR.
-5. **No current authorization = implementation must stop.** A chat message alone never authorizes implementation.
-6. **Exactly one active Work Item.** When implementation is active, exactly one Work Item is execution-ready and exactly one authorization record has `status: active`.
-7. **Acceptance is durable.** A Work Item is accepted only through a durable decision record identifying the exact reviewed SHA.
-8. **Evidence discrimination.** Software verification is never physical deployment evidence. An open evidence obligation remains visibly open until the required evidence exists and is accepted.
-9. **History is preserved.** Old decisions, architecture snapshots, and experience records are superseded rather than rewritten.
-10. **Chat has no authority.** If a conversation produces a decision that matters, it must be persisted into the repository before it can govern future work.
-
-## 4. Authority ownership
-
-`spec/architect/` is maintained by the Architect. Implementation PRs must not modify it. The persistent package governs process state, not protocol semantics. If a governance change would alter an architectural rule, use the ACR process.
-
-## 5. Reading order for a new session
+Read, in order:
 
 1. `spec/mission.md`
-2. `spec/architect/current-state.md`
-3. `spec/architect/authority-order.md`
-4. `spec/architect/execution-state.yaml`
-5. `spec/architect/execution-ledger.yaml`
-6. open ACRs and decision records referenced by current state
-7. relevant `spec/experience/` lessons
-8. the active Work Item authorization and handoff
-9. `spec/architect/resume-protocol.md`
+2. `spec/architecture.md`
+3. `spec/architecture-lock.md`
+4. `spec/work-items.md`
+5. `spec/dependency-graph.md`
+6. `spec/architect/roadmap.yaml`
+7. `spec/architect/current-state.md`
+8. `spec/architect/authority-order.md`
+9. `spec/architect/execution-state.yaml`
+10. `spec/architect/execution-ledger.yaml`
+11. open/accepted decision records referenced by the current state
+12. the active authorization, only if the roadmap/state say implementation is active
+13. `spec/architect/resume-protocol.md`
 
-A fresh Architect must be able to resume without any access to previous chat history.
+A fresh session must verify the actual `main` SHA before acting. A blocked roadmap/state means STOP.

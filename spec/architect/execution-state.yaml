@@ -1,122 +1,31 @@
-# STATE-RECON-001: post-DEC-0061 execution-state projection normalization.
 # ADCOS execution state — persisted by the Architect.
-#
-# W052 baseline-advancement-only reconciliation (DEC-0060, 2026-09-04,
-# LEDGER-RECON-009): the DEC-0059 transition merged as PR #146 at
-# 39d40b752f9129ac898fb74da1e485c20c6fbdc6 (the authorization-bearing
-# post-transition mainline) while the persistent state still referenced
-# the LEDGER-RECON-008 snapshot 41b3380; an initial reconciliation
-# attempt was accidentally written directly to main (ten commits
-# 1c6f4dd..6b3d0fd creating an invalid DEC-0060 record) and removed by
-# the Architect cleanup commit 9561fe8 (tree byte-identical to the
-# 39d40b7 state; the accidental commits remain in history as the
-# transparent record). DEC-0060 formally advances the snapshot baseline
-# and the WORK-052-CORE-001 authorization baseline 41b3380 -> 39d40b7 in
-# lockstep with ZERO W052 implementation; the resident worker remains
-# stopped until the Architect post-reconciliation live-state re-read and
-# fresh activation packet.
-#
-# Atomic W051 acceptance -> W052 activation (DEC-0059, 2026-09-04,
-# LEDGER-RECON-008): WORK-051 is accepted (DEC-0059; PR #145 head
-# e247b4e — the conformance completion over the original PR #117 core
-# implementation — merge 41b3380, CI run 33838171573 SUCCESS, the exact-
-# SHA review durably recorded by the PR #145 acceptance comment; ledger
-# lifecycle accepted-merged) and the single active execution slot
-# transfers from WORK-051-CORE-001 (superseded, scope and provenance
-# preserved) to WORK-052-CORE-001 (UsageLedger: delivered-usage metering,
-# billable finality, and append-only reconciliation; dependencies
-# WORK-051 per the frozen registry, satisfied by this acceptance; the
-# Architect-issued handoff docs/WORK-052-handoff.md merged by PR #118).
-# Usage derives only from authoritative delivered-traffic evidence.
-# WORK-040 is NOT accepted (execution-ledger lifecycle remains in-review,
-# acceptance_decision null). EVID-007/EVID-008 remain OPEN and W040-owned.
-# Every other commercial item remains authorization "none". No frozen
-# architecture semantics change; the architecture version stays 1.0.
-#
-# Atomic W042 acceptance -> W051 activation (DEC-0057 + DEC-0058,
-# 2026-09-01, LEDGER-RECON-007): WORK-042 is accepted (DEC-0057; PR #110
-# head 708a432, merge 207d70e, CI run 33444952103 SUCCESS; ledger
-# lifecycle accepted-merged) and the single active execution slot
-# transfers from WORK-042-CORE-001 (superseded, scope and provenance
-# preserved) to WORK-051-CORE-001 (DEC-0058; CommercialCore, ACR-009,
-# the commercial chain head — frozen-registry dependencies none).
-# ACR-011 is ACCEPTED (DEC-0056; PR #111 merged 810374e; the acceptance
-# record was persisted by PR #115): the frozen registry already
-# represents WORK-042 and the canonical commercial phase WORK-044..W053
-# with the WORK-043 retired slot, so this transition records NO registry
-# change. WORK-040 is NOT accepted (execution-ledger lifecycle remains
-# in-review, acceptance_decision null). EVID-007/EVID-008 remain OPEN and
-# W040-owned. Every other commercial item remains authorization "none".
-# No frozen architecture semantics change; the architecture version
-# stays 1.0.
-#
-# Atomic W041 acceptance -> W042 activation (DEC-0054 + DEC-0055, 2026-08-31,
-# LEDGER-RECON-006): WORK-041 is accepted (DEC-0054; PR #107 head 4ce5a42,
-# merge 96db8aa, CI run 33426900730 SUCCESS; ledger lifecycle
-# accepted-merged) and the single active execution slot transfers from
-# WORK-041-CORE-001 (superseded, scope and provenance preserved) to
-# WORK-042-CORE-001. The frozen registry is extended to represent WORK-041
-# (registered Phase 9 in spec/work-items.md and spec/dependency-graph.md;
-# expected Work Item count 41; WORK-001..WORK-040 byte-identical; the ACR-010
-# proposal PR #108 is superseded by this direct application). WORK-040 is
-# NOT accepted (execution-ledger lifecycle remains in-review,
-# acceptance_decision null). EVID-007/EVID-008 remain OPEN and W040-owned.
-# W042 is NOT registered in the frozen backlog (its own governance
-# registration issues separately). W043/W048 and the commercial items
-# remain unauthorized. No frozen architecture semantics change.
-#
-# Commercial roadmap reconciliation (LEDGER-RECON-005, 2026-08-31): the
-# persistent planning pointers are reconciled to the DEC-0052 binding
-# (W041 = ACR-005 NetworkPath contract / issue #68; W042 = ACR-006 contract /
-# issue #69) and the commercial chain is resequenced to W051/W052/W053
-# (issues #83/#84/#85); W043 is retired from commercial use (unassigned).
-# The canonical model is docs/roadmap/commercial-dependency-model.md. No
-# authorization is created or altered by the planning reconciliation; the
-# commercial items all carry authorization "none".
-#
-# ACR-011 commercial phase registry extension (PROPOSED, vehicle PR #111,
-# 2026-08-31): the W042 implementation delivery is merged (PR #110, head
-# 708a432, merge 207d70e, CI run 33444952103 SUCCESS) and the registry
-# boundary recurs (WORK-042 is unrepresentable while the frozen registry
-# stops at WORK-041). ACR-011 proposes the synchronized one-time extension
-# of the frozen registry through the canonical commercial phase: register
-# WORK-042 (Phase 9) and WORK-044..WORK-053 (Phase 10) in
-# spec/work-items.md and spec/dependency-graph.md, expect 52 registered
-# items with the recorded WORK-043 retired slot in tools/spec_check.py,
-# and append the WORK-042 implemented delivery entry plus ten registered-
-# only ledger entries. ACR-011 creates NO acceptance and NO authorization:
-# WORK-042's acceptance remains a separate Architect decision and every
-# commercial item stays authorization "none" until its own repository-
-# local authorization issues. The snapshot baseline (main_sha 96db8aa,
-# LEDGER-RECON-006) is deliberately NOT moved by this ACR; the next
-# reconciliation records the post-PR-#110 mainline per the standing RECON
-# convention.
-#
-# schema: spec/architect/ (execution state v1); verified by ARCH-02/ARCH-03.
+# This snapshot is a current-state projection, not historical delivery authority.
+# Current source of truth: spec/architect/roadmap.yaml + accepted decisions + ledger.
+
 schema_version: 1
 package: "persistent-architect"
 last_updated: "2026-09-05"
 
 repository:
   canonical: "github.com/pectoraux/ADCOS"
-  main_sha: bb29c11c8bba6c9db5b87f85b1d62faad0bf7825
-  main_sha_semantics: "Persistent governance snapshot: post-W053 acceptance mainline `bb29c11c8bba6c9db5b87f85b1d62faad0bf7825` (PR #152 merged the WORK-053 EconomicAllocation implementation at exact reviewed head 4a0021c4d464bf1e0e9d9b29ff8a87ed8eb8146a, CI run 33931905976 SUCCESS), established by DEC-0063 / LEDGER-RECON-011. An initial attempt at this transition was accidentally written directly to main (0e0e321 creating a DEC-0063 record, removed by eddf98e; a placeholder 4c512ac removed by 08fa890; net tree byte-identical to bb29c11) and is superseded by the properly-routed DEC-0063 transition; those commits and the governance PR carrying this transition sit beyond the reconciled snapshot without changing persistent state (the standing governance-only branch-point offset). The sole active authorization is WORK-044-CORE-001 with baseline `bb29c11c8bba6c9db5b87f85b1d62faad0bf7825`; a W044 implementation branch must re-read exact live main and inherit that authorization byte-identically."
+  main_sha: a7d913385f866df6da890093c26539ad876f3ee4
+  main_sha_semantics: "Actual live main SHA verified by the Architect on 2026-09-05. The prior persisted snapshot was bb29c11. This mismatch is a blocking integrity condition until explicitly reconciled."
 
 versions:
   architecture_version_reference: "1.0"
-  architecture_version_authority: "spec/architecture.md ## Status (single declaration site)"
+  architecture_version_authority: "spec/architecture.md"
   protocol_version_reference: "1.0"
   protocol_version_authority: "spec/schemas/protocol.json"
 
 execution:
-  mode: "implementing"
-  active_work_item: WORK-044
-  active_authorization: "WORK-044-CORE-001"
-  halted_reason: "Atomic transition DEC-0063: W053 is accepted-merged at exact reviewed head 4a0021c4d464bf1e0e9d9b29ff8a87ed8eb8146a (review round 1, zero correction rounds; the durable exact-SHA acceptance record is the PR #152 Architect acceptance comment 5549039574), merge bb29c11c8bba6c9db5b87f85b1d62faad0bf7825, CI 33931905976 SUCCESS; WORK-053-CORE-001 is superseded. The sole active execution slot transfers to W044 at the exact post-W053-merge mainline bb29c11c8bba6c9db5b87f85b1d62faad0bf7825. W044 is authorized only for its frozen Payment Provider Adapters & Settlement Gateway scope (payment/, tools/payment_selftest.py, docs/WORK-044-evidence.md, additive CI wiring) and has not yet been implemented; this transition includes NO W044 implementation. W040 remains an independent physical validation track (in-review, NOT accepted; EVID-007/EVID-008 OPEN and W040-owned); W043 is retired; W045+ and all other unaccepted commercial items remain unauthorized."
+  mode: blocked
+  active_work_item: null
+  active_authorization: null
+  halted_reason: "DEC-0080: mainline-integrity mismatch. Actual main is a7d913385f866df6da890093c26539ad876f3ee4, while the last persisted snapshot is bb29c11c8bba6c9db5b87f85b1d62faad0bf7825. Durable repository history proves W044-W049 accepted deliveries, but their implementation packages are not all present on current main. STOP implementation until R0 restoration and R1 governance reconciliation complete."
   next_required_decisions:
-    - "Review the WORK-044 implementation PR on the exact active authorization baseline and require the frozen payment-adapter contract, authority boundaries, deterministic battery, callback replay/idempotency, reconciliation divergence handling, and provider-boundary import discipline."
-    - "After WORK-044 acceptance/merge, evaluate the next authorized Work Item in the frozen commercial DAG; W045 remains hard-gated on WORK-051, WORK-053, and WORK-044."
-    - "Resume W040 only under a future evidence-continuation authorization when physical evidence is available; EVID-007/EVID-008 remain OPEN."
+    - "Complete R0_MAINLINE_RESTORATION by restoring the accepted W044-W049 implementation artifacts and their durable evidence/CI surfaces without unrelated ancestry."
+    - "Complete R1_GOVERNANCE_RECONCILIATION so roadmap, state, ledger, decisions, authorizations, and current-state projections all describe the same restored mainline."
+    - "Only then authorize the next implementation Work Item under the frozen roadmap and frozen dependency graph."
 
 in_review:
   - work_item: WORK-040
@@ -125,143 +34,82 @@ in_review:
     pr_head: ee9b356020b6450d85837f60e60c41d08f0ec09a
     baseline_sha: 1669ae9a396838b72ba461c846b98e84478ab24f
     state: "in-review"
-    delivered_at: "2026-08-29"
     areas:
       - pilot/
 
 open_prs:
   - pr: 45
     head: "work-035-device-evidence"
-    subject: "W035 physical Android evidence calibrated partial run"
-    disposition: "superseded evidence chain; pending formal disposition"
+    disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
   - pr: 46
     head: "work-035-android-mobile-agent"
-    subject: "W035 Physical Android Device Validation"
-    disposition: "superseded evidence chain; pending formal disposition"
+    disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
   - pr: 47
     head: "work-035-physical-evidence-v2"
-    subject: "W035 Final Physical Protocol Validation"
-    disposition: "latest physical evidence chain; pending final disposition"
+    disposition: "historical/latest W035 physical-evidence chain; requires formal disposition"
   - pr: 48
     head: "work-040-pilot-deployment"
-    subject: "WORK-040 Pilot deployment"
-    disposition: "changes required; correction scope authorized by WORK-040-CORRECTION-001, baseline reconciled to main 03f19c5e by LEDGER-RECON-003 (PR #86)"
+    disposition: "W040 remains in-review and unaccepted; physical obligations remain W040-owned"
   - pr: 49
     head: "roadmap/connectivity-economy"
-    subject: "Connectivity commerce roadmap and proposed ACR-004"
-    disposition: "superseded by accepted ACR-009; retained as historical proposal evidence"
+    disposition: "historical proposal; superseded by accepted ACR-009"
   - pr: 82
     head: "arch/acr-009-commercial-control-plane"
-    subject: "ACR-009 Commercial Connectivity Control Plane"
-    disposition: "accepted by DEC-0050 and merged; acceptance reconciliation recorded by this governance transition"
+    disposition: "accepted/historical"
   - pr: 100
     head: "governance/reconcile-w041-w042-contracts"
-    subject: "governance: reconcile W041/W042 contracts and post-RECON-003 baseline"
-    disposition: "superseded by DEC-0052 (which bound W041 to the ACR-005 NetworkPath contract, the opposite binding) and by the commercial roadmap resequencing; pending Architect disposition (close)"
+    disposition: "superseded historical governance proposal"
   - pr: 102
     head: "governance/w040-w041-atomic-handoff"
-    subject: "governance: W040→W041 execution handoff review (analysis only)"
-    disposition: "superseded by merged PR #103 which implemented the atomic handoff as DEC-0052; pending Architect disposition (close)"
+    disposition: "superseded by accepted DEC-0052"
   - pr: 108
     head: "governance/acr-010-work-item-registry-extension"
-    subject: "governance: ACR-010 — extend the frozen Work Item registry beyond WORK-040 (register WORK-041; count 40 → 41)"
-    disposition: "superseded by the DEC-0054/DEC-0055 transition (this governance change), which applies the registry-extension scope directly (LEDGER-RECON-006); pending Architect disposition (close)"
+    disposition: "superseded by DEC-0054/DEC-0055 application"
 
 open_acrs: []
+open_architectural_questions: []
 
 accepted_acrs:
   - acr: "ACR-005"
-    status: "ACCEPTED"
     decision: "DEC-0047"
-    merged_pr: 64
   - acr: "ACR-006"
-    status: "ACCEPTED"
     decision: "DEC-0048"
-    merged_pr: 64
   - acr: "ACR-007"
-    status: "ACCEPTED"
     decision: "DEC-0049"
-    merged_pr: 67
   - acr: "ACR-009"
-    status: "ACCEPTED"
     decision: "DEC-0050"
-    merged_pr: 82
   - acr: "ACR-011"
-    status: "ACCEPTED"
     decision: "DEC-0056"
-    merged_pr: 111
-
-open_architectural_questions: []
 
 accepted_work_items:
   first: "WORK-001"
   last: "WORK-053"
-  note: "WORK-001 through WORK-039 (chat-era migration), WORK-041 (DEC-0054, PR #107), WORK-042 (DEC-0057, PR #110), WORK-051 (DEC-0059, PR #145 head e247b4e / merge 41b3380 — the conformance completion over the original PR #117 core implementation), WORK-052 (DEC-0061, PR #149 head 7d883b2 / merge bcaf0d0), and WORK-053 (DEC-0063, PR #152 head 4a0021c / merge bb29c11) are Architect-accepted and merged; WORK-040 remains in-review and is NOT accepted"
+  note: "WORK-001..WORK-039, WORK-041, WORK-042, and W051-W053 are accepted-merged in the durable ledger/history. DEC-0080 also records durable acceptance facts for W044-W050 proved by the later GitHub acceptance history. WORK-040 remains in-review and unaccepted."
 
-planned_work_items:
-  - work_item: WORK-052
-    issue: 84
-    status: "accepted-merged (DEC-0061; PR #149 exact reviewed head 7d883b2, merge bcaf0d0; WORK-052-CORE-001 superseded) the UsageLedger is the single active authorization; implementation under the frozen WORK-052 contract per the issue #84 contract and the Architect-issued handoff docs/WORK-052-handoff.md — usage derives only from authoritative delivered-traffic evidence)"
-    contract: "issue #84"
-    authorization: "none"
-    prerequisite: "Satisfied (DEC-0059 atomic activation): WORK-051 CommercialCore accepted-merged (DEC-0059, PR #145 head e247b4e, merge 41b3380) so the consumed commercial interfaces are available; W041 NetworkPath accepted-merged (DEC-0054) where NetworkPath identities are referenced; W042 journal-first discipline accepted-merged (DEC-0057) where consumed; the WORK-033 clock seam established. W040 physical validation is advisory only (DEC-0051) and continues independently (in-review, NOT accepted; EVID-007/EVID-008 OPEN and W040-owned)."
-  - work_item: WORK-044
-    issue: 88
-    status: "active-authorized (WORK-044-CORE-001, DEC-0063; sole active implementation authorization on the post-W053 acceptance mainline) — the provider-neutral payment/settlement adapter boundary per the issue #88 contract, the frozen spec/work-items.md WORK-044 declaration, and the Architect-issued handoff docs/WORK-044-handoff.md; dependencies WORK-051 and WORK-053 are both accepted-merged"
-    contract: "issue #88"
-    authorization: "WORK-044-CORE-001"
-    prerequisite: "Satisfied (DEC-0063 atomic activation): W051 CommercialCore and W053 EconomicAllocation are both accepted-merged where their interfaces are consumed (commercial-era W041/W042/W043 references in the issue body are superseded by the canonical model). W040 physical validation is advisory only (DEC-0051) and continues independently (in-review, NOT accepted; EVID-007/EVID-008 OPEN and W040-owned)."
-  - work_item: WORK-045
-    issue: 89
-    status: "ready-candidate"
-    contract: "issue #89"
-    authorization: "none"
-    prerequisite: "W051/W053 accepted/merged where consumed; W044 payment/eligibility capability boundary where exposed"
-  - work_item: WORK-046
-    issue: 90
-    status: "ready-candidate"
-    contract: "issue #90"
-    authorization: "none"
-    prerequisite: "W051/W052/W053 accepted/merged where consumed; W044/W045 boundaries where provider onboarding is exposed"
-  - work_item: WORK-047
-    issue: 91
-    status: "ready-candidate"
-    contract: "issue #91"
-    authorization: "none"
-    prerequisite: "W051 accepted/merged where consumed; W044/W045/W046 capability boundaries where paid offers are presented; handoff to W041 NetworkPath validation (issue body's 'W040/ACR-005' reference is superseded: W040 is the physical evidence track, ACR-005/W041 owns path validation)"
-  - work_item: WORK-048
-    issue: 92
-    status: "ready-candidate (design-only, PR #97)"
-    contract: "issue #92"
-    authorization: "none"
-    prerequisite: "W041 NetworkPath accepted/merged + W042 usage/journal accepted/merged + W051 CommercialCore (Lease authority) where consumed; W040 physical validation advisory only (DEC-0051)"
-  - work_item: WORK-049
-    issue: 98
-    status: "ready-candidate"
-    contract: "issue #98"
-    authorization: "none"
-    prerequisite: "W048/W047/W046 accepted/merged where their interfaces are consumed; canonical definition unifies the duplicate W049 (issue #95 is the superseded definition)"
-  - work_item: WORK-050
-    issue: 96
-    status: "ready-candidate"
-    contract: "issue #96"
-    authorization: "none"
-    prerequisite: "capability/isolation matrix consumed by W048/W049; not an implementation vehicle for W048"
-  - work_item: WORK-051
-    issue: 83
-    status: "ready-candidate"
-    contract: "issue #83"
-    authorization: "none"
-    prerequisite: "ACR-009 accepted (DEC-0050); W041 NetworkPath accepted/merged where NetworkPath references are consumed; W040 physical validation advisory (DEC-0051)"
-  - work_item: WORK-052
-    issue: 84
-    status: "ready-candidate (historical planning pointer; superseded by the active WORK-052 entry above — retained as durable planning history)"
-    contract: "issue #84"
-    authorization: "none"
-    prerequisite: "W051 accepted/merged where its interfaces are consumed; W042 journal-first discipline where consumed"
-  - work_item: WORK-053
-    issue: 85
-    status: "accepted-merged (DEC-0063; PR #152 exact reviewed head 4a0021c, merge bb29c11; WORK-053-CORE-001 superseded) — SOFTWARE-class evidence only"
-    contract: "issue #85"
-    authorization: "none"
-    prerequisite: "W051/W052 accepted/merged where their interfaces are consumed"
+mainline_integrity:
+  status: BLOCKED
+  historical_accepted_but_absent:
+    - WORK-044
+    - WORK-045
+    - WORK-046
+    - WORK-047
+    - WORK-048
+    - WORK-049
+  historical_accepted_and_present:
+    - WORK-050
+    - WORK-051
+    - WORK-052
+    - WORK-053
+  required_recovery_source: "Repository Git history / accepted delivery heads; no chat or external artifact may be used as the source for reconstruction."
+  recovery_rule: "Recover exact accepted delivery artifacts and CI/evidence surfaces; do not import unrelated ancestry; do not alter frozen architecture semantics."
+
+source_of_truth:
+  canonical_program: "spec/architect/roadmap.yaml"
+  human_program_projection: "spec/architect/roadmap.md"
+  current_execution: "spec/architect/execution-state.yaml"
+  lifecycle_history: "spec/architect/execution-ledger.yaml"
+  implementation_permission: "spec/architect/authorizations/"
+  durable_decisions: "spec/architect/decisions/"
+  chat_dependency: PROHIBITED
+  external_memory_dependency: PROHIBITED
+  stale_projection_behavior: FAIL_CLOSED
