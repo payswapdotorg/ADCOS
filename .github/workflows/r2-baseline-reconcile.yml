@@ -1,0 +1,67 @@
+name: R2 baseline reconcile
+on:
+  push:
+    branches:
+      - governance/reconcile-r2-baseline-20260905
+permissions:
+  contents: write
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Advance persisted R2 checkpoint without rewriting history
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          OLD='47348f42eea49b2614fc18e5d34ce243b11bafc3'
+          NEW='691e9c8f4401995909a4ad1af318c720d1c31ef9'
+
+          # Execution state: only checkpoint fields.
+          p=Path('spec/architect/execution-state.yaml')
+          s=p.read_text(encoding='utf-8')
+          s,n1=re.subn(r'(?m)^  main_sha: '+re.escape(OLD)+r'$', '  main_sha: '+NEW, s, count=1)
+          s,n2=re.subn(r'(?m)^  lifecycle_ledger_snapshot_sha: '+re.escape(OLD)+r'$', '  lifecycle_ledger_snapshot_sha: '+NEW, s, count=1)
+          s,n3=re.subn(r'(?m)^  reconciled_checkpoint_sha: '+re.escape(OLD)+r'$', '  reconciled_checkpoint_sha: '+NEW, s, count=1)
+          if (n1,n2,n3)!=(1,1,1): raise SystemExit(f'execution-state checkpoint mismatch {(n1,n2,n3)}')
+          p.write_text(s,encoding='utf-8')
+
+          # Current-state: only the displayed canonical checkpoint and the R1 prose pointer.
+          p=Path('spec/architect/current-state.md')
+          s=p.read_text(encoding='utf-8')
+          s,n1=re.subn(r'(?m)^- Canonical reconciled checkpoint: `'+re.escape(OLD)+r'`$', '- Canonical reconciled checkpoint: `'+NEW+'`', s, count=1)
+          s,n2=s.replace('the `338af793` canonical checkpoint','the reconciled canonical checkpoint `'+NEW+'`',1), 1
+          if n1!=1: raise SystemExit(f'current-state checkpoint mismatch {n1}')
+          p.write_text(s,encoding='utf-8')
+
+          # Roadmap: only current-state checkpoint pointers; preserve R2 acceptance facts.
+          p=Path('spec/architect/roadmap.yaml')
+          s=p.read_text(encoding='utf-8')
+          s,n1=re.subn(r'(?m)^  actual_main_sha: '+re.escape(OLD)+r'$', '  actual_main_sha: '+NEW, s, count=1)
+          s,n2=re.subn(r'(?m)^  last_reconciled_snapshot_sha: '+re.escape(OLD)+r'$', '  last_reconciled_snapshot_sha: '+NEW, s, count=1)
+          if (n1,n2)!=(1,1): raise SystemExit(f'roadmap checkpoint mismatch {(n1,n2)}')
+          p.write_text(s,encoding='utf-8')
+
+          # Ledger: snapshot baseline only; W044-W054 lifecycle history is untouched.
+          p=Path('spec/architect/execution-ledger.yaml')
+          s=p.read_text(encoding='utf-8')
+          s,n=re.subn(r'(?m)^main_sha: '+re.escape(OLD)+r'$', 'main_sha: '+NEW, s, count=1)
+          if n!=1: raise SystemExit(f'ledger main_sha mismatch {n}')
+          if 'reconciliation_id: LEDGER-RECON-026' not in s:
+              s=s.rstrip()+'\n\n  - reconciliation_id: LEDGER-RECON-026\n    recorded_by: DEC-0085\n    recorded_at: 2026-09-05T14:30:00Z\n    from_main_sha: '+OLD+'\n    to_main_sha: '+NEW+'\n    reason: "Advance persisted R2 snapshot to the actual post-repair canonical mainline; no lifecycle transition."\n    history: "No prior Work Item record, acceptance, or reconciliation was rewritten."\n'
+          p.write_text(s,encoding='utf-8')
+
+          # Remove runner before commit.
+          Path('.github/workflows/r2-baseline-reconcile.yml').unlink()
+          PY
+          git config user.name 'ADCOS Architect'
+          git config user.email '150378018+payswapdotorg@users.noreply.github.com'
+          git add spec/architect .github/workflows/r2-baseline-reconcile.yml
+          git commit -m 'governance: reconcile R2 checkpoint to repaired mainline [skip ci]'
+          git push origin HEAD:governance/reconcile-r2-baseline-20260905
