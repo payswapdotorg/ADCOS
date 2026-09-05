@@ -6,18 +6,19 @@
 
 ## Current repository state
 
-Canonical mainline after R0 restoration: `7fb47bb312708d06f3b3c1ba0496104362c7d135`.
+Canonical live `main`: `09d77dae84b430ad4a6bb22a6f01c2b7d8533cdd`.
 
-R0 mainline restoration is complete. The accepted W044-W049 implementation packages, evidence surfaces, selftests, and CI invocation wiring are present on the canonical mainline.
+R0 mainline restoration is complete at `7fb47bb312708d06f3b3c1ba0496104362c7d135`. The current governance checkpoint advanced main only; it introduced no implementation.
 
 ## Current execution gate
 
 **R1 — Governance Reconciliation: BLOCKED.**
 
-Two governance conditions remain:
+The remaining blockers are:
 
-1. Reconcile the execution ledger's W044-W049 lifecycle records to the durable accepted history without rewriting prior history.
-2. Resolve W050 acceptance provenance. W050 implementation-stage evidence and its permanent deterministic battery are present, but the current authoritative decision/ledger chain does not contain a discrete corroborated W050 acceptance decision. Acceptance is therefore not inferred.
+1. Reconcile the execution ledger's W044-W049 lifecycle records against their durable accepted delivery history without rewriting historical records.
+2. Resolve W050 acceptance provenance. W050 implementation-stage artifacts and its permanent deterministic battery are present, but the current authoritative decision/ledger chain does not contain a discrete corroborated W050 acceptance decision. Acceptance is not inferred.
+3. Keep roadmap, execution-state, current-state, decisions, ledger, and authorizations mutually consistent.
 
 No Work Item is active. No implementation authorization is active. Implementation remains stopped.
 
@@ -31,7 +32,7 @@ Completion: PR #157 merged as `7fb47bb312708d06f3b3c1ba0496104362c7d135`.
 
 ### R1 — Governance reconciliation — CURRENT BLOCKING GATE
 
-Bring the durable lifecycle and decision projections into one coherent state. Preserve every previous decision and reconciliation. Do not manufacture acceptance from implementation, CI, issue prose, or chat.
+Bring durable lifecycle and decision projections into one coherent state. Preserve every previous decision and reconciliation. Do not manufacture acceptance from implementation, CI, issue prose, or chat.
 
 Exit gate: fresh-clone sufficiency, ledger/current-state/roadmap agreement on the exact mainline, W044-W049 lifecycle records reconciled, W050 acceptance disposition explicit, and exactly zero active implementation authorizations.
 

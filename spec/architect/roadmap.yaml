@@ -35,13 +35,13 @@ governance_rules:
   software_never_promotes_to_physical: true
 
 current_state:
-  actual_main_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+  actual_main_sha: 09d77dae84b430ad4a6bb22a6f01c2b7d8533cdd
   last_reconciled_snapshot_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
   program_state: R1_GOVERNANCE_RECONCILIATION_BLOCKED
   execution_mode: blocked
   active_work_item: null
   active_authorization: null
-  halt_reason: "R0 is complete. R1 remains blocked because the execution ledger still carries the pre-restoration W044-W050 lifecycle representation, and W050 has implementation-stage evidence but no sufficiently corroborated durable Work Item acceptance record in the authoritative decision/ledger chain. No implementation may begin until both governance conditions are reconciled."
+  halt_reason: "R0 is complete. R1 remains blocked because the execution ledger still carries the pre-restoration W044-W050 lifecycle representation, and W050 has implementation-stage evidence but no sufficiently corroborated durable Work Item acceptance record in the authoritative decision/ledger chain. The 09d77 governance merge is beyond the last reconciled R0 snapshot; this is an expected governance branch-point offset, not implementation authorization."
   next_gate: R1_GOVERNANCE_RECONCILIATION
 
 accepted_history:
@@ -93,7 +93,7 @@ accepted_history:
       status: implementation-present_acceptance-unresolved
       accepted_stage_heads: [4a37408, c5cb509, 279871c, 0fa231c]
       current_mainline: present
-      acceptance_provenance: "Implementation-stage acceptance evidence is present in repository history, including the permanent deterministic W050 battery, but the authoritative current decision registry and execution ledger do not contain a corresponding W050 acceptance decision that can safely be used as the lifecycle authority. No acceptance is inferred."
+      acceptance_provenance: "Implementation-stage evidence is present, including the permanent deterministic W050 battery, but no discrete corroborated Work Item acceptance decision is found in the current authoritative decision/ledger chain. No acceptance is inferred."
     - id: WORK-051
       status: accepted-merged
       reviewed_sha: e247b4e32e7b1dc345292af5ad7e1b49297cad6f
@@ -116,7 +116,7 @@ roadmap:
     objective: "Restore the exact accepted W044-W049 implementation packages and CI/evidence artifacts onto the authoritative mainline without importing unrelated later ancestry or changing frozen semantics."
     completion_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
     implementation_authorization: none
-    acceptance: "Architect exact-tree/provenance review; restored branch contained one commit directly on current main and no spec/architect changes."
+    acceptance: "Architect exact-tree/provenance review; clean restoration merged directly onto the then-current mainline as PR #157."
 
   - id: R1_GOVERNANCE_RECONCILIATION
     status: BLOCKED
@@ -124,9 +124,10 @@ roadmap:
     implementation_authorization: none
     remaining:
       - "Reconcile execution-ledger W044-W049 lifecycle records using repository-native accepted delivery provenance."
-      - "Resolve W050 acceptance disposition from durable repository evidence or explicitly record it as implementation-present but not accepted."
+      - "Resolve W050 acceptance disposition from durable repository evidence or explicitly keep it implementation-present but not accepted."
       - "Align roadmap, execution-state, current-state, decision index, ledger and authorization projections."
-    exit_gate: "One fresh clone presents a coherent lifecycle state with no contradictory acceptance claims, the ledger snapshot equals the actual canonical mainline, and exactly zero active implementation authorizations exist."
+      - "Advance the ledger snapshot through an explicit reconciliation to the canonical mainline."
+    exit_gate: "One fresh clone presents a coherent lifecycle state with no contradictory acceptance claims, the ledger snapshot equals the canonical mainline, and exactly zero active implementation authorizations exist."
 
   - id: R2_SYSTEM_COMPOSITION_CONFORMANCE
     status: AFTER_R1
