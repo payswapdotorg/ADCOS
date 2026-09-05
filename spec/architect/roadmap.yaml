@@ -35,14 +35,14 @@ governance_rules:
   software_never_promotes_to_physical: true
 
 current_state:
-  actual_main_sha: 13bfbda54eece391306ddb774e0700c9d862339a
+  actual_main_sha: 461d1482180222f4b63f780d6d9ea1d54c49d643
   last_reconciled_snapshot_sha: 13bfbda54eece391306ddb774e0700c9d862339a
   program_state: R2_SYSTEM_COMPOSITION_CONFORMANCE_ACTIVE
   execution_mode: implementing
   active_work_item: WORK-054
   active_authorization: WORK-054-CORE-001
   next_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE
-  reconciliation_note: "R0 was accepted and merged as PR #8 (merge a3391e86851e06032de848e6eb0b4267fa33310a). R1 was completed under DEC-0084 by PR #9 (merge 13bfbda54eece391306ddb774e0700c9d862339a). DEC-0085 now activates the fresh WORK-054 R2 System Composition Conformance Work Item on exact main 13bfbda with exactly one active implementation authorization WORK-054-CORE-001. Architecture Version 1.0 and Protocol Version 1.0 remain unchanged."
+  reconciliation_note: "R0 was accepted and merged as PR #8 (merge a3391e86851e06032de848e6eb0b4267fa33310a). R1 was completed under DEC-0084 by PR #9 (merge 13bfbda54eece391306ddb774e0700c9d862339a). DEC-0085 activated the fresh WORK-054 R2 System Composition Conformance Work Item and its single implementation authorization. PR #10 then merged the R2 governance activation as 461d1482180222f4b63f780d6d9ea1d54c49d643. DEC-0086 reconciles this post-activation live-main pointer while preserving 13bfbda as the last R1 governance snapshot and preserving DEC-0085 as historical activation provenance. Architecture Version 1.0 and Protocol Version 1.0 remain unchanged."
 
 accepted_history:
   rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history. R0 (PR #8, merged as a3391e86851e06032de848e6eb0b4267fa33310a) restored the accepted W044-W049 implementation trees onto the current mainline where they belong; their current_mainline flags are reconciled by DEC-0084 without altering any reviewed SHA or accepted merge SHA, and without replacing the original acceptance provenance with the restoration merge. W048 remains explicitly accepted-not-restored."
@@ -121,6 +121,8 @@ roadmap:
     authorization: WORK-054-CORE-001
     authorization_decision: DEC-0085
     authorization_baseline: 13bfbda54eece391306ddb774e0700c9d862339a
+    live_implementation_baseline: 461d1482180222f4b63f780d6d9ea1d54c49d643
+    baseline_reconciliation_decision: DEC-0086
     chain: "intent -> offer -> eligibility -> reservation/lease -> candidate selection -> NetworkPath validation -> containment -> session -> delivered traffic -> usage -> BILLABLE_FINAL -> allocation -> external payment reference -> reconciliation"
     mandatory_negative_proofs:
       - "payment success cannot create connectivity"

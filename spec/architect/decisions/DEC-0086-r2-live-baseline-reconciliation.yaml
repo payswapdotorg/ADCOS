@@ -1,0 +1,36 @@
+# ADCOS Architect decision record.
+# Governance-only correction of the live R2 implementation baseline after PR #10.
+# DEC-0085 remains the historical activation decision and is not rewritten.
+schema_version: 1
+decision_id: DEC-0086
+type: governance
+work_item: WORK-054
+acr: null
+pr: 10
+reviewed_sha: 461d1482180222f4b63f780d6d9ea1d54c49d643
+decision: ACCEPTED
+status: ACCEPTED
+reviewer: "Architect (payswapdotorg)"
+timestamp: 2026-09-05T18:00:00Z
+subject: "Reconcile WORK-054 implementation baseline to the live post-activation main commit"
+context:
+  repository: "github.com/payswapdotorg/ADCOS"
+  prior_decision: DEC-0085
+  prior_activation_baseline: 13bfbda54eece391306ddb774e0700c9d862339a
+  live_main_sha: 461d1482180222f4b63f780d6d9ea1d54c49d643
+  finding: "PR #10 merged the R2 governance activation from 13bfbda onto live main as 461d148. The implementation branch also resolves to 461d148. The existing projections and authorization still named 13bfbda as the implementation baseline, creating a stale pointer."
+correction:
+  historical_activation_baseline: 13bfbda54eece391306ddb774e0700c9d862339a
+  implementation_baseline: 461d1482180222f4b63f780d6d9ea1d54c49d643
+  decision_baseline_semantics: "13bfbda remains preserved as the R1/reconciliation snapshot and DEC-0085 historical activation baseline."
+  implementation_baseline_semantics: "461d148 is the actual live main commit containing the already-merged governance activation and is the only permitted WORK-054 worker branch point."
+  active_authorization: WORK-054-CORE-001
+  branch: "work-054-system-composition-conformance"
+non_changes:
+  - "No frozen architecture semantics changed."
+  - "No protocol/wire schema changed."
+  - "No Work Item implementation code changed."
+  - "No historical decision or acceptance provenance was rewritten."
+  - "W048 remains accepted-not-restored and must fail closed in WORK-054."
+  - "W040/EVID-007/EVID-008 remain independent and untouched."
+result: "The durable execution projections and active WORK-054 authorization are aligned with the actual live authorization-bearing main commit. Exactly one implementation authorization remains active."
