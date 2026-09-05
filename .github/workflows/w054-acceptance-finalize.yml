@@ -1,0 +1,176 @@
+name: W054 acceptance finalize
+on:
+  push:
+    branches:
+      - governance/w054-acceptance-final-20260905
+permissions:
+  contents: write
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Finalize W054 governance state
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          MAIN = '22c21309390518a7f4869e057cfee59cde049be0'
+          REVIEWED = 'f6824ccd0beb28b69c932e87610a63856f1399d6'
+          MERGE = MAIN
+          PR = '4'
+          CI = '33970713183'
+          MERGED_AT = '2026-09-05T14:07:29Z'
+
+          # Ledger: transition W054 registered -> accepted-merged.
+          p = Path('spec/architect/execution-ledger.yaml')
+          s = p.read_text()
+          pattern = re.compile(r'(?ms)^  - work_item: WORK-054\n.*?(?=^  - work_item: WORK-055\n|^reconciliations:\n)')
+          m = pattern.search(s)
+          if not m:
+              raise SystemExit('W054 ledger block not found')
+          block = m.group(0)
+          replacements = {
+              r'(?m)^    pr: null$': f'    pr: {PR}',
+              r'(?m)^    pr_head: null$': f'    pr_head: {REVIEWED}',
+              r'(?m)^    reviewed_sha: null$': f'    reviewed_sha: {REVIEWED}',
+              r'(?m)^    merge_sha: null$': f'    merge_sha: {MERGE}',
+              r'(?m)^    merged_at: null$': f'    merged_at: {MERGED_AT}',
+              r'(?m)^    ci_run: null$': f'    ci_run: {CI}',
+              r'(?m)^    acceptance_decision: null$': '    acceptance_decision: DEC-0085',
+              r'(?m)^    handoff_required: true$': '    handoff_required: false',
+              r'(?m)^    lifecycle: registered$': '    lifecycle: accepted-merged',
+              r'(?m)^    note: .*?$': '    note: "Accepted by DEC-0085 on the exact W054 delivery reviewed at f6824ccd0beb28b69c932e87610a63856f1399d6 and merged as 22c21309390518a7f4869e057cfee59cde049be0. Dedicated W054 exact-head battery run 33970713183 passed; merge-main W054 battery also passed. W054 remains orchestration/conformance evidence only and creates no second domain authority."
+',
+          }
+          for pat, repl in replacements.items():
+              block, n = re.subn(pat, repl, block, count=1)
+              if n != 1:
+                  raise SystemExit('expected exactly one ledger field for %s, found %s' % (pat, n))
+          s = s[:m.start()] + block + s[m.end():]
+          p.write_text(s)
+
+          # Authorization: release active slot while preserving provenance.
+          p = Path('spec/architect/authorizations/WORK-054.yaml')
+          s = p.read_text()
+          s = re.sub(r'(?m)^status: active$', 'status: superseded', s, count=1)
+          s = re.sub(r'(?m)^authorized: true$', 'authorized: false', s, count=1)
+          s = s.rstrip() + '\nsupersession_decision: DEC-0085\n'
+          p.write_text(s)
+
+          # Current execution projection.
+          p = Path('spec/architect/execution-state.yaml')
+          s = p.read_text()
+          s = re.sub(r'(?m)^  main_sha: .*$', f'  main_sha: {MAIN}', s, count=1)
+          s = re.sub(r'(?m)^  lifecycle_ledger_snapshot_sha: .*$', f'  lifecycle_ledger_snapshot_sha: {MAIN}', s, count=1)
+          s = re.sub(r'(?m)^  mode: active$', '  mode: ready', s, count=1)
+          s = re.sub(r'(?m)^  active_work_item: WORK-054$', '  active_work_item: null', s, count=1)
+          s = re.sub(r'(?m)^  active_authorization: WORK-054-CORE-001$', '  active_authorization: null', s, count=1)
+          s = re.sub(r'(?m)^  halted_reason: null$', '  halted_reason: "W054 is accepted under DEC-0085. No implementation authorization is active. R3 production protocol conformance requires a fresh Work Item and authorization."', s, count=1)
+          s = re.sub(r'(?m)^  next_required_decisions:\n(?:    - .*\n){2}', '  next_required_decisions:\n    - "Create the governed R3 production-protocol-conformance Work Item."\n    - "Issue exactly one repository-local implementation authorization for the R3 Work Item."\n', s, count=1)
+          p.write_text(s)
+
+          # Human current-state projection.
+          p = Path('spec/architect/current-state.md')
+          s = p.read_text()
+          s = s.replace('**ACTIVE — R2 WORK-054 system-composition implementation authorized.**', '**READY — R2 W054 accepted; R3 production protocol conformance is next.**')
+          s = re.sub(r'(?m)^- Canonical reconciled checkpoint: .*$', f'- Canonical reconciled checkpoint: `{MAIN}`', s, count=1)
+          s = s.replace('Roadmap: `spec/architect/roadmap.yaml` — **FROZEN, Version 1.3, sole program-roadmap authority**', 'Roadmap: `spec/architect/roadmap.yaml` — **FROZEN, Version 1.4, sole program-roadmap authority**')
+          s = s.replace('- R2: `ACTIVE` — WORK-054 / WORK-054-CORE-001', '- R2: `COMPLETED` — WORK-054 / DEC-0085')
+          s = s.replace('- Governing decisions: `DEC-0081`, `DEC-0082`, `DEC-0083`', '- Governing decisions: `DEC-0081`, `DEC-0082`, `DEC-0083`, `DEC-0084`, `DEC-0085`')
+          s = s.replace('- Active Work Item: WORK-054\n- Active authorization: WORK-054-CORE-001\n- Active implementation authorization count: one', '- Active Work Item: none\n- Active authorization: none\n- Active implementation authorization count: zero')
+          s = re.sub(r'(?s)## R2 product direction\n.*?## Independent physical evidence', '## R2 result\n\nR2 is complete under DEC-0085. W054 established the composition/orchestration seam across the accepted authorities, with exact-head and merge-main deterministic batteries passing. No second canonical authority was introduced.\n\n## Next governed gate\n\nR3 is the next product-development gate: production protocol conformance and wire-compatibility proof. It requires a fresh Work Item and exactly one implementation authorization.\n\n## Independent physical evidence', s, count=1)
+          p.write_text(s)
+
+          # Roadmap: complete R2 and move to R3 ready.
+          p = Path('spec/architect/roadmap.yaml')
+          s = p.read_text()
+          s = s.replace('# FROZEN — roadmap version 1.2', '# FROZEN — roadmap version 1.4', 1)
+          s = s.replace('roadmap_version: "1.3"', 'roadmap_version: "1.4"', 1)
+          s = s.replace('supersedes_roadmap_version: "1.2"', 'supersedes_roadmap_version: "1.3"', 1)
+          s = s.replace('superseding_decision: DEC-0084', 'superseding_decision: DEC-0085', 1)
+          s = re.sub(r'(?m)^  actual_main_sha: .*$', f'  actual_main_sha: {MAIN}', s, count=1)
+          s = re.sub(r'(?m)^  last_reconciled_snapshot_sha: .*$', f'  last_reconciled_snapshot_sha: {MAIN}', s, count=1)
+          s = s.replace('program_state: R2_SYSTEM_COMPOSITION_CONFORMANCE_ACTIVE', 'program_state: R3_PROTOCOL_PRODUCTION_CONFORMANCE_READY', 1)
+          s = s.replace('execution_mode: active', 'execution_mode: ready', 1)
+          s = s.replace('active_work_item: WORK-054', 'active_work_item: null', 1)
+          s = s.replace('active_authorization: WORK-054-CORE-001', 'active_authorization: null', 1)
+          s = s.replace('halt_reason: "R2 WORK-054 is authorized and active under DEC-0084."', 'halt_reason: "W054 accepted under DEC-0085. R3 requires a fresh Work Item and authorization."', 1)
+          s = re.sub(r'(?s)  - id: R2_SYSTEM_COMPOSITION_CONFORMANCE\n.*?(?=  - id: R3_PROTOCOL_PRODUCTION_CONFORMANCE\n)', '''  - id: R2_SYSTEM_COMPOSITION_CONFORMANCE
+    status: COMPLETED
+    active_work_item: null
+    active_authorization: null
+    objective: "Prove the complete commercial/connectivity composition without introducing a second authority."
+    chain: "intent -> offer -> eligibility -> reservation/lease -> candidate selection -> NetworkPath validation -> containment -> session -> delivered traffic -> usage -> BILLABLE_FINAL -> allocation -> external payment reference -> reconciliation"
+    completion_sha: "22c21309390518a7f4869e057cfee59cde049be0"
+    acceptance: "DEC-0085; W054 exact reviewed head f6824ccd0beb28b69c932e87610a63856f1399d6; PR #4 merged as 22c21309390518a7f4869e057cfee59cde049be0; dedicated W054 battery run 33970713183 SUCCESS."
+    mandatory_negative_proofs:
+      - "payment success cannot create connectivity"
+      - "reservation success cannot imply reachability"
+      - "marketplace discovery cannot activate a path"
+      - "W050 capability declaration cannot enforce containment"
+      - "W049 client state cannot become canonical state"
+      - "API/webhook observation cannot become a second source of truth"
+      - "software evidence cannot close physical evidence"
+    authorization_rule: "R2 execution is complete. No implementation authorization remains active."
+
+'''+ '  - id: R3_PROTOCOL_PRODUCTION_CONFORMANCE\n', s, count=1)
+          s = s.replace('status: AFTER_R2\n    objective: "Complete the production conformance layer required before declaring wire compatibility."', 'status: READY\n    objective: "Complete the production conformance layer required before declaring wire compatibility."', 1)
+          s = s.replace('next_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE', 'next_gate: R3_PROTOCOL_PRODUCTION_CONFORMANCE', 1)
+          p.write_text(s)
+
+          # Add accepted W054 history if not already present.
+          p = Path('spec/architect/roadmap.yaml')
+          s = p.read_text()
+          marker = '    - id: WORK-054\n'
+          if marker not in s:
+              anchor = '    - id: WORK-053\n'
+              pos = s.find(anchor)
+              end = s.find('\n', pos)
+              # Insert immediately after W053 block by locating next roadmap: marker.
+              rpos = s.find('\nroadmap:\n', pos)
+              entry = '''\n    - id: WORK-054
+      status: accepted-merged
+      reviewed_sha: f6824ccd0beb28b69c932e87610a63856f1399d6
+      merge_sha: 22c21309390518a7f4869e057cfee59cde049be0
+      current_mainline: present
+      acceptance_provenance: "DEC-0085; W054 exact-head delivery f6824ccd0beb28b69c932e87610a63856f1399d6; dedicated battery run 33970713183 SUCCESS."
+'''
+              s = s[:rpos] + entry + s[rpos:]
+              p.write_text(s)
+
+          # Decision registry README.
+          p = Path('spec/architect/decisions/README.md')
+          s = p.read_text()
+          if '`DEC-0085`' not in s:
+              s = s.rstrip() + '\n\n- `DEC-0085` — accepts WORK-054 and closes R2; releases the W054 authorization and advances the next gate to R3.\n'
+              p.write_text(s)
+
+          # Durable acceptance decision, checker-compatible schema.
+          p = Path('spec/architect/decisions/DEC-0085-w054-acceptance.yaml')
+          p.write_text('''# ADCOS Architect decision record — W054 acceptance.\n# schema: spec/architect/decision-record-template.md; verified by tools/spec_check.py (ARCH-04).\n\ndecision_id: DEC-0085\ntype: acceptance\nwork_item: WORK-054\nacr: null\npr: 4\nreviewed_sha: f6824ccd0beb28b69c932e87610a63856f1399d6\ndecision: ACCEPTED\nstatus: ACCEPTED\nreviewer: "Architect (payswapdotorg)"\ntimestamp: 2026-09-05T14:07:29Z\nfindings:\n  - "The exact WORK-054 delivery head f6824ccd0beb28b69c932e87610a63856f1399d6 was reviewed against the DEC-0084 authorization and the frozen architecture/protocol boundaries."
+  - "The implementation changes only composition/, the Developer API bridge, its deterministic conformance battery, evidence, and additive CI wiring; it does not modify spec/architect/."
+  - "The W054 exact-head deterministic battery passes on run 33970713183; the corresponding mainline run also passes the W054 battery and scope check."
+  - "W054 is accepted specifically as an orchestration/conformance layer. Canonical state remains owned by WORK-041/042/044/045/046/047/048/049/051/052/053."
+blockers: []\nrequired_corrections: []\nevidence:\n  merge_sha: 22c21309390518a7f4869e057cfee59cde049be0\n  ci_run: 33970713183\n  artifacts:\n    - "tools/composition_selftest.py"
+    - "docs/WORK-054-evidence.md"
+accepted_scope:\n  - "The WORK-054 contract as frozen in spec/work-items.md and authorized by DEC-0084."
+  - "Composition orchestration receipts, content-derived idempotency, Developer API bridge, and deterministic conformance evidence."
+rejected_scope:\n  - "Any new identity, routing, NetworkPath, session, containment, eligibility, marketplace, usage, allocation, payment, or client authority."
+  - "Physical connectivity evidence."
+downstream_effect:\n  - "Releases WORK-054-CORE-001."
+  - "Completes R2 system composition conformance."
+  - "Advances the program gate to R3_PROTOCOL_PRODUCTION_CONFORMANCE."
+resolved_by: null\n''')
+          PY
+          git config user.name 'ADCOS Architect'
+          git config user.email '150378018+payswapdotorg@users.noreply.github.com'
+          rm -f .github/workflows/w054-acceptance-finalize.yml
+          git add spec/architect .github/workflows/w054-acceptance-finalize.yml
+          git commit -m 'governance: accept W054 and close R2 [skip ci]'
+          git push origin HEAD:governance/w054-acceptance-final-20260905
