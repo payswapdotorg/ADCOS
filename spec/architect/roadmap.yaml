@@ -1,11 +1,10 @@
 # ADCOS Authoritative Execution Roadmap
-# FROZEN — roadmap version 1.1 (advanced from 1.0 by DEC-0084, the R1
-# governance reconciliation after the accepted R0 restoration; a
-# governance/version transition only — Architecture Version 1.0 and
-# Protocol Version 1.0 are unchanged)
+# FROZEN — roadmap version 1.2 (advanced from 1.1 by DEC-0085, the R2
+# activation after DEC-0084 completed R1; a governance/version transition
+# only — Architecture Version 1.0 and Protocol Version 1.0 are unchanged)
 
 schema_version: 2
-roadmap_version: "1.1"
+roadmap_version: "1.2"
 status: FROZEN_AUTHORITATIVE
 authority: "spec/architect/roadmap.yaml"
 human_projection: "spec/architect/roadmap.md"
@@ -36,17 +35,17 @@ governance_rules:
   software_never_promotes_to_physical: true
 
 current_state:
-  actual_main_sha: a3391e86851e06032de848e6eb0b4267fa33310a
-  last_reconciled_snapshot_sha: a3391e86851e06032de848e6eb0b4267fa33310a
-  program_state: R1_GOVERNANCE_RECONCILED
-  execution_mode: ready
-  active_work_item: null
-  active_authorization: null
+  actual_main_sha: 13bfbda54eece391306ddb774e0700c9d862339a
+  last_reconciled_snapshot_sha: 13bfbda54eece391306ddb774e0700c9d862339a
+  program_state: R2_SYSTEM_COMPOSITION_CONFORMANCE_ACTIVE
+  execution_mode: implementing
+  active_work_item: WORK-054
+  active_authorization: WORK-054-CORE-001
   next_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE
-  reconciliation_note: "R0 was accepted and merged as PR #8 (merge a3391e86851e06032de848e6eb0b4267fa33310a, tree 1d16c241d060c9c242f3025ea3afa73464574ccc, byte-identical to the historical restoration tree 7fb47bb312708d06f3b3c1ba0496104362c7d135). R1 is complete under DEC-0084 on the reconciled mainline a3391e86851e06032de848e6eb0b4267fa33310a. Execution is ready but fail-closed: exactly zero implementation authorizations are active, so no implementation may start until R2 receives a fresh Work Item and exactly one new authorization."
+  reconciliation_note: "R0 was accepted and merged as PR #8 (merge a3391e86851e06032de848e6eb0b4267fa33310a). R1 was completed under DEC-0084 by PR #9 (merge 13bfbda54eece391306ddb774e0700c9d862339a). DEC-0085 now activates the fresh WORK-054 R2 System Composition Conformance Work Item on exact main 13bfbda with exactly one active implementation authorization WORK-054-CORE-001. Architecture Version 1.0 and Protocol Version 1.0 remain unchanged."
 
 accepted_history:
-  rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history. R0 (PR #8, merged as a3391e86851e06032de848e6eb0b4267fa33310a) restored the accepted W044-W049 implementation trees onto the current mainline; their current_mainline flags are reconciled to present-restored by DEC-0084 without altering any reviewed SHA or accepted merge SHA, and without replacing the original acceptance provenance with the restoration merge."
+  rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history. R0 (PR #8, merged as a3391e86851e06032de848e6eb0b4267fa33310a) restored the accepted W044-W049 implementation trees onto the current mainline where they belong; their current_mainline flags are reconciled by DEC-0084 without altering any reviewed SHA or accepted merge SHA, and without replacing the original acceptance provenance with the restoration merge. W048 remains explicitly accepted-not-restored."
   work_items:
     - id: WORK-044
       status: accepted-merged
@@ -73,7 +72,7 @@ accepted_history:
       reviewed_sha: e2af4bd20e403c1d4ee9717f7eea8809c16a53cd
       merge_sha: ce1ccaea328743a05cf8d6fa87a114e69d9e253c
       current_mainline: accepted-not-restored
-      restoration_note: "W048 disposition, exactly as accepted with R0: the W048 sharing/ package, its 8-file containment/ variant, docs/WORK-048-evidence.md, and tools/sharing_selftest.py are not part of the accepted historical restoration tree (7fb47bb, reproduced byte-identically by PR #8) and remain absent from current main; W048's acceptance provenance (reviewed/merge SHAs and the DEC-0075 historical acceptance record) is preserved unchanged. R0 completed by reproducing the exact historical restoration tree; restoring W048's implementation artifacts would intentionally diverge from that tree and requires an explicit Architect directive."
+      restoration_note: "W048 disposition, exactly as accepted with R0: the W048 sharing/ package, its 8-file containment/ variant, docs/WORK-048-evidence.md, and tools/sharing_selftest.py are not part of the accepted historical restoration tree (7fb47bb, reproduced byte-identically by PR #8) and remain absent from current main; W048's acceptance provenance remains preserved unchanged. Restoring W048's implementation artifacts requires an explicit Architect directive and is not part of WORK-054."
     - id: WORK-049
       status: accepted-merged
       reviewed_sha: b8cc17ef21f6c38266152552590dc73f80c056ce
@@ -106,19 +105,22 @@ roadmap:
     required_output: "One verified mainline containing the accepted W044-W050/W051-W053 implementation set and their durable acceptance/governance records."
     implementation_authorization: none
     gate: "Architect verifies exact file set, accepted-head provenance, tree equivalence of recovered packages, no unauthorized semantic delta, and complete repository-local evidence."
-    completion: "Accepted and merged as PR #8 on the exact frozen main 3bdfb6daf50f7c000d29a027584c0de5b376d8a8 (merge a3391e86851e06032de848e6eb0b4267fa33310a, single-commit source head 69f1bece5515ac7d10c40a94299b30ffb4ff58c4, tree 1d16c241d060c9c242f3025ea3afa73464574ccc byte-identical to the historical restoration tree 7fb47bb312708d06f3b3c1ba0496104362c7d135; 58,500 insertions / 0 deletions / 79 files, additive only)."
+    completion: "Accepted and merged as PR #8 on the exact frozen main 3bdfb6daf50f7c000d29a027584c0de5b376d8a8 (merge a3391e86851e06032de848e6eb0b4267fa33310a, tree 1d16c241d060c9c242f3025ea3afa73464574ccc byte-identical to the historical restoration tree 7fb47bb312708d06f3b3c1ba0496104362c7d135; additive only)."
 
   - id: R1_GOVERNANCE_RECONCILIATION
     status: COMPLETE
     objective: "Reconcile roadmap, current-state, execution-state, execution-ledger, decisions, authorizations, and evidence projections to the restored mainline."
     constraints: "Preserve every prior decision and reconciliation; never rewrite historical records."
     implementation_authorization: none
-    completion: "Complete under DEC-0084 on the reconciled mainline a3391e86851e06032de848e6eb0b4267fa33310a. Historical R1 records in Git history (DEC-0081/DEC-0082/DEC-0083, the 338af793 checkpoint) remain discoverable history and are not the current baseline."
+    completion: "Complete under DEC-0084 on the reconciled mainline a3391e86851e06032de848e6eb0b4267fa33310a."
 
   - id: R2_SYSTEM_COMPOSITION_CONFORMANCE
-    status: NEXT_IMPLEMENTATION_GATE
+    status: ACTIVE
     objective: "Prove the complete commercial/connectivity composition without introducing a second authority."
-    authorization_requirement: "R2 awaits a fresh Work Item and exactly one implementation authorization issued by a new Architect decision; exactly zero are active now."
+    work_item: WORK-054
+    authorization: WORK-054-CORE-001
+    authorization_decision: DEC-0085
+    authorization_baseline: 13bfbda54eece391306ddb774e0700c9d862339a
     chain: "intent -> offer -> eligibility -> reservation/lease -> candidate selection -> NetworkPath validation -> containment -> session -> delivered traffic -> usage -> BILLABLE_FINAL -> allocation -> external payment reference -> reconciliation"
     mandatory_negative_proofs:
       - "payment success cannot create connectivity"
