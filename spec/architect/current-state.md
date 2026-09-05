@@ -5,7 +5,7 @@
 ## Repository
 
 - Repository: `github.com/payswapdotorg/ADCOS`
-- Canonical reconciled checkpoint: `338af793923e1267ff3523de4310be273d75a2cd`
+- Canonical reconciled checkpoint: `11bd981612274c69912fad7ea2e0de781514b347`
 - R0 restoration: `7fb47bb312708d06f3b3c1ba0496104362c7d135`
 - Roadmap: `spec/architect/roadmap.yaml` — **FROZEN, Version 1.2, sole program-roadmap authority**
 - Architecture: `1.0` frozen

@@ -86,7 +86,7 @@
 # semantic changes.
 
 schema_version: 1
-main_sha: 338af793923e1267ff3523de4310be273d75a2cd
+main_sha: 11bd981612274c69912fad7ea2e0de781514b347
 last_updated: "2026-09-05"
 work_items:
   - work_item: WORK-001
@@ -1108,3 +1108,10 @@ reconciliations:
     to_main_sha: 338af793923e1267ff3523de4310be273d75a2cd
     reason: "R1 lifecycle normalization: reconcile W044-W049 to their exact durable accepted delivery facts, record W050 retrospective acceptance under DEC-0083, and advance the ledger snapshot to the canonical fork baseline."
     history: "No prior reconciliation or Git history is rewritten. W044-W049 retain their accepted reviewed SHA, PR, merge, and acceptance provenance from repository history. W050 gains a discrete DEC-0083 acceptance record while retaining its prior registration/activation provenance. W051-W053 remain byte-identical to the current fork state. W040 remains in-review and independently W040-owned for physical evidence. No implementation, architecture, protocol, or physical-evidence state changes."
+  - reconciliation_id: LEDGER-RECON-025
+    recorded_by: DEC-0083
+    recorded_at: 2026-09-05T13:00:00Z
+    from_main_sha: 338af793923e1267ff3523de4310be273d75a2cd
+    to_main_sha: 11bd981612274c69912fad7ea2e0de781514b347
+    reason: "Post-R1 merge baseline advancement only: advance the lifecycle ledger snapshot from the pre-merge R1 checkpoint to the actual merged mainline commit. No Work Item lifecycle, acceptance, architecture, protocol, or physical-evidence state changes."
+    history: "DEC-0083 remains the governing R1 reconciliation decision. No prior reconciliation or Git history is rewritten."
