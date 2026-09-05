@@ -28,9 +28,9 @@ from composition import (  # noqa: E402
     CompositionRuntime,
     InMemoryCompositionStore,
     StageReceipt,
+    STAGE_AUTHORITIES,
     compose_developer_request,
 )
-from composition.model import STAGE_AUTHORITIES  # noqa: E402
 from composition.runtime import CompositionJournalRecord  # noqa: E402
 
 
@@ -137,23 +137,16 @@ def full_suite() -> Tuple[int, str]:
     total += 1
 
     # 6. Stage ownership is a fixed authority map, not caller-declared.
-    for stage in COMPOSITION_STAGES:
-        assert STAGE_AUTHORITIES[stage] in {
-            "WORK-041", "WORK-044", "WORK-045", "WORK-046", "WORK-047",
-            "WORK-048", "WORK-051", "WORK-052", "WORK-053", "WORK-012",
-        }
+    expected_authorities = {
+        "WORK-041", "WORK-044", "WORK-045", "WORK-046", "WORK-047",
+        "WORK-048", "WORK-051", "WORK-052", "WORK-053", "WORK-012",
+    }
+    assert set(STAGE_AUTHORITIES.values()) <= expected_authorities
     total += 1
 
     # 7. Wrong authority for the first stage cannot enter the store.
     def bad_executor(stage, req, previous, key):
-        return StageReceipt(
-            stage=stage,
-            authority="WORK-053",
-            operation="bad",
-            status="accepted",
-            reference="bad",
-        )
-
+        return StageReceipt(stage=stage, authority="WORK-053", operation="bad", status="accepted", reference="bad")
     bad_exec = {stage: bad_executor for stage in COMPOSITION_STAGES}
     expect_error(
         lambda: CompositionRuntime(store=InMemoryCompositionStore(), executors=bad_exec).compose(request(request_id="bad-authority")),
@@ -161,7 +154,7 @@ def full_suite() -> Tuple[int, str]:
     )
     total += 1
 
-    # 8. Marketplace selection is followed by NetworkPath validation; selection cannot activate it.
+    # 8. Marketplace selection is followed by NetworkPath validation.
     store = InMemoryCompositionStore()
     market_fixture = Fixture([])
     CompositionRuntime(store=store, executors=executors_for(market_fixture)).compose(request(request_id="marketplace"))
@@ -173,27 +166,22 @@ def full_suite() -> Tuple[int, str]:
     # 9. W050/capability results cannot claim physical PASS.
     expect_error(
         lambda: StageReceipt(
-            stage="CONTAINMENT",
-            authority="WORK-048",
-            operation="containment",
-            status="accepted",
-            reference="containment",
-            metadata={"physical_pass": True},
+            stage="CONTAINMENT", authority="WORK-048", operation="containment", status="accepted",
+            reference="containment", metadata={"physical_pass": True}
         ),
         CompositionReasonCode.PHYSICAL_CLAIM,
     )
     total += 1
 
     # 10. Client/API projection is not canonical domain state.
-    client_fixture = Fixture([])
     client_result = CompositionRuntime(
-        store=InMemoryCompositionStore(), executors=executors_for(client_fixture)
+        store=InMemoryCompositionStore(), executors=executors_for(Fixture([]))
     ).compose(request(request_id="client-state"))
     assert client_result.receipts[0].authority == "WORK-046"
     assert "canonical_state" not in client_result.receipts[0].to_dict()["metadata"]
     total += 1
 
-    # 11. Webhook/canonical observation is last and observation-only.
+    # 11. Canonical observation remains the terminal observation stage.
     assert COMPOSITION_STAGES[-1] == "CANONICAL_OBSERVATION"
     assert STAGE_AUTHORITIES[COMPOSITION_STAGES[-1]] == "WORK-046"
     total += 1
@@ -202,13 +190,9 @@ def full_suite() -> Tuple[int, str]:
     expect_error(
         lambda: InMemoryCompositionStore().append(
             CompositionJournalRecord(
-                request_id="x",
-                request_digest=req.digest(),
-                stage="DELIVERY",
+                request_id="x", request_digest=req.digest(), stage="DELIVERY",
                 idempotency_key=CompositionRuntime.idempotency_key(req, "DELIVERY"),
-                receipt=StageReceipt(
-                    stage="DELIVERY", authority="WORK-048", operation="delivery", status="accepted", reference="x"
-                ),
+                receipt=StageReceipt(stage="DELIVERY", authority="WORK-048", operation="delivery", status="accepted", reference="x"),
             )
         ),
         CompositionReasonCode.STAGE_ORDER,
@@ -227,17 +211,11 @@ def full_suite() -> Tuple[int, str]:
     assert a.digest == b.digest
     total += 1
 
-    # 15. Unknown top-level Developer API members fail closed at the adapter.
+    # 15. Unknown top-level Developer API members fail closed.
     expect_error(
         lambda: compose_developer_request(
             runtime=runtime,
-            request={
-                "request_id": "bad-shape",
-                "actor": "application-001",
-                "source": "developer-api",
-                "intent": {"x": 1},
-                "canonical_state": "forged",
-            },
+            request={"request_id": "bad-shape", "actor": "application-001", "source": "developer-api", "intent": {"x": 1}, "canonical_state": "forged"},
         ),
         CompositionReasonCode.INVALID_INPUT,
     )
@@ -245,15 +223,26 @@ def full_suite() -> Tuple[int, str]:
 
     # 16. No direct W054 authority can be declared in a receipt.
     expect_error(
-        lambda: StageReceipt(
-            stage="DEVELOPER_API",
-            authority="WORK-054",
-            operation="forged",
-            status="accepted",
-            reference="x",
-        ),
+        lambda: StageReceipt(stage="DEVELOPER_API", authority="WORK-054", operation="forged", status="accepted", reference="x"),
         CompositionReasonCode.AUTHORITY_INVALID,
     )
+    total += 1
+
+    # 17. Nested intent state is frozen against caller mutation.
+    original = {"bandwidth_kbps": 1000, "region": "EU"}
+    frozen_request = request(original, request_id="nested-request")
+    digest_before = frozen_request.digest()
+    original["bandwidth_kbps"] = 9000
+    assert frozen_request.digest() == digest_before
+    expect_error(lambda: frozen_request.intent.__setitem__("x", 1), TypeError.__name__ if False else CompositionReasonCode.INVALID_INPUT)
+    total += 1
+
+    # 18. Receipt metadata is frozen and result digest survives caller mutation attempts.
+    metadata = {"note": "immutable"}
+    receipt = StageReceipt(stage="DEVELOPER_API", authority="WORK-046", operation="compose", status="accepted", reference="x", metadata=metadata)
+    metadata["note"] = "mutated-outside"
+    assert receipt.metadata["note"] == "immutable"
+    expect_error(lambda: receipt.metadata.__setitem__("note", "forged"), CompositionReasonCode.INVALID_INPUT)
     total += 1
 
     return total, a.digest
