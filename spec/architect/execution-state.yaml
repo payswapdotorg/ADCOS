@@ -16,14 +16,14 @@ versions:
   architecture_version_authority: "spec/architecture.md"
   protocol_version_reference: "1.0"
   protocol_version_authority: "spec/schemas/protocol.json"
-  roadmap_version_reference: "1.2"
+  roadmap_version_reference: "1.3"
   roadmap_authority: "spec/architect/roadmap.yaml"
 
 execution:
-  mode: ready
-  active_work_item: null
-  active_authorization: null
-  halted_reason: "R1 is complete under DEC-0083. No implementation authorization exists. R2 awaits a fresh Work Item and authorization."
+  mode: active
+  active_work_item: WORK-054
+  active_authorization: WORK-054-CORE-001
+  halted_reason: null
   next_required_decisions:
     - "Create the governed R2 Work Item for system-composition conformance without introducing a second authority."
     - "Issue exactly one repository-local implementation authorization for the R2 Work Item."

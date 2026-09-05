@@ -2,10 +2,10 @@
 # FROZEN — roadmap version 1.2
 
 schema_version: 2
-roadmap_version: "1.2"
+roadmap_version: "1.3"
 status: FROZEN_AUTHORITATIVE
-supersedes_roadmap_version: "1.1"
-superseding_decision: DEC-0083
+supersedes_roadmap_version: "1.2"
+superseding_decision: DEC-0084
 authority: "spec/architect/roadmap.yaml"
 human_projection: "spec/architect/roadmap.md"
 source_of_truth: repository_only
@@ -37,11 +37,11 @@ governance_rules:
 current_state:
   actual_main_sha: 11bd981612274c69912fad7ea2e0de781514b347
   last_reconciled_snapshot_sha: 11bd981612274c69912fad7ea2e0de781514b347
-  program_state: R2_SYSTEM_COMPOSITION_CONFORMANCE_READY
-  execution_mode: ready
-  active_work_item: null
-  active_authorization: null
-  halt_reason: "R1 reconciliation is complete under DEC-0083. No implementation authorization is active. R2 requires a fresh repository-local Work Item and authorization."
+  program_state: R2_SYSTEM_COMPOSITION_CONFORMANCE_ACTIVE
+  execution_mode: active
+  active_work_item: WORK-054
+  active_authorization: WORK-054-CORE-001
+  halt_reason: "R2 WORK-054 is authorized and active under DEC-0084."
   next_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE
 
 accepted_history:
@@ -126,7 +126,9 @@ roadmap:
     exit_gate: "One fresh clone presents a coherent lifecycle state with no contradictory acceptance claims, the ledger snapshot equals the canonical reconciled checkpoint, and exactly zero active implementation authorizations exist."
 
   - id: R2_SYSTEM_COMPOSITION_CONFORMANCE
-    status: READY
+    status: ACTIVE
+    active_work_item: WORK-054
+    active_authorization: WORK-054-CORE-001
     objective: "Prove the complete commercial/connectivity composition without introducing a second authority."
     chain: "intent -> offer -> eligibility -> reservation/lease -> candidate selection -> NetworkPath validation -> containment -> session -> delivered traffic -> usage -> BILLABLE_FINAL -> allocation -> external payment reference -> reconciliation"
     mandatory_negative_proofs:
