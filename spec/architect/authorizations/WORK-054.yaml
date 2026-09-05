@@ -1,13 +1,13 @@
-# ADCOS Work Item authorization record — WORK-054 active implementation.
-# Issued by DEC-0084 after R1 reconciliation under DEC-0083.
+# ADCOS Work Item authorization record — WORK-054 implementation.
+# Issued by DEC-0084; released by DEC-0085 after acceptance.
 work_item: WORK-054
-status: active
-authorized: true
+status: superseded
+authorized: false
 type: implementation
 authorization_id: "WORK-054-CORE-001"
 authorization_decision: DEC-0084
 baseline_sha: ba3717fad3cc4a5894ff3fece4768e47e7db584c
-review_basis: "R1 is complete under DEC-0083. W044-W053 are accepted and reconciled; R2 is the next program gate. The exact baseline is the freshly re-read post-R1 mainline ba3717fad3cc4a5894ff3fe4768e47e7db584c."
+review_basis: "R1 was complete under DEC-0083. W044-W053 were accepted and reconciled; R2 was opened by DEC-0084."
 dependencies:
   - WORK-041
   - WORK-042
@@ -57,10 +57,11 @@ out_of_scope:
   - "frozen architecture/protocol/wire-schema changes"
   - "modifying spec/architect/ from the implementation PR"
 acceptance_gate:
-  status: "Architect review required after implementation"
+  status: "accepted by DEC-0085"
   required_evidence:
     - "dedicated deterministic end-to-end composition battery"
     - "all mandatory negative proofs with exact authority attribution"
     - "exact reviewed delivery SHA, scope/import audit, CI/provenance, replay and hash-seed determinism"
 handoff: docs/WORK-054-handoff.md
-handoff_required: true
+handoff_required: false
+supersession_decision: DEC-0085
