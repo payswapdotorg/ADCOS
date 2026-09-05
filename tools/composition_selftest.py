@@ -97,7 +97,6 @@ def run_once(seed: Optional[str] = None) -> bytes:
 def full_suite() -> Tuple[int, str]:
     total = 0
 
-    # 1. Positive end-to-end composition follows the frozen chain exactly.
     fixture = Fixture([])
     runtime = CompositionRuntime(store=InMemoryCompositionStore(), executors=executors_for(fixture))
     req = request()
@@ -106,18 +105,15 @@ def full_suite() -> Tuple[int, str]:
     assert [stage for stage, _ in fixture.calls] == list(COMPOSITION_STAGES)
     total += 1
 
-    # 2. Identical request is byte-identical and performs no stage calls.
     before = list(fixture.calls)
     replay = runtime.compose(req)
     assert replay.to_dict() == result.to_dict()
     assert fixture.calls == before
     total += 1
 
-    # 3. Same request identity with changed content fails closed.
     expect_error(lambda: runtime.compose(request({"bandwidth_kbps": 2000})), CompositionReasonCode.REQUEST_CONFLICT)
     total += 1
 
-    # 4. Developer API request shape is the stable composition entry point.
     adapter_fixture = Fixture([])
     adapter_runtime = CompositionRuntime(store=InMemoryCompositionStore(), executors=executors_for(adapter_fixture))
     developer_result = compose_developer_request(
@@ -132,7 +128,6 @@ def full_suite() -> Tuple[int, str]:
     assert developer_result.receipts[0].authority == "WORK-046"
     total += 1
 
-    # 5. Payment is downstream of path, containment, session and delivery.
     payment_result = CompositionRuntime(
         store=InMemoryCompositionStore(), executors=executors_for(Fixture([]))
     ).compose(request(request_id="payment-order"))
@@ -143,7 +138,6 @@ def full_suite() -> Tuple[int, str]:
     assert payment_result.receipts[index["PAYMENT_RECONCILIATION"]].authority == "WORK-044"
     total += 1
 
-    # 6. Stage ownership is a fixed authority map, not caller-declared.
     expected_authorities = {
         "WORK-041", "WORK-044", "WORK-045", "WORK-046", "WORK-047",
         "WORK-048", "WORK-051", "WORK-052", "WORK-053", "WORK-012",
@@ -151,9 +145,9 @@ def full_suite() -> Tuple[int, str]:
     assert set(STAGE_AUTHORITIES.values()) <= expected_authorities
     total += 1
 
-    # 7. Wrong authority for a stage cannot enter the store.
     def bad_executor(stage, req, previous, key):
         return StageReceipt(stage=stage, authority="WORK-053", operation="bad", status="accepted", reference="bad")
+
     bad_exec = {stage: bad_executor for stage in COMPOSITION_STAGES}
     expect_error(
         lambda: CompositionRuntime(store=InMemoryCompositionStore(), executors=bad_exec).compose(request(request_id="bad-authority")),
@@ -161,7 +155,6 @@ def full_suite() -> Tuple[int, str]:
     )
     total += 1
 
-    # 8. Marketplace selection is followed by NetworkPath validation.
     store = InMemoryCompositionStore()
     market_fixture = Fixture([])
     CompositionRuntime(store=store, executors=executors_for(market_fixture)).compose(request(request_id="marketplace"))
@@ -170,7 +163,6 @@ def full_suite() -> Tuple[int, str]:
     assert records[index["NETWORK_PATH_VALIDATION"]].stage == "NETWORK_PATH_VALIDATION"
     total += 1
 
-    # 9. W050/capability results cannot claim physical PASS.
     expect_error(
         lambda: StageReceipt(
             stage="CONTAINMENT", authority="WORK-048", operation="containment", status="accepted",
@@ -180,7 +172,6 @@ def full_suite() -> Tuple[int, str]:
     )
     total += 1
 
-    # 10. Client/API projection is not canonical domain state.
     client_result = CompositionRuntime(
         store=InMemoryCompositionStore(), executors=executors_for(Fixture([]))
     ).compose(request(request_id="client-state"))
@@ -188,12 +179,10 @@ def full_suite() -> Tuple[int, str]:
     assert "canonical_state" not in client_result.receipts[0].to_dict()["metadata"]
     total += 1
 
-    # 11. Canonical observation remains the terminal observation stage.
     assert COMPOSITION_STAGES[-1] == "CANONICAL_OBSERVATION"
     assert STAGE_AUTHORITIES[COMPOSITION_STAGES[-1]] == "WORK-046"
     total += 1
 
-    # 12. Out-of-order records fail closed.
     expect_error(
         lambda: InMemoryCompositionStore().append(
             CompositionJournalRecord(
@@ -206,19 +195,16 @@ def full_suite() -> Tuple[int, str]:
     )
     total += 1
 
-    # 13. Developer intents with reordered object keys have identical request digests.
     r1 = request({"region": "EU", "bandwidth_kbps": 1000}, request_id="determinism")
     r2 = request({"bandwidth_kbps": 1000, "region": "EU"}, request_id="determinism")
     assert r1.digest() == r2.digest()
     total += 1
 
-    # 14. Fresh-world composition produces identical canonical result digests.
     a = CompositionRuntime(store=InMemoryCompositionStore(), executors=executors_for(Fixture([]))).compose(req)
     b = CompositionRuntime(store=InMemoryCompositionStore(), executors=executors_for(Fixture([]))).compose(req)
     assert a.digest == b.digest
     total += 1
 
-    # 15. Unknown top-level Developer API members fail closed.
     expect_error(
         lambda: compose_developer_request(
             runtime=runtime,
@@ -228,23 +214,20 @@ def full_suite() -> Tuple[int, str]:
     )
     total += 1
 
-    # 16. No direct W054 authority can be declared in a receipt.
     expect_error(
         lambda: StageReceipt(stage="DEVELOPER_API", authority="WORK-054", operation="forged", status="accepted", reference="x"),
         CompositionReasonCode.AUTHORITY_INVALID,
     )
     total += 1
 
-    # 17. Nested intent state is frozen against caller mutation.
     original = {"bandwidth_kbps": 1000, "region": "EU"}
     frozen_request = request(original, request_id="nested-request")
     digest_before = frozen_request.digest()
     original["bandwidth_kbps"] = 9000
     assert frozen_request.digest() == digest_before
-    expect_type_error(lambda: frozen_request.intent.__setitem__("x", 1))
+    expect_type_error(lambda: frozen_request.intent.__getitem__("x")) if False else expect_type_error(lambda: frozen_request.intent.__setitem__("x", 1))
     total += 1
 
-    # 18. Receipt metadata is frozen and result state cannot be changed through aliases.
     metadata = {"note": "immutable"}
     receipt = StageReceipt(stage="DEVELOPER_API", authority="WORK-046", operation="compose", status="accepted", reference="x", metadata=metadata)
     metadata["note"] = "mutated-outside"
