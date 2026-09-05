@@ -1,0 +1,61 @@
+# DEC-0088 — R2 acceptance and R3 activation
+# Durable governance decision. Does not change frozen Architecture Version 1.0
+# or Protocol Version 1.0 semantics.
+decision_id: DEC-0088
+date: "2026-09-05"
+type: "governance-transition"
+status: accepted
+owner: "Architect"
+
+subject: "Accept WORK-054 / R2 and activate WORK-055 / R3 Protocol Production Conformance"
+
+facts:
+  w054_pr: 13
+  w054_delivery_sha: "93ad4130f8308832e432ce3e83988f5a6a9b32e3"
+  w054_delivery_parent: "461d1482180222f4b63f780d6d9ea1d54c49d643"
+  w054_merge_sha: "57963858e5a2b9d11faed94b50f94e058cede0a8"
+  w054_acceptance_basis: "Architect acceptance comment on PR #13; sole-Architect acceptance and merge authority applies because GitHub disallows a self-authored APPROVE review."
+  w054_result: "R2 conformance evidence accepted; strict production composition remains BLOCKED_MISSING_AUTHORITY because W048 is accepted-not-restored and the W054 chain correctly fails closed."
+  physical_status: "W040 remains in-review and unaccepted; EVID-007 and EVID-008 remain open PHYSICAL obligations."
+
+transitions:
+  - "R2_SYSTEM_COMPOSITION_CONFORMANCE: ACTIVE -> COMPLETE"
+  - "WORK-054: active -> accepted-merged"
+  - "WORK-054-CORE-001: active -> superseded"
+  - "R3_PROTOCOL_PRODUCTION_CONFORMANCE: AFTER_R2 -> ACTIVE"
+  - "WORK-055-CORE-001: issued as the sole active implementation authorization"
+
+architecture_constraints:
+  architecture_version: "1.0"
+  protocol_version: "1.0"
+  frozen_semantics_unchanged: true
+  acr_required_for_protocol_semantic_change: true
+  exactly_one_active_implementation_authorization: true
+  sole_architect_review_merge_authority: true
+  software_never_promotes_to_physical: true
+  w048_restoration_not_authorized: true
+
+r3_gate: "R3 is the sole next sequential implementation gate. R4 and R5 remain PARALLEL_AFTER_R3 and do not activate until R3 is accepted unless a later durable governance decision explicitly changes sequencing."
+
+w055_objective: "Complete the production protocol conformance layer required before declaring wire compatibility, using the existing frozen protocol contracts and WORK-032 conformance foundation without creating a second protocol authority."
+
+w055_required_coverage:
+  - canonicalization profile
+  - canonical encoding and golden vectors
+  - signature coverage and covered-bytes integrity
+  - version negotiation and downgrade resistance
+  - unknown-field and extension behavior
+  - replay, duplicate, and idempotency semantics
+  - schema evolution and migration vectors
+  - compatibility/incompatibility classification
+  - deterministic digest stability across processes and hash seeds
+  - evidence separation and authority-boundary enforcement
+
+w055_non_authority_rule: "The R3 implementation is a verifier/conformance layer only. It may evaluate the frozen protocol and schema behavior but may not mint protocol vocabulary, redefine authority ownership, create a replacement protocol implementation, or change frozen wire semantics."
+
+baseline: "57963858e5a2b9d11faed94b50f94e058cede0a8"
+
+notes:
+  - "The historical W054 activation decisions DEC-0085 and DEC-0086 are not rewritten."
+  - "W054 provenance is preserved by its delivery and merge SHAs; this transition only changes current lifecycle/authorization projections."
+  - "The inherited governance/spec-check defects observed during W054 are not silently reclassified as W055 implementation requirements; they remain repository governance debt and must be addressed by an explicit governance action if needed."

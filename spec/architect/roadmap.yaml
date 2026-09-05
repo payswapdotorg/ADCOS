@@ -1,7 +1,7 @@
 # ADCOS Authoritative Execution Roadmap
-# FROZEN — roadmap version 1.3 (advanced from 1.2 by DEC-0087, the sequencing
-# correction after R2 activation; a governance/version transition only —
-# Architecture Version 1.0 and Protocol Version 1.0 are unchanged)
+# FROZEN — roadmap version 1.3 (advanced from 1.2 by DEC-0087; DEC-0088 is a
+# lifecycle transition only — Architecture Version 1.0 and Protocol Version 1.0
+# remain unchanged)
 
 schema_version: 2
 roadmap_version: "1.3"
@@ -35,17 +35,17 @@ governance_rules:
   software_never_promotes_to_physical: true
 
 current_state:
-  actual_main_sha: 7e5ef8c930dfaf362481fd6927b5204f6dfb2eab
-  last_reconciled_snapshot_sha: 7e5ef8c930dfaf362481fd6927b5204f6dfb2eab
-  program_state: R2_SYSTEM_COMPOSITION_CONFORMANCE_ACTIVE
+  actual_main_sha: 57963858e5a2b9d11faed94b50f94e058cede0a8
+  last_reconciled_snapshot_sha: 57963858e5a2b9d11faed94b50f94e058cede0a8
+  program_state: R3_PROTOCOL_PRODUCTION_CONFORMANCE_ACTIVE
   execution_mode: implementing
-  active_work_item: WORK-054
-  active_authorization: WORK-054-CORE-001
-  next_gate: R3_PROTOCOL_PRODUCTION_CONFORMANCE
-  reconciliation_note: "R0 was accepted and merged as PR #8 (merge a3391e86851e06032de848e6eb0b4267fa33310a). R1 was completed under DEC-0084 by PR #9 (merge 13bfbda54eece391306ddb774e0700c9d862339a). DEC-0085 activated the fresh WORK-054 R2 System Composition Conformance Work Item and its single implementation authorization. PR #10 then merged the R2 governance activation as 461d1482180222f4b63f780d6d9ea1d54c49d643. DEC-0086 reconciled the post-activation live-main pointer. DEC-0087 now freezes the program sequence as R0 -> R1 -> R2 -> R3 -> R4/R5 -> R6 -> R7 -> R8 -> R9, with R4 and R5 parallel after R3. Architecture Version 1.0 and Protocol Version 1.0 remain unchanged."
+  active_work_item: WORK-055
+  active_authorization: WORK-055-CORE-001
+  next_gate: R4_R5_PARALLEL_AFTER_R3
+  reconciliation_note: "DEC-0088 accepts WORK-054 after PR #13 merge 57963858 and activates WORK-055 as the sole R3 implementation authorization. W048 remains explicitly accepted-not-restored. W040 remains independently in-review and unaccepted. Architecture Version 1.0 and Protocol Version 1.0 remain unchanged."
 
 accepted_history:
-  rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history. R0 (PR #8, merged as a3391e86851e06032de848e6eb0b4267fa33310a) restored the accepted W044-W049 implementation trees onto the current mainline where they belong; their current_mainline flags are reconciled by DEC-0084 without altering any reviewed SHA or accepted merge SHA, and without replacing the original acceptance provenance with the restoration merge. W048 remains explicitly accepted-not-restored."
+  rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history. R0 restored the accepted W044-W049 implementation trees except the explicitly accepted-not-restored W048 material."
   work_items:
     - id: WORK-044
       status: accepted-merged
@@ -72,7 +72,7 @@ accepted_history:
       reviewed_sha: e2af4bd20e403c1d4ee9717f7eea8809c16a53cd
       merge_sha: ce1ccaea328743a05cf8d6fa87a114e69d9e253c
       current_mainline: accepted-not-restored
-      restoration_note: "W048 disposition, exactly as accepted with R0: the W048 sharing/ package, its 8-file containment/ variant, docs/WORK-048-evidence.md, and tools/sharing_selftest.py are not part of the accepted historical restoration tree (7fb47bb, reproduced byte-identically by PR #8) and remain absent from current main; W048's acceptance provenance remains preserved unchanged. Restoring W048's implementation artifacts requires an explicit Architect directive and is not part of WORK-054."
+      restoration_note: "W048 sharing/ and runtime artifacts remain absent from current main; restoring them requires an explicit Architect directive and is not part of WORK-054 or WORK-055."
     - id: WORK-049
       status: accepted-merged
       reviewed_sha: b8cc17ef21f6c38266152552590dc73f80c056ce
@@ -97,6 +97,12 @@ accepted_history:
       reviewed_sha: 4a0021c4d464bf1e0e9d9b29ff8a87ed8eb8146a
       merge_sha: bb29c11c8bba6c9db5b87f85b1d62faad0bf7825
       current_mainline: present
+    - id: WORK-054
+      status: accepted-merged
+      reviewed_sha: 93ad4130f8308832e432ce3e83988f5a6a9b32e3
+      merge_sha: 57963858e5a2b9d11faed94b50f94e058cede0a8
+      current_mainline: present
+      acceptance_decision: DEC-0088
 
 roadmap:
   - id: R0_MAINLINE_RESTORATION
@@ -105,25 +111,30 @@ roadmap:
     required_output: "One verified mainline containing the accepted W044-W050/W051-W053 implementation set and their durable acceptance/governance records."
     implementation_authorization: none
     gate: "Architect verifies exact file set, accepted-head provenance, tree equivalence of recovered packages, no unauthorized semantic delta, and complete repository-local evidence."
-    completion: "Accepted and merged as PR #8 on the exact frozen main 3bdfb6daf50f7c000d29a027584c0de5b376d8a8 (merge a3391e86851e06032de848e6eb0b4267fa33310a, tree 1d16c241d060c9c242f3025ea3afa73464574ccc byte-identical to the historical restoration tree 7fb47bb312708d06f3b3c1ba0496104362c7d135; additive only)."
+    completion: "Accepted and merged as PR #8 on the exact frozen main 3bdfb6daf50f7c000d29a027584c0de5b376d8a8 (merge a3391e86851e06032de848e6eb0b4267fa33310a, tree 1d16c241d060c9c242f3025ea3afa73464574ccc byte-identical to the historical restoration tree 7fb47bb312708d06f3b3c1ba0496104362c7d135)."
 
   - id: R1_GOVERNANCE_RECONCILIATION
     status: COMPLETE
     objective: "Reconcile roadmap, current-state, execution-state, execution-ledger, decisions, authorizations, and evidence projections to the restored mainline."
     constraints: "Preserve every prior decision and reconciliation; never rewrite historical records."
     implementation_authorization: none
-    completion: "Complete under DEC-0084 on the reconciled mainline a3391e86851e06032de848e6eb0b4267fa33310a."
+    completion: "Complete under DEC-0084 on the reconciled mainline a3391e86851e06032de848e6eb0b4267fa33310a8."
 
   - id: R2_SYSTEM_COMPOSITION_CONFORMANCE
-    status: ACTIVE
+    status: COMPLETE
     objective: "Prove the complete commercial/connectivity composition without introducing a second authority."
     work_item: WORK-054
     authorization: WORK-054-CORE-001
-    authorization_decision: DEC-0085
+    authorization_decision: DEC-0086
     authorization_baseline: 13bfbda54eece391306ddb774e0700c9d862339a
     live_implementation_baseline: 461d1482180222f4b63f780d6d9ea1d54c49d643
     baseline_reconciliation_decision: DEC-0086
+    completion_decision: DEC-0088
+    completion_pr: 13
+    completion_delivery_sha: 93ad4130f8308832e432ce3e83988f5a6a9b32e3
+    completion_merge_sha: 57963858e5a2b9d11faed94b50f94e058cede0a8
     chain: "intent -> offer -> eligibility -> reservation/lease -> candidate selection -> NetworkPath validation -> containment -> session -> delivered traffic -> usage -> BILLABLE_FINAL -> allocation -> external payment reference -> reconciliation"
+    result: "Accepted R2 conformance evidence. Strict production composition remains BLOCKED_MISSING_AUTHORITY at W048; production_composition=false."
     mandatory_negative_proofs:
       - "payment success cannot create connectivity"
       - "reservation success cannot imply reachability"
@@ -134,11 +145,16 @@ roadmap:
       - "software evidence cannot close physical evidence"
 
   - id: R3_PROTOCOL_PRODUCTION_CONFORMANCE
-    status: AFTER_R2
+    status: ACTIVE
     objective: "Complete the production conformance layer required before declaring wire compatibility."
-    required: "canonicalization profile, canonical encoding vectors, signature coverage, version negotiation, unknown-field/extensions behavior, replay/idempotency, schema evolution, compatibility and migration vectors, deterministic digest stability"
+    work_item: WORK-055
+    authorization: WORK-055-CORE-001
+    authorization_decision: DEC-0088
+    authorization_baseline: 57963858e5a2b9d11faed94b50f94e058cede0a8
+    required: "canonicalization profile, canonical encoding vectors, signature coverage, version negotiation, unknown-field/extensions behavior, replay/idempotency, schema evolution, compatibility and migration vectors, deterministic digest stability, and authority/evidence separation"
     architecture_rule: "Do not change frozen protocol semantics without the ACR process."
     gate_rule: "R3 is the sole next sequential gate after R2; R4/R5 do not activate before R3 is accepted unless a new durable governance decision changes the program."
+    existing_foundation: "WORK-032 conformance suite and its public deterministic verifier are the mandatory foundation; R3 extends/hardens that conformance layer rather than creating a second protocol authority."
 
   - id: R4_PHYSICAL_CONNECTIVITY_VALIDATION
     status: PARALLEL_AFTER_R3

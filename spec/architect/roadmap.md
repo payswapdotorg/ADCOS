@@ -2,17 +2,19 @@
 
 **FROZEN — Roadmap Version 1.3**
 
-`spec/architect/roadmap.yaml` is the sole canonical program roadmap. This document is its human-readable projection. Neither this file nor the roadmap grants implementation authority. The roadmap version advanced from 1.2 to 1.3 by DEC-0087 — a sequencing/governance transition only; Architecture Version 1.0 and Protocol Version 1.0 are unchanged.
+`spec/architect/roadmap.yaml` is the sole canonical program roadmap. This document is its human-readable projection. Neither this file nor the roadmap grants implementation authority. The roadmap version remains 1.3; DEC-0088 is a lifecycle transition only — Architecture Version 1.0 and Protocol Version 1.0 are unchanged.
 
 ## Current repository state
 
-R2 is active under WORK-054. The live implementation baseline was reconciled by DEC-0086; the sequencing correction in DEC-0087 does not change the active Work Item or authorization.
+R2 is complete and R3 is active under WORK-055. W054 was accepted by the sole Architect and merged as PR #13 (`57963858e5a2b9d11faed94b50f94e058cede0a8`). R3 is authorized from that exact post-W054 baseline by DEC-0088.
 
 **R0 is complete**: the canonical mainline restoration was accepted and merged as PR #8 on the exact frozen main `3bdfb6d` (merge `a3391e8`, tree `1d16c24`, byte-identical to the historical restoration tree `7fb47bb`). W048 remains explicitly accepted-but-not-restored.
 
 **R1 is complete**: the durable governance projections were reconciled by DEC-0084 and merged as PR #9 (`13bfbda`).
 
-**R2 is active**: DEC-0085 activates WORK-054 — System Composition Conformance — with the sole active implementation authorization `WORK-054-CORE-001`; DEC-0086 reconciles its live implementation baseline.
+**R2 is complete**: WORK-054 proved the complete connectivity-commercial chain and the seven mandatory negative proofs. The strict chain remains `BLOCKED_MISSING_AUTHORITY` at W048 because W048 is accepted-not-restored; no W048 implementation was recreated or substituted.
+
+**R3 is active**: DEC-0088 activates WORK-055 — Protocol Production Conformance — with the sole active implementation authorization `WORK-055-CORE-001`.
 
 ## Frozen execution roadmap
 
@@ -24,17 +26,19 @@ Restore the exact accepted W044–W049 implementation packages, evidence manifes
 
 Synchronize the durable governance projections to the restored mainline while preserving prior decisions and provenance.
 
-### R2 — System composition conformance — ACTIVE
+### R2 — System composition conformance — COMPLETE
 
-WORK-054 proves the complete connectivity-commercial chain:
+WORK-054 proved the complete connectivity-commercial chain:
 
 `intent → offer → eligibility → reservation/lease → candidate selection → NetworkPath validation → containment → session → delivered traffic → usage → BILLABLE_FINAL → allocation → external payment reference → reconciliation`
 
-The seven mandatory negative proofs and explicit W048 fail-closed behavior remain controlling acceptance conditions.
+The seven mandatory negative proofs passed. The containment edge correctly failed closed because W048 is absent from current mainline; downstream stages were not entered and no production-composition claim was made.
 
-### R3 — Protocol production conformance — NEXT GATE
+### R3 — Protocol production conformance — ACTIVE
 
-R3 is the **sole next sequential gate after R2**. Complete the production conformance layer required before declaring wire compatibility: canonicalization and canonical encoding profiles, signature coverage, version negotiation, unknown-extension behavior, idempotency/replay, schema evolution, migration compatibility, and deterministic digest stability.
+R3 is the **sole active sequential implementation gate** after R2. WORK-055 must complete the production conformance layer required before declaring wire compatibility: canonicalization and canonical encoding profiles, golden vectors, signature coverage, version negotiation and downgrade resistance, unknown-field/extension behavior, replay/idempotency, schema evolution and migration compatibility, compatibility vectors, deterministic digest stability, and strict evidence/authority separation.
+
+R3 builds on the existing WORK-032 conformance foundation. It is a verifier/evidence layer, not a new protocol authority. Frozen protocol semantics and wire schemas cannot be changed under WORK-055; any such requirement is blocked pending the ACR/change-control process.
 
 ### R4 — Physical connectivity validation — PARALLEL AFTER R3
 

@@ -1,0 +1,82 @@
+# ADCOS Work Item authorization record — WORK-055 active implementation.
+# Issued by DEC-0088 after W054/R2 acceptance.
+work_item: WORK-055
+status: active
+authorized: true
+type: implementation
+authorization_id: "WORK-055-CORE-001"
+authorization_decision: DEC-0088
+superseded_by: null
+supersession_decision: null
+baseline_sha: 57963858e5a2b9d11faed94b50f94e058cede0a8
+review_basis: "DEC-0088 accepts WORK-054/R2 and activates R3. WORK-055 is the sole active implementation authorization and is cut from the actual post-W054 merge mainline 57963858e5a2b9d11faed94b50f94e058cede0a8."
+dependencies:
+  - WORK-003
+  - WORK-004
+  - WORK-005
+  - WORK-007
+  - WORK-011
+  - WORK-012
+  - WORK-015
+  - WORK-016
+  - WORK-017
+  - WORK-029
+  - WORK-032
+  - WORK-054
+authority_inputs:
+  - "Frozen Protocol Version 1.0 contracts and schemas"
+  - "WORK-032 conformance verifier, vector, evidence, and discrimination foundation"
+  - "WORK-003 envelope/serialization/canonicalization authority"
+  - "WORK-004 identity and credential authority"
+  - "WORK-005 capability authority"
+  - "WORK-007 topology/evidence authority"
+  - "WORK-011 routing authority"
+  - "WORK-012 session authority"
+  - "WORK-015 federation authority"
+  - "WORK-016 adapter boundary"
+  - "WORK-017 transport boundary"
+  - "WORK-029 accepted protocol evolution/migration surfaces where present"
+authority_outputs:
+  - "Deterministic protocol production-conformance evidence only; no protocol semantic or business/connectivity authority"
+scope:
+  - "conformance/"
+  - "tools/conformance_selftest.py"
+  - "docs/WORK-055-evidence.md"
+  - "docs/WORK-055-handoff.md"
+  - "conformance/vectors/ (test data only, where required by the existing conformance boundary)"
+acceptance_criteria:
+  - "Canonicalization profile and canonical encoding/golden vectors are explicit and deterministic against the frozen protocol."
+  - "Signature coverage and covered-byte integrity are mechanically tested, including forged/tampered provenance negatives."
+  - "Version negotiation, downgrade resistance, and incompatible-version behavior are covered at the owning frozen boundaries."
+  - "Unknown-field and extension behavior is explicit and fails closed where required by the frozen contract."
+  - "Replay, duplicate, out-of-order, and idempotency behavior is deterministic and authority-safe."
+  - "Schema evolution/migration vectors prove compatible semantic preservation and incompatible transition rejection."
+  - "Compatibility classes and failure reasons are stable and authority-attributed."
+  - "Digest stability is proven across repeated runs, subprocesses, and required PYTHONHASHSEED values."
+  - "Deliberately sabotaged candidates are rejected for every mandatory R3 discrimination category."
+  - "No new protocol authority, semantic change, wire-schema change, or second source of truth is introduced."
+  - "Implementation PR changes remain entirely within the authorized scope and do not modify spec/architect/."
+  - "The evidence report is reproducible from a fresh checkout of the delivery SHA and contains exact vectors, commands, digests, and verdicts."
+out_of_scope:
+  - "changes to frozen protocol semantics or wire schemas"
+  - "ACR/change-control work to revise Architecture Version 1.0 or Protocol Version 1.0"
+  - "WORK-048 restoration/implementation"
+  - "R4 physical connectivity validation or W040 evidence disposition"
+  - "R5 developer platform expansion"
+  - "provider/federation/commercial/economic authority changes"
+  - "new identity/session/routing/transport/policy authority"
+  - "CI governance changes outside the authorized implementation surfaces"
+  - "modifying spec/architect/ from the implementation PR"
+  - "external/network/simulator evidence used as production conformance proof"
+acceptance_gate:
+  status: "Architect adversarial review required after implementation"
+  required_evidence:
+    - "R3 production conformance battery covering all required categories"
+    - "positive and negative golden vectors"
+    - "sabotage/discrimination proofs"
+    - "determinism and hash-seed evidence"
+    - "structure/import/private-access/shadow-authority/vendor/nondeterminism audits"
+    - "scope and ancestry proof from baseline 57963858e5a2b9d11faed94b50f94e058cede0a8"
+    - "explicit proof that no frozen semantic change occurred"
+handoff: spec/architect/work-items/WORK-055.md
+handoff_required: true

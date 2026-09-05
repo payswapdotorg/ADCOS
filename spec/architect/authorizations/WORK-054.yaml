@@ -1,16 +1,22 @@
-# ADCOS Work Item authorization record — WORK-054 active implementation.
-# Issued by DEC-0085 after R1 completion under DEC-0084.
-# DEC-0086 reconciles the live authorization-bearing main baseline after PR #10.
+# ADCOS Work Item authorization record — WORK-054 accepted and superseded.
+# Issued by DEC-0085/DEC-0086; acceptance and supersession recorded by DEC-0088.
 work_item: WORK-054
-status: active
-authorized: true
+status: accepted-merged
+authorized: false
 type: implementation
 authorization_id: "WORK-054-CORE-001"
 authorization_decision: DEC-0086
-superseded_by: null
-supersession_decision: null
+superseded_by: WORK-055
+supersession_decision: DEC-0088
 baseline_sha: 461d1482180222f4b63f780d6d9ea1d54c49d643
-review_basis: "DEC-0085 activated WORK-054 from the R1 snapshot 13bfbda. PR #10 merged that governance activation onto live main as 461d148; DEC-0086 preserves the historical activation decision while reconciling this authorization's implementation baseline to the actual live authorization-bearing main. This remains the single active implementation authorization for WORK-054."
+review_basis: "WORK-054 delivery head 93ad4130f8308832e432ce3e83988f5a6a9b32e3 was reviewed and accepted by the sole Architect; PR #13 merged it as 57963858e5a2b9d11faed94b50f94e058cede0a8. The historical activation baseline and provenance remain unchanged."
+delivery:
+  pr: 13
+  delivery_sha: "93ad4130f8308832e432ce3e83988f5a6a9b32e3"
+  merge_sha: "57963858e5a2b9d11faed94b50f94e058cede0a8"
+  outcome: "accepted-merged"
+  production_composition: false
+  blocking_authority: "WORK-048 accepted-not-restored; W054 chain correctly fails closed"
 dependencies:
   - WORK-041
   - WORK-042
@@ -24,20 +30,6 @@ dependencies:
   - WORK-051
   - WORK-052
   - WORK-053
-authority_inputs:
-  - "WORK-051 CommercialCore"
-  - "WORK-052 UsageLedger"
-  - "WORK-053 EconomicAllocation"
-  - "WORK-044 Payment Provider boundary"
-  - "WORK-045 Eligibility/Trust/Jurisdiction policy"
-  - "WORK-046 Developer API/SDK/Webhook boundary"
-  - "WORK-047 Marketplace selection"
-  - "WORK-048 Provider Sharing/Containment authority where present; absence on current main must fail closed"
-  - "WORK-049 Provider/Buyer client runtime"
-  - "WORK-050 Capability/Isolation matrix"
-  - "WORK-041 NetworkPath/platform boundary"
-  - "WORK-042 Platform events/journal recovery"
-  - "existing accepted session, routing, transport, identity, policy, and delivery evidence authorities"
 authority_outputs:
   - "Deterministic R2 composition conformance evidence only; no canonical business/connectivity authority"
 scope:
@@ -45,29 +37,13 @@ scope:
   - "tools/composition_selftest.py"
   - "docs/WORK-054-evidence.md"
   - "docs/WORK-054-handoff.md"
-acceptance_criteria:
-  - "The canonical composition chain is exercised across the existing authorities without a new authority or shadow state."
-  - "Payment success cannot create connectivity, reservation cannot imply reachability, marketplace discovery cannot activate a path, and W050 capability declarations cannot enforce containment."
-  - "W049 client state cannot become canonical state and API/webhook observation cannot become a second source of truth."
-  - "Missing W048 implementation authority on current main is detected explicitly and cannot be bypassed or silently replaced."
-  - "Software evidence cannot close physical evidence; W040/EVID-007/EVID-008 remain untouched."
-  - "All conformance evidence is deterministic, replayable, idempotent, and stable under PYTHONHASHSEED variation."
-out_of_scope:
+out_of_scope_preserved:
   - "restoring or implementing WORK-048"
-  - "new payment, eligibility, marketplace, developer-platform, client, commercial, usage, or allocation authority"
-  - "new identity/session/routing/path/transport/federation/policy authority"
-  - "physical validation or W040 evidence disposition"
-  - "frozen architecture or protocol changes"
-  - "wire-schema changes"
-  - "modifying spec/architect/ from the implementation PR"
-  - "using historical chat, prompts, issue prose, or superseded branches as authority"
+  - "new authority ownership"
+  - "physical validation/W040 disposition"
+  - "frozen architecture/protocol/wire-schema changes"
+  - "modifying spec/architect/ from implementation PR"
 acceptance_gate:
-  status: "Architect review required after implementation"
-  required_evidence:
-    - "dedicated deterministic R2 composition conformance battery"
-    - "seven mandatory negative proofs"
-    - "explicit W048 fail-closed/absence proof on current main"
-    - "authority ownership/import audit"
-    - "scope audit, CI/provenance, replay/idempotency, PYTHONHASHSEED determinism"
+  status: "accepted by Architect under DEC-0088"
 handoff: spec/architect/work-items/WORK-054.md
 handoff_required: true

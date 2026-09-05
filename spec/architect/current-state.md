@@ -1,59 +1,42 @@
 # ADCOS Current State
 
-**IMPLEMENTING — R2 System Composition Conformance (WORK-054); exactly one active authorization.**
+**IMPLEMENTING — R3 Protocol Production Conformance (WORK-055); exactly one active authorization.**
 
 ## Repository
 
 - Repository: `github.com/payswapdotorg/ADCOS`
-- Current `main`: `461d1482180222f4b63f780d6d9ea1d54c49d643`
-- Reconciled governance snapshot: `13bfbda54eece391306ddb774e0700c9d862339a` (DEC-0084 / PR #9)
-- R2 activation merge: `461d1482180222f4b63f780d6d9ea1d54c49d643` (PR #10 / DEC-0085)
-- Post-activation pointer reconciliation: DEC-0086
+- Post-W054 main baseline: `57963858e5a2b9d11faed94b50f94e058cede0a8`
+- W054 delivery: `93ad4130f8308832e432ce3e83988f5a6a9b32e3`, merged by PR #13 as `57963858e5a2b9d11faed94b50f94e058cede0a8`
+- Governance transition: DEC-0088
 - Architecture: `1.0` frozen
-- Protocol: `1.0`
+- Protocol: `1.0` frozen
 
 ## Program authority
 
-The frozen roadmap is `spec/architect/roadmap.yaml`, Version 1.2. R0 and R1 are complete. R2 is active under DEC-0085, with the live implementation baseline reconciled by DEC-0086, and exactly one implementation authorization. The roadmap is the only program roadmap; chat, issue prose, old handoffs, and external planning documents do not govern execution.
+The frozen roadmap is `spec/architect/roadmap.yaml`, Version 1.3. R0, R1, and R2 are complete. R3 is active under DEC-0088 with exactly one implementation authorization. The roadmap is the only program roadmap; chat, issue prose, old handoffs, and external planning documents do not govern execution.
 
-## R0 — complete
+## R2 — complete
 
-R0 was accepted and merged as PR #8 on the exact frozen main `3bdfb6d`, merge `a3391e86851e06032de848e6eb0b4267fa33310a`; the resulting tree reproduces the accepted restoration state.
+WORK-054 was accepted by the sole Architect after adversarial review and merged as PR #13. The delivery proved the composition chain and mandatory negative invariants while honestly remaining `BLOCKED_MISSING_AUTHORITY` at the W048 containment edge because W048 is accepted-not-restored. W054 did not restore, recreate, mock, or substitute W048.
 
-## R1 — complete
+## R3 — active
 
-R1 was reconciled by DEC-0084 and merged as PR #9, merge `13bfbda54eece391306ddb774e0700c9d862339a`. Its durable reconciliation snapshot remains the governance baseline from which R2 activation was decided.
+DEC-0088 activates WORK-055 — Protocol Production Conformance.
 
-## R2 — active
-
-DEC-0085 activates WORK-054 — System Composition Conformance. DEC-0086 records that PR #10's live merge commit `461d148...` is the actual authorization-bearing main baseline; DEC-0085 itself remains the historical activation decision and is not rewritten.
-
-- Work Item: `WORK-054`
-- Authorization: `WORK-054-CORE-001`
-- Live implementation baseline: `461d1482180222f4b63f780d6d9ea1d54c49d643`
-- Branch: `work-054-system-composition-conformance`
-- Objective: prove the complete commercial/connectivity composition without introducing a second authority.
+- Work Item: `WORK-055`
+- Authorization: `WORK-055-CORE-001`
+- Authorized baseline: `57963858e5a2b9d11faed94b50f94e058cede0a8`
+- Branch: `work-055-protocol-production-conformance`
+- Objective: complete the production conformance layer required before declaring wire compatibility.
 - Execution mode: `implementing`
 
-Required chain:
+Required coverage includes canonicalization profile, canonical encoding/golden vectors, signature coverage, version negotiation and downgrade resistance, unknown-field/extensions behavior, replay/idempotency, schema evolution/migration, compatibility vectors, deterministic digest stability, and evidence/authority separation.
 
-`intent → offer → eligibility → reservation/lease → candidate selection → NetworkPath validation → containment → session → delivered traffic → usage → BILLABLE_FINAL → allocation → external payment reference → reconciliation`
-
-Mandatory negative proofs:
-
-- payment success cannot create connectivity;
-- reservation success cannot imply reachability;
-- marketplace discovery cannot activate a path;
-- W050 capability declaration cannot enforce containment;
-- W049 client state cannot become canonical state;
-- API/webhook observation cannot become a second source of truth;
-- software evidence cannot close physical evidence.
-
-W048 is historically accepted but explicitly `accepted-not-restored` on current main. WORK-054 must fail closed on that absence and must not recreate W048.
+WORK-055 is an evidence/verifier layer. It must not create a second protocol authority or modify frozen semantics. Any required semantic change is blocked pending the ACR/change-control process.
 
 ## Historical accepted delivery state
 
-W044–W047 and W049 restored to current main under R0 with original acceptance provenance preserved. W048 acceptance provenance remains preserved but its implementation artifacts are not part of the accepted restoration tree. W050–W053 remain accepted and present.
+W044–W047 and W049 were restored to current main under R0 with original acceptance provenance preserved. W048 acceptance provenance remains preserved but its implementation artifacts are not part of the accepted restoration tree. W050–W054 are accepted and present. W054's production-composition verdict remains blocked by the missing W048 authority; that is an honest accepted conformance result, not a production claim.
 
 ## Independent physical track
 
@@ -61,13 +44,13 @@ W040 remains `in-review`, unaccepted, and independent. EVID-007 and EVID-008 rem
 
 ## Execution authority
 
-Exactly one implementation authorization is active: `WORK-054-CORE-001`. No historical authorization has been revived. No second authorization may be created while WORK-054 is active.
+Exactly one implementation authorization is active: `WORK-055-CORE-001`. `WORK-054-CORE-001` is superseded under DEC-0088. No second implementation authorization may become active concurrently.
 
-The implementation worker must cut its branch from the exact live authorization-bearing main baseline `461d148...` and may not modify `spec/architect/` from the implementation PR.
+The implementation worker must cut its branch from `57963858e5a2b9d11faed94b50f94e058cede0a8` and may not modify `spec/architect/` from the implementation PR.
 
 ## Next transition
 
-WORK-054 must be implemented, verified, adversarially reviewed by the Architect, and explicitly accepted before R2 can close and any subsequent authorization can issue.
+WORK-055 must be implemented, verified, adversarially reviewed by the Architect, and explicitly accepted before R3 can close and R4/R5 can activate.
 
 ## Source of truth
 
