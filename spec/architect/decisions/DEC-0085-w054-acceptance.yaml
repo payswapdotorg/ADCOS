@@ -1,5 +1,6 @@
 # ADCOS Architect decision record — W054 acceptance.
 # schema: spec/architect/decision-record-template.md; verified by tools/spec_check.py (ARCH-04).
+# Acceptance transition prepared from the exact merged W054 mainline.
 
 decision_id: DEC-0085
 type: acceptance
