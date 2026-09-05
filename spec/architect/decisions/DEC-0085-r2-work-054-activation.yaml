@@ -1,0 +1,51 @@
+# ADCOS Architect decision record.
+# R2 activation after accepted R1 reconciliation.
+# Governance-only: selects and authorizes the first fresh R2 Work Item.
+# No frozen architecture or protocol semantics are changed.
+schema_version: 1
+decision_id: DEC-0085
+type: governance
+work_item: WORK-054
+acr: null
+pr: null
+reviewed_sha: null
+decision: ACCEPTED
+status: ACCEPTED
+reviewer: "Architect (payswapdotorg)"
+timestamp: 2026-09-05T17:35:00Z
+subject: "Activate the fresh R2 System Composition Conformance Work Item after completion of R1"
+context:
+  repository: "github.com/payswapdotorg/ADCOS"
+  baseline_main_sha: 13bfbda54eece391306ddb774e0700c9d862339a
+  architecture_version: "1.0"
+  protocol_version: "1.0"
+  governing_roadmap: "spec/architect/roadmap.yaml"
+  governing_roadmap_version: "1.2"
+  prior_decision: DEC-0084
+  finding: "R1 is complete and the repository is reconciled to main 13bfbda. The frozen roadmap defines R2 System Composition Conformance as the next implementation gate and requires a fresh Work Item plus exactly one repository-local implementation authorization."
+activation:
+  work_item: WORK-054
+  title: "System Composition Conformance"
+  authorization: WORK-054-CORE-001
+  baseline_sha: 13bfbda54eece391306ddb774e0700c9d862339a
+  branch: "work-054-system-composition-conformance"
+  execution_mode: implementing
+  active_authorization_count: 1
+  active_work_item: WORK-054
+objective: "Prove the complete commercial/connectivity composition without introducing a second authority."
+composition_chain: "intent -> offer -> eligibility -> reservation/lease -> candidate selection -> NetworkPath validation -> containment -> session -> delivered traffic -> usage -> BILLABLE_FINAL -> allocation -> external payment reference -> reconciliation"
+mandatory_negative_proofs:
+  - "payment success cannot create connectivity"
+  - "reservation success cannot imply reachability"
+  - "marketplace discovery cannot activate a path"
+  - "W050 capability declaration cannot enforce containment"
+  - "W049 client state cannot become canonical state"
+  - "API/webhook observation cannot become a second source of truth"
+  - "software evidence cannot close physical evidence"
+non_activation_rules:
+  - "W048 is historically accepted but explicitly accepted-not-restored on current main; WORK-054 must detect and fail closed on missing W048 authority and must not recreate it."
+  - "W040 and EVID-007/EVID-008 remain independent physical obligations and are not touched by WORK-054."
+  - "No new canonical state authority may be introduced by WORK-054."
+  - "The implementation PR must not modify spec/architect/."
+architectural_result: "Architecture Version 1.0 and Protocol Version 1.0 remain unchanged. R2 is activated without redesigning the frozen architecture."
+acceptance_condition: "The Architect will accept WORK-054 only from an implementation delivery whose conformance evidence is deterministic, complete for all available authorities, fail-closed for unavailable W048 authority, proves all seven mandatory negative invariants, and preserves the single-authority model."

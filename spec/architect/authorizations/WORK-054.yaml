@@ -1,0 +1,72 @@
+# ADCOS Work Item authorization record — WORK-054 active implementation.
+# Issued by DEC-0085 after R1 completion under DEC-0084.
+work_item: WORK-054
+status: active
+authorized: true
+type: implementation
+authorization_id: "WORK-054-CORE-001"
+authorization_decision: DEC-0085
+superseded_by: null
+supersession_decision: null
+baseline_sha: 13bfbda54eece391306ddb774e0700c9d862339a
+review_basis: "R1 is complete under DEC-0084 and main is the exact R1 merge 13bfbda. R2 is the authoritative next implementation gate. This is the single active implementation authorization for WORK-054."
+dependencies:
+  - WORK-041
+  - WORK-042
+  - WORK-044
+  - WORK-045
+  - WORK-046
+  - WORK-047
+  - WORK-048
+  - WORK-049
+  - WORK-050
+  - WORK-051
+  - WORK-052
+  - WORK-053
+authority_inputs:
+  - "WORK-051 CommercialCore"
+  - "WORK-052 UsageLedger"
+  - "WORK-053 EconomicAllocation"
+  - "WORK-044 Payment Provider boundary"
+  - "WORK-045 Eligibility/Trust/Jurisdiction policy"
+  - "WORK-046 Developer API/SDK/Webhook boundary"
+  - "WORK-047 Marketplace selection"
+  - "WORK-048 Provider Sharing/Containment authority where present; absence on current main must fail closed"
+  - "WORK-049 Provider/Buyer client runtime"
+  - "WORK-050 Capability/Isolation matrix"
+  - "WORK-041 NetworkPath/platform boundary"
+  - "WORK-042 Platform events/journal recovery"
+  - "existing accepted session, routing, transport, identity, policy, and delivery evidence authorities"
+authority_outputs:
+  - "Deterministic R2 composition conformance evidence only; no canonical business/connectivity authority"
+scope:
+  - "composition/"
+  - "tools/composition_selftest.py"
+  - "docs/WORK-054-evidence.md"
+  - "docs/WORK-054-handoff.md"
+acceptance_criteria:
+  - "The canonical composition chain is exercised across the existing authorities without a new authority or shadow state."
+  - "Payment success cannot create connectivity, reservation cannot imply reachability, marketplace discovery cannot activate a path, and W050 capability declarations cannot enforce containment."
+  - "W049 client state cannot become canonical state and API/webhook observation cannot become a second source of truth."
+  - "Missing W048 implementation authority on current main is detected explicitly and cannot be bypassed or silently replaced."
+  - "Software evidence cannot close physical evidence; W040/EVID-007/EVID-008 remain untouched."
+  - "All conformance evidence is deterministic, replayable, idempotent, and stable under PYTHONHASHSEED variation."
+out_of_scope:
+  - "restoring or implementing WORK-048"
+  - "new payment, eligibility, marketplace, developer-platform, client, commercial, usage, or allocation authority"
+  - "new identity/session/routing/path/transport/federation/policy authority"
+  - "physical validation or W040 evidence disposition"
+  - "frozen architecture or protocol changes"
+  - "wire-schema changes"
+  - "modifying spec/architect/ from the implementation PR"
+  - "using historical chat, prompts, issue prose, or superseded branches as authority"
+acceptance_gate:
+  status: "Architect review required after implementation"
+  required_evidence:
+    - "dedicated deterministic R2 composition conformance battery"
+    - "seven mandatory negative proofs"
+    - "explicit W048 fail-closed/absence proof on current main"
+    - "authority ownership/import audit"
+    - "scope audit, CI/provenance, replay/idempotency, PYTHONHASHSEED determinism"
+handoff: spec/architect/work-items/WORK-054.md
+handoff_required: true
