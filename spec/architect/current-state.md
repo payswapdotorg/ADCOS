@@ -16,7 +16,7 @@
 - R0: `COMPLETED` — PR #157
 - R1: `COMPLETED` — DEC-0083 / LEDGER-RECON-024
 - R2: `COMPLETED` — WORK-054 / DEC-0085
-- Governing decisions: `DEC-0081`, `DEC-0082`, `DEC-0083`, `DEC-0084`, `DEC-0085`
+- Governing decisions: `DEC-0081`, `DEC-0082`, `DEC-0083`, `DEC-0084`, `DEC-0085`, `DEC-0084`, `DEC-0085`
 - Active Work Item: none
 - Active authorization: none
 - Active implementation authorization count: zero
