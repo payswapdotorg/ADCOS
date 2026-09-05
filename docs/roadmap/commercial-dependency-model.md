@@ -1,39 +1,19 @@
-# ADCOS Commercial Roadmap — Canonical Roadmap Projection
+# ADCOS Commercial Roadmap — Non-Authoritative Historical Projection
 
-This file is retained as the historical/commercially-focused projection of the ADCOS implementation program. It is **not an independent authority**.
+> **NON-AUTHORITATIVE. DO NOT USE THIS FILE TO DETERMINE WHAT TO BUILD, WHAT IS ACCEPTED, OR WHAT IS AUTHORIZED.**
+>
+> The sole canonical execution roadmap is `spec/architect/roadmap.yaml` (frozen Version 1.0). The human projection is `spec/architect/roadmap.md`.
 
-The sole authoritative implementation roadmap is:
+This file is retained for historical continuity because earlier commercial planning material and reconciliation history are preserved in Git. It is deliberately not a competing source of truth.
 
-- `spec/architect/roadmap.yaml` — machine-readable canonical roadmap and dependency DAG
-- `spec/architect/roadmap.md` — human-readable projection
+## Current rule
 
-Frozen architecture remains authoritative in `spec/architecture.md`, `spec/architecture-lock.md`, `spec/work-items.md`, and `spec/dependency-graph.md`.
+Read `spec/architect/roadmap.yaml` first. It currently declares `CANONICAL_MAINLINE_INTEGRITY_BLOCKED` and the next gate `R0_MAINLINE_RESTORATION`. No implementation Work Item is active.
 
-## Current verified commercial state
+The repository's durable governance package is authoritative. Chat transcripts, issue prose, old handoffs, and this historical projection cannot authorize or reorder implementation.
 
-| Work Item | State | Dependency position |
-|---|---|---|
-| W051 CommercialCore | accepted-merged | chain head |
-| W052 UsageLedger | **active-authorized** | hard dependency on W051; current implementation target |
-| W053 EconomicAllocation | accepted-merged | hard dependency on W051 and W052; no implementation authorization |
-| W044 Payment Provider Adapters | accepted-merged | hard dependencies W051/W053 |
-| W045 Eligibility / Trust / Jurisdiction | accepted-merged | hard dependencies W051/W053/W044 |
-| W046 Developer API / SDK / Webhooks | accepted-merged | hard dependencies W051/W052/W053/W044/W045 |
-| W047 Marketplace Discovery / Proximity / Path Selection | accepted-merged | hard dependencies W051/W044/W045/W046 |
-| W048 Provider Sharing Runtime | accepted-merged | hard dependencies W041/W042/W051; W050 advisory input only |
-| W049 Provider + Buyer Client Runtime | accepted-merged | hard dependencies W046/W047/W048 |
-| W050 Capability / Isolation Matrix | accepted-merged | independent hard dependency set; advisory input to W048/W049 |
+## Historical dependency context
 
-W040 remains an independent physical-evidence track and is not a hard dependency of the commercial program. W043 remains retired/unassigned.
+The canonical commercial chain registered by ACR-011 is W051 → W052 → W053 → W044 → W045 → W046 → W047 → W048 → W049, with W050 independent/advisory and W040 independent physical evidence. The exact current lifecycle and presence of those Work Items are governed by the durable decision, ledger, roadmap, and execution-state records in `spec/architect/`.
 
-## Authority and authorization rule
-
-Commercial roadmap membership does not authorize implementation. The only implementation permission comes from an active repository-local authorization under `spec/architect/authorizations/`, with its governing decision and exact baseline.
-
-At the current checkpoint the sole active implementation authorization is `WORK-052-CORE-001`, issued by DEC-0059 and baseline-reconciled by DEC-0060 / LEDGER-RECON-009. The W052 implementation PR must branch from the exact live authorization-bearing mainline and must not modify `spec/architect/`.
-
-## Historical record
-
-The previous version of this document preserved the 2026-08-31 W041/W042 commercial-era numbering and is retained in Git history. DEC-0052 and the subsequent governance transitions superseded that interpretation. The canonical commercial numbering is now W051/W052/W053, with W041 reserved for NetworkPath and W042 for event-driven platform integration.
-
-The former document's detailed reconciliation history is preserved in Git history and the governing decision/reconciliation records. No historical facts are silently erased; this replacement only removes the possibility of the stale document being mistaken for current authority.
+No new Work Item or architecture change is created by this document.
