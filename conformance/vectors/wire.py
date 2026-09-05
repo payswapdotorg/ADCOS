@@ -41,6 +41,7 @@ from protocol import (
     signature_input_bytes,
     validation_clock,
 )
+from protocol.envelope import KNOWN_FIELDS
 
 from conformance.model import Verdict
 
@@ -402,7 +403,7 @@ def vectors() -> Tuple[ConformanceVector, ...]:
         frozenset({"negative:canonicalization-rejection"} | _PROD),
     ))
 
-    # -- WIRE-011 (CP-11): absent optionals omitted ------------------------
+    # -- WIRE-011 (CP-11): absent optionals omitted; unknowns preserved ----
     def _wire011(world: ConformanceWorld) -> ObservedOutcome:
         with_optional = world.envelope.from_mapping(
             _minimal_envelope_mapping(correlation_id="corr-w055-1")
@@ -422,18 +423,61 @@ def vectors() -> Tuple[ConformanceVector, ...]:
                 False, "optional-dropped",
                 "a present optional member was dropped",
             )
+        # CP-11 second conjunct, verified directly: an unknown
+        # top-level member is preserved verbatim -- never dropped,
+        # re-stamped, nulled, or coerced -- through serialization and
+        # the canonical round trip.
+        unknown_value = {"opaque": [1, {"two": 2}], "keep": "verbatim"}
+        carrier = world.envelope.from_mapping(
+            _minimal_envelope_mapping(**{"x-unknown": unknown_value})
+        )
+        serialized = carrier.to_dict()
+        if serialized.get("x-unknown") != unknown_value:
+            return ObservedOutcome(
+                False, "unknown-not-preserved",
+                "the unknown top-level member was not preserved "
+                "verbatim by the serializer (found %r)"
+                % (serialized.get("x-unknown"),),
+            )
+        roundtrip_bytes = world.envelope.canonical(serialized)
+        if b'"x-unknown"' not in roundtrip_bytes:
+            return ObservedOutcome(
+                False, "unknown-dropped",
+                "the unknown member vanished from the canonical form",
+            )
+        if b'"x-unknown":null' in roundtrip_bytes:
+            return ObservedOutcome(
+                False, "unknown-nulled",
+                "the unknown member was re-stamped as null",
+            )
+        re_parsed = world.envelope.from_mapping(
+            json.loads(roundtrip_bytes.decode("utf-8"))
+        )
+        if re_parsed.to_dict().get("x-unknown") != unknown_value:
+            return ObservedOutcome(
+                False, "unknown-not-roundtripped",
+                "the unknown member did not survive the canonical "
+                "round trip verbatim",
+            )
         return ObservedOutcome(
             True, "absent-omitted",
-            "absent optional members omitted; present ones serialized",
+            "absent optional members omitted, present ones serialized; "
+            "unknown top-level member preserved verbatim through the "
+            "canonical round trip",
         )
 
     out.append(_vector(
         "011", "positive",
-        "CP-11: absent optional members are omitted, never emitted as null",
-        "Envelope with and without correlation_id serialize exactly.",
+        "CP-11: absent optional members are omitted, never emitted as "
+        "null, and unknown top-level members are preserved verbatim",
+        "Envelope with and without correlation_id serialize exactly "
+        "(omitted, not nulled); an unknown top-level member rides "
+        "serialization and the canonical round trip byte-verbatim "
+        "(present, exact value, never re-stamped).",
         ExpectedOutcome(True, frozenset({"absent-omitted"})),
         _wire011,
-        frozenset({"positive:core-behavior"} | _PROD),
+        frozenset({"positive:core-behavior",
+                   "discriminating:unknown-fields"} | _PROD),
     ))
 
     # -- WIRE-012 (CP-12): canonicalization idempotence --------------------
@@ -676,15 +720,53 @@ def vectors() -> Tuple[ConformanceVector, ...]:
             world.envelope.from_mapping(extra_mutated)
         ) == baseline:
             undetected.append("x-extra")
+        # The frozen ``protocol`` member: the envelope constructor
+        # fail-closes on any protocol value other than the frozen
+        # identifier (itself the correct frozen behavior -- the W032
+        # ENV vectors cover that rejection), so a value mutation is
+        # not a constructible Envelope.  The coverage proof for this
+        # member therefore runs at the covered-document level, in two
+        # parts, both against the frozen KNOWN_FIELDS contract that
+        # lists ``protocol`` among the covered members:
+        # (a) presence -- the genuine basis bytes carry the protocol
+        #     member (a basis that silently drops ``protocol`` fails);
+        # (b) mutation -- changing the protocol value inside the
+        #     covered document (signature already removed) changes
+        #     the canonical basis bytes.
+        if b'"protocol":"adcos"' not in baseline:
+            undetected.append("protocol")
+        protocol_mutated = base.to_dict()
+        protocol_mutated.pop("signature", None)
+        protocol_mutated["protocol"] = "adcos-tampered"
+        if world.envelope.canonical(protocol_mutated) == baseline:
+            undetected.append("protocol")
         if undetected:
             return ObservedOutcome(
                 False, "coverage-gap",
                 "mutations undetected in the signature basis: %s"
                 % sorted(undetected),
             )
+        # Completeness audit: the mutation matrix must exercise every
+        # frozen KNOWN_FIELDS member other than ``signature`` (by
+        # value mutation, optional-member mutation, unknown-member
+        # mutation, or the protocol presence/mutation check).  A new
+        # or renamed frozen member would fail here rather than pass
+        # silently unexercised.
+        exercised = set(mutations) | {
+            "correlation_id", "x-extra", "protocol",
+        }
+        unexercised = set(KNOWN_FIELDS) - {"signature"} - exercised
+        if unexercised:
+            return ObservedOutcome(
+                False, "coverage-matrix-incomplete",
+                "frozen KNOWN_FIELDS members not exercised: %s"
+                % sorted(unexercised),
+            )
         return ObservedOutcome(
             True, "full-coverage",
-            "every non-signature member mutation changes the basis",
+            "every non-signature member mutation changes the basis "
+            "(complete over the frozen KNOWN_FIELDS set: %d members "
+            "exercised + protocol presence)" % (len(exercised)),
         )
 
     out.append(_vector(
@@ -692,8 +774,15 @@ def vectors() -> Tuple[ConformanceVector, ...]:
         "signature coverage is complete: mutating any covered member "
         "changes the signature-input bytes",
         "The W003 covered-byte basis includes every member except the "
-        "signature itself (known fields, optionals, unknown members, "
-        "extensions, payload, evidence).",
+        "signature itself. The mutation matrix is audited complete "
+        "against the frozen ``Envelope.KNOWN_FIELDS`` set: value "
+        "mutations (version, message_type, message_id, sender, "
+        "issued_at, expires_at, extensions, payload, evidence), the "
+        "optional correlation_id, unknown preserved members, and the "
+        "frozen protocol member (basis presence + document-level "
+        "value mutation -- the constructor fail-closes on non-frozen "
+        "protocol values, so the envelope-level mutation is not a "
+        "constructible input by design).",
         ExpectedOutcome(True, frozenset({"full-coverage"})),
         _wire017,
         frozenset({"discriminating:signature-coverage"} | _PROD),

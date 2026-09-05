@@ -3,12 +3,37 @@
 Work Item `WORK-055` — authorization `WORK-055-CORE-001` — decision
 `DEC-0088`. Authorized baseline
 `57963858e5a2b9d11faed94b50f94e058cede0a8` (the post-W054-acceptance
-mainline). Worker state after this delivery:
-**WAITING_FOR_ARCHITECT**.
+mainline). Worker state after the round-2 review-correction delivery:
+**WAITING_FOR_ARCHITECT** (re-review at the new exact head of
+PR #15).
 
 The full evidence record is `docs/WORK-055-evidence.md`. This handoff
 identifies the remaining non-production limitations honestly — none of
 them relabeled as passes.
+
+## Review history
+
+- **Round 1** (`372299bfe3b54f79c0238d2927de2224249c4e36`): the
+  implementation delivery. Architect review verdict: **CHANGES
+  REQUIRED** (PR #15, 2026-09-05) — (1) P1 WIRE-017 did not exercise
+  the frozen `protocol` member; (2) P1 the evidence record's
+  file/line accounting (24 files, +3477/−5) and the PR body's (25,
+  +3496/−5) contradicted the actual Git tree (26 files, +3981/−5);
+  (3) P2 the W032 `case_25` output edit made the "W032 unchanged"
+  claim too strong; (4) P2 CP-11's claim was broader than WIRE-011's
+  direct verification; (5) the CI evidence distinction had to be
+  explicit.
+- **Round 2** (the review-correction commit, parent `372299b…`):
+  WIRE-017 now covers `protocol` (basis presence + document-level
+  value mutation) and its mutation matrix is audited complete against
+  the frozen `Envelope.KNOWN_FIELDS`; the battery proves BOTH
+  covered-byte sabotages (payload-drop and protocol-drop) against
+  WIRE-017; WIRE-011 directly verifies unknown top-level-member
+  verbatim preservation (both CP-11 conjuncts); `case_25` was reverted
+  to the byte-original W032 text; the evidence record carries the
+  exact 26-path inventory and totals from the actual Git tree; the
+  worker-local vs CI evidence distinction is explicit (§11 of the
+  evidence record).
 
 ## What was delivered
 
@@ -27,8 +52,12 @@ additive and hardening-only:
    cross-agreement) with stable ids, owning authorities, invariants,
    and outcome classes; the verifier calls only frozen public APIs.
 3. **The WIRE vectors** (`conformance/vectors/wire.py`, 27 vectors,
-   envelope area): canonicalization profile rules, corpus
-   verification, complete signature-coverage and covered-byte
+   envelope area): canonicalization profile rules (with WIRE-011
+   directly verifying both CP-11 conjuncts — absent-optional
+   omission and unknown top-level-member verbatim preservation),
+   corpus verification, complete signature-coverage (the mutation
+   matrix includes the frozen `protocol` member and is audited
+   complete against `Envelope.KNOWN_FIELDS`) and covered-byte
    integrity (end-to-end through the WORK-004 provider seam),
    unknown-field/extension hardening, replay/idempotency hardening,
    and evidence separation (conformance evidence can never become
@@ -39,21 +68,26 @@ additive and hardening-only:
    (forged cross-major selections are non-constructible; downgrade
    plans are refused; non-reversible migrations never reverse), plus
    the negotiation-outcome digest.
-5. **The extended battery**: the 46 WORK-032 cases preserved and
-   passing, plus 17 WORK-055 cases — corpus/profile/W029 digest
-   stability across subprocesses and `PYTHONHASHSEED` 0/1/7919,
-   digest-instability discrimination, seven new R3 sabotage classes
-   (canonicalization ambiguity, covered-byte exclusion, negotiation
-   downgrade, migration best-effort reversal, unsafe unknown-field
-   handling, evidence-as-authority, digest instability), the
-   compatibility-class table, W055 tag coverage, evidence-separation
-   re-proof, and the exact scope/ancestry/frozen-surface audits
-   against the authorized baseline.
+5. **The extended battery**: the 46 WORK-032 cases byte-identical to
+   the accepted WORK-032 delivery and passing, plus 17 WORK-055
+   cases — corpus/profile/W029 digest stability across subprocesses
+   and `PYTHONHASHSEED` 0/1/7919, digest-instability discrimination,
+   seven R3 sabotage families (canonicalization ambiguity,
+   covered-byte exclusion — proven against BOTH a payload-blind and a
+   protocol-blind basis — negotiation downgrade, migration
+   best-effort reversal, unsafe unknown-field handling,
+   evidence-as-authority, digest instability), the compatibility-class
+   table, W055 tag coverage, evidence-separation re-proof, and the
+   exact scope/ancestry/frozen-surface audits against the authorized
+   baseline.
 
-Matrix: 163/163 vectors conformant (63 positive / 100 negative).
-Battery: 63/63. All prior batteries green at the delivery head
-(composition 55/55, upgrade 41/41, spec_check byte-identical to the
-baseline classification).
+Matrix: 163/163 vectors conformant (63 positive / 100 negative;
+round-2 report digest `sha256:f7135f97…`). Battery: 63/63. All prior
+batteries green at the delivery head (composition 55/55, upgrade
+41/41, spec_check byte-identical to the baseline classification). All
+battery/matrix/digest results in the evidence record are
+**worker-local**; CI does not execute the conformance step for this
+PR (inherited spec_check failures — see the evidence record §11).
 
 ## Non-production limitations (not passes)
 

@@ -367,6 +367,24 @@ class _SignatureBlindEnvelope(EnvelopeSurface):
         return canonical_json_bytes(document)
 
 
+class _ProtocolBlindEnvelope(EnvelopeSurface):
+    """R3 covered-byte vulnerability (the frozen protocol member): the
+    signature basis silently drops the frozen ``protocol`` member
+    along with the signature itself, so a basis that never covered
+    ``protocol`` (or a protocol-field tamper at the covered-document
+    level) is invisible to the signing surface.  Review-correction
+    fixture for WIRE-017 (PR #15 round 2: the P1 signature-coverage
+    gap -- the round-1 mutation matrix never exercised ``protocol``)."""
+
+    def signature_input(self, envelope: Any) -> bytes:
+        from protocol import canonical_json_bytes
+
+        document = envelope.to_dict()
+        document.pop("signature", None)
+        document.pop("protocol", None)  # the vulnerability
+        return canonical_json_bytes(document)
+
+
 class _ClampingNegotiator:
     """R3 negotiation-downgrade vulnerability: on MAJOR_MISMATCH the
     negotiator 'repairs' the result by falling back to the lower
@@ -841,8 +859,8 @@ def case_25_dependency_attribution(results: List[Result]) -> None:
     else:
         results.append(ok(
             "case_25_dependency_attribution",
-            "all %d declared dependencies attributed (%s)"
-            % (len(expected), ", ".join(sorted(expected))),
+            "all nine declared dependencies attributed "
+            "(%s)" % ", ".join(sorted(expected)),
         ))
 
 
@@ -1523,11 +1541,50 @@ def case_51_sabotage_canonicalization(results: List[Result]) -> None:
 
 
 def case_52_sabotage_signature_coverage(results: List[Result]) -> None:
-    """52. R3 discriminating: covered-byte exclusion is detected."""
-    results.append(_sabotage_case(
-        52, "case_52_sabotage_signature_coverage", "W055-CNF-WIRE-017",
-        lambda: _world_with(envelope=_SignatureBlindEnvelope()),
-    ))
+    """52. R3 discriminating: covered-byte exclusion -- a dropped
+    covered member (payload, or the frozen protocol member) -- is
+    detected."""
+    vector_id = "W055-CNF-WIRE-017"
+    candidates = (
+        ("payload-blind", _SignatureBlindEnvelope()),
+        ("protocol-blind", _ProtocolBlindEnvelope()),
+    )
+    problems: List[str] = []
+    detected: List[str] = []
+    for label, candidate in candidates:
+        genuine_first = _run_one(vector_id, ConformanceWorld())
+        sabotaged = _run_one(vector_id, _world_with(envelope=candidate))
+        genuine_again = _run_one(vector_id, ConformanceWorld())
+        if genuine_first.verdict is not Verdict.CONFORMANT:
+            problems.append(
+                "%s: genuine world failed first (%s)"
+                % (label, genuine_first.reason_class)
+            )
+            continue
+        if sabotaged.verdict is Verdict.CONFORMANT:
+            problems.append(
+                "%s stayed CONFORMANT -- the suite is NOT "
+                "discriminating here" % label
+            )
+            continue
+        if genuine_again.verdict is not Verdict.CONFORMANT:
+            problems.append(
+                "%s: genuine world failed after sabotage (%s)"
+                % (label, genuine_again.reason_class)
+            )
+            continue
+        detected.append("%s %s" % (label, sabotaged.reason_class))
+    if problems:
+        results.append(fail(
+            "case_52_sabotage_signature_coverage", "; ".join(problems)
+        ))
+    else:
+        results.append(ok(
+            "case_52_sabotage_signature_coverage",
+            "%s: genuine CONFORMANT -> both sabotaged candidates "
+            "NONCONFORMANT [%s] -> genuine CONFORMANT restored"
+            % (vector_id, "; ".join(detected)),
+        ))
 
 
 # ---------------------------------------------------------------------------

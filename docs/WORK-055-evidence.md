@@ -2,44 +2,82 @@
 
 Work Item: `WORK-055` — authorization `WORK-055-CORE-001` — decision `DEC-0088`.
 
-- Authorized baseline (parent of the delivery): `57963858e5a2b9d11faed94b50f94e058cede0a8`
+- Authorized baseline (ancestor of the delivery): `57963858e5a2b9d11faed94b50f94e058cede0a8`
 - Authorized branch: `work-055-protocol-production-conformance`
-- Delivery commit: recorded at the end of this document (single commit, exact lineage from the baseline).
+- Delivery: two commits on the exact authorized lineage (round 1 —
+  the implementation delivery; round 2 — the review-correction commit
+  responding to the Architect's CHANGES REQUIRED review of PR #15;
+  exact SHAs in §13).
 
 Everything in this record is reproducible from a fresh checkout of the
-delivery commit with a single command per section (Python 3, standard
+delivery head with a single command per section (Python 3, standard
 library only, no network, no wall clock).
 
 ---
 
 ## 1. Delivery shape
 
-One implementation commit on the exact authorized baseline. The full
-delta lies inside the authorized scope:
+The branch carries exactly two commits, both direct descendants of the
+authorized baseline (no rebase, no force over shared work, no other
+ancestry):
 
-| Path | Kind |
-|---|---|
-| `conformance/README.md` | modified (W055 section appended) |
-| `conformance/__init__.py` | modified (additive exports: golden-corpus + profile sections; every W032 symbol unchanged) |
-| `conformance/model.py` | modified (additive `W055_REQUIRED_NEGATIVE_TAGS` / `W055_REQUIRED_DISCRIMINATION_TAGS`; W032 vocabularies unchanged) |
-| `conformance/profile.py` | added (production canonicalization profile) |
-| `conformance/golden.py` | added (golden-vector corpus loader/verifier) |
-| `conformance/vectors/__init__.py` | modified (registers the wire module) |
-| `conformance/vectors/wire.py` | added (27 envelope-area R3 vectors) |
-| `conformance/vectors/data/w055-gld-*.json` | added (16 golden-vector data files, test data only) |
-| `tools/conformance_selftest.py` | extended (W032 cases 1–46 preserved; W055 cases 47–63 added) |
+1. **Round 1 — implementation delivery**
+   `372299bfe3b54f79c0238d2927de2224249c4e36` (parent:
+   `57963858e5a2b9d11faed94b50f94e058cede0a8`; 26 files, +3981/−5 —
+   the exact Git measurement of that commit).
+2. **Round 2 — review-correction commit** on top of round 1 (same
+   PR lineage, per the repository's correction-round precedent),
+   addressing the five review findings of PR #15: the WIRE-017
+   `protocol`-member coverage gap, the evidence accounting errors, the
+   W032 `case_25` edit, the CP-11/WIRE-011 traceability over-claim,
+   and the CI-vs-local evidence distinction.
 
-24 files, +3477/−5. Frozen surfaces untouched: `spec/` (root documents,
-`schemas/`, `architect/`), `protocol/`, `upgrade/`, W040/W048, all
+The complete changed-path inventory of the exact Git tree
+(`git diff --numstat 57963858e5a2b9d11faed94b50f94e058cede0a8 <head>`):
+
+| Path | Kind | Δ lines |
+|---|---|---|
+| `conformance/README.md` | modified (W055 section appended; round 2: covered-byte row names both dropped-member fixtures) | +71/−0 |
+| `conformance/__init__.py` | modified (additive exports: golden-corpus + profile sections; every W032 symbol unchanged) | +58/−2 |
+| `conformance/golden.py` | added (golden-vector corpus loader/verifier) | +443/−0 |
+| `conformance/model.py` | modified (additive `W055_REQUIRED_NEGATIVE_TAGS` / `W055_REQUIRED_DISCRIMINATION_TAGS`; W032 vocabularies unchanged) | +30/−1 |
+| `conformance/profile.py` | added (production canonicalization profile) | +243/−0 |
+| `conformance/vectors/__init__.py` | modified (registers the wire module) | +8/−0 |
+| `conformance/vectors/data/w055-gld-cnv-0001.json` | added (golden vector, test data) | +13/−0 |
+| `conformance/vectors/data/w055-gld-cnv-0002.json` | added (golden vector, test data) | +13/−0 |
+| `conformance/vectors/data/w055-gld-cnv-0003.json` | added (golden vector, test data) | +13/−0 |
+| `conformance/vectors/data/w055-gld-enc-0001.json` | added (golden vector, test data) | +26/−0 |
+| `conformance/vectors/data/w055-gld-enc-0002.json` | added (golden vector, test data) | +58/−0 |
+| `conformance/vectors/data/w055-gld-enc-0003.json` | added (golden vector, test data) | +32/−0 |
+| `conformance/vectors/data/w055-gld-enc-0004.json` | added (golden vector, test data) | +34/−0 |
+| `conformance/vectors/data/w055-gld-enc-0005.json` | added (golden vector, test data) | +35/−0 |
+| `conformance/vectors/data/w055-gld-enc-0006.json` | added (golden vector, test data) | +30/−0 |
+| `conformance/vectors/data/w055-gld-enc-0007.json` | added (golden vector, test data) | +19/−0 |
+| `conformance/vectors/data/w055-gld-enc-0008.json` | added (golden vector, test data) | +48/−0 |
+| `conformance/vectors/data/w055-gld-sig-0001.json` | added (golden vector, test data) | +25/−0 |
+| `conformance/vectors/data/w055-gld-sig-0002.json` | added (golden vector, test data) | +47/−0 |
+| `conformance/vectors/data/w055-gld-sig-0003.json` | added (golden vector, test data) | +28/−0 |
+| `conformance/vectors/data/w055-gld-xcd-0001.json` | added (golden vector, test data) | +41/−0 |
+| `conformance/vectors/data/w055-gld-xcd-0002.json` | added (golden vector, test data) | +23/−0 |
+| `conformance/vectors/wire.py` | added (27 envelope-area R3 vectors; round 2: WIRE-011 extended to verify unknown-member preservation directly, WIRE-017 extended with the frozen `protocol` member + the `KNOWN_FIELDS` completeness audit) | +1184/−0 |
+| `docs/WORK-055-evidence.md` | added (this record; round 2: corrected delivery-shape accounting, W032 preservation statement, digest, CI classification) | +473/−0 |
+| `docs/WORK-055-handoff.md` | added (handoff; round 2: correction-round disclosure) | +158/−0 |
+| `tools/conformance_selftest.py` | extended (W032 cases 1–46 byte-identical — the round-1 `case_25` output edit was reverted in round 2; W055 cases 47–63, round 2: `case_52` proves both covered-byte sabotages) | +1101/−0 |
+
+**Totals (exact Git tree): 26 files, +4254/−3.** Frozen surfaces
+untouched: `spec/` (root documents, `schemas/`, `architect/`),
+`protocol/`, `upgrade/`, W040/W048, all
 business/economic/identity/session/routing/transport authorities —
 verified mechanically by battery cases 62–63 and by the scope audit
 below.
 
-Reproduce:
+Reproduce (round-1 measurement, round-2 head, and ancestry):
 
 ```bash
-git diff --name-only 57963858e5a2b9d11faed94b50f94e058cede0a8 <delivery-sha>
-git merge-base --is-ancestor 57963858e5a2b9d11faed94b50f94e058cede0a8 <delivery-sha> && echo ANCESTRY-OK
+git diff --numstat 57963858e5a2b9d11faed94b50f94e058cede0a8 <head>    # the table above
+git diff --shortstat 57963858e5a2b9d11faed94b50f94e058cede0a8 <head>   # the totals above
+git log --format='%h parents:%p %s' 57963858e5a2b9d11faed94b50f94e058cede0a8..<head>
+git merge-base --is-ancestor 57963858e5a2b9d11faed94b50f94e058cede0a8 <head> && echo ANCESTRY-OK
 ```
 
 Battery cases 62 (`case_62_w055_pr_delta_scope`) and 63
@@ -60,13 +98,19 @@ python3 tools/conformance_selftest.py
 
 Result at the delivery head: **PASS (63/63 cases)**.
 
-- Cases 1–46 are the complete WORK-032 battery, preserved unchanged
-  (case names, checks, and semantics identical to the accepted
-  WORK-032 delivery; the only edit is `case_25`'s detail string now
-  deriving the dependency count dynamically). The pure WORK-032
-  battery was additionally run at the exact authorized baseline in an
-  isolated worktree: **PASS (46/46)**.
-- Cases 47–63 are the WORK-055 battery (see §4–§9).
+- Cases 1–46 are the complete WORK-032 battery. **The W032 case
+  bodies are byte-identical to the accepted WORK-032 delivery**:
+  the file's changes are confined to the import block (the W055
+  symbols), the W055 sabotage fixture classes, the W055 cases
+  appended after `case_46`, and the `main()` wiring — verified by
+  hunk-level diff against the authorized baseline (round 1 had also
+  edited `case_25`'s output string to a dynamic count; the round-2
+  correction reverted that edit, restoring the byte-identical W032
+  case text, with no behavioral change: the dependency count is
+  still nine). The pure WORK-032 battery was additionally run at the
+  exact authorized baseline in an isolated worktree: **PASS (46/46)**.
+- Cases 47–63 are the WORK-055 battery (see §4–§9). Round 2
+  strengthened `case_52` (see §9).
 
 Two consecutive full runs produced **byte-identical output**
 (`cmp`-verified), and the matrix/corpus/profile digests are identical
@@ -81,7 +125,11 @@ python3 -c "from conformance import build_default_registry, run_matrix, Conforma
 ```
 
 Result: **conformant 163/163** (63 positive / 100 negative vectors);
-report digest `sha256:025f703ef97b26be941977a2767a0e422fd03d6319200a71efea75c4df61f323`.
+report digest `sha256:f7135f974f31ff287ca44d6b52a79e0e772d7c2c128e7f54fb60dafdcc6c6c17`
+(round-2 value: WIRE-011/WIRE-017 were strengthened by the review
+correction, which changes the vector statements and therefore the
+report digest; the counts are unchanged: 163 vectors, 63/100
+polarity split, same ten areas).
 
 Area counts: envelope 44 (17 W032 + 27 W055-CNF-WIRE), identity 13,
 capabilities 14, topology 13, routing 12, sessions 14, federation 15,
@@ -111,7 +159,11 @@ key ordering incl. the UTF-16-vs-code-point discriminating key set
 `\u00xx` (003), literal UTF-8 output (004), bool/null literals (005),
 shortest integer forms (006), float rejection (007), non-string-key
 rejection (008), depth limit (009), unencodable-text rejection (010),
-absent-optional omission (011), idempotence (012). The profile
+absent-optional omission **and unknown-member verbatim preservation**
+(011 — both CP-11 conjuncts are directly verified since the round-2
+correction: an unknown top-level member rides serialization and the
+canonical round trip byte-verbatim, never dropped or re-stamped),
+idempotence (012). The profile
 statement itself is verified complete and attributed (WIRE-013;
 battery case 47).
 
@@ -138,11 +190,17 @@ digest (entries + verification outcomes):
 WIRE-015, battery case 49).
 
 Signature coverage (R3 coverage 3): the covered-byte basis is verified
-complete — mutating every non-signature envelope member (version,
-message_type, message_id, sender, issued_at, expires_at, extensions,
-payload, evidence, correlation_id, unknown extra members) changes the
-signature-input bytes (WIRE-017); the signature member itself is
-excluded exactly, opaque and structured forms alike (WIRE-018);
+complete — the WIRE-017 mutation matrix mutates every non-signature
+envelope member (version, message_type, message_id, sender,
+issued_at, expires_at, extensions, payload, evidence,
+correlation_id, unknown extra members) and, since the round-2
+correction, the frozen `protocol` member as well (basis presence of
+`"protocol":"adcos"` plus a document-level protocol-value mutation,
+because the frozen constructor fail-closes on any other protocol
+value — itself the correct frozen behavior); the matrix is audited
+complete against the frozen `Envelope.KNOWN_FIELDS` set so no covered
+member can pass unexercised (WIRE-017); the signature member itself
+is excluded exactly, opaque and structured forms alike (WIRE-018);
 post-signing tampering of every covered capability-statement member —
 including the signature — never verifies through the WORK-004 provider
 seam (WIRE-019); signature re-attachment to different content is
@@ -179,6 +237,9 @@ Unknown fields (R3 coverage 5, family level): unknown
 `required:true` extensions fail closed (`WIRE-021`, rejected_unknown_required);
 `required:false` and opaque non-object extension values are preserved
 as unknown-optional content (`WIRE-022`/`WIRE-023`, known_additive);
+unknown top-level members are preserved verbatim through
+serialization and the canonical round trip (`WIRE-011`, the CP-11
+second conjunct — directly verified since the round-2 correction);
 unknown message types follow the explicit caller policy (W032
 ENV-008/ENV-009 preserved).
 
@@ -251,7 +312,7 @@ restored:
 | R3 category | Sabotaged candidate | Paired proof | Case |
 |---|---|---|---|
 | canonicalization ambiguity | insertion-order-preserving canonicalizer | W055-CNF-WIRE-001 | 51 |
-| signature/covered-byte tampering | payload silently dropped from the basis | W055-CNF-WIRE-017 | 52 |
+| signature/covered-byte tampering | a covered member silently dropped from the basis — `payload` (round 1) **or the frozen `protocol` member** (round 2) | W055-CNF-WIRE-017 | 52 |
 | version downgrade/incompatible negotiation | cross-major clamping fallback | genuine W029 negotiation table | 54 |
 | unsafe unknown-field handling | required:true silently downgraded | W055-CNF-WIRE-021 | 57 |
 | replay/idempotency failure | replay hook dropped | W032-CNF-ENV-010 | 33 (W032, preserved) |
@@ -262,7 +323,11 @@ restored:
 
 The W032 sabotage classes (capability inflation, authority boundary,
 adapter isolation, forbidden dependency — cases 35–37, 38–42) remain
-and pass. A suite that merely passes the genuine implementation is
+and pass. `case_52` now proves the covered-byte category with TWO
+sabotaged candidates — the round-1 `payload`-drop and the round-2
+`protocol`-drop — each independently flipping W055-CNF-WIRE-017 to
+NONCONFORMANT with the genuine implementation CONFORMANT before and
+after. A suite that merely passes the genuine implementation is
 insufficient; these paired proofs are the W055 answer to that
 requirement.
 
@@ -321,11 +386,11 @@ pass.
 
 ## 11. Scope, ancestry, and frozen-surface proof
 
-- Battery case 62: the 24-path delivery delta lies exactly within the
-  authorized scope (`conformance/`,
-  `tools/conformance_selftest.py`, `docs/WORK-055-*.md`) and the
-  authorized baseline `57963858e5a2b9d11faed94b50f94e058cede0a8` is an
-  ancestor of HEAD.
+- Battery case 62: the delivery delta (26 changed paths at the
+  round-2 head) lies exactly within the authorized scope
+  (`conformance/`, `tools/conformance_selftest.py`,
+  `docs/WORK-055-*.md`) and the authorized baseline
+  `57963858e5a2b9d11faed94b50f94e058cede0a8` is an ancestor of HEAD.
 - Battery case 63: `protocol/`, `upgrade/`, the spec root documents,
   and `spec/schemas/` are byte-identical to the authorized baseline;
   `spec/architect/` differs only from its owning ref (the PR base in
@@ -333,32 +398,50 @@ pass.
   delivery. `spec/architect/` was not modified by this PR.
 - `tools/spec_check.py` output is byte-identical to the authorized
   baseline (11/16 blocking checks, the inherited ARCH-02/04/05/06/07
-  historical failures, ARCH-08 SKIP in the base-less local context) —
-  the W055 delta introduces no new spec_check failure.
+  historical failures, ARCH-03 passing in the local baseline-relative
+  context, ARCH-08 SKIP in the base-less local context) — the W055
+  delta introduces no new spec_check failure.
 - The accepted W054 composition battery is unaffected:
   `tools/composition_selftest.py` → **55/55** (input state preserved).
 
-### CI context (honest classification)
+### CI context (honest classification: worker-local vs CI evidence)
 
-The conformance battery remains wired into CI
-(`python3 tools/conformance_selftest.py` in `.github/workflows/
-spec-check.yml`; verified by battery case 44). In the current PR/main
-jobs the step is unreachable because the first step
-(`tools/spec_check.py`) terminates the job with the inherited
-ARCH-02/04/05/06/07 failures — the same signature as every delivery
-since the R0 restoration (including the accepted W054 PR #13). The
-operative evidence for R3 is this repository-local record, run from
-the delivery commit.
+**Every result in this record is repository-local worker evidence,
+executed from the working tree / delivery commits in this repository.
+None of it is CI-derived evidence.** The conformance battery step
+remains wired into CI (`python3 tools/conformance_selftest.py` in
+`.github/workflows/spec-check.yml`; verified by battery case 44), but
+in the live PR #15 workflow the job terminates at the first step
+(`tools/spec_check.py`) with the inherited governance failures
+(ARCH-02/03/04/05/06/07 in the PR merge context) **before the
+conformance step executes** — the same signature as every delivery
+since the R0 restoration (including the accepted W054 PR #13), and
+repairing those inherited failures is outside the W055 authorized
+scope. Consequently:
+
+- the **63/63 battery result, the matrix/corpus/profile/W029 digests,
+  the repeat runs, the hash-seed matrix, and the prior-battery runs
+  (§12) are worker-local**, each reproducible from a fresh checkout of
+  the delivery head with the exact commands in this record;
+- **CI contributes no conformance evidence for this PR** — the CI
+  status of PR #15 reflects the inherited spec_check failures only,
+  and must not be read as either supporting or contradicting the R3
+  conformance claims;
+- closing R3 on the strength of CI is therefore not claimed; the
+  operative evidence is this repository-local record.
 
 ---
 
-## 12. Reproduction summary (fresh checkout of the delivery commit)
+## 12. Reproduction summary (fresh checkout of the delivery head;
+worker-local execution — see §11 for the CI/local distinction)
 
 ```bash
 python3 tools/conformance_selftest.py          # 63/63 PASS (byte-identical repeats)
+PYTHONHASHSEED=0 python3 tools/conformance_selftest.py    # 63/63 (seeds 0/1/7919/unset)
 python3 tools/composition_selftest.py          # 55/55 PASS (W054 input state intact)
 python3 tools/upgrade_selftest.py              # 41/41 PASS (W029 authority intact)
 python3 tools/spec_check.py                    # identical to the baseline classification
+git diff --numstat 57963858e5a2b9d11faed94b50f94e058cede0a8 HEAD  # the §1 inventory
 python3 -c "..."                               # matrix digest (§3), corpus digest (§5)
 ```
 
@@ -367,14 +450,24 @@ claim. No simulator or reference implementation is used as
 interoperability proof. Conformance evidence remains subordinate to
 the frozen protocol authorities.
 
-## 13. Delivery commit
+## 13. Delivery record
 
-- Parent (authorized baseline): `57963858e5a2b9d11faed94b50f94e058cede0a8`
-  (verified: `git rev-parse HEAD~1`)
-- Delivery: exactly ONE commit on the branch
-  `work-055-protocol-production-conformance` (the exact delivery SHA is
-  recorded in the PR body, the PR head, and the worker worklog; the
-  battery's scope/ancestry cases verify the lineage mechanically on
-  every run, so the claim does not depend on this document)
-- No rebase, no force over shared work: the branch is a plain child of
-  the authorized baseline.
+- Ancestor (authorized baseline):
+  `57963858e5a2b9d11faed94b50f94e058cede0a8` — verified mechanically
+  on every battery run (case 62: `git merge-base --is-ancestor`).
+- Round 1 — implementation delivery:
+  `372299bfe3b54f79c0238d2927de2224249c4e36` (parent: the authorized
+  baseline; 26 files, +3981/−5), superseded by round 2 in response to
+  the Architect's CHANGES REQUIRED review of PR #15; the SHA remains
+  quoted here as the reviewed round-1 artifact.
+- Round 2 — review-correction head: exactly one additional commit on
+  the same branch/PR lineage (parent: `372299b…`), carrying the five
+  corrections of the review. The exact head SHA is recorded in the PR
+  body, the PR head, and the worker worklog; the battery's
+  scope/ancestry cases verify the lineage mechanically on every run,
+  so the claim does not depend on this document.
+- Lineage discipline: no rebase, no force over shared work, no
+  cherry-picks from superseded branches — the correction is a plain
+  child of the reviewed round-1 commit on the authorized lineage
+  (the same correction-round pattern as the accepted W052
+  PR #149 lineage).

@@ -168,8 +168,10 @@ NONCONFORMANT -> genuine CONFORMANT restored):
 
 - canonicalization ambiguity — an insertion-order-preserving
   canonicalizer (family sabotage, paired with W055-CNF-WIRE-001);
-- covered-byte exclusion — payload silently dropped from the
-  signature basis (paired with W055-CNF-WIRE-017);
+- covered-byte exclusion — a covered member (payload, or the frozen
+  `protocol` member) silently dropped from the signature basis
+  (paired with W055-CNF-WIRE-017, whose mutation matrix is audited
+  complete against the frozen `Envelope.KNOWN_FIELDS` set);
 - unsafe unknown-field handling — required:true extensions silently
   downgraded to optional (paired with W055-CNF-WIRE-021);
 - evidence-as-authority — a CONFORMANT conformance report verdict
