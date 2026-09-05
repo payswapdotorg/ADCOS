@@ -1,26 +1,22 @@
 # ADCOS Authoritative Roadmap
 
-**FROZEN — Roadmap Version 1.1**
+**FROZEN — Roadmap Version 1.2**
 
 `spec/architect/roadmap.yaml` is the sole canonical program roadmap. This document is its human-readable projection. Neither this file nor the roadmap grants implementation authority.
 
 ## Current repository state
 
-Canonical live `main`: `09d77dae84b430ad4a6bb22a6f01c2b7d8533cdd`.
+Canonical reconciled `main` checkpoint: `338af793923e1267ff3523de4310be273d75a2cd`.
 
-R0 mainline restoration is complete at `7fb47bb312708d06f3b3c1ba0496104362c7d135`. The current governance checkpoint advanced main only; it introduced no implementation.
+R0 mainline restoration is complete at `7fb47bb312708d06f3b3c1ba0496104362c7d135`. R1 governance reconciliation is complete under `DEC-0083`; the reconciled snapshot is the `338af793` checkpoint.
 
 ## Current execution gate
 
-**R1 — Governance Reconciliation: BLOCKED.**
+**R2 — System Composition Conformance: READY.**
 
-The remaining blockers are:
+R1 is closed. W044-W049 lifecycle records are reconciled to their durable accepted delivery history, W050 is accepted by DEC-0083 on its exact final delivery head with the permanent 76/76 SOFTWARE battery, governance projections are aligned, and no implementation authorization is active.
 
-1. Reconcile the execution ledger's W044-W049 lifecycle records against their durable accepted delivery history without rewriting historical records.
-2. Resolve W050 acceptance provenance. W050 implementation-stage artifacts and its permanent deterministic battery are present, but the current authoritative decision/ledger chain does not contain a discrete corroborated W050 acceptance decision. Acceptance is not inferred.
-3. Keep roadmap, execution-state, current-state, decisions, ledger, and authorizations mutually consistent.
-
-No Work Item is active. No implementation authorization is active. Implementation remains stopped.
+No Work Item is active. No implementation authorization is active. Product implementation is gated only by creation and authorization of the next repository-local R2 Work Item.
 
 ## Frozen execution roadmap
 
@@ -30,19 +26,21 @@ Restore accepted W044-W049 artifacts without unrelated ancestry or frozen semant
 
 Completion: PR #157 merged as `7fb47bb312708d06f3b3c1ba0496104362c7d135`.
 
-### R1 — Governance reconciliation — CURRENT BLOCKING GATE
+### R1 — Governance reconciliation — COMPLETE
 
 Bring durable lifecycle and decision projections into one coherent state. Preserve every previous decision and reconciliation. Do not manufacture acceptance from implementation, CI, issue prose, or chat.
 
-Exit gate: fresh-clone sufficiency, ledger/current-state/roadmap agreement on the exact mainline, W044-W049 lifecycle records reconciled, W050 acceptance disposition explicit, and exactly zero active implementation authorizations.
+Closure: `DEC-0083` and `LEDGER-RECON-024`. Exactly zero active implementation authorizations at the reconciled checkpoint.
 
-### R2 — System composition conformance
+### R2 — System composition conformance — CURRENT PRODUCT GATE
 
 Prove:
 
 `intent → offer → eligibility → reservation/lease → candidate selection → NetworkPath validation → containment → session → delivered traffic → usage → BILLABLE_FINAL → allocation → external payment reference → reconciliation`
 
 Mandatory negative proofs prevent payment, reservation, discovery, capability declaration, client state, or API/webhook observations from becoming unauthorized connectivity or canonical authority.
+
+R2 requires a fresh repository-local Work Item and exactly one active implementation authorization. Roadmap status alone never authorizes implementation.
 
 ### R3 — Protocol production conformance
 
