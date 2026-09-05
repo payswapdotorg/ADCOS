@@ -1,0 +1,49 @@
+# ADCOS Decision Record — DEC-0081
+# R0 restoration acceptance and R1 reconciliation gate
+
+decision_id: DEC-0081
+type: governance
+status: ACCEPTED
+work_item: null
+date: "2026-09-05"
+subject: "Accept R0 mainline restoration and keep implementation blocked pending durable ledger normalization"
+
+context:
+  governing_roadmap: "spec/architect/roadmap.yaml Version 1.0"
+  r0_restoration_merge: "7fb47bb312708d06f3b3c1ba0496104362c7d135"
+  r0_pr: 157
+  r0_source_tree: "91594464b836492508fd8b33c9763aeb27eb085c"
+  finding: "R0 restored the accepted W044-W049 implementation packages, evidence artifacts, deterministic selftests, and CI invocation wiring onto current mainline. The durable execution ledger still contains the pre-restoration lifecycle representation for W044-W050 and therefore requires explicit reconciliation."
+
+r0_verdict:
+  status: ACCEPTED
+  scope: "Restoration only; no new Work Item implementation; no re-acceptance of W044-W049; no frozen architecture/protocol mutation."
+  exact_merge_sha: "7fb47bb312708d06f3b3c1ba0496104362c7d135"
+  review_basis:
+    - "Clean restoration branch was one commit directly on the frozen mainline."
+    - "Restored package trees were taken from the repository's documented accepted-artifact recovery tree."
+    - "No spec/architect governance files were changed by R0."
+    - "The workflow change restored only the five W044-W049 deterministic battery invocations."
+    - "The recovered selftest/evidence blobs were independently verified against repository history."
+
+r1_gate:
+  status: BLOCKED
+  reason: "execution-ledger.yaml still contains the pre-restoration lifecycle representation for W044-W050. R1 is not complete until that ledger is reconciled through an explicit governance change preserving every historical decision and reconciliation."
+  required: "Normalize the ledger from the live repository ledger as the source document; append a new reconciliation; preserve prior reconciliations and all unrelated Work Item history byte-for-byte."
+  implementation_effect: "No implementation authorization may be issued before R1 is accepted."
+
+source_of_truth_rules:
+  - "Repository Git state and persisted governance artifacts are authoritative."
+  - "Chat history, memory, prompts, issue prose, PR conversation, and external planning documents have zero authority."
+  - "The frozen roadmap remains the sole program roadmap."
+  - "The execution ledger remains lifecycle/history authority."
+  - "Implementation permission remains solely repository-local authorization."
+  - "Exactly one active implementation authorization is permitted; currently zero exist."
+  - "Software evidence never closes physical evidence."
+  - "The Architect is the sole review/acceptance/merge authority."
+
+next_gate: R1_GOVERNANCE_RECONCILIATION
+preservation:
+  - "No historical Git commit is rewritten or erased."
+  - "No accepted delivery is downgraded because artifacts were once absent from main."
+  - "No architecture/protocol semantic change is introduced."
