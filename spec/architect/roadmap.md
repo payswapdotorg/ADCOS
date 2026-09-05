@@ -1,48 +1,51 @@
 # ADCOS Authoritative Roadmap
 
-**FROZEN — Roadmap Version 1.0**
+**FROZEN — Roadmap Version 1.1**
 
 `spec/architect/roadmap.yaml` is the sole canonical program roadmap. This document is its human-readable projection. Neither this file nor the roadmap grants implementation authority.
 
 ## Current repository state
 
-Actual and reconciled `main`: `7fb47bb312708d06f3b3c1ba0496104362c7d135`.
+Canonical mainline after R0 restoration: `7fb47bb312708d06f3b3c1ba0496104362c7d135`.
 
-R0 mainline restoration is complete. The accepted W044-W049 implementation packages, evidence surfaces, selftests, and CI invocation wiring are present on the canonical mainline. The restoration did not modify `spec/architect/`, frozen architecture, or protocol semantics.
+R0 mainline restoration is complete. The accepted W044-W049 implementation packages, evidence surfaces, selftests, and CI invocation wiring are present on the canonical mainline.
 
 ## Current execution gate
 
-**R1 — Governance Reconciliation: BLOCKED pending ledger normalization.**
+**R1 — Governance Reconciliation: BLOCKED.**
 
-The execution ledger still contains the older W044-W050 lifecycle representation. That historical record will not be silently rewritten. R1 must explicitly reconcile it using the live ledger as its source document, preserve all prior reconciliation records, and preserve historical acceptance provenance.
+Two governance conditions remain:
 
-No Work Item is active. No implementation authorization is active. Therefore no implementation may begin.
+1. Reconcile the execution ledger's W044-W049 lifecycle records to the durable accepted history without rewriting prior history.
+2. Resolve W050 acceptance provenance. W050 implementation-stage evidence and its permanent deterministic battery are present, but the current authoritative decision/ledger chain does not contain a discrete corroborated W050 acceptance decision. Acceptance is therefore not inferred.
+
+No Work Item is active. No implementation authorization is active. Implementation remains stopped.
 
 ## Frozen execution roadmap
 
 ### R0 — Canonical accepted-mainline restoration — COMPLETE
 
-Restore the exact accepted W044-W049 implementation packages, evidence manifests, handoffs, and required CI battery wiring onto the authoritative mainline without unrelated ancestry or frozen semantic changes.
+Restore accepted W044-W049 artifacts without unrelated ancestry or frozen semantic changes.
 
 Completion: PR #157 merged as `7fb47bb312708d06f3b3c1ba0496104362c7d135`.
 
 ### R1 — Governance reconciliation — CURRENT BLOCKING GATE
 
-Synchronize the roadmap/current-state/execution-state with the durable lifecycle ledger and decision history. Preserve every prior decision and reconciliation; do not downgrade or invent Work Item history.
+Bring the durable lifecycle and decision projections into one coherent state. Preserve every previous decision and reconciliation. Do not manufacture acceptance from implementation, CI, issue prose, or chat.
 
-Required end state: a fresh clone of `main` gives one coherent program state, zero active implementation authorizations, no contradictory status projections, and a ledger snapshot reconciled to the same canonical mainline.
+Exit gate: fresh-clone sufficiency, ledger/current-state/roadmap agreement on the exact mainline, W044-W049 lifecycle records reconciled, W050 acceptance disposition explicit, and exactly zero active implementation authorizations.
 
 ### R2 — System composition conformance
 
-Prove the complete connectivity-commercial chain:
+Prove:
 
 `intent → offer → eligibility → reservation/lease → candidate selection → NetworkPath validation → containment → session → delivered traffic → usage → BILLABLE_FINAL → allocation → external payment reference → reconciliation`
 
-Mandatory negative proofs prevent payment, reservation, discovery, capability declaration, client state, or API/webhook observations from becoming unauthorized connectivity or canonical authorities.
+Mandatory negative proofs prevent payment, reservation, discovery, capability declaration, client state, or API/webhook observations from becoming unauthorized connectivity or canonical authority.
 
 ### R3 — Protocol production conformance
 
-Complete the production conformance layer required before declaring wire compatibility: canonicalization, canonical encodings, signature coverage, version negotiation, extension behavior, replay/idempotency, schema evolution, migration compatibility, and deterministic digest stability.
+Complete canonicalization, encoding, signature coverage, version negotiation, extension behavior, replay/idempotency, schema evolution, migration compatibility, and deterministic digest conformance before production wire compatibility is declared.
 
 ### R4 — Physical connectivity validation
 
@@ -50,7 +53,7 @@ Continue W040 independently on real hardware/network environments. Software evid
 
 ### R5 — Developer Connectivity Platform
 
-Use the accepted W046 foundation to expose ADCOS as a connectivity platform analogous to Stripe: third-party applications request, manage, and observe connectivity through stable APIs/webhooks without requiring an ADCOS UI or knowledge of provider/access/path/payment internals.
+Use accepted W046 as the foundation for a production developer surface analogous to Stripe: third-party applications request, manage, and observe connectivity through APIs/webhooks without requiring an ADCOS UI or knowledge of provider/access/path/payment internals.
 
 ### R6 — Provider onboarding and federation
 
