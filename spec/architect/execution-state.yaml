@@ -7,8 +7,9 @@ last_updated: "2026-09-05"
 
 repository:
   canonical: "github.com/pectoraux/ADCOS"
-  main_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
-  main_sha_semantics: "Exact canonical mainline after R0_MAINLINE_RESTORATION (PR #157). This governance branch is a pending R1 state update against that mainline."
+  main_sha: 09d77dae84b430ad4a6bb22a6f01c2b7d8533cdd
+  main_sha_semantics: "Exact live mainline after R1 governance checkpoint merge."
+  lifecycle_ledger_snapshot_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
 
 versions:
   architecture_version_reference: "1.0"
@@ -22,11 +23,11 @@ execution:
   mode: blocked
   active_work_item: null
   active_authorization: null
-  halted_reason: "R0 is complete. R1 is blocked pending explicit lifecycle-ledger reconciliation for W044-W049 and a durable acceptance-provenance disposition for W050. No implementation authorization may be issued while either condition remains unresolved."
+  halted_reason: "R0 is complete. R1 remains blocked pending explicit lifecycle-ledger reconciliation for W044-W049 and durable W050 acceptance-provenance resolution. The governance checkpoint itself is complete; no implementation authorization exists."
   next_required_decisions:
     - "Reconcile execution-ledger.yaml from the live repository ledger without rewriting prior history."
     - "Resolve W050 acceptance provenance without inferring acceptance from implementation-stage evidence alone."
-    - "After R1 acceptance, create a governed Work Item/authorization for R2 system composition conformance if the frozen registry can represent it; otherwise use the frozen change-control mechanism."
+    - "Only after R1 acceptance create the governed Work Item/authorization required for R2 system composition conformance."
 
 in_review:
   - work_item: WORK-040
@@ -69,6 +70,12 @@ open_prs:
   - pr: 156
     head: "governance/reinstate-accepted-commercial-implementations"
     disposition: "closed as divergent recovery attempt; superseded by clean R0 PR #157"
+  - pr: 157
+    head: "governance/r0-restoration-clean"
+    disposition: "merged as R0 restoration at 7fb47bb"
+  - pr: 158
+    head: "governance/r1-mainline-reconciliation"
+    disposition: "merged as R1 governance checkpoint at 09d77da"
 
 open_acrs: []
 open_architectural_questions: []
@@ -88,16 +95,17 @@ accepted_acrs:
 accepted_work_items:
   first: "WORK-001"
   last: "WORK-053"
-  note: "WORK-001..WORK-039, WORK-041, WORK-042, W051-W053 are durable accepted-merged history. W044-W049 have durable accepted delivery history and are restored on main by R0, but their current ledger representation still requires reconciliation. W050 implementation is present but acceptance provenance is unresolved per DEC-0082. WORK-040 remains in-review and unaccepted."
+  note: "W001-W039, W041, W042, W051-W053 are durable accepted-merged history. W044-W049 have durable accepted delivery history and are restored on main by R0 but still require lifecycle-ledger reconciliation. W050 implementation is present but acceptance provenance is unresolved by DEC-0082. W040 remains in-review and unaccepted."
 
 mainline_integrity:
   status: R0_RESTORED_R1_PENDING
   restoration_merge_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+  governance_checkpoint_merge_sha: 09d77dae84b430ad4a6bb22a6f01c2b7d8533cdd
   recovered_work_items: [WORK-044, WORK-045, WORK-046, WORK-047, WORK-048, WORK-049]
   recovered_source_tree: "91594464b836492508fd8b33c9763aeb27eb085c"
   restoration_decision: DEC-0081
   provenance_correction_decision: DEC-0082
-  r1_requirement: "Reconcile the execution ledger to the restored accepted history and resolve W050 lifecycle provenance without fabricating acceptance."
+  lifecycle_ledger_status: reconciliation_pending
 
 source_of_truth:
   program_roadmap: "spec/architect/roadmap.yaml"
