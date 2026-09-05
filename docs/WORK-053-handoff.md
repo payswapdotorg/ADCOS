@@ -93,3 +93,157 @@ W053 is SOFTWARE-only control-plane/economic evidence. It must not make or imply
 **Implementation branch:** `work-053-economic-allocation`.
 **Implementation PR:** one PR only.
 **Historical note:** former PR #124 / merge `c9a1f858` belongs to a superseded lineage and is not current implementation state.
+
+---
+
+# Implementation-level handoff (delivered on the W053 branch)
+
+**Appended by the W053 implementation PR under `WORK-053-CORE-001`
+(the W041/W042/W051/W052 precedent: the governance-level handoff
+above stays on main; this section records what was actually
+built).**
+
+## Package / API surface
+
+```
+allocation/
+  errors.py       AllocationError + AllocationReasonCode (27-reason
+                  frozen vocabulary)
+  evidence.py     the external evidence boundary: BillableUsageSnapshot
+                  (the W052 public usage-transaction citation: state,
+                  sealed statement, gross, W052-side compensation DATA),
+                  ExternalReferenceSnapshot (payment / settlement kinds;
+                  identity citations only -- no amounts, no provider
+                  semantics), AllocationEvidenceIndex (the injected
+                  immutable snapshot, fail-closed resolution)
+  model.py        PolicySubjectState (REGISTERED) /
+                  AllocationSubjectState (PLANNED / SETTLED),
+                  AllocationAction (9 actions), the frozen 10-edge
+                  transition table, RoundingMode (floor / half-up /
+                  half-even) + apply_rounding + compute_split (the
+                  exact integer three-way split), AllocationCommand,
+                  AllocationEvent, PolicyVersion (terms-derived
+                  immutable version identity), AllocationSnapshot (the
+                  immutable three-way fact with MECHANICAL conservation
+                  invariants), SettlementAcknowledgement,
+                  PaymentReferenceRecord (DATA), AllocationCompensationRecord
+                  (refund / reversal / chargeback / payout-failure /
+                  dispute), AllocationTransaction (the fold projection),
+                  content-derived ids/digests (WORK-003 canonical JSON)
+  validation.py   admission rules: strict payload shapes, the
+                  payment/settlement/usage kind table
+                  (PAYMENT_NOT_USAGE / SETTLEMENT_NOT_USAGE /
+                  PAYMENT_NOT_SETTLEMENT / SETTLEMENT_NOT_PAYMENT),
+                  usage finality + statement binding, policy resolution
+                  / effective window / split bounds, distribution
+                  discipline, reference correlation, finality and
+                  compensation gates, callback duplicate detection
+  journal.py      AppendOnlyAllocationJournal (hash-chained,
+                  append-only, persist-then-ack) + AllocationStore /
+                  MemoryAllocationStore / FileAllocationStore
+                  (allocation-journal.jsonl)
+  digest.py       state_digest (policy registry + sorted allocation
+                  projections), command_ledger_digest,
+                  evidence_index_digest, assemble_digest_stream
+  ledger.py       AllocationLedger (the public surface) + the SINGLE
+                  fold (apply_record / fold_state over the
+                  AllocationFoldState: policies + allocations) -- which
+                  is also the SINGLE causal-verification function:
+                  replay re-derives every fact identity, event
+                  identity, command/fact binding, walk edge, the
+                  allocation against the injected W052 usage snapshot
+                  (gross / statement / BILLABLE_FINAL) and the folded
+                  policy version (resolution / bounds / effective
+                  window) with the FULL arithmetic re-derivation, and
+                  the external-reference kind/correlation re-resolution
+                  (fail-closed JOURNAL_CORRUPT)
+```
+
+Public API: 75 frozen names (battery case_53 pins them exactly).
+The typed command surface: `register_policy`, `allocate`,
+`acknowledge_settlement`, `record_payment_reference`,
+`record_refund`, `record_reversal`, `record_chargeback`,
+`record_payout_failure`, `record_dispute`; the read surface:
+`policy`, `policies`, `allocation`, `allocations`,
+`allocation_statement` (the deterministic reconciliation
+statement), `command_ledger`, `journal_records`, `journal_digest`,
+`state_digest`, `digest_stream`, `verify_replay`; recovery:
+`AllocationLedger.load`.
+
+## The allocation model
+
+1. The CALLER builds an `AllocationEvidenceIndex` from public
+   reads only (the WORK-052 UsageLedger transaction projection for
+   the state + sealed statement + compensation DATA; the external
+   settlement/payment planes for reference citations) and injects
+   it with the WORK-033 clock seam and a store.
+2. `register_policy` registers one immutable economic policy
+   version. The version id is content-derived over the TERMS ONLY
+   (the ADCOS platform share in basis points, the
+   developer-selectable provider-share constraint bounds, the
+   declared rounding mode, the currency and minor-unit precision,
+   the effective window): identical terms always mean the
+   identical version (re-registration is the idempotent no-op);
+   any term change is a genuinely new version.
+3. `allocate` consumes ONE billable-final usage fact (the ONLY
+   allocation-creating action): the cited usage transaction must
+   be BILLABLE_FINAL in the injected W052 snapshot (payment,
+   reservation, offer, or provider-callback state never creates
+   allocation), the cited sealed statement must match, the cited
+   policy version must be folded and effective at the
+   deterministic instant, and the developer-selected provider
+   share must lie within the policy bounds. The three-way split
+   is the exact integer derivation under the declared rounding
+   mode: adcos = round(distributable x adcos_bps / 10^4); the
+   post-ADCOS residual is split by the provider share; the
+   developer share is the exact remainder -- conservation is
+   mechanical (model invariant + full re-derivation at replay).
+   Exactly one allocation exists per billable-final usage record.
+4. `record_payment_reference` records one external
+   payment-provider callback as DATA: never transitions state,
+   never creates or reprices allocation, never carries amounts or
+   provider semantics; duplicate callbacks are idempotent no-ops
+   and failed/delayed/out-of-order callbacks cannot corrupt
+   canonical allocation state.
+5. `acknowledge_settlement` records the settlement
+   acknowledgement citing an external settlement reference (the
+   explicit PLANNED -> SETTLED transition, exactly once).
+6. `record_refund` / `record_reversal` / `record_chargeback` /
+   `record_payout_failure` / `record_dispute` append compensating
+   allocation events against the settled allocation (bounded by
+   the distributable amount, net never negative, one open
+   dispute, disputes non-monetary).
+7. `allocation_statement` is the deterministic pure read: usage
+   citation -> policy citation -> exact split + conservation ->
+   references -> settlement -> compensations -> net + full audit
+   trail + projection digest.
+
+## Reference boundaries
+
+The ledger cites W052 usage transaction/statement ids, W051
+commercial citations, and external payment/settlement reference
+ids as DATA inside the injected index records; it never
+constructs, queries, or mutates any authority (AST-audited: only
+`protocol.` and `agent.clock` imports are sanctioned; the usage
+family is not importable from allocation/). ADCOS neither
+custodies nor moves regulated funds: the external reference model
+records identity citations only, and no payment-provider-specific
+concept exists anywhere in the canonical allocation model
+(vendor-token AST audit).
+
+## Persistence model
+
+One append-only hash-chained journal
+(`allocation-journal.jsonl` via `FileAllocationStore`): one
+canonical-JSON line per admitted command + its derived fact
+event; record ids bind (sequence, content, prev-link); command
+digests are the durable idempotency ledger; load verifies ids,
+chain, sequence, digests, duplicate command ids, and fails closed
+on non-canonical payload content (tamper/reorder/truncation/
+gap/digest-edit/event-id-edit all fail closed `JOURNAL_CORRUPT`).
+Recovery is journal-first: `AllocationLedger.load` verifies the
+full chain, folds with full causal re-verification (including
+the admission/replay-symmetric usage-finality, policy, split,
+distribution, reference-kind, bound, and duplicate gates), and
+resumes; live state and replayed state are byte-identical by
+construction (the same single `apply_record`).
