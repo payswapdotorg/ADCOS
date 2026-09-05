@@ -12,225 +12,127 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
-      # Uses the runner's preinstalled Python 3 (all tools require only the
-      # standard library and run fully offline — no package installation,
-      # no network access, no external services).
       - name: Run specification consistency checks
         run: python3 tools/spec_check.py
-
       - name: Run experience/learning registry integrity checks
         run: python3 tools/experience_check.py
-
       - name: Run experience/learning registry negative tests
         run: python3 tools/experience_selftest.py
-
       - name: Run specification checker negative tests
         run: python3 tools/spec_check_selftest.py
-
       - name: Run schema/registry consistency checks
         run: python3 tools/schema_check.py
-
       - name: Run schema/registry compatibility tests
         run: python3 tools/schema_selftest.py
-
       - name: Run envelope/serialization tests
         run: python3 tools/envelope_selftest.py
-
       - name: Run identity lifecycle/security tests
         run: python3 tools/identity_selftest.py
-
       - name: Run capability statement/negotiation tests
         run: python3 tools/capability_selftest.py
-
       - name: Run peer discovery tests
         run: python3 tools/discovery_selftest.py
-
       - name: Run evidence-aware topology tests
         run: python3 tools/topology_selftest.py
-
       - name: Run resource model/measurement tests
         run: python3 tools/resource_selftest.py
-
       - name: Run intent/QoS normalization tests
         run: python3 tools/intent_selftest.py
-
       - name: Run policy engine tests
         run: python3 tools/policy_selftest.py
-
       - name: Run path computation/routing tests
         run: python3 tools/routing_selftest.py
-
       - name: Run session lifecycle tests
         run: python3 tools/session_selftest.py
-
       - name: Run multipath session semantics tests
         run: python3 tools/multipath_selftest.py
-
       - name: Run mobility and handover tests
         run: python3 tools/mobility_selftest.py
-
       - name: Run federation protocol tests
         run: python3 tools/federation_selftest.py
-
       - name: Run adapter SDK/runtime tests
         run: python3 tools/adapter_selftest.py
-
       - name: Run secure transport profile tests
         run: python3 tools/transport_selftest.py
-
       - name: Run IP integration boundary tests
         run: python3 tools/ipintegration_selftest.py
-
       - name: Run network path/platform boundary tests
         run: python3 tools/networkpath_selftest.py
-
       - name: Run 5G Core integration boundary tests
         run: python3 tools/fivegc_selftest.py
-
       - name: Run 5G RAN integration boundary tests
         run: python3 tools/ran_selftest.py
-
       - name: Run Wi-Fi/non-3GPP access adapter tests
         run: python3 tools/wifi_selftest.py
-
       - name: Run backhaul adapter family tests
         run: python3 tools/backhaul_selftest.py
-
       - name: Run mesh/relay adapter family tests
         run: python3 tools/mesh_selftest.py
-
       - name: Run distributed-core adapter family tests
         run: python3 tools/distcore_selftest.py
-
       - name: Run service registry/edge compute tests
         run: python3 tools/service_selftest.py
-
       - name: Run telemetry/observability tests
         run: python3 tools/telemetry_selftest.py
-
       - name: Run energy/resilience tests
         run: python3 tools/energy_selftest.py
-
       - name: Run cross-cutting security hardening tests
         run: python3 tools/security_selftest.py
-
       - name: Run upgrade/rollback/compatibility manager tests
         run: python3 tools/upgrade_selftest.py
-
-      # Management and simulator frozen-surface cases historically inspect
-      # the PR delta. That delta does not exist on merged main, so those
-      # comprehensive batteries remain mandatory on pull requests; main
-      # validates their committed CI wiring directly instead of requiring a
-      # nonexistent main-vs-main diff.
       - name: Run management API tests
         if: github.event_name == 'pull_request'
         run: python3 tools/management_selftest.py
-
       - name: Run network/behavior simulator tests
         if: github.event_name == 'pull_request'
         run: python3 tools/simulator_selftest.py
-
       - name: Verify management/simulator CI wiring on main
         if: github.event_name == 'push'
         run: |
           grep -Fq 'python3 tools/management_selftest.py' .github/workflows/spec-check.yml
           grep -Fq 'python3 tools/simulator_selftest.py' .github/workflows/spec-check.yml
-
       - name: Run protocol/adapter conformance suite tests
         run: python3 tools/conformance_selftest.py
-
       - name: Run Linux reference agent tests
         run: python3 tools/agent_selftest.py
-
       - name: Run Raspberry Pi edge gateway tests
         run: python3 tools/edge_selftest.py
-
       - name: Run Android mobile agent tests
         run: python3 tools/mobile_selftest.py
-
       - name: Run Network-in-a-Box appliance tests
         run: python3 tools/appliance_selftest.py
-
       - name: Run Open RAN/Core interop profile tests
         run: python3 tools/oran_selftest.py
-
       - name: Run Future IMT/6G adapter profile tests
         run: python3 tools/imt_selftest.py
-
       - name: Run federation-at-scale tests
         run: python3 tools/scale_selftest.py
-
       - name: Run first-class network path tests
         run: python3 tools/networkpath_selftest.py
-
       - name: Run event-driven platform integration tests
         run: python3 tools/platform_selftest.py
-
       - name: Run commercial core tests
         run: python3 tools/commercial_selftest.py
-
       - name: Run usage ledger tests
         run: python3 tools/usage_selftest.py
-
       - name: Run economic allocation tests
         run: python3 tools/allocation_selftest.py
-
-      # Restored accepted commercial-phase implementation batteries. These
-      # are the exact W044-W049 battery artifacts accepted at their original
-      # delivery heads; only their missing CI invocation wiring is restored
-      # here. No implementation semantics are recreated or modified.
       - name: Run payment provider adapter tests
         run: python3 tools/payment_selftest.py
-
       - name: Run eligibility policy tests
         run: python3 tools/eligibility_selftest.py
-
       - name: Run developer API/SDK/webhook tests
         run: python3 tools/developerapi_selftest.py
-
       - name: Run marketplace discovery tests
         run: python3 tools/marketplace_selftest.py
-
       - name: Run provider/buyer client runtime tests
         run: python3 tools/client_selftest.py
-
-      # Persistent Architect package: authorization provenance for pull
-      # requests. Runs LAST on purpose: the frozen-surface batteries above
-      # detect the origin/main ref to choose their strict context, and this
-      # step is the only one that fetches it. The spec_check run above
-      # reports ARCH-08 as SKIP in the base-less PR checkout; this step
-      # enforces it strictly: an implementation-file delta requires an
-      # ACTIVE authorization inherited byte-identically from the base
-      # (never self-authorized), with the exact recorded baseline and a
-      # scope covering the whole delta. An in-review ledger entry is
-      # descriptive only and is NEVER authorization (PA-001, DEC-0045);
-      # without an active authorization the step fails closed. And
-      # implementation deltas must not modify spec/architect/.
       - name: Verify execution-authorization provenance (PR context)
         if: github.event_name == 'pull_request'
         run: |
           git fetch --no-tags origin main
           python3 tools/spec_check.py --provenance
 
-  # WORK-050 exact-head evidence (independent job, the W048/W049
-  # precedent): the specification job above carries the KNOWN,
-  # INHERITED governance failures (ARCH-02 historical ledger/schema
-  # defects and their prerequisite cascades, plus the ARCH-08
-  # authorization-provenance condition, visible and unmasked here
-  # exactly as on main).  This job runs the permanent W050 platform
-  # capability registry/evaluation/history battery regardless of the
-  # specification job's outcome and never edits, retries, or masks it.
-  # It checks out the EXACT delivered head with full history (the
-  # immutable authorized baseline and the branch-point convention are
-  # ancestors of the head and are therefore present locally) and
-  # fetches the baseline commit as belt-and-braces, exactly like the
-  # accepted W049 client-runtime precedent.  origin/main is
-  # deliberately NOT fetched for this job: it is not an audit
-  # authority for this battery (the battery's frozen-surface, scope,
-  # and authorization-provenance audits are pinned to the immutable
-  # anchors declared by the frozen WORK-050-CORE-001 authorization
-  # record).
   platform-capability-runtime:
     name: Platform capability registry/evaluation/history battery (W050 exact-head)
     runs-on: ubuntu-latest
@@ -238,15 +140,32 @@ jobs:
       - name: Check out the exact delivery head (full history)
         uses: actions/checkout@v4
         with:
-          # the exact PR head (push events: the pushed head) so the
-          # baseline-pinned audits see exactly the delivered tree
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
-
       - name: Fetch the immutable authorized baseline commit
         run: |
           git fetch --no-tags origin deae34612181b9cd0feb4624d7e713adf2801d39 || \
             echo "baseline fetch unavailable (the baseline is already an ancestor of the head)"
-
       - name: Run platform capability registry/evaluation/history tests
         run: python3 tools/platformcaps_selftest.py
+
+  w054-composition-runtime:
+    name: W054 exact-head deterministic composition battery
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact W054 delivery head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Verify W054 implementation scope stays outside governance
+        shell: python3 {0}
+        run: |
+          import subprocess
+          changed = subprocess.check_output([
+              "git", "diff", "--name-only", "origin/main...HEAD"
+          ], text=True).splitlines()
+          forbidden = [p for p in changed if p.startswith("spec/architect/")]
+          assert not forbidden, "W054 implementation PR modified spec/architect/: %r" % forbidden
+      - name: Run W054 composition conformance battery
+        run: python3 tools/composition_selftest.py
