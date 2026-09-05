@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from hashlib import sha256
+from types import MappingProxyType
 from typing import Any, Dict, Mapping, Tuple
 
 from protocol.canonicalization import canonical_json_bytes
@@ -29,7 +30,7 @@ COMPOSITION_STAGES: Tuple[str, ...] = (
     "CANONICAL_OBSERVATION",
 )
 
-STAGE_AUTHORITIES = {
+STAGE_AUTHORITIES = MappingProxyType({
     "DEVELOPER_API": "WORK-046",
     "POLICY_ELIGIBILITY": "WORK-045",
     "OFFER_RESERVATION_LEASE": "WORK-051",
@@ -43,7 +44,7 @@ STAGE_AUTHORITIES = {
     "ALLOCATION": "WORK-053",
     "PAYMENT_RECONCILIATION": "WORK-044",
     "CANONICAL_OBSERVATION": "WORK-046",
-}
+})
 
 
 class CompositionReasonCode:
@@ -84,6 +85,15 @@ def _text(value: object, label: str) -> str:
     return value
 
 
+def _freeze_mapping(value: Mapping[str, Any], label: str) -> Mapping[str, Any]:
+    try:
+        payload = dict(value)
+        canonical_json_bytes(payload)
+    except Exception as exc:
+        raise CompositionError(CompositionReasonCode.INVALID_INPUT, "%s is outside canonical JSON" % label) from exc
+    return MappingProxyType(payload)
+
+
 def _canonical_digest(value: Mapping[str, Any]) -> str:
     return "sha256:" + sha256(canonical_json_bytes(dict(value))).hexdigest()
 
@@ -101,10 +111,7 @@ class CompositionRequest:
         _text(self.source, "source")
         if not isinstance(self.intent, Mapping):
             raise CompositionError(CompositionReasonCode.INVALID_INPUT, "intent must be a mapping")
-        try:
-            canonical_json_bytes(dict(self.intent))
-        except Exception as exc:
-            raise CompositionError(CompositionReasonCode.INVALID_INPUT, "intent is outside canonical JSON") from exc
+        object.__setattr__(self, "intent", _freeze_mapping(self.intent, "intent"))
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -142,15 +149,20 @@ class StageReceipt:
         _text(self.reference, "reference")
         if not isinstance(self.evidence_refs, tuple) or not all(isinstance(v, str) and v for v in self.evidence_refs):
             raise CompositionError(CompositionReasonCode.RECEIPT_INVALID, "evidence_refs must be a tuple of non-empty strings")
-        metadata = {} if self.metadata is None else self.metadata
-        if not isinstance(metadata, Mapping):
+        if self.metadata is None:
+            metadata = {}
+        elif isinstance(self.metadata, Mapping):
+            metadata = dict(self.metadata)
+        else:
             raise CompositionError(CompositionReasonCode.RECEIPT_INVALID, "metadata must be a mapping")
         try:
-            flattened = canonical_json_bytes(dict(metadata)).decode("utf-8")
+            flattened = canonical_json_bytes(metadata).decode("utf-8")
         except Exception as exc:
             raise CompositionError(CompositionReasonCode.RECEIPT_INVALID, "metadata is outside canonical JSON") from exc
         if "PHYSICAL_PASS" in flattened or "physical_pass" in flattened:
             raise CompositionError(CompositionReasonCode.PHYSICAL_CLAIM, "composition receipts cannot claim physical PASS")
+        object.__setattr__(self, "evidence_refs", tuple(self.evidence_refs))
+        object.__setattr__(self, "metadata", MappingProxyType(metadata))
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -158,9 +170,8 @@ class StageReceipt:
             "authority": self.authority,
             "operation": self.operation,
             "status": self.status,
-            "reference": self.reference,
-            "evidence_refs": list(self.evidence_refs),
-            "metadata": dict(self.metadata or {}),
+            "reference": list(self.evidence_refs),
+            "metadata": dict(self.metadata),
         }
 
 
@@ -181,6 +192,7 @@ class CompositionResult:
         expected = _canonical_digest(self.payload_for_digest())
         if self.digest != expected:
             raise CompositionError(CompositionReasonCode.STORE_CORRUPT, "composition digest does not match content")
+        object.__setattr__(self, "receipts", tuple(self.receipts))
 
     def payload_for_digest(self) -> Dict[str, Any]:
         return {
