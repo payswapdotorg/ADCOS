@@ -8,7 +8,7 @@ last_updated: "2026-09-05"
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
   main_sha: 338af793923e1267ff3523de4310be273d75a2cd
-  main_sha_semantics: "Exact live mainline after R1 governance checkpoint merge."
+  main_sha_semantics: "Exact canonical reconciled checkpoint for the new ADCOS development remote."
   lifecycle_ledger_snapshot_sha: 338af793923e1267ff3523de4310be273d75a2cd
 
 versions:
@@ -25,9 +25,8 @@ execution:
   active_authorization: null
   halted_reason: "R1 is complete under DEC-0083. No implementation authorization exists. R2 awaits a fresh Work Item and authorization."
   next_required_decisions:
-    - "Reconcile execution-ledger.yaml from the live repository ledger without rewriting prior history."
-    - "Resolve W050 acceptance provenance without inferring acceptance from implementation-stage evidence alone."
-    - "Only after R1 acceptance create the governed Work Item/authorization required for R2 system composition conformance."
+    - "Create the governed R2 Work Item for system-composition conformance without introducing a second authority."
+    - "Issue exactly one repository-local implementation authorization for the R2 Work Item."
 
 in_review:
   - work_item: WORK-040
@@ -101,6 +100,7 @@ mainline_integrity:
   status: R1_RECONCILED
   restoration_merge_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
   governance_checkpoint_merge_sha: 09d77dae84b430ad4a6bb22a6f01c2b7d8533cdd
+  reconciled_checkpoint_sha: 338af793923e1267ff3523de4310be273d75a2cd
   recovered_work_items: [WORK-044, WORK-045, WORK-046, WORK-047, WORK-048, WORK-049]
   recovered_source_tree: "91594464b836492508fd8b33c9763aeb27eb085c"
   restoration_decision: DEC-0081
