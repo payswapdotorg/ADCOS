@@ -1,9 +1,11 @@
 # ADCOS Authoritative Execution Roadmap
-# FROZEN — roadmap version 1.0
+# FROZEN — roadmap version 1.1
 
 schema_version: 2
-roadmap_version: "1.0"
+roadmap_version: "1.1"
 status: FROZEN_AUTHORITATIVE
+supersedes_roadmap_version: "1.0"
+superseding_decision: DEC-0082
 authority: "spec/architect/roadmap.yaml"
 human_projection: "spec/architect/roadmap.md"
 source_of_truth: repository_only
@@ -33,52 +35,65 @@ governance_rules:
   software_never_promotes_to_physical: true
 
 current_state:
-  actual_main_sha: a7d913385f866df6da890093c26539ad876f3ee4
-  last_reconciled_snapshot_sha: bb29c11c8bba6c9db5b87f85b1d62faad0bf7825
-  program_state: CANONICAL_MAINLINE_INTEGRITY_BLOCKED
+  actual_main_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+  last_reconciled_snapshot_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+  program_state: R1_GOVERNANCE_RECONCILIATION_BLOCKED
   execution_mode: blocked
   active_work_item: null
   active_authorization: null
-  halt_reason: "Current main differs from the last persisted execution snapshot. Durable accepted history proves W044-W049 were accepted, while their implementation artifacts are not all present on current main. No implementation may start until the accepted mainline is restored and the governance projections are reconciled."
-  next_gate: R0_MAINLINE_RESTORATION
+  halt_reason: "R0 is complete. R1 remains blocked because the execution ledger still carries the pre-restoration W044-W050 lifecycle representation, and W050 has implementation-stage evidence but no sufficiently corroborated durable Work Item acceptance record in the authoritative decision/ledger chain. No implementation may begin until both governance conditions are reconciled."
+  next_gate: R1_GOVERNANCE_RECONCILIATION
 
 accepted_history:
-  rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history."
+  rule: "Accepted lifecycle facts remain historical truth; restoration never re-accepts or rewrites them. Where acceptance provenance is not sufficiently corroborated, the roadmap records the uncertainty explicitly and fails closed."
   work_items:
     - id: WORK-044
       status: accepted-merged
       reviewed_sha: 6720d220e390999e17707537ab587c1da3b09eb9
       merge_sha: 90864ac257a3d93d94852cfa3a74577903f508d3
-      current_mainline: missing
+      current_mainline: present
+      restoration_commit: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+      lifecycle_reconciliation: pending
     - id: WORK-045
       status: accepted-merged
       reviewed_sha: 827234ec3a245a6b9f2f2de5d6525afb495684cc
       merge_sha: a789d9b403d0e2a6e05276bb3cdc2b7d092c6d88
-      current_mainline: missing
+      current_mainline: present
+      restoration_commit: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+      lifecycle_reconciliation: pending
     - id: WORK-046
       status: accepted-merged
       reviewed_sha: 09960ea24315e5d0ccfd516d3bdca0802b62d8b7
       merge_sha: f45be6dd0544a2fd6cbc910805def28bbe0c71eb
-      current_mainline: missing
+      current_mainline: present
+      restoration_commit: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+      lifecycle_reconciliation: pending
     - id: WORK-047
       status: accepted-merged
       reviewed_sha: 348154d063c0e0a12d5635cb2093c67a507a4064
       merge_sha: 7bc31f2899307c56639887416d602b41b4c16f43
-      current_mainline: missing
+      current_mainline: present
+      restoration_commit: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+      lifecycle_reconciliation: pending
     - id: WORK-048
       status: accepted-merged
       reviewed_sha: e2af4bd20e403c1d4ee9717f7eea8809c16a53cd
       merge_sha: ce1ccaea328743a05cf8d6fa87a114e69d9e253c
-      current_mainline: missing
+      current_mainline: present
+      restoration_commit: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+      lifecycle_reconciliation: pending
     - id: WORK-049
       status: accepted-merged
       reviewed_sha: b8cc17ef21f6c38266152552590dc73f80c056ce
       merge_sha: 89ad6ff3d168c59256c3e805539eb9ca22f6b3bc
-      current_mainline: missing
+      current_mainline: present
+      restoration_commit: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+      lifecycle_reconciliation: pending
     - id: WORK-050
-      status: accepted-merged
+      status: implementation-present_acceptance-unresolved
       accepted_stage_heads: [4a37408, c5cb509, 279871c, 0fa231c]
       current_mainline: present
+      acceptance_provenance: "Implementation-stage acceptance evidence is present in repository history, including the permanent deterministic W050 battery, but the authoritative current decision registry and execution ledger do not contain a corresponding W050 acceptance decision that can safely be used as the lifecycle authority. No acceptance is inferred."
     - id: WORK-051
       status: accepted-merged
       reviewed_sha: e247b4e32e7b1dc345292af5ad7e1b49297cad6f
@@ -97,17 +112,21 @@ accepted_history:
 
 roadmap:
   - id: R0_MAINLINE_RESTORATION
-    status: BLOCKED_EXECUTION_GATE
+    status: COMPLETED
     objective: "Restore the exact accepted W044-W049 implementation packages and CI/evidence artifacts onto the authoritative mainline without importing unrelated later ancestry or changing frozen semantics."
-    required_output: "One verified mainline containing the accepted W044-W050/W051-W053 implementation set and their durable acceptance/governance records."
+    completion_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
     implementation_authorization: none
-    gate: "Architect verifies exact file set, accepted-head provenance, tree equivalence of recovered packages, no unauthorized semantic delta, and complete repository-local evidence."
+    acceptance: "Architect exact-tree/provenance review; restored branch contained one commit directly on current main and no spec/architect changes."
 
   - id: R1_GOVERNANCE_RECONCILIATION
-    status: AFTER_R0
-    objective: "Reconcile roadmap, current-state, execution-state, execution-ledger, decisions, authorizations, and evidence projections to the restored mainline."
-    constraints: "Preserve every prior decision and reconciliation; never rewrite historical records."
+    status: BLOCKED
+    objective: "Reconcile the durable lifecycle/decision state to the restored mainline without rewriting history or manufacturing acceptance."
     implementation_authorization: none
+    remaining:
+      - "Reconcile execution-ledger W044-W049 lifecycle records using repository-native accepted delivery provenance."
+      - "Resolve W050 acceptance disposition from durable repository evidence or explicitly record it as implementation-present but not accepted."
+      - "Align roadmap, execution-state, current-state, decision index, ledger and authorization projections."
+    exit_gate: "One fresh clone presents a coherent lifecycle state with no contradictory acceptance claims, the ledger snapshot equals the actual canonical mainline, and exactly zero active implementation authorizations exist."
 
   - id: R2_SYSTEM_COMPOSITION_CONFORMANCE
     status: AFTER_R1
@@ -121,6 +140,7 @@ roadmap:
       - "W049 client state cannot become canonical state"
       - "API/webhook observation cannot become a second source of truth"
       - "software evidence cannot close physical evidence"
+    authorization_rule: "R2 execution requires a fresh repository-local Work Item/authorization. Roadmap status alone never authorizes implementation."
 
   - id: R3_PROTOCOL_PRODUCTION_CONFORMANCE
     status: AFTER_R2
@@ -136,28 +156,15 @@ roadmap:
   - id: R5_DEVELOPER_CONNECTIVITY_PLATFORM
     status: AFTER_R2
     objective: "Make ADCOS consumable like Stripe: external applications request and manage connectivity through stable APIs without adopting an ADCOS user interface or knowing provider/access/path/payment implementation details."
-    existing_foundation: "Accepted W046 Developer API/SDK/Webhooks implementation is the base. Future work is production hardening and ecosystem exposure, not reimplementation of its authority."
-    required_surface:
-      - "intent creation"
-      - "offer/quote discovery"
-      - "reservation/lease"
-      - "activation and lifecycle status"
-      - "termination/cancellation"
-      - "usage/finalization projections"
-      - "webhooks/events"
-      - "idempotency and scoped credentials"
-      - "sandbox/production isolation"
-      - "developer-visible canonical reason codes"
+    existing_foundation: "Accepted W046 Developer API/SDK/Webhooks implementation is the base, subject to R1 lifecycle reconciliation."
 
   - id: R6_PROVIDER_ONBOARDING_AND_FEDERATION
     status: AFTER_R5
     objective: "Enable independently operated networks, ISPs, carriers, enterprises, satellite systems, hotspots, mesh operators, and infrastructure owners to expose capacity through ADCOS without surrendering infrastructure authority."
-    required: "adapter certification, capability declaration, commercial contract/profile, policy boundary, service terms, settlement configuration, observability, trust/federation onboarding"
 
   - id: R7_UNIVERSAL_CONNECTIVITY_COMMERCE
     status: AFTER_R6
     objective: "Normalize heterogeneous connectivity resources into programmable offers selected by intent, policy, evidence, availability, quality, geography, and price."
-    principle: "ADCOS coordinates connectivity; it does not need to own the underlying network."
 
   - id: R8_RESILIENCE_MOBILITY_AND_SCALE
     status: AFTER_R7

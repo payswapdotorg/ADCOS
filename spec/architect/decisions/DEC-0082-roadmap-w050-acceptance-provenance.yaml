@@ -1,0 +1,40 @@
+# ADCOS Decision Record — DEC-0082
+# R1 acceptance-provenance correction for WORK-050
+
+decision_id: DEC-0082
+type: governance
+status: ACCEPTED
+work_item: WORK-050
+date: "2026-09-05"
+subject: "Correct the roadmap's W050 status to fail closed until a durable Work Item acceptance record is corroborated"
+
+context:
+  governing_roadmap_previous_version: "1.0"
+  governing_roadmap_new_version: "1.1"
+  current_main_sha: "7fb47bb312708d06f3b3c1ba0496104362c7d135"
+  finding: "Repository history proves that W050 implementation stages were delivered and a permanent deterministic battery exists, but the current authoritative execution ledger and decision registry do not contain a discrete durable W050 acceptance decision. The prior roadmap assertion of accepted-merged therefore exceeds the corroborated lifecycle evidence."
+
+ruling:
+  - "W050 implementation presence is TRUE on the restored mainline."
+  - "W050 acceptance lifecycle is UNRESOLVED until a durable acceptance decision and exact reviewed SHA can be corroborated in repository authority."
+  - "No acceptance is inferred from implementation-stage acceptance comments, activation, CI success, or branch history alone."
+  - "Roadmap Version 1.1 records W050 as implementation-present_acceptance-unresolved and blocks R1 until this disposition is resolved."
+  - "No implementation authorization is created by this decision."
+
+preservation:
+  - "Roadmap Version 1.0 remains preserved in Git history as historical governance state."
+  - "No historical Work Item or decision record is rewritten."
+  - "No frozen architecture or protocol semantics are changed."
+  - "W044-W049 remain accepted historical Work Items; R0 restoration remains accepted."
+
+source_of_truth:
+  repository_only: true
+  chat_dependency: prohibited
+  external_memory_dependency: prohibited
+  issue_prose_authority: prohibited
+  implementation_authority: "spec/architect/authorizations/"
+  lifecycle_authority: "spec/architect/execution-ledger.yaml"
+  program_authority: "spec/architect/roadmap.yaml"
+
+next_gate: R1_GOVERNANCE_RECONCILIATION
+implementation_effect: "STOP"
