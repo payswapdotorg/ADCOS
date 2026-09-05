@@ -88,3 +88,5 @@ Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-
 - `DEC-0083` — W050 acceptance and W044-W049 lifecycle reconciliation; closes R1 and gates R2 behind fresh Work Item authorization.
 
 - `DEC-0084` — registers and authorizes WORK-054 as the active R2 system-composition conformance Work Item.
+
+- `DEC-0085` — accepts WORK-054 and closes R2; releases the W054 authorization and advances the next gate to R3.

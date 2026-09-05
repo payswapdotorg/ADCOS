@@ -1,8 +1,8 @@
 # ADCOS Work Item authorization record — WORK-054 active implementation.
 # Issued by DEC-0084 after R1 reconciliation under DEC-0083.
 work_item: WORK-054
-status: active
-authorized: true
+status: superseded
+authorized: false
 type: implementation
 authorization_id: "WORK-054-CORE-001"
 authorization_decision: DEC-0084
@@ -64,3 +64,4 @@ acceptance_gate:
     - "exact reviewed delivery SHA, scope/import audit, CI/provenance, replay and hash-seed determinism"
 handoff: docs/WORK-054-handoff.md
 handoff_required: true
+supersession_decision: DEC-0085
