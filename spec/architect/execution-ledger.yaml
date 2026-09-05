@@ -955,24 +955,6 @@ work_items:
     merged_at: null
     ci_run: null
     review_rounds: null
-    acceptance_decision: null
-    correction_decisions: []
-    handoff: null
-    handoff_required: false
-    lifecycle: registered
-    note: "registered-only entry added by ACR-011: WORK-050 is formally registered in the frozen registry (Phase 10, canonical commercial phase). Definition source: tracking issue #96 (the canonical definition) and the canonical commercial dependency model. Dependencies (hard): none — exactly the frozen spec/work-items.md declaration. Boundary (LEDGER-RECON-005 §4.2): a capability model consumed BY WORK-048/WORK-049 — NOT an implementation vehicle for WORK-048; the W050 -> W048/W049 edges are advisory capability-input edges, not hard gates (W050 never becomes a blocking dependency of W048/W049). WORK-040 is advisory only (DEC-0051). Activation: the repository-local implementation authorization WORK-050-CORE-001 is issued by DEC-0078 as the single active execution authorization after W049 acceptance (DEC-0078; PR #142 exact reviewed head b8cc17ef21f6c38266152552590dc73f80c056ce, merge 89ad6ff3d168c59256c3e805539eb9ca22f6b3bc, 2026-09-03T17:16:12Z — the Architect merge is the durable acceptance evidence and DEC-0078 is the canonical W049 acceptance record), with issuance baseline 89ad6ff3d168c59256c3e805539eb9ca22f6b3bc (the exact current main at issuance: the W049 acceptance merge mainline the governance transition is cut from; per the DEC-0063/DEC-0066/DEC-0068/DEC-0074/DEC-0077 convention, a follow-up baseline-advancement-only reconciliation may advance the baseline to the exact post-transition governance mainline once the governance PR merges — the W050 implementation branch is then cut from the mainline that carries the authorization record; exactly one implementation PR, no self-authorization, no self-merge); baseline advanced to deae34612181b9cd0feb4624d7e713adf2801d39 by the DEC-0079 baseline-advancement-only reconciliation (LEDGER-RECON-023) after PR #143 merged the activation transition at that exact mainline (2026-09-03T18:58:04Z) — the implementation branch is cut from this reconciled authorized mainline, only after the reconciliation merges and the Architect re-reads and confirms the resulting mainline; frozen scope the versioned platform capability registry, provider/buyer role capability declarations, sharing-mode capability classes, isolation primitive declarations, minimum security/isolation properties, metering capability declarations, lease-enforcement capability declarations, lifecycle/platform constraints, deterministic compatibility evaluation, explicit supported/restricted/unsupported/unknown states, versioned auditable historical decisions, deterministic software evidence, and authority/import/source-boundary audits; dependencies exactly none, per the frozen declaration. No new ACR is manufactured for W050: it is defined under the accepted ACR-009 planning (DEC-0050, PR #82) and remains a capability/isolation declaration boundary, not an enforcement authority — it declares capability as versioned advisory input consumed by W048/W049 and does not implement W048/W049 enforcement (the frozen contract is recorded in spec/architect/authorizations/WORK-050.yaml and docs/WORK-050-handoff.md). This registered-only entry stays descriptive only and records NO delivery for WORK-050: the lifecycle advances through a real delivery under the active authorization, and per PA-001/DEC-0045 an in-review entry is never authorization."
-  - work_item: WORK-050
-    title: "Platform Connectivity Sharing Capability & Isolation Matrix"
-    phase: 10
-    branch: null
-    baseline_sha: null
-    pr: null
-    pr_head: null
-    reviewed_sha: null
-    merge_sha: null
-    merged_at: null
-    ci_run: null
-    review_rounds: null
     acceptance_decision: DEC-0083
     correction_decisions: []
     handoff: null
