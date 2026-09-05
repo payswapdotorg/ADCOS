@@ -1,54 +1,65 @@
 # ADCOS Current State
 
-**BLOCKED — canonical mainline-integrity reconciliation required before implementation.**
+**BLOCKED — R0 restored the accepted mainline artifacts; R1 remains blocked pending durable execution-ledger normalization.**
 
 ## Repository
 
 - Repository: `github.com/pectoraux/ADCOS`
-- Actual `main`: `a7d913385f866df6da890093c26539ad876f3ee4`
-- Last persisted execution snapshot: `bb29c11c8bba6c9db5b87f85b1d62faad0bf7825`
+- Current canonical `main`: `7fb47bb312708d06f3b3c1ba0496104362c7d135`
+- Roadmap: `spec/architect/roadmap.yaml` — **FROZEN, Version 1.0, sole program-roadmap authority**
 - Architecture: `1.0` frozen
 - Protocol: `1.0`
 
-## Program authority
+## Governance state
 
-The frozen roadmap is `spec/architect/roadmap.yaml`, Version 1.0. The immediate gate is `R0_MAINLINE_RESTORATION`. The roadmap is the only program roadmap; chat, issue prose, old handoffs, and external planning documents do not govern execution.
-
-## Execution
-
-- Mode: `blocked`
+- Decision: `DEC-0081`
+- R0: `COMPLETED`
+- R1: `BLOCKED_LEDGER_RECONCILIATION`
 - Active Work Item: none
 - Active authorization: none
-- Governing decision: `DEC-0080`
-- Halt reason: the actual mainline advanced to `a7d9133`, while the persisted snapshot remained `bb29c11`. More importantly, durable repository/GitHub history proves accepted W044-W049 deliveries whose implementation artifacts are not all present on current main. This is a mainline-integrity defect.
+- Exactly zero implementation authorizations are active.
+- The Architect is the sole review, acceptance, and merge authority.
 
-## Durable accepted delivery history requiring restoration
+## Mainline restoration
 
-| Work Item | Reviewed head | Accepted merge | Current mainline |
-|---|---|---|---|
-| W044 | `6720d220e390999e17707537ab587c1da3b09eb9` | `90864ac257a3d93d94852cfa3a74577903f508d3` | missing |
-| W045 | `827234ec3a245a6b9f2f2de5d6525afb495684cc` | `a789d9b403d0e2a6e05276bb3cdc2b7d092c6d88` | missing |
-| W046 | `09960ea24315e5d0ccfd516d3bdca0802b62d8b7` | `f45be6dd0544a2fd6cbc910805def28bbe0c71eb` | missing |
-| W047 | `348154d063c0e0a12d5635cb2093c67a507a4064` | `7bc31f2899307c56639887416d602b41b4c16f43` | missing |
-| W048 | `e2af4bd20e403c1d4ee9717f7eea8809c16a53cd` | `ce1ccaea328743a05cf8d6fa87a114e69d9e253c` | missing |
-| W049 | `b8cc17ef21f6c38266152552590dc73f80c056ce` | `89ad6ff3d168c59256c3e805539eb9ca22f6b3bc` | missing |
-| W050 | accepted staged history | reconstructed implementation | present |
-| W051 | `e247b4e32e7b1dc345292af5ad7e1b49297cad6f` | `41b338080fbeb79627bff45cd79ddf09bf5cbb29` | present |
-| W052 | `7d883b227e9792b98efdbc1916d413491d20d458` | `bcaf0d0677437d1ffca8f5e493cab516c87e7194` | present |
-| W053 | `4a0021c4d464bf1e0e9d9b29ff8a87ed8eb8146a` | `bb29c11c8bba6c9db5b87f85b1d62faad0bf7825` | present |
+R0 PR #157 restored the previously accepted W044-W049 implementation surfaces onto the current mainline from the repository's historical accepted-artifact recovery tree. The clean restoration was one commit directly on the current mainline and changed no `spec/architect/` governance files.
 
-These are historical facts recorded for restoration planning. They do not constitute current implementation permission.
+Restored packages:
 
-## Independent physical track
+- `payment/`
+- `eligibility/`
+- `developerapi/`
+- `marketplace/`
+- `client/`
 
-W040 remains `in-review`, unaccepted, and independent. EVID-007 and EVID-008 remain open and W040-owned. No software evidence is promoted to physical evidence.
+Restored verification/evidence surfaces include the W044-W049 deterministic selftests and the five corresponding CI invocations. The restoration is not a new implementation and does not re-accept those Work Items.
 
-## Next actions
+## Accepted history
 
-1. R0: restore accepted W044-W049 implementation/evidence/CI artifacts from repository Git history only, without unrelated ancestry.
-2. R1: reconcile the durable governance snapshot to the restored mainline and ensure exactly zero active implementation authorizations until a fresh authorization is issued.
-3. R2 onward: continue strictly in the frozen roadmap order.
+W044, W045, W046, W047, W048, W049, W050, W051, W052, and W053 remain accepted according to durable repository/GitHub acceptance history. Their exact reviewed/merge provenance is recorded in `spec/architect/roadmap.yaml` and DEC-0080; R0 restores missing implementation artifacts without falsifying that history.
+
+W040 remains independent, `in-review`, unaccepted, with its physical evidence obligations still open and W040-owned.
+
+## R1 blocking condition
+
+`spec/architect/execution-ledger.yaml` still represents W044-W050 using the earlier registered/activation-era lifecycle snapshot. That ledger is historical lifecycle authority and must be reconciled explicitly rather than silently replaced or rebuilt from memory.
+
+R1 must:
+
+1. use the live ledger as the source document;
+2. preserve all historical Work Item fields and all prior reconciliation records except explicitly authorized state additions;
+3. add a new reconciliation for the R0-restored mainline;
+4. align the lifecycle representation with the durable accepted history already established by DEC-0080 and the historical accepted delivery records;
+5. leave exactly zero active implementation authorizations after reconciliation.
+
+No implementation may begin until R1 is accepted.
 
 ## Source of truth
 
-This file is a current-state projection only. The program is governed by `roadmap.yaml`; lifecycle history by `execution-ledger.yaml`; permission by repository-local authorizations; contracts by the frozen specification. No conversation context is required or authoritative.
+A fresh clone of `main` is sufficient to reconstruct ADCOS. The repository itself is the only persistent source of truth. Chat history, model memory, prompts, issue prose, PR conversation, and external planning documents have zero authority.
+
+The authority chain is:
+
+`mission → frozen architecture/locks → frozen Work Item contract + dependency graph → frozen roadmap.yaml → durable decisions + execution ledger/state → active authorization → implementation/evidence`
+
+The roadmap controls program order. The ledger controls lifecycle history. Execution state controls the current execution slot. Repository-local authorizations control implementation permission.
