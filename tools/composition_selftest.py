@@ -13,9 +13,14 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Tuple
 
-from composition import (
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from composition import (  # noqa: E402
     COMPOSITION_STAGES,
     CompositionError,
     CompositionReasonCode,
@@ -25,8 +30,8 @@ from composition import (
     StageReceipt,
     compose_developer_request,
 )
-from composition.model import STAGE_AUTHORITIES
-from composition.runtime import CompositionJournalRecord
+from composition.model import STAGE_AUTHORITIES  # noqa: E402
+from composition.runtime import CompositionJournalRecord  # noqa: E402
 
 
 @dataclass
@@ -78,7 +83,7 @@ def run_once(seed: Optional[str] = None) -> bytes:
         env.pop("PYTHONHASHSEED", None)
     else:
         env["PYTHONHASHSEED"] = seed
-    return subprocess.check_output([sys.executable, __file__, "--once"], env=env)
+    return subprocess.check_output([sys.executable, __file__, "--once"], cwd=str(ROOT), env=env)
 
 
 def full_suite() -> Tuple[int, str]:
@@ -134,9 +139,8 @@ def full_suite() -> Tuple[int, str]:
     # 6. Stage ownership is a fixed authority map, not caller-declared.
     for stage in COMPOSITION_STAGES:
         assert STAGE_AUTHORITIES[stage] in {
-            "WORK-041", "WORK-042", "WORK-044", "WORK-045", "WORK-046",
-            "WORK-047", "WORK-048", "WORK-049", "WORK-051", "WORK-052", "WORK-053",
-            "WORK-012",
+            "WORK-041", "WORK-044", "WORK-045", "WORK-046", "WORK-047",
+            "WORK-048", "WORK-051", "WORK-052", "WORK-053", "WORK-012",
         }
     total += 1
 
