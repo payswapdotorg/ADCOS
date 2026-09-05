@@ -1,3 +1,10 @@
+# DEC-0084 / LEDGER-RECON-012: R1 governance reconciliation after the accepted
+# R0 restoration (PR #8, merge a3391e86851e06032de848e6eb0b4267fa33310a) —
+# W044-W049 lifecycle projections reconciled to their existing accepted
+# delivery history (original reviewed/merge SHAs and historical acceptance
+# provenance preserved exactly), W050 reconciled to its durable accepted
+# state, snapshot baseline advanced to the reconciled mainline; no prior
+# record rewritten, no authorization activated.
 # DEC-0063 / LEDGER-RECON-011: W053 acceptance -> W044 activation on post-W053 merge bb29c11.
 # DEC-0061 / LEDGER-RECON-010: W052 acceptance -> W053 activation on post-W052 merge bcaf0d0.
 # ADCOS execution ledger — machine-readable, persisted by the Architect.
@@ -86,7 +93,7 @@
 # semantic changes.
 
 schema_version: 1
-main_sha: bb29c11c8bba6c9db5b87f85b1d62faad0bf7825
+main_sha: a3391e86851e06032de848e6eb0b4267fa33310a
 last_updated: "2026-09-05"
 work_items:
   - work_item: WORK-001
@@ -838,112 +845,112 @@ work_items:
   - work_item: WORK-044
     title: "Payment Provider Adapters & Settlement Gateway"
     phase: 10
-    branch: null
-    baseline_sha: null
-    pr: null
-    pr_head: null
-    reviewed_sha: null
-    merge_sha: null
-    merged_at: null
+    branch: "work-044-payment-adapters"
+    baseline_sha: 66f6c4f0ae2c5e4cd4498e6090f876acb1859e45
+    pr: 127
+    pr_head: 6720d220e390999e17707537ab587c1da3b09eb9
+    reviewed_sha: 6720d220e390999e17707537ab587c1da3b09eb9
+    merge_sha: 90864ac257a3d93d94852cfa3a74577903f508d3
+    merged_at: 2026-09-02T09:45:40Z
     ci_run: null
-    review_rounds: null
-    acceptance_decision: null
+    review_rounds: 1
+    acceptance_decision: DEC-0064
     correction_decisions: []
     handoff: docs/WORK-044-handoff.md
     handoff_required: true
-    lifecycle: registered
-    note: "Registered-only W044 (ACR-011 registration; definition source: tracking issue #88 and the canonical commercial dependency model; WORK-043 retired with its slot vacant) now has the sole active repository-local authorization WORK-044-CORE-001 under DEC-0063 at exact main baseline bb29c11c8bba6c9db5b87f85b1d62faad0bf7825 (the post-W053-merge mainline; dependencies WORK-051 and WORK-053 are both accepted-merged and satisfied by this transition). The Architect-issued handoff (docs/WORK-044-handoff.md) is a work order, NOT an implementation. No implementation has yet been delivered or accepted; the entry stays lifecycle registered with null delivery fields until a real delivery PR exists, and the W044 implementation branch must be cut from the exact live authorization-bearing main re-read at activation time. The historical W044-W050 downstream material is superseded lineage and is not reused."
+    lifecycle: accepted-merged
+    note: "R1 reconciliation (DEC-0084 / LEDGER-RECON-012): this entry reconciles the W044 lifecycle projection to its existing durable accepted delivery history. Original acceptance provenance, preserved exactly and never replaced: the delivery was reviewed and accepted on the exact head 6720d220e390999e17707537ab587c1da3b09eb9 (branch work-044-payment-adapters, PR #127, one Architect review round) and merged at 90864ac257a3d93d94852cfa3a74577903f508d3 (2026-09-02T09:45:40Z; the merge commit second parent is the exact reviewed head); the acceptance record is DEC-0064, durable Git history of the former repository lineage, cited by the DEC-0080 accepted-delivery record as 'PR #127 / subsequent durable transition PR #128'. The R0 restoration merge (PR #8, a3391e86851e06032de848e6eb0b4267fa33310a) restored the accepted payment/ package, tools/payment_selftest.py, docs/WORK-044-evidence.md, and the CI invocation onto the current payswap mainline; it is NOT the Work Item acceptance merge and does not replace this provenance. Registration/activation provenance preserved: ACR-011 registered WORK-044 (Phase 10, definition source tracking issue #88, WORK-043 retired with its slot vacant); WORK-044-CORE-001 was issued by DEC-0063 at the bb29c11 snapshot, superseded by DEC-0080 before any delivery on this lineage, and is not revived by the restoration (exactly zero active authorizations). No successful CI run exists on the exact historical head or merge commit (the recorded specification-consistency runs stop at the already-known inherited spec/architect condition; the restored battery's current-red signature is that same inherited condition, classified by DEC-0084). SOFTWARE-class evidence only; W040 physical obligations EVID-007/EVID-008 remain independent, open, and W040-owned."
 
   - work_item: WORK-045
     title: "Connectivity Eligibility, Provider Trust & Jurisdiction Policy"
     phase: 10
-    branch: null
-    baseline_sha: null
-    pr: null
-    pr_head: null
-    reviewed_sha: null
-    merge_sha: null
-    merged_at: null
+    branch: "work-045-eligibility-policy"
+    baseline_sha: 90864ac257a3d93d94852cfa3a74577903f508d3
+    pr: 129
+    pr_head: 827234ec3a245a6b9f2f2de5d6525afb495684cc
+    reviewed_sha: 827234ec3a245a6b9f2f2de5d6525afb495684cc
+    merge_sha: a789d9b403d0e2a6e05276bb3cdc2b7d092c6d88
+    merged_at: 2026-09-02T13:53:09Z
     ci_run: null
-    review_rounds: null
-    acceptance_decision: null
+    review_rounds: 2
+    acceptance_decision: DEC-0065
     correction_decisions: []
     handoff: null
     handoff_required: false
-    lifecycle: registered
-    note: "registered-only entry added by ACR-011: WORK-045 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #89 and the canonical commercial dependency model. Dependencies (hard): WORK-051, WORK-053, WORK-044. Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+    lifecycle: accepted-merged
+    note: "R1 reconciliation (DEC-0084 / LEDGER-RECON-012): this entry reconciles the W045 lifecycle projection to its existing durable accepted delivery history. Original acceptance provenance, preserved exactly and never replaced: the delivery was reviewed and accepted on the exact correction-round head 827234ec3a245a6b9f2f2de5d6525afb495684cc (branch work-045-eligibility-policy, PR #129, two Architect review rounds) and merged at a789d9b403d0e2a6e05276bb3cdc2b7d092c6d88 (2026-09-02T13:53:09Z; the merge commit second parent is the exact reviewed head); the acceptance record is DEC-0065, durable Git history of the former repository lineage, cited by the DEC-0080 accepted-delivery record as 'DEC-0065 / PR #130' (the subsequent durable transition PR). The R0 restoration merge (PR #8, a3391e86851e06032de848e6eb0b4267fa33310a) restored the accepted eligibility/ package, tools/eligibility_selftest.py, and docs/WORK-045-evidence.md onto the current payswap mainline; it is NOT the Work Item acceptance merge. Registration provenance preserved: ACR-011 registered WORK-045 (Phase 10, definition source tracking issue #89, hard dependencies WORK-051/WORK-053/WORK-044). Authorization: none — registration is representation only, never authorization; no authorization is revived by the restoration. No successful CI run exists on the exact historical head or merge commit (the recorded specification-consistency runs stop at the already-known inherited spec/architect condition; classified by DEC-0084). SOFTWARE-class evidence only; W040 physical obligations EVID-007/EVID-008 remain independent, open, and W040-owned."
   - work_item: WORK-046
     title: "Developer Connectivity API, SDK & Webhook Platform"
     phase: 10
-    branch: null
-    baseline_sha: null
-    pr: null
-    pr_head: null
-    reviewed_sha: null
-    merge_sha: null
-    merged_at: null
+    branch: "work-046-developer-api"
+    baseline_sha: 3db7500d7b79a8cd3e3a651e1461fbb320efd67e
+    pr: 132
+    pr_head: 09960ea24315e5d0ccfd516d3bdca0802b62d8b7
+    reviewed_sha: 09960ea24315e5d0ccfd516d3bdca0802b62d8b7
+    merge_sha: f45be6dd0544a2fd6cbc910805def28bbe0c71eb
+    merged_at: 2026-09-02T19:59:40Z
     ci_run: null
-    review_rounds: null
-    acceptance_decision: null
+    review_rounds: 5
+    acceptance_decision: DEC-0067
     correction_decisions: []
     handoff: null
     handoff_required: false
-    lifecycle: registered
-    note: "registered-only entry added by ACR-011: WORK-046 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #90 and the canonical commercial dependency model. Dependencies (hard): WORK-051, WORK-052, WORK-053, WORK-044, WORK-045. Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+    lifecycle: accepted-merged
+    note: "R1 reconciliation (DEC-0084 / LEDGER-RECON-012): this entry reconciles the W046 lifecycle projection to its existing durable accepted delivery history. Original acceptance provenance, preserved exactly and never replaced: the delivery was reviewed and accepted on the exact head 09960ea24315e5d0ccfd516d3bdca0802b62d8b7 (branch work-046-developer-api, PR #132, five Architect review rounds; the final correction established durable webhook observation-admission state with frozen historical audience semantics) and merged at f45be6dd0544a2fd6cbc910805def28bbe0c71eb (2026-09-02T19:59:40Z; the merge commit second parent is the exact reviewed head); the acceptance record is DEC-0067, durable Git history of the former repository lineage, cited by the DEC-0080 accepted-delivery record as 'DEC-0067 / PR #133' (the subsequent durable transition PR). The R0 restoration merge (PR #8, a3391e86851e06032de848e6eb0b4267fa33310a) restored the accepted developerapi/ package, tools/developerapi_selftest.py, and docs/WORK-046-evidence.md onto the current payswap mainline; it is NOT the Work Item acceptance merge. Registration provenance preserved: ACR-011 registered WORK-046 (Phase 10, definition source tracking issue #90, hard dependencies WORK-051/WORK-052/WORK-053/WORK-044/WORK-045). Authorization: none — registration is representation only, never authorization; no authorization is revived by the restoration. No successful CI run exists on the exact historical head or merge commit (the recorded specification-consistency runs stop at the already-known inherited spec/architect condition; classified by DEC-0084). W046 remains SOFTWARE-only; W040 physical obligations EVID-007/EVID-008 remain independent, open, and W040-owned."
   - work_item: WORK-047
     title: "Connectivity Marketplace Discovery, Proximity & Path Selection"
     phase: 10
-    branch: null
-    baseline_sha: null
-    pr: null
-    pr_head: null
-    reviewed_sha: null
-    merge_sha: null
-    merged_at: null
+    branch: "work-047-marketplace-discovery"
+    baseline_sha: 825f48f814926223665c1761beaba6cbdd2c2640
+    pr: 135
+    pr_head: 348154d063c0e0a12d5635cb2093c67a507a4064
+    reviewed_sha: 348154d063c0e0a12d5635cb2093c67a507a4064
+    merge_sha: 7bc31f2899307c56639887416d602b41b4c16f43
+    merged_at: 2026-09-03T02:51:10Z
     ci_run: null
-    review_rounds: null
-    acceptance_decision: null
+    review_rounds: 4
+    acceptance_decision: DEC-0070
     correction_decisions: []
-    handoff: null
+    handoff: docs/WORK-047-handoff.md
     handoff_required: false
-    lifecycle: registered
-    note: "registered-only entry added by ACR-011: WORK-047 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #91 and the canonical commercial dependency model. Dependencies (hard): WORK-051, WORK-044, WORK-045, WORK-046. Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+    lifecycle: accepted-merged
+    note: "R1 reconciliation (DEC-0084 / LEDGER-RECON-012): this entry reconciles the W047 lifecycle projection to its existing durable accepted delivery history. Original acceptance provenance, preserved exactly and never replaced: the delivery was reviewed and accepted on the exact correction-round head 348154d063c0e0a12d5635cb2093c67a507a4064 (branch work-047-marketplace-discovery, PR #135, four Architect review rounds; the lifecycle recorded here is the full authorized -> implemented -> verified -> in-review -> accepted-merged chain with intermediate states preserved by the historical acceptance record rather than rewritten) and merged at 7bc31f2899307c56639887416d602b41b4c16f43 (2026-09-03T02:51:10Z; the merge commit second parent is the exact reviewed head); the acceptance record is DEC-0070 lineage, durable Git history of the former repository lineage, cited by the DEC-0080 accepted-delivery record as 'DEC-0070 lineage; exact accepted delivery documented in PR #135'. The R0 restoration merge (PR #8, a3391e86851e06032de848e6eb0b4267fa33310a) restored the accepted marketplace/ package, tools/marketplace_selftest.py, docs/WORK-047-evidence.md, and docs/WORK-047-handoff.md onto the current payswap mainline; it is NOT the Work Item acceptance merge. Registration provenance preserved: ACR-011 registered WORK-047 (Phase 10, definition source tracking issue #91, hard dependencies WORK-051/WORK-044/WORK-045/WORK-046). Authorization: none — registration is representation only, never authorization; no authorization is revived by the restoration. No successful CI run exists on the exact historical head or merge commit (the recorded specification-consistency runs stop at the already-known inherited spec/architect condition; classified by DEC-0084). W047 evidence is SOFTWARE-only; W040 physical obligations EVID-007/EVID-008 remain independent, open, and W040-owned."
   - work_item: WORK-048
     title: "Provider Connectivity Sharing Runtime, Isolation & Quota Enforcement"
     phase: 10
-    branch: null
-    baseline_sha: null
-    pr: null
-    pr_head: null
-    reviewed_sha: null
-    merge_sha: null
-    merged_at: null
+    branch: "work-048-provider-sharing-runtime"
+    baseline_sha: bd544dbce0aec345521d340f45ad4562567927cf
+    pr: 139
+    pr_head: e2af4bd20e403c1d4ee9717f7eea8809c16a53cd
+    reviewed_sha: e2af4bd20e403c1d4ee9717f7eea8809c16a53cd
+    merge_sha: ce1ccaea328743a05cf8d6fa87a114e69d9e253c
+    merged_at: 2026-09-03T10:30:47Z
     ci_run: null
-    review_rounds: null
-    acceptance_decision: null
+    review_rounds: 3
+    acceptance_decision: DEC-0075
     correction_decisions: []
     handoff: null
     handoff_required: false
-    lifecycle: registered
-    note: "registered-only entry added by ACR-011: WORK-048 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet; the design-only exploration PR #97 (docs/WORK-048-provider-sharing-runtime-design.md) predates registration and is not a delivery. Definition source: tracking issue #92 and the canonical commercial dependency model. Hard dependencies (preserved exactly): WORK-041, WORK-042, WORK-051 (NetworkPath accepted/merged + usage/journal accepted/merged + CommercialCore Lease authority where consumed). WORK-050 is deliberately NOT a hard dependency: its capability/isolation matrix is advisory capability input, not a gate (the W050 -> W048 DAG edge is an advisory edge sanctioned by ACR-011). WORK-040 is advisory only (DEC-0051). Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+    lifecycle: accepted-merged
+    note: "R1 reconciliation (DEC-0084 / LEDGER-RECON-012): this entry reconciles the W048 lifecycle projection to its existing durable accepted delivery history. Original acceptance provenance, preserved exactly and never replaced: the delivery was reviewed and accepted on the exact head e2af4bd20e403c1d4ee9717f7eea8809c16a53cd (branch work-048-provider-sharing-runtime, PR #139 — titled with the ACR-012 containment authority, three Architect review rounds) and merged at ce1ccaea328743a05cf8d6fa87a114e69d9e253c (2026-09-03T10:30:47Z; the merge commit second parent is the exact reviewed head, and the merge commit message itself names PR #139); the acceptance record is DEC-0075, durable Git history of the former repository lineage, cited by the DEC-0080 accepted-delivery record as 'DEC-0075 / PR #140' (the subsequent durable transition PR). The R0 restoration merge (PR #8, a3391e86851e06032de848e6eb0b4267fa33310a) did NOT restore a W048 sharing/ package: the historical restoration tree (7fb47bb / tree 1d16c24), reproduced byte-identically by PR #8, contains no sharing/ package, no W048 containment variant, and no tools/sharing_selftest.py — W048's accepted implementation artifacts are therefore NOT present on the current mainline, exactly as the reproduced historical restoration state records (the frozen roadmap accepted_history carries the W048 accepted reviewed/merge SHAs as durable acceptance provenance; the DEC-0080-era roadmap R0 scope restored exactly the historical restoration tree, and the W048 disposition is disclosed here rather than altered). Registration provenance preserved: ACR-011 registered WORK-048 (Phase 10, definition source tracking issue #92, hard dependencies WORK-041/WORK-042/WORK-051; WORK-050 advisory only, WORK-040 advisory only per DEC-0051; the design-only exploration PR #97 predates registration and is not a delivery). Authorization: none — registration is representation only, never authorization; no authorization is revived. SOFTWARE-class evidence only; W040 physical obligations EVID-007/EVID-008 remain independent, open, and W040-owned."
   - work_item: WORK-049
     title: "Provider & Buyer Connectivity Client Runtime"
     phase: 10
-    branch: null
-    baseline_sha: null
-    pr: null
-    pr_head: null
-    reviewed_sha: null
-    merge_sha: null
-    merged_at: null
+    branch: "work-049-provider-buyer-client-runtime"
+    baseline_sha: da56adcef48cd8449c383457949f709f8b5bc9cd
+    pr: 142
+    pr_head: b8cc17ef21f6c38266152552590dc73f80c056ce
+    reviewed_sha: b8cc17ef21f6c38266152552590dc73f80c056ce
+    merge_sha: 89ad6ff3d168c59256c3e805539eb9ca22f6b3bc
+    merged_at: 2026-09-03T17:16:12Z
     ci_run: null
-    review_rounds: null
-    acceptance_decision: null
+    review_rounds: 3
+    acceptance_decision: DEC-0078
     correction_decisions: []
-    handoff: null
+    handoff: docs/WORK-049-handoff.md
     handoff_required: false
-    lifecycle: registered
-    note: "registered-only entry added by ACR-011: WORK-049 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #98 (the canonical definition; issue #95 is the superseded duplicate, left discoverable per LEDGER-RECON-005 §4.1) and the canonical commercial dependency model. Dependencies (hard): WORK-046, WORK-047, WORK-048. WORK-050 is deliberately NOT a hard dependency: advisory capability input, not a gate (the W050 -> W049 DAG edge is an advisory edge sanctioned by ACR-011). Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+    lifecycle: accepted-merged
+    note: "R1 reconciliation (DEC-0084 / LEDGER-RECON-012): this entry reconciles the W049 lifecycle projection to its existing durable accepted delivery history. Original acceptance provenance, preserved exactly and never replaced: the delivery was reviewed and accepted on the exact head b8cc17ef21f6c38266152552590dc73f80c056ce (branch work-049-provider-buyer-client-runtime, PR #142, three Architect review rounds) and merged at 89ad6ff3d168c59256c3e805539eb9ca22f6b3bc (2026-09-03T17:16:12Z; the merge commit second parent is the exact reviewed head); the acceptance record is DEC-0078, durable Git history of the former repository lineage, cited by the DEC-0080 accepted-delivery record as 'DEC-0078 / PR #143' (the subsequent durable transition PR). The R0 restoration merge (PR #8, a3391e86851e06032de848e6eb0b4267fa33310a) restored the accepted client/ package, tools/client_selftest.py, docs/WORK-049-evidence.md, and docs/WORK-049-handoff.md onto the current payswap mainline; it is NOT the Work Item acceptance merge. Registration provenance preserved: ACR-011 registered WORK-049 (Phase 10, definition source tracking issue #98 the canonical definition, issue #95 the superseded duplicate left discoverable per LEDGER-RECON-005 §4.1; hard dependencies WORK-046/WORK-047/WORK-048; WORK-050 advisory only). Authorization: none — registration is representation only, never authorization; no authorization is revived. No successful CI run exists on the exact historical head or merge commit (the recorded specification-consistency runs stop at the already-known inherited spec/architect condition; classified by DEC-0084). SOFTWARE-class evidence only; W040 physical obligations EVID-007/EVID-008 remain independent, open, and W040-owned."
   - work_item: WORK-050
     title: "Platform Connectivity Sharing Capability & Isolation Matrix"
     phase: 10
@@ -951,17 +958,17 @@ work_items:
     baseline_sha: null
     pr: null
     pr_head: null
-    reviewed_sha: null
-    merge_sha: null
-    merged_at: null
+    reviewed_sha: 0fa231ced54dc3dd999b8635c6f7fbc279bfd9ba
+    merge_sha: 815f4febbc64d55d3576386e65adaa6244c4f7cb
+    merged_at: 2026-09-04T04:08:41Z
     ci_run: null
     review_rounds: null
-    acceptance_decision: null
+    acceptance_decision: DEC-0080
     correction_decisions: []
-    handoff: null
+    handoff: docs/WORK-050-handoff.md
     handoff_required: false
-    lifecycle: registered
-    note: "registered-only entry added by ACR-011: WORK-050 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #96 and the canonical commercial dependency model. Dependencies: none. Boundary (LEDGER-RECON-005 §4.2): a capability model consumed BY WORK-048/WORK-049 — NOT an implementation vehicle for WORK-048; the W050 -> W048/W049 edges are advisory capability-input edges, not hard gates. Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+    lifecycle: accepted-merged
+    note: "R1 reconciliation (DEC-0084 / LEDGER-RECON-012): this entry reconciles the W050 lifecycle projection to its durable existing accepted state. W050 remains accepted historical/current software state according to its durable existing provenance: the accepted staged history records the stage heads 4a37408, c5cb509, 279871c, 0fa231c (the final accepted W050.4 stage head 0fa231ced54dc3dd999b8635c6f7fbc279bfd9ba is recorded as reviewed_sha), and the accepted W050 implementation is present on the current mainline via the accepted W050 merge-isolation reconstruction (fccf9a9..815f4fe) whose final commit 815f4febbc64d55d3576386e65adaa6244c4f7cb (2026-09-04T04:08:41Z) is an ancestor of current main and is recorded as merge_sha; the acceptance facts are durably recorded by the frozen roadmap accepted_history and the DEC-0080 accepted-delivery record (acceptance basis: accepted staged W050 implementation reconstructed onto the later mainline, including the permanent deterministic battery; DEC-0080 is recorded as acceptance_decision for that reason). No single delivery PR exists for W050 (the original stages lived on the work-050-implementation branch and the mainline landing was the isolated reconstruction), so branch/pr stay null — a classified representation limitation of the single-PR ledger schema for a staged mainline reconstruction, disclosed by DEC-0084 rather than masked with fabricated values. Registration provenance preserved: ACR-011 registered WORK-050 (Phase 10, definition source tracking issue #96, dependencies none; boundary per LEDGER-RECON-005 §4.2: a capability model consumed BY WORK-048/WORK-049, not an implementation vehicle for WORK-048; the W050 -> W048/W049 edges are advisory capability-input edges, not hard gates). Authorization: none — registration is representation only, never authorization. SOFTWARE-class evidence only (76/76 deterministic battery per the W050.4 stage record); W040 physical obligations EVID-007/EVID-008 remain independent, open, and W040-owned."
   - work_item: WORK-051
     title: "CommercialCore: connectivity intent, offers, reservation, lease, and transaction lifecycle"
     phase: 10
@@ -1018,6 +1025,13 @@ work_items:
     note: "Architect-accepted at the exact reviewed head on the first review round with zero correction rounds on the PR (the durable exact-SHA acceptance record is the PR #152 Architect acceptance comment 5549039574, 2026-09-05T03:27:11Z): exact reviewed head 4a0021c4d464bf1e0e9d9b29ff8a87ed8eb8146a; merged as bb29c11c8bba6c9db5b87f85b1d62faad0bf7825 (2026-09-05T03:27:16Z); CI run 33931905976 SUCCESS on the exact head including the dedicated W053 battery step and provenance. Delivered under WORK-053-CORE-001 (DEC-0061, authorization baseline bcaf0d0 = the post-W052-merge mainline) on the branch work-053-economic-allocation-2 cut from the post-DEC-0061-reconciliation live main cdf451f (the standing governance-only branch-point offset); the superseded PR #124 lineage was deliberately left untouched. WORK-053-CORE-001 superseded by DEC-0063; scope/provenance preserved. SOFTWARE-class evidence only (docs/WORK-053-evidence.md); no PHYSICAL claim is made (EVID-007/EVID-008 remain OPEN and W040-owned)."
 
 reconciliations:
+  - reconciliation_id: LEDGER-RECON-012
+    recorded_by: DEC-0084
+    recorded_at: 2026-09-05T17:07:06Z
+    from_main_sha: bb29c11c8bba6c9db5b87f85b1d62faad0bf7825
+    to_main_sha: a3391e86851e06032de848e6eb0b4267fa33310a
+    reason: "R1 governance reconciliation after the accepted R0 mainline restoration (DEC-0084): PR #8 restored the accepted W044-W049 implementation artifacts — the payment/, eligibility/, developerapi/, marketplace/, and client/ packages, the evidence/handoff documents, the five deterministic selftest batteries, and the five additive CI invocations — onto the exact frozen main 3bdfb6daf50f7c000d29a027584c0de5b376d8a8 and merged as a3391e86851e06032de848e6eb0b4267fa33310a (tree 1d16c241, byte-identical to the historical restoration tree 7fb47bb). R0 acceptance is now durable. This reconciliation advances the ledger snapshot baseline from the previous persisted governance snapshot bb29c11c8bba6c9db5b87f85b1d62faad0bf7825 to a3391e86851e06032de848e6eb0b4267fa33310a in lockstep with execution-state.yaml, and reconciles the W044-W049 lifecycle projections to their existing accepted delivery history and the W050 lifecycle projection to its durable accepted state, consistent with the frozen roadmap accepted_history and the DEC-0080 accepted-delivery record."
+    history: "No historical record is rewritten and no prior reconciliation entry is altered: every WORK-001..WORK-043 and WORK-051..WORK-053 entry is byte-identical to the pre-reconciliation state (including the WORK-040 entry — in-review, acceptance_decision null, EVID-007/EVID-008 OPEN and W040-owned); every prior reconciliation record LEDGER-RECON-001..011 is byte-identical. The W044-W049 entries transition lifecycle registered -> accepted-merged with their ORIGINAL historical delivery facts recorded — original reviewed heads 6720d220/827234ec/09960ea2/348154d0/e2af4bd2/b8cc17ef, original accepted merges 90864ac2/a789d9b4/f45be6dd/7bc31f28/ce1ccaea/89ad6ff3, original delivery branches and PRs, original issuance baselines, and the historical acceptance decisions DEC-0064/DEC-0065/DEC-0067/DEC-0070/DEC-0075/DEC-0078 as durable Git-history provenance cited by the DEC-0080 accepted-delivery record. The current-mainline restoration merge (PR #8, a3391e86851e06032de848e6eb0b4267fa33310a) is recorded as the restoration, NOT as the Work Item acceptance merge; original acceptance provenance is not replaced with PR #8. The WORK-050 entry transitions lifecycle registered -> accepted-merged per its durable existing provenance (accepted staged history 4a37408/c5cb509/279871c/0fa231c; present on the current mainline via the accepted reconstruction 815f4fe; no single delivery PR exists, so branch/pr stay null — the representation limitation is classified by DEC-0084, not masked with fabricated values). W050 remains accepted according to its durable existing provenance; W051-W053 remain accepted per their existing durable provenance (DEC-0059/DEC-0061/DEC-0063). No historical acceptance is newly invented; no historical decision is rewritten; no implementation authorization is activated (exactly zero are active; every authorization record stays superseded). No frozen architecture document is modified and no registry file changes: spec/architecture.md, spec/architecture-lock.md, spec/mission.md, spec/work-items.md, spec/dependency-graph.md, spec/schemas/, and spec/acr/ are byte-identical to the pre-reconciliation state. No implementation code changes: payment/, eligibility/, developerapi/, marketplace/, client/, and all other implementation artifacts are byte-identical to the R0-restored mainline (governance-only PR). The only changes are the new decision record (DEC-0084), the roadmap.yaml/roadmap.md governance/version transition 1.0 -> 1.1 with the reconciled current state and R0/R1 completion representations, the reconciled execution-state.yaml, the rewritten current-state.md projection, the W044-W050 ledger lifecycle transitions, this LEDGER-RECON-012 record, the snapshot baseline movement, and the decisions README registration of DEC-0084."
   - reconciliation_id: LEDGER-RECON-011
     recorded_by: DEC-0063
     recorded_at: 2026-09-05T03:27:11Z

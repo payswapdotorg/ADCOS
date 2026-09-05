@@ -1,8 +1,11 @@
 # ADCOS Authoritative Execution Roadmap
-# FROZEN — roadmap version 1.0
+# FROZEN — roadmap version 1.1 (advanced from 1.0 by DEC-0084, the R1
+# governance reconciliation after the accepted R0 restoration; a
+# governance/version transition only — Architecture Version 1.0 and
+# Protocol Version 1.0 are unchanged)
 
 schema_version: 2
-roadmap_version: "1.0"
+roadmap_version: "1.1"
 status: FROZEN_AUTHORITATIVE
 authority: "spec/architect/roadmap.yaml"
 human_projection: "spec/architect/roadmap.md"
@@ -33,48 +36,49 @@ governance_rules:
   software_never_promotes_to_physical: true
 
 current_state:
-  actual_main_sha: a7d913385f866df6da890093c26539ad876f3ee4
-  last_reconciled_snapshot_sha: bb29c11c8bba6c9db5b87f85b1d62faad0bf7825
-  program_state: CANONICAL_MAINLINE_INTEGRITY_BLOCKED
-  execution_mode: blocked
+  actual_main_sha: a3391e86851e06032de848e6eb0b4267fa33310a
+  last_reconciled_snapshot_sha: a3391e86851e06032de848e6eb0b4267fa33310a
+  program_state: R1_GOVERNANCE_RECONCILED
+  execution_mode: ready
   active_work_item: null
   active_authorization: null
-  halt_reason: "Current main differs from the last persisted execution snapshot. Durable accepted history proves W044-W049 were accepted, while their implementation artifacts are not all present on current main. No implementation may start until the accepted mainline is restored and the governance projections are reconciled."
-  next_gate: R0_MAINLINE_RESTORATION
+  next_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE
+  reconciliation_note: "R0 was accepted and merged as PR #8 (merge a3391e86851e06032de848e6eb0b4267fa33310a, tree 1d16c241d060c9c242f3025ea3afa73464574ccc, byte-identical to the historical restoration tree 7fb47bb312708d06f3b3c1ba0496104362c7d135). R1 is complete under DEC-0084 on the reconciled mainline a3391e86851e06032de848e6eb0b4267fa33310a. Execution is ready but fail-closed: exactly zero implementation authorizations are active, so no implementation may start until R2 receives a fresh Work Item and exactly one new authorization."
 
 accepted_history:
-  rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history."
+  rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history. R0 (PR #8, merged as a3391e86851e06032de848e6eb0b4267fa33310a) restored the accepted W044-W049 implementation trees onto the current mainline; their current_mainline flags are reconciled to present-restored by DEC-0084 without altering any reviewed SHA or accepted merge SHA, and without replacing the original acceptance provenance with the restoration merge."
   work_items:
     - id: WORK-044
       status: accepted-merged
       reviewed_sha: 6720d220e390999e17707537ab587c1da3b09eb9
       merge_sha: 90864ac257a3d93d94852cfa3a74577903f508d3
-      current_mainline: missing
+      current_mainline: present-restored
     - id: WORK-045
       status: accepted-merged
       reviewed_sha: 827234ec3a245a6b9f2f2de5d6525afb495684cc
       merge_sha: a789d9b403d0e2a6e05276bb3cdc2b7d092c6d88
-      current_mainline: missing
+      current_mainline: present-restored
     - id: WORK-046
       status: accepted-merged
       reviewed_sha: 09960ea24315e5d0ccfd516d3bdca0802b62d8b7
       merge_sha: f45be6dd0544a2fd6cbc910805def28bbe0c71eb
-      current_mainline: missing
+      current_mainline: present-restored
     - id: WORK-047
       status: accepted-merged
       reviewed_sha: 348154d063c0e0a12d5635cb2093c67a507a4064
       merge_sha: 7bc31f2899307c56639887416d602b41b4c16f43
-      current_mainline: missing
+      current_mainline: present-restored
     - id: WORK-048
       status: accepted-merged
       reviewed_sha: e2af4bd20e403c1d4ee9717f7eea8809c16a53cd
       merge_sha: ce1ccaea328743a05cf8d6fa87a114e69d9e253c
-      current_mainline: missing
+      current_mainline: accepted-not-restored
+      restoration_note: "W048 disposition, exactly as accepted with R0: the W048 sharing/ package, its 8-file containment/ variant, docs/WORK-048-evidence.md, and tools/sharing_selftest.py are not part of the accepted historical restoration tree (7fb47bb, reproduced byte-identically by PR #8) and remain absent from current main; W048's acceptance provenance (reviewed/merge SHAs and the DEC-0075 historical acceptance record) is preserved unchanged. R0 completed by reproducing the exact historical restoration tree; restoring W048's implementation artifacts would intentionally diverge from that tree and requires an explicit Architect directive."
     - id: WORK-049
       status: accepted-merged
       reviewed_sha: b8cc17ef21f6c38266152552590dc73f80c056ce
       merge_sha: 89ad6ff3d168c59256c3e805539eb9ca22f6b3bc
-      current_mainline: missing
+      current_mainline: present-restored
     - id: WORK-050
       status: accepted-merged
       accepted_stage_heads: [4a37408, c5cb509, 279871c, 0fa231c]
@@ -97,21 +101,24 @@ accepted_history:
 
 roadmap:
   - id: R0_MAINLINE_RESTORATION
-    status: BLOCKED_EXECUTION_GATE
+    status: COMPLETE
     objective: "Restore the exact accepted W044-W049 implementation packages and CI/evidence artifacts onto the authoritative mainline without importing unrelated later ancestry or changing frozen semantics."
     required_output: "One verified mainline containing the accepted W044-W050/W051-W053 implementation set and their durable acceptance/governance records."
     implementation_authorization: none
     gate: "Architect verifies exact file set, accepted-head provenance, tree equivalence of recovered packages, no unauthorized semantic delta, and complete repository-local evidence."
+    completion: "Accepted and merged as PR #8 on the exact frozen main 3bdfb6daf50f7c000d29a027584c0de5b376d8a8 (merge a3391e86851e06032de848e6eb0b4267fa33310a, single-commit source head 69f1bece5515ac7d10c40a94299b30ffb4ff58c4, tree 1d16c241d060c9c242f3025ea3afa73464574ccc byte-identical to the historical restoration tree 7fb47bb312708d06f3b3c1ba0496104362c7d135; 58,500 insertions / 0 deletions / 79 files, additive only)."
 
   - id: R1_GOVERNANCE_RECONCILIATION
-    status: AFTER_R0
+    status: COMPLETE
     objective: "Reconcile roadmap, current-state, execution-state, execution-ledger, decisions, authorizations, and evidence projections to the restored mainline."
     constraints: "Preserve every prior decision and reconciliation; never rewrite historical records."
     implementation_authorization: none
+    completion: "Complete under DEC-0084 on the reconciled mainline a3391e86851e06032de848e6eb0b4267fa33310a. Historical R1 records in Git history (DEC-0081/DEC-0082/DEC-0083, the 338af793 checkpoint) remain discoverable history and are not the current baseline."
 
   - id: R2_SYSTEM_COMPOSITION_CONFORMANCE
-    status: AFTER_R1
+    status: NEXT_IMPLEMENTATION_GATE
     objective: "Prove the complete commercial/connectivity composition without introducing a second authority."
+    authorization_requirement: "R2 awaits a fresh Work Item and exactly one implementation authorization issued by a new Architect decision; exactly zero are active now."
     chain: "intent -> offer -> eligibility -> reservation/lease -> candidate selection -> NetworkPath validation -> containment -> session -> delivered traffic -> usage -> BILLABLE_FINAL -> allocation -> external payment reference -> reconciliation"
     mandatory_negative_proofs:
       - "payment success cannot create connectivity"

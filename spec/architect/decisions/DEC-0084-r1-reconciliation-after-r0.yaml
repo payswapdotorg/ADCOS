@@ -1,0 +1,104 @@
+# ADCOS Architect decision record.
+# R1 governance reconciliation after the accepted R0 mainline restoration.
+# Governance-only: this decision reconciles the durable governance
+# projections (roadmap, current-state, execution-state, execution-ledger)
+# to the restored mainline. It does not implement, authorize, activate,
+# or re-accept any Work Item, and it does not change frozen
+# architecture or protocol semantics.
+#
+# Historical-record distinction: DEC-0081, DEC-0082, and DEC-0083, the
+# historical R1 checkpoint at 338af793923e1267ff3523de4310be273d75a2cd,
+# and every other record of the former repository lineage remain
+# discoverable Git history. They are NOT the current baseline and are
+# neither rewritten nor blindly replayed. This DEC-0084 record is the
+# current authoritative R1 reconciliation for github.com/payswapdotorg/ADCOS.
+# schema: spec/architect/decision-record-template.md; verified by tools/spec_check.py (ARCH-04).
+decision_id: DEC-0084
+type: governance
+work_item: null
+acr: null
+pr: 8
+reviewed_sha: null
+decision: ACCEPTED
+status: ACCEPTED
+reviewer: "Architect (payswapdotorg)"
+timestamp: 2026-09-05T17:07:06Z
+subject: "Reconcile the durable governance projections to the post-R0 restored mainline and complete R1"
+context:
+  repository: "github.com/payswapdotorg/ADCOS"
+  pre_reconciliation_main_sha: a3391e86851e06032de848e6eb0b4267fa33310a
+  architecture_version: "1.0"
+  protocol_version: "1.0"
+  finding: "R0 was accepted and merged as PR #8 on the exact frozen main 3bdfb6daf50f7c000d29a027584c0de5b376d8a8 (merge commit a3391e86851e06032de848e6eb0b4267fa33310a, tree 1d16c241d060c9c242f3025ea3afa73464574ccc, byte-identical to the historical restoration tree 7fb47bb312708d06f3b3c1ba0496104362c7d135). The durable governance projections still describe the pre-R0 state and must be reconciled so a fresh clone of main reconstructs the true current program state without conversation access."
+reconciliation_facts:
+  r0_accepted_and_merged: "R0 was accepted and merged as PR #8."
+  restored_artifacts_present: "The restored W044-W049 implementation artifacts are now present on current main: the payment/, eligibility/, developerapi/, marketplace/, and client/ packages, the evidence/handoff documents, the deterministic selftest batteries, and the CI invocation wiring restored by PR #8. W048 disposition, exactly as accepted with R0: the W048 sharing/ package and containment variant are not part of the accepted historical restoration tree and remain absent from current main, with W048's acceptance provenance preserved unchanged."
+  historical_provenance_unchanged: "Historical accepted W044-W049 delivery provenance remains unchanged: the original reviewed SHAs and accepted merge SHAs (and the historical acceptance records that durably document them) are preserved exactly; the current-mainline restoration merge is not the original Work Item acceptance merge and does not replace it."
+  w050_state: "W050 remains accepted historical/current software state according to its durable existing provenance (the frozen roadmap accepted_stage_heads record and the DEC-0080 accepted-delivery record)."
+  w051_w052_w053_state: "W051, W052, and W053 remain accepted per their existing durable acceptance records (DEC-0059, DEC-0061, DEC-0063)."
+  w040_state: "W040 remains independently in-review and unaccepted."
+  evidence_obligations: "EVID-007 and EVID-008 remain open and W040-owned; software evidence never promotes to physical evidence."
+  authorization_state: "Exactly zero implementation authorizations are active."
+  no_activation: "No Work Item is activated by this decision."
+  r1_complete: "R1 is complete."
+  next_gate: "The next gate is R2_SYSTEM_COMPOSITION_CONFORMANCE."
+  architecture_version: "Architecture remains Version 1.0."
+  protocol_version: "Protocol remains Version 1.0."
+  historical_decisions: "Historical decisions are preserved rather than rewritten."
+  reconciled_mainline: "The reconciled mainline is exactly a3391e86851e06032de848e6eb0b4267fa33310a."
+findings:
+  - "1. R0 was accepted and merged as PR #8 (merge commit a3391e86851e06032de848e6eb0b4267fa33310a on the exact frozen baseline 3bdfb6daf50f7c000d29a027584c0de5b376d8a8; the resulting tree 1d16c241d060c9c242f3025ea3afa73464574ccc reproduces the historical restoration state 7fb47bb312708d06f3b3c1ba0496104362c7d135 byte-for-byte)."
+  - "2. The restored W044-W049 implementation artifacts are now present on current main: the payment/, eligibility/, developerapi/, marketplace/, and client/ packages, the evidence/handoff documents, the deterministic selftest batteries, and the CI invocation wiring restored by PR #8. (W048 disposition, exactly as accepted with R0: the W048 sharing/ package, its containment variant, and tools/sharing_selftest.py are not part of the accepted historical restoration tree and remain absent from current main; W048's acceptance provenance is preserved unchanged — recorded in the roadmap restoration_note and the ledger entry.)"
+  - "3. Historical accepted W044-W049 delivery provenance remains unchanged: the original reviewed heads 6720d220, 827234ec, 09960ea2, 348154d0, e2af4bd2, b8cc17ef and the original accepted merges 90864ac2, a789d9b4, f45be6dd, 7bc31f28, ce1ccaea, 89ad6ff3 are preserved exactly; the restoration merge is not the original acceptance merge."
+  - "4. W050 remains accepted historical/current software state per its durable existing provenance (accepted staged history 4a37408, c5cb509, 279871c, 0fa231c; present on the current mainline via the accepted W050 reconstruction)."
+  - "5. W051, W052, and W053 remain accepted (DEC-0059/LEDGER-RECON-008, DEC-0061/LEDGER-RECON-010, DEC-0063/LEDGER-RECON-011)."
+  - "6. W040 remains independently in-review and unaccepted."
+  - "7. EVID-007 and EVID-008 remain open and W040-owned."
+  - "8. Exactly zero implementation authorizations are active; every repository-local authorization record (WORK-040, WORK-041, WORK-042, WORK-044, WORK-051, WORK-052, WORK-053) carries status superseded with authorized false."
+  - "9. No Work Item is activated by this decision; no authorization is issued, revived, or reactivated by it."
+  - "10. R1_GOVERNANCE_RECONCILIATION is complete under this decision."
+  - "11. The next gate is R2_SYSTEM_COMPOSITION_CONFORMANCE, which awaits a fresh Work Item and exactly one implementation authorization issued by a new Architect decision."
+  - "12. Architecture remains Version 1.0; no frozen architecture semantic changes."
+  - "13. Protocol remains Version 1.0; no frozen protocol semantic changes."
+  - "14. Historical decisions are preserved rather than rewritten: DEC-0001 through DEC-0063 and DEC-0080 are byte-identical; historical DEC-0081, DEC-0082, and DEC-0083 remain discoverable Git history and are neither imported nor altered."
+  - "15. The reconciled mainline is exactly a3391e86851e06032de848e6eb0b4267fa33310a."
+  - "This record explicitly distinguishes historical R1 records in Git history (DEC-0081/DEC-0082/DEC-0083 and the historical R1 checkpoint 338af793923e1267ff3523de4310be273d75a2cd on the former repository lineage) from the current authoritative R1 reconciliation, which is this DEC-0084 record on payswapdotorg/ADCOS at a3391e86851e06032de848e6eb0b4267fa33310a. The historical 338af793 checkpoint is not the current baseline and is not treated as such."
+blockers: []
+required_corrections: []
+evidence:
+  merge_sha: a3391e86851e06032de848e6eb0b4267fa33310a
+  ci_run: null
+  artifacts:
+    - "PR #8 (the accepted R0 restoration pull request, merged as a3391e86851e06032de848e6eb0b4267fa33310a)"
+    - "spec/architect/roadmap.yaml (Roadmap Version 1.1, reconciled current state)"
+    - "spec/architect/execution-state.yaml (reconciled snapshot)"
+    - "spec/architect/execution-ledger.yaml (LEDGER-RECON-012 formal reconciliation entry)"
+    - "spec/architect/current-state.md (reconciled projection)"
+accepted_scope:
+  - "The governance reconciliation of the durable projections to the restored mainline a3391e86851e06032de848e6eb0b4267fa33310a: roadmap.yaml/roadmap.md version 1.0 -> 1.1 (a governance/version transition, not an architecture change), execution-state.yaml, execution-ledger.yaml (history preserved; the formal R1 reconciliation appended), current-state.md, this decision record, and the decisions README index."
+  - "The lifecycle reconciliation of the W044-W049 and W050 ledger entries to their existing durable acceptance history, with the original reviewed SHAs, accepted merge SHAs, and historical acceptance provenance preserved exactly."
+  - "The classification of inherited specification/CI failure signatures as disclosed known conditions (not repaired by this decision)."
+rejected_scope:
+  - "Any implementation of product or protocol functionality, including any R2 implementation."
+  - "Any creation or activation of a Work Item implementation authorization, including any R2 authorization or any revival of the W044 authorization or any other historical authorization merely because its corresponding implementation is now present."
+  - "Any modification of spec/architecture.md, spec/architecture-lock.md, spec/mission.md, spec/work-items.md, spec/dependency-graph.md, or spec/schemas/."
+  - "Any modification of product or protocol implementation packages, W040 physical evidence, or W044-W053 implementation artifacts."
+  - "Any rewrite, erasure, or wholesale import of historical decisions, historical reconciliations, the historical R1 checkpoint, or W054-era material."
+  - "Any repair of unrelated inherited specification/CI failures."
+  - "Any change to the R2 scope, and any addition of W054 or any other ungoverned Work Item."
+downstream_effect:
+  - "spec/architect/roadmap.yaml advances to Roadmap Version 1.1 with program_state R1_GOVERNANCE_RECONCILED, execution_mode ready, active_work_item null, active_authorization null, and next_gate R2_SYSTEM_COMPOSITION_CONFORMANCE; R0 and R1 are represented as complete; roadmap.md is synchronized as the human projection."
+  - "spec/architect/execution-state.yaml records the payswapdotorg/ADCOS canonical repository, main_sha a3391e86851e06032de848e6eb0b4267fa33310a, lifecycle_ledger_snapshot_sha a3391e86851e06032de848e6eb0b4267fa33310a, execution mode ready with no active Work Item and no active authorization, while preserving all historical provenance fields."
+  - "spec/architect/execution-ledger.yaml advances the snapshot baseline to a3391e86851e06032de848e6eb0b4267fa33310a and appends LEDGER-RECON-012 (recorded by this decision); every existing work_items entry, note, and reconciliation record is preserved (W044-W050 lifecycle projections are reconciled to their existing accepted delivery history; no historical acceptance is newly invented; no historical decision is rewritten; no implementation authorization is activated)."
+  - "spec/architect/current-state.md is rewritten as the reconciled projection and remains a projection with no authority beyond roadmap.yaml and the ledger."
+  - "The decisions README registry gains this DEC-0084 row; DEC-0001 through DEC-0080 rows are unchanged."
+  - "R2_SYSTEM_COMPOSITION_CONFORMANCE becomes the next implementation gate and requires a fresh Work Item and exactly one implementation authorization issued by a new Architect decision before any implementation may start."
+  - "W040 remains independent, in-review, and unaccepted; EVID-007 and EVID-008 remain open, physical, and W040-owned."
+  - "Implementation remains fail-closed: zero active authorizations means no implementation PR may carry an implementation delta until a fresh authorization exists."
+preservation:
+  - "No historical Git commit is rewritten or erased."
+  - "No accepted delivery is downgraded, upgraded, or newly invented."
+  - "No frozen architecture or protocol semantic change is introduced."
+  - "No new Work Item is registered by this decision."
+  - "No implementation authorization is issued by this decision."
+  - "The historical R1 records in Git history remain discoverable and unchanged; the current authoritative R1 reconciliation is this record alone."

@@ -1,40 +1,50 @@
 # ADCOS Authoritative Roadmap
 
-**FROZEN — Roadmap Version 1.0**
+**FROZEN — Roadmap Version 1.1**
 
-`spec/architect/roadmap.yaml` is the sole canonical program roadmap. This document is its human-readable projection. Neither this file nor the roadmap grants implementation authority.
+`spec/architect/roadmap.yaml` is the sole canonical program roadmap. This document is its human-readable projection. Neither this file nor the roadmap grants implementation authority. The roadmap version advanced from 1.0 to 1.1 by DEC-0084 (the R1 governance reconciliation after the accepted R0 restoration) — a governance/version transition only; Architecture Version 1.0 and Protocol Version 1.0 are unchanged.
 
 ## Current repository state
 
-Actual `main` at this review: `a7d913385f866df6da890093c26539ad876f3ee4`.
+Actual `main` at this reconciliation: `a3391e86851e06032de848e6eb0b4267fa33310a` (repository: `github.com/payswapdotorg/ADCOS`).
 
-The repository is intentionally **BLOCKED for implementation** pending mainline-integrity restoration. Durable GitHub history proves that W044, W045, W046, W047, W048, and W049 were accepted in their own reviewed/merged deliveries, while the current `main` does not contain all of those accepted implementation packages. W050, W051, W052, and W053 are present on the current line. This is treated as integrity debt, not as permission to reinterpret or erase accepted history.
+**R0 is complete**: the canonical mainline restoration was accepted and merged as PR #8 on the exact frozen main `3bdfb6daf50f7c000d29a027584c0de5b376d8a8` (merge `a3391e86851e06032de848e6eb0b4267fa33310a`, tree `1d16c241`, byte-identical to the historical restoration tree `7fb47bb`). The previously accepted W044–W049 implementation packages, evidence/handoff records, deterministic selftest batteries, and CI invocation wiring are present on current main. Their original acceptance provenance (reviewed SHAs and accepted merge SHAs) is unchanged; the restoration merge is not the original Work Item acceptance merge.
 
-The immediate order is:
+**R1 is complete**: the durable governance projections (roadmap, current-state, execution-state, execution-ledger, decisions) are reconciled to the restored mainline by DEC-0084. W050–W053 remain accepted. W040 remains independent, in-review, and unaccepted; EVID-007 and EVID-008 remain open and W040-owned.
 
-`R0 restoration → R1 governance reconciliation → R2 system composition → R3 protocol production conformance → R4/R5 physical + developer platform → R6 provider federation → R7 universal connectivity commerce → R8 resilience/scale → R9 future access adapters`
+The immediate order is now:
+
+`R2 system composition → R3 protocol production conformance → R4/R5 physical + developer platform → R6 provider federation → R7 universal connectivity commerce → R8 resilience/scale → R9 future access adapters`
+
+Execution is **ready but fail-closed**: exactly zero implementation authorizations are active. R2 requires a fresh Work Item and exactly one implementation authorization issued by a new Architect decision before any implementation may start.
 
 ## Frozen execution roadmap
 
-### R0 — Canonical accepted-mainline restoration
+### R0 — Canonical accepted-mainline restoration — COMPLETE
 
 Restore the exact accepted W044–W049 implementation packages, evidence manifests, handoffs, and required CI battery wiring onto the current authoritative mainline. The restoration must be additive and provenance-preserving: no unrelated later ancestry, no frozen semantic changes, no fabricated acceptance, no historical rewrite.
 
 Exit gate: the accepted W044–W050/W051–W053 implementation set is physically present in one mainline and the Architect has verified exact file scope, accepted-head provenance, no unauthorized semantic delta, and deterministic batteries.
 
-### R1 — Governance reconciliation
+**Complete**: accepted and merged as PR #8 (merge `a3391e86851e06032de848e6eb0b4267fa33310a` on the exact frozen main `3bdfb6d`, tree `1d16c24` byte-identical to the historical restoration state `7fb47bb`; single-commit source head `69f1bec`; 58,500 insertions / 0 deletions / 79 files, additive only).
+
+### R1 — Governance reconciliation — COMPLETE
 
 Synchronize `execution-state.yaml`, `execution-ledger.yaml`, `current-state.md`, roadmap projections, decisions, authorizations, and evidence references to the restored mainline. Preserve all previous decisions and reconciliations. No historical record is deleted or rewritten.
 
 Exit gate: a fresh clone of `main` reconstructs the same state without conversation access; zero contradictory active-authorization/status projections remain.
 
-### R2 — System composition conformance
+**Complete**: DEC-0084 reconciled the durable governance projections on the restored mainline `a3391e86851e06032de848e6eb0b4267fa33310a`. The historical R1 decision records in Git history (on the former repository lineage, checkpoint `338af793`) remain discoverable history and are not the current baseline; the current authoritative R1 reconciliation is DEC-0084 alone.
+
+### R2 — System composition conformance — NEXT IMPLEMENTATION GATE
 
 Prove the complete connectivity-commercial chain:
 
 `intent → offer → eligibility → reservation/lease → candidate selection → NetworkPath validation → containment → session → delivered traffic → usage → BILLABLE_FINAL → allocation → external payment reference → reconciliation`
 
 Mandatory negative proofs include: payment cannot create connectivity; reservation cannot imply reachability; marketplace discovery cannot activate paths; W050 capability declarations cannot enforce containment; W049/client state cannot become canonical truth; API/webhooks cannot become a second authority; software evidence cannot close physical evidence.
+
+R2 awaits a fresh Work Item and exactly one implementation authorization issued by a new Architect decision; exactly zero are active now.
 
 Exit gate: deterministic end-to-end composition and negative-proof battery passes from fresh state and across restart/replay.
 

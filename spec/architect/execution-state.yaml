@@ -1,15 +1,22 @@
 # ADCOS execution state — persisted by the Architect.
 # This snapshot is a current-state projection, not historical delivery authority.
 # Current source of truth: spec/architect/roadmap.yaml + accepted decisions + ledger.
+#
+# Reconciled by DEC-0084 (R1 governance reconciliation) on 2026-09-05:
+# R0 was accepted and merged as PR #8 (merge a3391e86851e06032de848e6eb0b4267fa33310a,
+# the exact tree of the historical restoration state 7fb47bb) and the durable
+# projections are reconciled to the restored mainline. Historical provenance
+# fields below are preserved, not rewritten.
 
 schema_version: 1
 package: "persistent-architect"
 last_updated: "2026-09-05"
 
 repository:
-  canonical: "github.com/pectoraux/ADCOS"
-  main_sha: a7d913385f866df6da890093c26539ad876f3ee4
-  main_sha_semantics: "Actual live main SHA verified by the Architect on 2026-09-05. The prior persisted snapshot was bb29c11. This mismatch is a blocking integrity condition until explicitly reconciled."
+  canonical: "github.com/payswapdotorg/ADCOS"
+  main_sha: a3391e86851e06032de848e6eb0b4267fa33310a
+  main_sha_semantics: "Actual live main SHA verified on 2026-09-05: the R0 restoration merge (PR #8) on the exact frozen baseline 3bdfb6daf50f7c000d29a027584c0de5b376d8a8, carrying the restored W044-W049 accepted implementation artifacts. Reconciled by DEC-0084; the prior persisted snapshot was bb29c11c8bba6c9db5b87f85b1d62faad0bf7825 and the mismatch is resolved by the R1 reconciliation."
+  lifecycle_ledger_snapshot_sha: a3391e86851e06032de848e6eb0b4267fa33310a
 
 versions:
   architecture_version_reference: "1.0"
@@ -18,14 +25,21 @@ versions:
   protocol_version_authority: "spec/schemas/protocol.json"
 
 execution:
-  mode: blocked
+  mode: ready
   active_work_item: null
   active_authorization: null
-  halted_reason: "DEC-0080: mainline-integrity mismatch. Actual main is a7d913385f866df6da890093c26539ad876f3ee4, while the last persisted snapshot is bb29c11c8bba6c9db5b87f85b1d62faad0bf7825. Durable repository history proves W044-W049 accepted deliveries, but their implementation packages are not all present on current main. STOP implementation until R0 restoration and R1 governance reconciliation complete."
+  halted_reason: "Not an integrity halt: R0 is accepted and merged (PR #8, merge a3391e86851e06032de848e6eb0b4267fa33310a) and R1 is complete under DEC-0084, so the mainline integrity condition is reconciled and the repository is ready for the next gate. Implementation remains stopped pending governance, not integrity: R2_SYSTEM_COMPOSITION_CONFORMANCE awaits a fresh Work Item and exactly one implementation authorization issued by a new Architect decision, and until then exactly zero implementation authorizations are active (fail-closed; PA-001/DEC-0045: registration or restoration is never authorization)."
   next_required_decisions:
-    - "Complete R0_MAINLINE_RESTORATION by restoring the accepted W044-W049 implementation artifacts and their durable evidence/CI surfaces without unrelated ancestry."
-    - "Complete R1_GOVERNANCE_RECONCILIATION so roadmap, state, ledger, decisions, authorizations, and current-state projections all describe the same restored mainline."
-    - "Only then authorize the next implementation Work Item under the frozen roadmap and frozen dependency graph."
+    - "Activate R2_SYSTEM_COMPOSITION_CONFORMANCE: register/select the fresh R2 Work Item and issue exactly one implementation authorization via a new Architect decision, with the implementation branch cut from the exact live authorization-bearing main re-read at activation time."
+    - "W040 remains independently in-review and unaccepted; its physical evidence obligations EVID-007 and EVID-008 remain open, physical, and W040-owned — software evidence (including the restored W044-W049 batteries) never closes them."
+    - "Do not revive any historical authorization (including WORK-044-CORE-001) merely because its corresponding implementation is now present on main."
+
+reconciliation:
+  r0_status: "R0 is accepted and merged as PR #8 (merge commit a3391e86851e06032de848e6eb0b4267fa33310a on the exact frozen main 3bdfb6daf50f7c000d29a027584c0de5b376d8a8; tree 1d16c241d060c9c242f3025ea3afa73464574ccc, byte-identical to the historical restoration tree 7fb47bb312708d06f3b3c1ba0496104362c7d135)."
+  r1_status: "R1 is complete under DEC-0084 on the reconciled mainline a3391e86851e06032de848e6eb0b4267fa33310a."
+  r2_requirement: "R2 awaits a fresh Work Item and exactly one implementation authorization; no implementation authorization exists."
+  w040_status: "W040 remains in-review and unaccepted; W040 physical evidence remains independent and open."
+  authorization_state: "No implementation authorization exists; all repository-local authorization records are superseded (status superseded, authorized false)."
 
 in_review:
   - work_item: WORK-040
@@ -65,7 +79,6 @@ open_prs:
   - pr: 108
     head: "governance/acr-010-work-item-registry-extension"
     disposition: "superseded by DEC-0054/DEC-0055 application"
-
 open_acrs: []
 open_architectural_questions: []
 
@@ -84,11 +97,12 @@ accepted_acrs:
 accepted_work_items:
   first: "WORK-001"
   last: "WORK-053"
-  note: "WORK-001..WORK-039, WORK-041, WORK-042, and W051-W053 are accepted-merged in the durable ledger/history. DEC-0080 also records durable acceptance facts for W044-W050 proved by the later GitHub acceptance history. WORK-040 remains in-review and unaccepted."
+  note: "WORK-001..WORK-039, WORK-041, WORK-042, and W051-W053 are accepted-merged in the durable ledger/history. DEC-0080 also records durable acceptance facts for W044-W050 proved by the later GitHub acceptance history; the W044-W049 accepted implementation artifacts are restored onto current main by the accepted R0 (PR #8) and their ledger lifecycle projections are reconciled to accepted-merged by DEC-0084 with original acceptance provenance preserved. WORK-040 remains in-review and unaccepted."
 
 mainline_integrity:
-  status: BLOCKED
-  historical_accepted_but_absent:
+  status: RECONCILED
+  r0_restoration: "PR #8 restored the accepted W044-W049 implementation artifacts onto the exact frozen main 3bdfb6daf50f7c000d29a027584c0de5b376d8a8 and merged as a3391e86851e06032de848e6eb0b4267fa33310a (tree 1d16c241, byte-identical to the historical restoration state 7fb47bb)."
+  historical_accepted_and_restored:
     - WORK-044
     - WORK-045
     - WORK-046
@@ -100,8 +114,9 @@ mainline_integrity:
     - WORK-051
     - WORK-052
     - WORK-053
+  reconciliation_decision: DEC-0084
   required_recovery_source: "Repository Git history / accepted delivery heads; no chat or external artifact may be used as the source for reconstruction."
-  recovery_rule: "Recover exact accepted delivery artifacts and CI/evidence surfaces; do not import unrelated ancestry; do not alter frozen architecture semantics."
+  recovery_rule: "Recover exact accepted delivery artifacts and CI/evidence surfaces; do not import unrelated ancestry; do not alter frozen architecture semantics. (Completed by R0; preserved as historical rule text.)"
 
 source_of_truth:
   canonical_program: "spec/architect/roadmap.yaml"
