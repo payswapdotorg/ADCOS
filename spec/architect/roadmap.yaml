@@ -33,48 +33,54 @@ governance_rules:
   software_never_promotes_to_physical: true
 
 current_state:
-  actual_main_sha: a7d913385f866df6da890093c26539ad876f3ee4
-  last_reconciled_snapshot_sha: bb29c11c8bba6c9db5b87f85b1d62faad0bf7825
-  program_state: CANONICAL_MAINLINE_INTEGRITY_BLOCKED
+  actual_main_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+  last_reconciled_snapshot_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+  program_state: READY_FOR_R2_GOVERNED_DESIGNATION
   execution_mode: blocked
   active_work_item: null
   active_authorization: null
-  halt_reason: "Current main differs from the last persisted execution snapshot. Durable accepted history proves W044-W049 were accepted, while their implementation artifacts are not all present on current main. No implementation may start until the accepted mainline is restored and the governance projections are reconciled."
-  next_gate: R0_MAINLINE_RESTORATION
+  halt_reason: "R0_MAINLINE_RESTORATION is complete. The accepted W044-W049 implementation artifacts are restored on main. No implementation Work Item is active because R2 requires an explicit repository-local governed Work Item/authorization before implementation can begin."
+  next_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE
 
 accepted_history:
-  rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history."
+  rule: "Accepted lifecycle facts remain historical truth even when a later mainline omits their artifacts; restoration does not re-accept or rewrite them."
   work_items:
     - id: WORK-044
       status: accepted-merged
       reviewed_sha: 6720d220e390999e17707537ab587c1da3b09eb9
       merge_sha: 90864ac257a3d93d94852cfa3a74577903f508d3
-      current_mainline: missing
+      current_mainline: present
+      restoration_commit: 7fb47bb312708d06f3b3c1ba0496104362c7d135
     - id: WORK-045
       status: accepted-merged
       reviewed_sha: 827234ec3a245a6b9f2f2de5d6525afb495684cc
       merge_sha: a789d9b403d0e2a6e05276bb3cdc2b7d092c6d88
-      current_mainline: missing
+      current_mainline: present
+      restoration_commit: 7fb47bb312708d06f3b3c1ba0496104362c7d135
     - id: WORK-046
       status: accepted-merged
       reviewed_sha: 09960ea24315e5d0ccfd516d3bdca0802b62d8b7
       merge_sha: f45be6dd0544a2fd6cbc910805def28bbe0c71eb
-      current_mainline: missing
+      current_mainline: present
+      restoration_commit: 7fb47bb312708d06f3b3c1ba0496104362c7d135
     - id: WORK-047
       status: accepted-merged
       reviewed_sha: 348154d063c0e0a12d5635cb2093c67a507a4064
       merge_sha: 7bc31f2899307c56639887416d602b41b4c16f43
-      current_mainline: missing
+      current_mainline: present
+      restoration_commit: 7fb47bb312708d06f3b3c1ba0496104362c7d135
     - id: WORK-048
       status: accepted-merged
       reviewed_sha: e2af4bd20e403c1d4ee9717f7eea8809c16a53cd
       merge_sha: ce1ccaea328743a05cf8d6fa87a114e69d9e253c
-      current_mainline: missing
+      current_mainline: present
+      restoration_commit: 7fb47bb312708d06f3b3c1ba0496104362c7d135
     - id: WORK-049
       status: accepted-merged
       reviewed_sha: b8cc17ef21f6c38266152552590dc73f80c056ce
       merge_sha: 89ad6ff3d168c59256c3e805539eb9ca22f6b3bc
-      current_mainline: missing
+      current_mainline: present
+      restoration_commit: 7fb47bb312708d06f3b3c1ba0496104362c7d135
     - id: WORK-050
       status: accepted-merged
       accepted_stage_heads: [4a37408, c5cb509, 279871c, 0fa231c]
@@ -97,20 +103,20 @@ accepted_history:
 
 roadmap:
   - id: R0_MAINLINE_RESTORATION
-    status: BLOCKED_EXECUTION_GATE
+    status: COMPLETED
     objective: "Restore the exact accepted W044-W049 implementation packages and CI/evidence artifacts onto the authoritative mainline without importing unrelated later ancestry or changing frozen semantics."
-    required_output: "One verified mainline containing the accepted W044-W050/W051-W053 implementation set and their durable acceptance/governance records."
+    completion_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
     implementation_authorization: none
-    gate: "Architect verifies exact file set, accepted-head provenance, tree equivalence of recovered packages, no unauthorized semantic delta, and complete repository-local evidence."
+    acceptance: "Architect exact-tree/provenance review; restored branch contained one commit directly on current main and no spec/architect changes."
 
   - id: R1_GOVERNANCE_RECONCILIATION
-    status: AFTER_R0
-    objective: "Reconcile roadmap, current-state, execution-state, execution-ledger, decisions, authorizations, and evidence projections to the restored mainline."
-    constraints: "Preserve every prior decision and reconciliation; never rewrite historical records."
-    implementation_authorization: none
+    status: COMPLETED_WITH_LEDGER_NOTE
+    objective: "Reconcile roadmap and current execution projections to the restored mainline while preserving immutable historical lifecycle records."
+    completion_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+    note: "The roadmap and current execution projections now identify the restored mainline as canonical. The execution ledger remains the preserved historical lifecycle record; historical W044-W049 acceptance evidence is additionally anchored by DEC-0080 and the accepted artifact tree. No historical record is rewritten merely to normalize the new snapshot."
 
   - id: R2_SYSTEM_COMPOSITION_CONFORMANCE
-    status: AFTER_R1
+    status: NEXT_GOVERNED_GATE
     objective: "Prove the complete commercial/connectivity composition without introducing a second authority."
     chain: "intent -> offer -> eligibility -> reservation/lease -> candidate selection -> NetworkPath validation -> containment -> session -> delivered traffic -> usage -> BILLABLE_FINAL -> allocation -> external payment reference -> reconciliation"
     mandatory_negative_proofs:
@@ -121,6 +127,7 @@ roadmap:
       - "W049 client state cannot become canonical state"
       - "API/webhook observation cannot become a second source of truth"
       - "software evidence cannot close physical evidence"
+    authorization_rule: "R2 execution requires a fresh repository-local Work Item/authorization. Roadmap status alone never authorizes implementation."
 
   - id: R3_PROTOCOL_PRODUCTION_CONFORMANCE
     status: AFTER_R2
