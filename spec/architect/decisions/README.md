@@ -84,3 +84,5 @@ Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-
 2. A rendered verdict is never edited; later records supersede earlier ones via `resolved_by` where applicable.
 3. New records are added by the Architect in the same governance transition that they justify.
 4. `tools/spec_check.py` ARCH-04 verifies unique IDs, filename consistency, acceptance SHA/ledger consistency, and reference resolution.
+
+- `DEC-0083` — W050 acceptance and W044-W049 lifecycle reconciliation; closes R1 and gates R2 behind fresh Work Item authorization.

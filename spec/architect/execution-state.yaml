@@ -6,28 +6,27 @@ package: "persistent-architect"
 last_updated: "2026-09-05"
 
 repository:
-  canonical: "github.com/pectoraux/ADCOS"
-  main_sha: 09d77dae84b430ad4a6bb22a6f01c2b7d8533cdd
-  main_sha_semantics: "Exact live mainline after R1 governance checkpoint merge."
-  lifecycle_ledger_snapshot_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+  canonical: "github.com/payswapdotorg/ADCOS"
+  main_sha: 338af793923e1267ff3523de4310be273d75a2cd
+  main_sha_semantics: "Exact canonical reconciled checkpoint for the new ADCOS development remote."
+  lifecycle_ledger_snapshot_sha: 338af793923e1267ff3523de4310be273d75a2cd
 
 versions:
   architecture_version_reference: "1.0"
   architecture_version_authority: "spec/architecture.md"
   protocol_version_reference: "1.0"
   protocol_version_authority: "spec/schemas/protocol.json"
-  roadmap_version_reference: "1.1"
+  roadmap_version_reference: "1.2"
   roadmap_authority: "spec/architect/roadmap.yaml"
 
 execution:
-  mode: blocked
+  mode: ready
   active_work_item: null
   active_authorization: null
-  halted_reason: "R0 is complete. R1 remains blocked pending explicit lifecycle-ledger reconciliation for W044-W049 and durable W050 acceptance-provenance resolution. The governance checkpoint itself is complete; no implementation authorization exists."
+  halted_reason: "R1 is complete under DEC-0083. No implementation authorization exists. R2 awaits a fresh Work Item and authorization."
   next_required_decisions:
-    - "Reconcile execution-ledger.yaml from the live repository ledger without rewriting prior history."
-    - "Resolve W050 acceptance provenance without inferring acceptance from implementation-stage evidence alone."
-    - "Only after R1 acceptance create the governed Work Item/authorization required for R2 system composition conformance."
+    - "Create the governed R2 Work Item for system-composition conformance without introducing a second authority."
+    - "Issue exactly one repository-local implementation authorization for the R2 Work Item."
 
 in_review:
   - work_item: WORK-040
@@ -95,17 +94,19 @@ accepted_acrs:
 accepted_work_items:
   first: "WORK-001"
   last: "WORK-053"
-  note: "W001-W039, W041, W042, W051-W053 are durable accepted-merged history. W044-W049 have durable accepted delivery history and are restored on main by R0 but still require lifecycle-ledger reconciliation. W050 implementation is present but acceptance provenance is unresolved by DEC-0082. W040 remains in-review and unaccepted."
+  note: "W001-W039, W041, W042, W051-W053 are durable accepted-merged history. W044-W049 have durable accepted delivery history and are reconciled by DEC-0083. W050 is accepted by DEC-0083. W040 remains in-review and unaccepted."
 
 mainline_integrity:
-  status: R0_RESTORED_R1_PENDING
+  status: R1_RECONCILED
   restoration_merge_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
   governance_checkpoint_merge_sha: 09d77dae84b430ad4a6bb22a6f01c2b7d8533cdd
+  reconciled_checkpoint_sha: 338af793923e1267ff3523de4310be273d75a2cd
   recovered_work_items: [WORK-044, WORK-045, WORK-046, WORK-047, WORK-048, WORK-049]
   recovered_source_tree: "91594464b836492508fd8b33c9763aeb27eb085c"
   restoration_decision: DEC-0081
   provenance_correction_decision: DEC-0082
-  lifecycle_ledger_status: reconciliation_pending
+  r1_reconciliation_decision: DEC-0083
+  lifecycle_ledger_status: reconciled
 
 source_of_truth:
   program_roadmap: "spec/architect/roadmap.yaml"
