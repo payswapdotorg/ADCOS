@@ -1,12 +1,8 @@
-"""ADCOS W054 system-composition orchestration boundary.
-
-This package owns orchestration receipts and conformance mechanics only.
-Canonical commercial/connectivity state remains in the existing authority
-packages; W054 never becomes authoritative for those domains.
-"""
+"""ADCOS W054 system-composition orchestration boundary."""
 
 from .model import (
     COMPOSITION_STAGES,
+    STAGE_AUTHORITIES,
     CompositionError,
     CompositionReasonCode,
     CompositionRequest,
@@ -14,9 +10,11 @@ from .model import (
     StageReceipt,
 )
 from .runtime import CompositionRuntime, InMemoryCompositionStore, StageExecutor
+from .developer import compose_developer_request
 
 __all__ = [
     "COMPOSITION_STAGES",
+    "STAGE_AUTHORITIES",
     "CompositionError",
     "CompositionReasonCode",
     "CompositionRequest",
@@ -25,4 +23,5 @@ __all__ = [
     "CompositionRuntime",
     "InMemoryCompositionStore",
     "StageExecutor",
+    "compose_developer_request",
 ]
