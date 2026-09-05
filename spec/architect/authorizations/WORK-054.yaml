@@ -1,15 +1,16 @@
 # ADCOS Work Item authorization record — WORK-054 active implementation.
 # Issued by DEC-0085 after R1 completion under DEC-0084.
+# DEC-0086 reconciles the live authorization-bearing main baseline after PR #10.
 work_item: WORK-054
 status: active
 authorized: true
 type: implementation
 authorization_id: "WORK-054-CORE-001"
-authorization_decision: DEC-0085
+authorization_decision: DEC-0086
 superseded_by: null
 supersession_decision: null
-baseline_sha: 13bfbda54eece391306ddb774e0700c9d862339a
-review_basis: "R1 is complete under DEC-0084 and main is the exact R1 merge 13bfbda. R2 is the authoritative next implementation gate. This is the single active implementation authorization for WORK-054."
+baseline_sha: 461d1482180222f4b63f780d6d9ea1d54c49d643
+review_basis: "DEC-0085 activated WORK-054 from the R1 snapshot 13bfbda. PR #10 merged that governance activation onto live main as 461d148; DEC-0086 preserves the historical activation decision while reconciling this authorization's implementation baseline to the actual live authorization-bearing main. This remains the single active implementation authorization for WORK-054."
 dependencies:
   - WORK-041
   - WORK-042

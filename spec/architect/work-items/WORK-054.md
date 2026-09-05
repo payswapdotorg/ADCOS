@@ -10,7 +10,9 @@
 Prove the complete commercial/connectivity composition without introducing a second authority.
 
 ## Baseline
-- Implementation baseline: `13bfbda54eece391306ddb774e0700c9d862339a`
+- Implementation baseline: `461d1482180222f4b63f780d6d9ea1d54c49d643`
+- Historical R2 activation baseline: `13bfbda54eece391306ddb774e0700c9d862339a` (DEC-0085)
+- Baseline reconciliation: `DEC-0086`
 - Architecture version reference: `1.0`
 - Protocol version reference: `1.0`
 
@@ -87,7 +89,7 @@ All available composition links are exercised end to end, every authority bounda
 W048 implementation restoration; new commercial functionality; new payment integrations; KYC/KYB; live regulated funds movement; new developer-platform features; new marketplace functionality; new connectivity/session/routing/path/transport/federation/policy authority; frozen architecture changes; wire-schema changes; physical validation; modifying `spec/architect/` from the implementation PR; treating historical chat/prompts/issues as authority.
 
 ## Architectural precedents
-DEC-0047 ACR-005, DEC-0048 ACR-006, DEC-0050 ACR-009, DEC-0054 W041 acceptance, DEC-0057 W042 acceptance, DEC-0059 W051 acceptance, DEC-0061 W052 acceptance, DEC-0063 W053 acceptance, DEC-0084 R1 reconciliation.
+DEC-0047 ACR-005, DEC-0048 ACR-006, DEC-0050 ACR-009, DEC-0054 W041 acceptance, DEC-0057 W042 acceptance, DEC-0059 W051 acceptance, DEC-0061 W052 acceptance, DEC-0063 W053 acceptance, DEC-0084 R1 reconciliation, DEC-0085 R2 activation, DEC-0086 post-activation baseline reconciliation.
 
 ## Known open questions
 1. Which existing public boundary should be the composition harness entry point without creating a second authority?

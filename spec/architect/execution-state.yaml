@@ -4,7 +4,9 @@
 #
 # Reconciled by DEC-0084 (R1 governance reconciliation) on 2026-09-05:
 # R0 was accepted and merged as PR #8 and the durable projections were reconciled.
-# DEC-0085 now activates the first fresh R2 Work Item under exactly one authorization.
+# DEC-0085 activated the first fresh R2 Work Item under exactly one authorization.
+# DEC-0086 reconciles the post-activation live-main merge pointer without
+# rewriting DEC-0085's historical decision baseline.
 
 schema_version: 1
 package: "persistent-architect"
@@ -12,8 +14,8 @@ last_updated: "2026-09-05"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: 13bfbda54eece391306ddb774e0700c9d862339a
-  main_sha_semantics: "Actual live main SHA verified after R1 merge: 13bfbda54eece391306ddb774e0700c9d862339a. R1 is durably reconciled under DEC-0084."
+  main_sha: 461d1482180222f4b63f780d6d9ea1d54c49d643
+  main_sha_semantics: "Actual live main SHA verified after R2 activation: 461d1482180222f4b63f780d6d9ea1d54c49d643. DEC-0085's 13bfbda baseline is preserved as the pre-activation decision baseline; DEC-0086 records the post-activation projection reconciliation."
   lifecycle_ledger_snapshot_sha: 13bfbda54eece391306ddb774e0700c9d862339a
 
 versions:
@@ -28,14 +30,14 @@ execution:
   active_authorization: WORK-054-CORE-001
   halted_reason: null
   next_required_decisions:
-    - "WORK-054 delivery must be cut from the exact authorization-bearing main baseline 13bfbda and remain confined to its authorized implementation surfaces."
+    - "WORK-054 delivery must be cut from the live authorization-bearing main baseline 461d1482180222f4b63f780d6d9ea1d54c49d643 and remain confined to its authorized implementation surfaces."
     - "Architect review is required before WORK-054 can transition to accepted-merged and before a subsequent Work Item can activate."
     - "W040 remains independently in-review and unaccepted; EVID-007 and EVID-008 remain open, physical, and W040-owned."
 
 reconciliation:
   r0_status: "R0 accepted and merged as PR #8."
   r1_status: "R1 complete under DEC-0084 on main 13bfbda."
-  r2_status: "R2 active under DEC-0085 with WORK-054 and the single authorization WORK-054-CORE-001."
+  r2_status: "R2 active under DEC-0085 with WORK-054 and the single authorization WORK-054-CORE-001; DEC-0086 reconciles the live post-activation main pointer."
   r2_objective: "Prove the complete commercial/connectivity composition without introducing a second authority."
   w040_status: "W040 remains in-review and unaccepted; W040 physical evidence remains independent and open."
   authorization_state: "Exactly one implementation authorization exists and is active: WORK-054-CORE-001. All historical authorizations remain superseded/false."
@@ -101,7 +103,7 @@ accepted_work_items:
 
 mainline_integrity:
   status: RECONCILED
-  reconciliation_decision: DEC-0084
+  reconciliation_decision: DEC-0086
   current_execution_decision: DEC-0085
   required_recovery_source: "Repository Git history / accepted delivery heads; no chat or external artifact may be used as the source for reconstruction."
   recovery_rule: "Recover exact accepted delivery artifacts and CI/evidence surfaces; do not import unrelated ancestry; do not alter frozen architecture semantics."

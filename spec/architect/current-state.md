@@ -5,14 +5,16 @@
 ## Repository
 
 - Repository: `github.com/payswapdotorg/ADCOS`
-- Current `main`: `13bfbda54eece391306ddb774e0700c9d862339a`
+- Current `main`: `461d1482180222f4b63f780d6d9ea1d54c49d643`
 - Reconciled governance snapshot: `13bfbda54eece391306ddb774e0700c9d862339a` (DEC-0084 / PR #9)
+- R2 activation merge: `461d1482180222f4b63f780d6d9ea1d54c49d643` (PR #10 / DEC-0085)
+- Post-activation pointer reconciliation: DEC-0086
 - Architecture: `1.0` frozen
 - Protocol: `1.0`
 
 ## Program authority
 
-The frozen roadmap is `spec/architect/roadmap.yaml`, Version 1.2. R0 and R1 are complete. R2 is active under DEC-0085 with WORK-054 and exactly one implementation authorization. The roadmap is the only program roadmap; chat, issue prose, old handoffs, and external planning documents do not govern execution.
+The frozen roadmap is `spec/architect/roadmap.yaml`, Version 1.2. R0 and R1 are complete. R2 is active under DEC-0085, with the live implementation baseline reconciled by DEC-0086, and exactly one implementation authorization. The roadmap is the only program roadmap; chat, issue prose, old handoffs, and external planning documents do not govern execution.
 
 ## R0 — complete
 
@@ -20,15 +22,15 @@ R0 was accepted and merged as PR #8 on the exact frozen main `3bdfb6d`, merge `a
 
 ## R1 — complete
 
-R1 was reconciled by DEC-0084 and merged as PR #9, merge `13bfbda54eece391306ddb774e0700c9d862339a`. The durable governance projections now agree on the live mainline.
+R1 was reconciled by DEC-0084 and merged as PR #9, merge `13bfbda54eece391306ddb774e0700c9d862339a`. Its durable reconciliation snapshot remains the governance baseline from which R2 activation was decided.
 
 ## R2 — active
 
-DEC-0085 activates WORK-054 — System Composition Conformance.
+DEC-0085 activates WORK-054 — System Composition Conformance. DEC-0086 records that PR #10's live merge commit `461d148...` is the actual authorization-bearing main baseline; DEC-0085 itself remains the historical activation decision and is not rewritten.
 
 - Work Item: `WORK-054`
 - Authorization: `WORK-054-CORE-001`
-- Baseline: `13bfbda54eece391306ddb774e0700c9d862339a`
+- Live implementation baseline: `461d1482180222f4b63f780d6d9ea1d54c49d643`
 - Branch: `work-054-system-composition-conformance`
 - Objective: prove the complete commercial/connectivity composition without introducing a second authority.
 - Execution mode: `implementing`
@@ -61,7 +63,7 @@ W040 remains `in-review`, unaccepted, and independent. EVID-007 and EVID-008 rem
 
 Exactly one implementation authorization is active: `WORK-054-CORE-001`. No historical authorization has been revived. No second authorization may be created while WORK-054 is active.
 
-The implementation worker must cut its branch from the exact authorization-bearing main baseline and may not modify `spec/architect/` from the implementation PR.
+The implementation worker must cut its branch from the exact live authorization-bearing main baseline `461d148...` and may not modify `spec/architect/` from the implementation PR.
 
 ## Next transition
 
