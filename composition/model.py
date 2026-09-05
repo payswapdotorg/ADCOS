@@ -1,8 +1,4 @@
-"""W054 immutable composition value model.
-
-The composition layer records orchestration receipts, not canonical domain
-state. Every domain fact is identified by the authority that owns it.
-"""
+"""W054 immutable composition value model."""
 
 from __future__ import annotations
 
@@ -170,7 +166,8 @@ class StageReceipt:
             "authority": self.authority,
             "operation": self.operation,
             "status": self.status,
-            "reference": list(self.evidence_refs),
+            "reference": self.reference,
+            "evidence_refs": list(self.evidence_refs),
             "metadata": dict(self.metadata),
         }
 
