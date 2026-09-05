@@ -35,8 +35,8 @@ governance_rules:
   software_never_promotes_to_physical: true
 
 current_state:
-  actual_main_sha: 11bd981612274c69912fad7ea2e0de781514b347
-  last_reconciled_snapshot_sha: 11bd981612274c69912fad7ea2e0de781514b347
+  actual_main_sha: ba3717fad3cc4a5894ff3fece4768e47e7db584c
+  last_reconciled_snapshot_sha: ba3717fad3cc4a5894ff3fece4768e47e7db584c
   program_state: R2_SYSTEM_COMPOSITION_CONFORMANCE_ACTIVE
   execution_mode: active
   active_work_item: WORK-054
