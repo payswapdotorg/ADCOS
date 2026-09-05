@@ -93,19 +93,20 @@ accepted_acrs:
 
 accepted_work_items:
   first: "WORK-001"
-  last: "WORK-053"
-  note: "W001-W039, W041, W042, W051-W053 are durable accepted-merged history. W044-W049 have durable accepted delivery history and are reconciled by DEC-0083. W050 is accepted by DEC-0083. W040 remains in-review and unaccepted."
+  last: "WORK-054"
+  note: "W001-W039, W041, W042, W044-W053, and W054 are durable accepted-merged history. W040 remains in-review and unaccepted."
 
 mainline_integrity:
-  status: R1_RECONCILED
+  status: R2_COMPOSITION_COMPLETE
   restoration_merge_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
   governance_checkpoint_merge_sha: 09d77dae84b430ad4a6bb22a6f01c2b7d8533cdd
-  reconciled_checkpoint_sha: ba3717fad3cc4a5894ff3fece4768e47e7db584c
+  reconciled_checkpoint_sha: 47348f42eea49b2614fc18e5d34ce243b11bafc3
   recovered_work_items: [WORK-044, WORK-045, WORK-046, WORK-047, WORK-048, WORK-049]
   recovered_source_tree: "91594464b836492508fd8b33c9763aeb27eb085c"
   restoration_decision: DEC-0081
   provenance_correction_decision: DEC-0082
   r1_reconciliation_decision: DEC-0083
+  r2_acceptance_decision: DEC-0085
   lifecycle_ledger_status: reconciled
 
 source_of_truth:
