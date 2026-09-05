@@ -950,9 +950,9 @@ work_items:
     baseline_sha: null
     pr: null
     pr_head: null
-    reviewed_sha: null
-    merge_sha: null
-    merged_at: null
+    reviewed_sha: 815f4febbc64d55d3576386e65adaa6244c4f7cb
+    merge_sha: 815f4febbc64d55d3576386e65adaa6244c4f7cb
+    merged_at: 2026-09-04T04:08:41Z
     ci_run: null
     review_rounds: null
     acceptance_decision: DEC-0083
@@ -960,7 +960,7 @@ work_items:
     handoff: null
     handoff_required: false
     lifecycle: accepted-merged
-    note: "accepted by DEC-0083 from the exact final W050.4 delivery head 815f4febbc64d55d3576386e65adaa6244c4f7cb with permanent 76/76 deterministic verification and SOFTWARE/PHYSICAL boundary evidence. Original registration/activation provenance follows: WORK-050 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #96 and the canonical commercial dependency model. Dependencies: none. Boundary (LEDGER-RECON-005 §4.2): a capability model consumed BY WORK-048/WORK-049 — NOT an implementation vehicle for WORK-048; the W050 -> W048/W049 edges are advisory capability-input edges, not hard gates. Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
+    note: "accepted by DEC-0083 from the exact final W050.4 delivery/merge commit 815f4febbc64d55d3576386e65adaa6244c4f7cb (2026-09-04T04:08:41Z) with permanent 76/76 deterministic verification and SOFTWARE/PHYSICAL boundary evidence. Original registration/activation provenance follows: WORK-050 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #96 and the canonical commercial dependency model. Dependencies: none. Boundary (LEDGER-RECON-005 §4.2): a capability model consumed BY WORK-048/WORK-049 — NOT an implementation vehicle for WORK-048; the W050 -> W048/W049 edges are advisory capability-input edges, not hard gates. Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."
   - work_item: WORK-051
     title: "CommercialCore: connectivity intent, offers, reservation, lease, and transaction lifecycle"
     phase: 10
