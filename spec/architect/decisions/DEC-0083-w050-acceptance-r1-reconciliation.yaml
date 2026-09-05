@@ -1,0 +1,41 @@
+# ADCOS Decision Record — DEC-0083
+# R1 governance reconciliation: W050 acceptance + W044-W049 lifecycle restoration
+
+decision_id: DEC-0083
+type: governance
+status: ACCEPTED
+work_item: WORK-050
+date: "2026-09-05"
+subject: "Resolve W050 acceptance provenance and reconcile W044-W049 lifecycle state so R1 can close"
+
+context:
+  governing_roadmap_previous_version: "1.1"
+  governing_roadmap_new_version: "1.2"
+  current_main_sha: "338af793923e1267ff3523de4310be273d75a2cd"
+  w044_w049_provenance: "Durable repository history records accepted reviewed heads and merge commits for W044-W049; R0 restored their exact accepted implementation packages while the current ledger retained stale lifecycle projections."
+  w050_provenance: "The repository contains W050.1/W050.2/W050.3 accepted stage heads and W050.4 final delivery 815f4febbc64d55d3576386e65adaa6244c4f7cb with the permanent deterministic 76/76 battery and explicit SOFTWARE/PHYSICAL separation."
+
+ruling:
+  - "W044-W049 lifecycle entries are reconciled to their durable accepted delivery history without rewriting historical fields or prior reconciliation records."
+  - "W050 is ACCEPTED-MERGED on the exact final W050.4 delivery head 815f4febbc64d55d3576386e65adaa6244c4f7cb."
+  - "W050 acceptance is SOFTWARE-class only; it does not establish physical connectivity capability or enforcement authority."
+  - "W040 remains independent, in-review, and unaccepted; EVID-007 and EVID-008 remain open and W040-owned."
+  - "R1_GOVERNANCE_RECONCILIATION is COMPLETE. No implementation authorization is created by this decision."
+
+preservation:
+  - "Roadmap Version 1.1 remains preserved in Git history."
+  - "No prior decision, reconciliation, or accepted Work Item history is deleted or rewritten."
+  - "Frozen architecture and protocol semantics remain Version 1.0."
+  - "Exactly zero active implementation authorizations exist at R1 exit."
+
+source_of_truth:
+  repository_only: true
+  chat_dependency: prohibited
+  external_memory_dependency: prohibited
+  issue_prose_authority: prohibited
+  implementation_authority: "spec/architect/authorizations/"
+  lifecycle_authority: "spec/architect/execution-ledger.yaml"
+  program_authority: "spec/architect/roadmap.yaml"
+
+next_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE
+implementation_effect: "READY_FOR_NEW_WORK_ITEM"

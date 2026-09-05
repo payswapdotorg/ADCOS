@@ -1,10 +1,10 @@
 # ADCOS Current State
 
-**BLOCKED — R0 complete; R1 governance reconciliation remains open.**
+**READY — R1 governance reconciliation complete; R2 system-composition Work Item pending.**
 
 ## Repository
 
-- Repository: `github.com/pectoraux/ADCOS`
+- Repository: `github.com/payswapdotorg/ADCOS`
 - Canonical live `main`: `09d77dae84b430ad4a6bb22a6f01c2b7d8533cdd`
 - Lifecycle ledger snapshot: `7fb47bb312708d06f3b3c1ba0496104362c7d135` (R0 restoration checkpoint)
 - Roadmap: `spec/architect/roadmap.yaml` — **FROZEN, Version 1.1, sole program-roadmap authority**
@@ -14,8 +14,8 @@
 ## Governance state
 
 - R0: `COMPLETED` — PR #157
-- R1: `BLOCKED`
-- Governing decisions: `DEC-0081`, `DEC-0082`
+- R1: `COMPLETED` — DEC-0083
+- Governing decisions: `DEC-0081`, `DEC-0082`, `DEC-0083`
 - Active Work Item: none
 - Active authorization: none
 - Active implementation authorization count: zero
@@ -25,17 +25,11 @@
 
 The accepted W044-W049 implementation packages, deterministic selftests, evidence surfaces, historical handoffs, and required CI invocation wiring are restored on the canonical mainline. The clean restoration was isolated from unrelated historical ancestry and changed no frozen architecture/protocol semantics.
 
-## R1 remaining blockers
+## R1 result
 
-### W044-W049 lifecycle reconciliation
+R1 is complete under `DEC-0083`. W044-W049 lifecycle records now match their durable accepted delivery history; W050 is accepted on its exact final delivery head with the permanent 76/76 SOFTWARE battery; historical records remain preserved; no implementation authorization is active.
 
-The authoritative execution ledger still contains the earlier registered-only W044-W049 lifecycle representation even though durable repository history records their accepted reviewed heads and merges. This must be reconciled explicitly, preserving every previous reconciliation and every historical field that is not deliberately superseded.
-
-### W050 acceptance provenance
-
-W050 implementation-stage artifacts and its permanent deterministic battery are present. However, the current authoritative decision registry and execution ledger do not contain a discrete corroborated Work Item acceptance decision. DEC-0082 therefore requires fail-closed treatment: W050 is implementation-present but acceptance-unresolved until the repository evidence is sufficient.
-
-No implementation authorization may be issued while either condition remains unresolved.
+The next governed gate is R2 system composition conformance. It requires a fresh repository-local Work Item and authorization.
 
 ## Independent physical evidence
 

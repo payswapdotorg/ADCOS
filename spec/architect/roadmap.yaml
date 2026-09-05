@@ -1,11 +1,11 @@
 # ADCOS Authoritative Execution Roadmap
-# FROZEN — roadmap version 1.1
+# FROZEN — roadmap version 1.2
 
 schema_version: 2
-roadmap_version: "1.1"
+roadmap_version: "1.2"
 status: FROZEN_AUTHORITATIVE
-supersedes_roadmap_version: "1.0"
-superseding_decision: DEC-0082
+supersedes_roadmap_version: "1.1"
+superseding_decision: DEC-0083
 authority: "spec/architect/roadmap.yaml"
 human_projection: "spec/architect/roadmap.md"
 source_of_truth: repository_only
@@ -35,14 +35,14 @@ governance_rules:
   software_never_promotes_to_physical: true
 
 current_state:
-  actual_main_sha: 09d77dae84b430ad4a6bb22a6f01c2b7d8533cdd
-  last_reconciled_snapshot_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
-  program_state: R1_GOVERNANCE_RECONCILIATION_BLOCKED
-  execution_mode: blocked
+  actual_main_sha: 338af793923e1267ff3523de4310be273d75a2cd
+  last_reconciled_snapshot_sha: 338af793923e1267ff3523de4310be273d75a2cd
+  program_state: R2_SYSTEM_COMPOSITION_CONFORMANCE_READY
+  execution_mode: ready
   active_work_item: null
   active_authorization: null
-  halt_reason: "R0 is complete. R1 remains blocked because the execution ledger still carries the pre-restoration W044-W050 lifecycle representation, and W050 has implementation-stage evidence but no sufficiently corroborated durable Work Item acceptance record in the authoritative decision/ledger chain. The 09d77 governance merge is beyond the last reconciled R0 snapshot; this is an expected governance branch-point offset, not implementation authorization."
-  next_gate: R1_GOVERNANCE_RECONCILIATION
+  halt_reason: "R1 reconciliation is complete under DEC-0083. No implementation authorization is active. R2 requires a fresh repository-local Work Item and authorization."
+  next_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE
 
 accepted_history:
   rule: "Accepted lifecycle facts remain historical truth; restoration never re-accepts or rewrites them. Where acceptance provenance is not sufficiently corroborated, the roadmap records the uncertainty explicitly and fails closed."
@@ -53,7 +53,7 @@ accepted_history:
       merge_sha: 90864ac257a3d93d94852cfa3a74577903f508d3
       current_mainline: present
       restoration_commit: 7fb47bb312708d06f3b3c1ba0496104362c7d135
-      lifecycle_reconciliation: pending
+      lifecycle_reconciliation: reconciled
     - id: WORK-045
       status: accepted-merged
       reviewed_sha: 827234ec3a245a6b9f2f2de5d6525afb495684cc
@@ -90,10 +90,10 @@ accepted_history:
       restoration_commit: 7fb47bb312708d06f3b3c1ba0496104362c7d135
       lifecycle_reconciliation: pending
     - id: WORK-050
-      status: implementation-present_acceptance-unresolved
+      status: accepted-merged
       accepted_stage_heads: [4a37408, c5cb509, 279871c, 0fa231c]
       current_mainline: present
-      acceptance_provenance: "Implementation-stage evidence is present, including the permanent deterministic W050 battery, but no discrete corroborated Work Item acceptance decision is found in the current authoritative decision/ledger chain. No acceptance is inferred."
+      acceptance_provenance: "Accepted by DEC-0083 on exact final W050.4 delivery head 815f4febbc64d55d3576386e65adaa6244c4f7cb with permanent 76/76 deterministic verification; SOFTWARE-class only."
     - id: WORK-051
       status: accepted-merged
       reviewed_sha: e247b4e32e7b1dc345292af5ad7e1b49297cad6f
@@ -119,7 +119,7 @@ roadmap:
     acceptance: "Architect exact-tree/provenance review; clean restoration merged directly onto the then-current mainline as PR #157."
 
   - id: R1_GOVERNANCE_RECONCILIATION
-    status: BLOCKED
+    status: COMPLETED
     objective: "Reconcile the durable lifecycle/decision state to the restored mainline without rewriting history or manufacturing acceptance."
     implementation_authorization: none
     remaining:
@@ -130,7 +130,7 @@ roadmap:
     exit_gate: "One fresh clone presents a coherent lifecycle state with no contradictory acceptance claims, the ledger snapshot equals the canonical mainline, and exactly zero active implementation authorizations exist."
 
   - id: R2_SYSTEM_COMPOSITION_CONFORMANCE
-    status: AFTER_R1
+    status: READY
     objective: "Prove the complete commercial/connectivity composition without introducing a second authority."
     chain: "intent -> offer -> eligibility -> reservation/lease -> candidate selection -> NetworkPath validation -> containment -> session -> delivered traffic -> usage -> BILLABLE_FINAL -> allocation -> external payment reference -> reconciliation"
     mandatory_negative_proofs:
