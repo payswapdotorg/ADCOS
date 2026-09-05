@@ -1,0 +1,35 @@
+# ADCOS Decision Record — DEC-0084
+# Register and authorize W054 for R2 system composition conformance
+
+decision_id: DEC-0084
+type: governance
+status: ACCEPTED
+work_item: WORK-054
+date: "2026-09-05"
+subject: "Register and authorize W054 as the R2 system-composition conformance Work Item"
+
+context:
+  preceding_decision: DEC-0083
+  canonical_main_sha: "ba3717fad3cc4a5894ff3fece4768e47e7db584c"
+  roadmap_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE
+  thesis: "The next product milestone is composition of existing accepted authorities behind the Developer API, not creation of a second connectivity control plane."
+
+ruling:
+  - "WORK-054 is registered in the frozen Work Item registry and dependency graph as the R2 system-composition/conformance Work Item."
+  - "WORK-054 is authorized to implement only composition/orchestration seams and conformance evidence over existing authority-owned state."
+  - "WORK-054 shall not create or become authoritative for identity, routing, NetworkPath, session, containment, eligibility, marketplace, usage, allocation, payment, or client state."
+  - "The mandatory R2 negative proofs are acceptance gates, not advisory documentation."
+  - "Exactly one implementation authorization is active: WORK-054-CORE-001."
+  - "W040 physical evidence remains independent and is not closed by R2 software evidence."
+
+mandatory_negative_proofs:
+  - "payment success cannot create connectivity"
+  - "reservation success cannot imply reachability"
+  - "marketplace discovery cannot activate a path"
+  - "W050 capability declaration cannot enforce containment"
+  - "W049 client state cannot become canonical state"
+  - "API/webhook observation cannot become a second source of truth"
+  - "software evidence cannot close physical evidence"
+
+implementation_effect: "ACTIVE_WORK_ITEM_WORK-054"
+authorization_id: WORK-054-CORE-001

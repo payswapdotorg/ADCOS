@@ -86,3 +86,5 @@ Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-
 4. `tools/spec_check.py` ARCH-04 verifies unique IDs, filename consistency, acceptance SHA/ledger consistency, and reference resolution.
 
 - `DEC-0083` — W050 acceptance and W044-W049 lifecycle reconciliation; closes R1 and gates R2 behind fresh Work Item authorization.
+
+- `DEC-0084` — registers and authorizes WORK-054 as the active R2 system-composition conformance Work Item.

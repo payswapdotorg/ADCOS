@@ -211,7 +211,7 @@ GOVERNANCE_ARTIFACTS: List[str] = [
     ".github/PULL_REQUEST_TEMPLATE.md",
 ]
 
-# Work Items are frozen as the 52 registered items of the extended registry:
+## Work Items are frozen as the 53 registered items of the extended registry:
 # WORK-001..WORK-042 and WORK-044..WORK-053, with WORK-043 retired from
 # commercial use and left unassigned (LEDGER-RECON-005: never reused or
 # renumbered, so no future reader can bind the superseded commercial-era
@@ -228,7 +228,7 @@ GOVERNANCE_ARTIFACTS: List[str] = [
 # retired slot still fails closed exactly as before. Changing the backlog
 # size or the retired set is an architecture change and requires a
 # synchronized update of these expectations.
-EXPECTED_WORK_ITEM_COUNT = 52
+EXPECTED_WORK_ITEM_COUNT = 53
 RETIRED_WORK_ITEM_IDS = frozenset({"WORK-043"})
 
 # The registered ID space spans WORK-001..WORK-(COUNT + len(RETIRED)) with

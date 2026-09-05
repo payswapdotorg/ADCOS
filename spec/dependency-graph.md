@@ -75,6 +75,7 @@ flowchart TD
   W051[W051 CommercialCore]
   W052[W052 UsageLedger]
   W053[W053 EconomicAllocation]
+  W054[W054 System Composition Conformance]
 
   W001 --> W002 --> W003 --> W004 --> W005 --> W006 --> W007
   W005 --> W008
@@ -232,6 +233,18 @@ flowchart TD
   W048 --> W049
   W050 --> W048
   W050 --> W049
+  W041 --> W054
+  W042 --> W054
+  W044 --> W054
+  W045 --> W054
+  W046 --> W054
+  W047 --> W054
+  W048 --> W054
+  W049 --> W054
+  W050 --> W054
+  W051 --> W054
+  W052 --> W054
+  W053 --> W054
 ```
 
 ---
@@ -289,9 +302,13 @@ Architectural execution units registered beyond the original 40-item snapshot (p
 ### Phase 10 — Canonical commercial phase
 `W051 → W052 → W053`, then `W044`, `W045`, `W046`, `W047`, then `W050`, then `W048`, `W049`
 
-The commercial phase implements the accepted ACR-009 commercial connectivity control plane (DEC-0050) per the canonical dependency model (docs/roadmap/commercial-dependency-model.md); its members are registered by ACR-011 and all carry authorization "none" until their own repository-local authorizations issue. WORK-043 is retired from commercial use and left unassigned (its slot is intentionally vacant, represented by the recorded retired set in tools/spec_check.py). The `W050 → W048` and `W050 → W049` edges are advisory capability-input edges: W050's capability declarations constrain sharing modes but do NOT gate W048/W049 execution, authorization, or review — the hard execution gates are the `Dependencies:` declarations in spec/work-items.md, which deliberately do not list WORK-050 for W048/W049 (the two resulting ADV-01 advisories are sanctioned by ACR-011). WORK-040 remains the independent physical validation / evidence track (DEC-0051: advisory experience input to future commercial authorization reviews, NOT a hard execution prerequisite for any item in this phase).
+The commercial phase implements the accepted ACR-009 commercial connectivity control plane (DEC-0050) per the canonical dependency model (docs/roadmap/commercial-dependency-model.md); its members are registered by ACR-011 and all carry authorization "none" until their own repository-local authorizations issue. WORK-043 is retired from commercial use and left unassigned (its slot is intentionally vacant, represented by the recorded retired set in tools/spec_check.py). The `W050 → W048` and `W050 → W049` edges are advisory capability-input edges: W050's capability declarations constrain sharing modes but do NOT gate W048/W049 execution, authorization, or review — the hard execution gates are the `Dependencies:` declarations in spec/work-items.md. W054 is the post-commercial composition/conformance Work Item and depends on all component authorities in the chain it composes. WORK-040 remains the independent physical validation / evidence track (DEC-0051: advisory experience input to future commercial authorization reviews, NOT a hard execution prerequisite for any item in this phase).
 
 ---
+
+
+### Phase 10.5 — System composition conformance
+`W054` composes the already-accepted commercial, NetworkPath, containment, session, usage, allocation, payment-reference, journal/recovery, marketplace, capability, and Developer API authorities into one externally consumable control flow. It is an orchestration/conformance Work Item, not a new domain authority.
 
 ## 4. Critical Path
 
@@ -381,7 +398,7 @@ A passing test suite cannot override an architecture violation.
 
 ## 8. Completion Criterion
 
-ADCOS is architecturally complete only when all 52 registered Work Items are Architect-accepted (the registered set spans WORK-001..WORK-053 with WORK-043 retired and its slot intentionally vacant, per ACR-011) and the final conformance/interop/pilot evidence demonstrates:
+ADCOS is architecturally complete only when all 53 registered Work Items are Architect-accepted (the registered set spans WORK-001..WORK-053 with WORK-043 retired and its slot intentionally vacant, per ACR-011) and the final conformance/interop/pilot evidence demonstrates:
 
 ```text
 5G today
