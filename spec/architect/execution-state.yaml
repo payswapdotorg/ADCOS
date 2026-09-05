@@ -1,6 +1,5 @@
 # ADCOS execution state — persisted by the Architect.
-# This snapshot is a current-state projection, not historical delivery authority.
-# Current source of truth: spec/architect/roadmap.yaml + accepted decisions + ledger.
+# Current-state projection is subordinate to the frozen roadmap and durable ledger.
 
 schema_version: 1
 package: "persistent-architect"
@@ -8,8 +7,8 @@ last_updated: "2026-09-05"
 
 repository:
   canonical: "github.com/pectoraux/ADCOS"
-  main_sha: a7d913385f866df6da890093c26539ad876f3ee4
-  main_sha_semantics: "Actual live main SHA verified by the Architect on 2026-09-05. The prior persisted snapshot was bb29c11. This mismatch is a blocking integrity condition until explicitly reconciled."
+  main_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+  main_sha_semantics: "Exact live mainline after R0_MAINLINE_RESTORATION (PR #157)."
 
 versions:
   architecture_version_reference: "1.0"
@@ -21,11 +20,11 @@ execution:
   mode: blocked
   active_work_item: null
   active_authorization: null
-  halted_reason: "DEC-0080: mainline-integrity mismatch. Actual main is a7d913385f866df6da890093c26539ad876f3ee4, while the last persisted snapshot is bb29c11c8bba6c9db5b87f85b1d62faad0bf7825. Durable repository history proves W044-W049 accepted deliveries, but their implementation packages are not all present on current main. STOP implementation until R0 restoration and R1 governance reconciliation complete."
+  halted_reason: "R0_MAINLINE_RESTORATION is complete at 7fb47bb. R1_GOVERNANCE_RECONCILIATION remains blocking because the durable execution ledger still contains the pre-restoration lifecycle representation for W044-W050. No implementation authorization may be issued until that ledger is explicitly reconciled."
   next_required_decisions:
-    - "Complete R0_MAINLINE_RESTORATION by restoring the accepted W044-W049 implementation artifacts and their durable evidence/CI surfaces without unrelated ancestry."
-    - "Complete R1_GOVERNANCE_RECONCILIATION so roadmap, state, ledger, decisions, authorizations, and current-state projections all describe the same restored mainline."
-    - "Only then authorize the next implementation Work Item under the frozen roadmap and frozen dependency graph."
+    - "Complete R1 by reconciling execution-ledger.yaml without rewriting prior history or reconciliations."
+    - "Verify roadmap, execution state, ledger, decisions, authorizations, and current-state projection agree on the restored mainline."
+    - "Only after R1 acceptance create the governed Work Item/authorization required for R2_SYSTEM_COMPOSITION_CONFORMANCE."
 
 in_review:
   - work_item: WORK-040
@@ -65,6 +64,9 @@ open_prs:
   - pr: 108
     head: "governance/acr-010-work-item-registry-extension"
     disposition: "superseded by DEC-0054/DEC-0055 application"
+  - pr: 156
+    head: "governance/reinstate-accepted-commercial-implementations"
+    disposition: "closed as divergent recovery attempt; superseded by clean R0 PR #157"
 
 open_acrs: []
 open_architectural_questions: []
@@ -84,32 +86,21 @@ accepted_acrs:
 accepted_work_items:
   first: "WORK-001"
   last: "WORK-053"
-  note: "WORK-001..WORK-039, WORK-041, WORK-042, and W051-W053 are accepted-merged in the durable ledger/history. DEC-0080 also records durable acceptance facts for W044-W050 proved by the later GitHub acceptance history. WORK-040 remains in-review and unaccepted."
+  note: "WORK-001..WORK-039, WORK-041, WORK-042, and W051-W053 are durable accepted-merged history. DEC-0080 records the previously accepted W044-W050 history and R0 restored the W044-W049 artifacts to main. WORK-040 remains in-review and unaccepted."
 
 mainline_integrity:
-  status: BLOCKED
-  historical_accepted_but_absent:
-    - WORK-044
-    - WORK-045
-    - WORK-046
-    - WORK-047
-    - WORK-048
-    - WORK-049
-  historical_accepted_and_present:
-    - WORK-050
-    - WORK-051
-    - WORK-052
-    - WORK-053
-  required_recovery_source: "Repository Git history / accepted delivery heads; no chat or external artifact may be used as the source for reconstruction."
-  recovery_rule: "Recover exact accepted delivery artifacts and CI/evidence surfaces; do not import unrelated ancestry; do not alter frozen architecture semantics."
+  status: R0_RESTORED_R1_PENDING
+  restoration_merge_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+  recovered_work_items: [WORK-044, WORK-045, WORK-046, WORK-047, WORK-048, WORK-049]
+  recovered_source_tree: "91594464b836492508fd8b33c9763aeb27eb085c"
+  historical_acceptance_anchor: DEC-0080
+  r1_requirement: "Reconcile the lifecycle ledger representation to the restored accepted history; preserve prior records and do not create a second authority."
 
 source_of_truth:
-  canonical_program: "spec/architect/roadmap.yaml"
-  human_program_projection: "spec/architect/roadmap.md"
-  current_execution: "spec/architect/execution-state.yaml"
+  program_roadmap: "spec/architect/roadmap.yaml"
+  current_execution_projection: "spec/architect/execution-state.yaml"
   lifecycle_history: "spec/architect/execution-ledger.yaml"
   implementation_permission: "spec/architect/authorizations/"
-  durable_decisions: "spec/architect/decisions/"
+  decisions: "spec/architect/decisions/"
   chat_dependency: PROHIBITED
   external_memory_dependency: PROHIBITED
-  stale_projection_behavior: FAIL_CLOSED
