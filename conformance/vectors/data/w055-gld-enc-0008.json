@@ -1,0 +1,48 @@
+{
+  "authority": "WORK-003",
+  "category": "canonical-encoding",
+  "contract": "protocol/envelope.py (preservation); protocol/canonicalization.py",
+  "description": "Envelope with unknown optional extensions and an unknown top-level member (all preserved, all canonical).",
+  "expected": {
+    "canonical_cbor_hex": "ac6673656e6465726f6e6f64653a773035352d616c706861677061796c6f6164a164726f7773820a146776657273696f6e016865766964656e636581a26373657101646b696e6467666978747572656870726f746f636f6c656164636f73696973737565645f617474323033302d30312d30315430303a30303a30305a697369676e6174757265717369672d6d6174657269616c2d303030386a657870697265735f617474323033302d30312d30315430313a30303a30305a6a657874656e73696f6e73a178186675747572652e657874656e73696f6e2e6578616d706c65a264646174616b70726573657276652d6d65666e6573746564830102036a6d6573736167655f69646d6d73672d773035352d303030386c6d6573736167655f74797065746361706162696c6974792e61647665727469736572782d756e6b6e6f776e2d6f7074696f6e616ca169707265736572766564f5",
+    "canonical_json": "{\"evidence\":[{\"kind\":\"fixture\",\"seq\":1}],\"expires_at\":\"2030-01-01T01:00:00Z\",\"extensions\":{\"future.extension.example\":{\"data\":\"preserve-me\",\"nested\":[1,2,3]}},\"issued_at\":\"2030-01-01T00:00:00Z\",\"message_id\":\"msg-w055-0008\",\"message_type\":\"capability.advertise\",\"payload\":{\"rows\":[10,20]},\"protocol\":\"adcos\",\"sender\":\"node:w055-alpha\",\"signature\":\"sig-material-0008\",\"version\":1,\"x-unknown-optional\":{\"preserved\":true}}"
+  },
+  "input": {
+    "evidence": [
+      {
+        "kind": "fixture",
+        "seq": 1
+      }
+    ],
+    "expires_at": "2030-01-01T01:00:00Z",
+    "extensions": {
+      "future.extension.example": {
+        "data": "preserve-me",
+        "nested": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    "issued_at": "2030-01-01T00:00:00Z",
+    "message_id": "msg-w055-0008",
+    "message_type": "capability.advertise",
+    "payload": {
+      "rows": [
+        10,
+        20
+      ]
+    },
+    "protocol": "adcos",
+    "sender": "node:w055-alpha",
+    "signature": "sig-material-0008",
+    "version": 1,
+    "x-unknown-optional": {
+      "preserved": true
+    }
+  },
+  "invariant": "unknown optional content is preserved verbatim in canonical form",
+  "outcome_class": "known_additive",
+  "vector_id": "W055-GLD-ENC-0008"
+}

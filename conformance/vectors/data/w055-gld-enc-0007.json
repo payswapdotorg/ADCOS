@@ -1,0 +1,19 @@
+{
+  "authority": "WORK-003",
+  "category": "canonical-encoding",
+  "contract": "protocol/canonicalization.py (_utf16_sort_key)",
+  "description": "Key ordering stress: a key set whose UTF-16 code-unit order differs from code-point order (supplementary-plane key sorts before U+FF01).",
+  "expected": {
+    "canonical_cbor_hex": "a4615a6575707065726161656c6f77657263efbc816d626d702d66756c6c776964746864f09f98806d737570706c656d656e74617279",
+    "canonical_json": "{\"Z\":\"upper\",\"a\":\"lower\",\"😀\":\"supplementary\",\"！\":\"bmp-fullwidth\"}"
+  },
+  "input": {
+    "Z": "upper",
+    "a": "lower",
+    "！": "bmp-fullwidth",
+    "😀": "supplementary"
+  },
+  "invariant": "object keys sorted by UTF-16 code-unit order (RFC 8785 subset)",
+  "outcome_class": "known_compatible",
+  "vector_id": "W055-GLD-ENC-0007"
+}

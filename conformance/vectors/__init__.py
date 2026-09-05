@@ -3,6 +3,12 @@
 Each module exposes ``vectors() -> Tuple[ConformanceVector, ...]``.
 Registration order is irrelevant: the registry canonicalizes by
 vector id (see conformance/registry.py).
+
+WORK-055 added the wire module (R3 production-conformance coverage
+for the envelope area: canonicalization profile rules, golden corpus,
+signature coverage, unknown-field hardening, replay/idempotency, and
+evidence separation).  The WORK-029 surfaces are covered from
+tools/conformance_selftest.py, the sanctioned composition root.
 """
 
 from __future__ import annotations
@@ -22,6 +28,7 @@ from conformance.vectors import (
     structure,
     topology,
     transport,
+    wire,
 )
 
 __all__ = ["all_vectors"]
@@ -41,6 +48,7 @@ def all_vectors() -> Tuple[ConformanceVector, ...]:
         adapter,
         transport,
         structure,
+        wire,
     ):
         aggregated = aggregated + module.vectors()
     return aggregated

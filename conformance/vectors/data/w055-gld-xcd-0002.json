@@ -1,0 +1,23 @@
+{
+  "authority": "WORK-003",
+  "category": "codec-cross-agreement",
+  "contract": "protocol/codec_json.py; protocol/codec_cbor.py",
+  "description": "Unicode-heavy value across codecs.",
+  "expected": {
+    "canonical_cbor_hex": "a3646b657973a4615a0361610463efbc810264f09f988001647465787473e5a5bd2077c3b6726c6420f09f988020efac816765736361706573667122625c740a",
+    "canonical_json": "{\"escapes\":\"q\\\"b\\\\t\\n\",\"keys\":{\"Z\":3,\"a\":4,\"😀\":1,\"！\":2},\"text\":\"好 wörld 😀 ﬁ\"}"
+  },
+  "input": {
+    "escapes": "q\"b\\t\n",
+    "keys": {
+      "Z": 3,
+      "a": 4,
+      "！": 2,
+      "😀": 1
+    },
+    "text": "好 wörld 😀 ﬁ"
+  },
+  "invariant": "text values round-trip identically through both codecs",
+  "outcome_class": "known_compatible",
+  "vector_id": "W055-GLD-XCD-0002"
+}

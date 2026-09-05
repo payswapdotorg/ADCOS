@@ -1,0 +1,47 @@
+{
+  "authority": "WORK-003",
+  "category": "signature-input",
+  "contract": "protocol/signature.py (signature_input_bytes)",
+  "description": "Signature-input basis with unknown optional extensions and top-level members: every non-signature member is covered.",
+  "expected": {
+    "signature_input_json": "{\"evidence\":[{\"kind\":\"fixture\",\"seq\":1}],\"expires_at\":\"2030-01-01T01:00:00Z\",\"extensions\":{\"future.extension.example\":{\"data\":\"preserve-me\",\"nested\":[1,2,3]}},\"issued_at\":\"2030-01-01T00:00:00Z\",\"message_id\":\"msg-w055-0008\",\"message_type\":\"capability.advertise\",\"payload\":{\"rows\":[10,20]},\"protocol\":\"adcos\",\"sender\":\"node:w055-alpha\",\"version\":1,\"x-unknown-optional\":{\"preserved\":true}}"
+  },
+  "input": {
+    "evidence": [
+      {
+        "kind": "fixture",
+        "seq": 1
+      }
+    ],
+    "expires_at": "2030-01-01T01:00:00Z",
+    "extensions": {
+      "future.extension.example": {
+        "data": "preserve-me",
+        "nested": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    "issued_at": "2030-01-01T00:00:00Z",
+    "message_id": "msg-w055-0008",
+    "message_type": "capability.advertise",
+    "payload": {
+      "rows": [
+        10,
+        20
+      ]
+    },
+    "protocol": "adcos",
+    "sender": "node:w055-alpha",
+    "signature": "sig-material-0008",
+    "version": 1,
+    "x-unknown-optional": {
+      "preserved": true
+    }
+  },
+  "invariant": "unknown optional content is inside the covered-byte basis",
+  "outcome_class": "known_additive",
+  "vector_id": "W055-GLD-SIG-0002"
+}

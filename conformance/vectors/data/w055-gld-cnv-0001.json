@@ -1,0 +1,13 @@
+{
+  "authority": "WORK-003",
+  "category": "encoding-convergence",
+  "contract": "protocol/canonicalization.py (deterministic form)",
+  "description": "Differently formatted encodings of one semantic value converge: reverse key order with extra whitespace.",
+  "expected": {
+    "canonical_json": "{\"a\":{\"b\":\"x\",\"y\":[1,2]},\"m\":null,\"z\":26}"
+  },
+  "input": "{\"z\": 26,   \"a\": {\"y\": [1, 2],  \"b\": \"x\"},  \"m\": null}",
+  "invariant": "input formatting (key order, whitespace) never survives canonicalization",
+  "outcome_class": "known_compatible",
+  "vector_id": "W055-GLD-CNV-0001"
+}

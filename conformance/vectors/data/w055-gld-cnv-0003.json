@@ -1,0 +1,13 @@
+{
+  "authority": "WORK-003",
+  "category": "encoding-convergence",
+  "contract": "protocol/canonicalization.py (_canonical_string)",
+  "description": "Unicode escape forms in the source text converge to literal output.",
+  "expected": {
+    "canonical_json": "{\"key\":\"é😀\"}"
+  },
+  "input": "{\"\\u006b\\u0065\\u0079\": \"\\u00e9\\ud83d\\ude00\"}",
+  "invariant": "\\u escape forms never survive canonicalization; characters emit literally",
+  "outcome_class": "known_compatible",
+  "vector_id": "W055-GLD-CNV-0003"
+}

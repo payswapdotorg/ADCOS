@@ -1,0 +1,13 @@
+{
+  "authority": "WORK-003",
+  "category": "encoding-convergence",
+  "contract": "protocol/canonicalization.py (deterministic form)",
+  "description": "Convergence pair for W055-GLD-CNV-0001: compact ordering of the same semantic value reaches the identical canonical bytes.",
+  "expected": {
+    "canonical_json": "{\"a\":{\"b\":\"x\",\"y\":[1,2]},\"m\":null,\"z\":26}"
+  },
+  "input": "{\"m\":null,\"a\":{\"b\":\"x\",\"y\":[1,2]},\"z\":26}",
+  "invariant": "semantically equivalent inputs converge exactly",
+  "outcome_class": "known_compatible",
+  "vector_id": "W055-GLD-CNV-0002"
+}

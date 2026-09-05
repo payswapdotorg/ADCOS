@@ -120,3 +120,72 @@ package.
 discrimination proofs, structural audits, frozen-surface and CI
 wiring checks). CI runs it as part of `spec-check` (mandatory on PRs;
 committed wiring verified directly on main).
+
+# WORK-055 — Protocol Production Conformance (R3 extension)
+
+WORK-055 (WORK-055-CORE-001, DEC-0088) extended this foundation
+additively with the R3 production-conformance layer. Every WORK-032
+behavior is preserved: the ten matrix areas, the registry and tag
+vocabularies, the world composition, the declared import surface, and
+all W032 battery cases remain and pass. The matrix grew from 136 to
+163 vectors.
+
+Family-level additions (all within the frozen W032 import surface --
+the nine declared roots plus sanctioned transitive inputs):
+
+- **`conformance/profile.py`** — the production canonicalization
+  profile: a named, attributed, digest-stable statement of every rule
+  of the WORK-003 canonical JSON form (the profile that frozen
+  protocol.json deliberately left to "later conformance work"); every
+  rule is mechanically verified by the WIRE vectors, and a sabotaged
+  canonicalizer is detected.
+- **`conformance/golden.py` + `conformance/vectors/data/`** — the
+  golden-vector corpus: 16 byte-exact test fixtures (canonical
+  encoding, raw-text convergence, signature-input bases, codec
+  cross-agreement) with stable ids, owning authorities, invariants,
+  and outcome classes. The verifier calls only frozen public APIs and
+  compares; the corpus is test data, never a protocol definition and
+  never authoritative over the frozen specification.
+- **`conformance/vectors/wire.py`** (envelope area) — canonicalization
+  profile rules, corpus verification, signature coverage and
+  covered-byte integrity end-to-end through the WORK-004 provider
+  seam, unknown-field/extension hardening, replay/idempotency
+  hardening, and evidence separation.
+
+Battery-level R3 coverage (in `tools/conformance_selftest.py`, the
+sanctioned composition root): the WORK-029 surfaces — version
+negotiation/downgrade resistance and schema evolution/migration — are
+consumed from the battery rather than from this family, because the
+frozen spec/dependency-graph.md carries no W055 family-level edge and
+the WORK-029 family's own import discipline (tools/upgrade_selftest.py
+case_33) permits only spec-recorded family importers (the W033/W038
+precedents). Amending those records is Architect-owned; see
+docs/WORK-055-handoff.md for the boundary decision and the unlock
+path.
+
+R3 discrimination proofs (each: genuine CONFORMANT -> sabotaged
+NONCONFORMANT -> genuine CONFORMANT restored):
+
+- canonicalization ambiguity — an insertion-order-preserving
+  canonicalizer (family sabotage, paired with W055-CNF-WIRE-001);
+- covered-byte exclusion — payload silently dropped from the
+  signature basis (paired with W055-CNF-WIRE-017);
+- unsafe unknown-field handling — required:true extensions silently
+  downgraded to optional (paired with W055-CNF-WIRE-021);
+- evidence-as-authority — a CONFORMANT conformance report verdict
+  overruling the frozen validation pipeline (paired with
+  W032-CNF-ENV-002);
+- negotiation downgrade — a cross-major clamping fallback
+  (battery-level, over the genuine WORK-029 API);
+- migration best-effort reversal — reversing a declared
+  non-reversible step (battery-level, over the genuine registry);
+- digest instability — hash-order-dependent digests detected as
+  unstable across PYTHONHASHSEED values while the genuine
+  corpus/profile/W029-outcome digests stay byte-identical.
+
+The battery also verifies the corpus/profile/W029-outcome digests
+across subprocesses and hash seeds, the complete compatibility-class
+table, the authorized W055 scope/ancestry (from the baseline
+57963858e5a2b9d11faed94b50f94e058cede0a8), and that the frozen
+authorities (protocol/, upgrade/, spec/) are untouched by the
+delivery.

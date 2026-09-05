@@ -1,0 +1,30 @@
+{
+  "authority": "WORK-003",
+  "category": "canonical-encoding",
+  "contract": "protocol/canonicalization.py (_write container branches)",
+  "description": "Empty containers and empty string.",
+  "expected": {
+    "canonical_cbor_hex": "ab6673656e6465726f6e6f64653a773035352d616c706861677061796c6f6164a369656d7074795f6d6170a06a656d7074795f6c697374806c656d7074795f737472696e67606776657273696f6e016865766964656e6365806870726f746f636f6c656164636f73696973737565645f617474323033302d30312d30315430303a30303a30305a697369676e617475726578196f70617175652d7369676e61747572652d6d6174657269616c6a657870697265735f617474323033302d30312d30315430313a30303a30305a6a657874656e73696f6e73a06a6d6573736167655f69646d6d73672d773035352d303030366c6d6573736167655f74797065746361706162696c6974792e616476657274697365",
+    "canonical_json": "{\"evidence\":[],\"expires_at\":\"2030-01-01T01:00:00Z\",\"extensions\":{},\"issued_at\":\"2030-01-01T00:00:00Z\",\"message_id\":\"msg-w055-0006\",\"message_type\":\"capability.advertise\",\"payload\":{\"empty_list\":[],\"empty_map\":{},\"empty_string\":\"\"},\"protocol\":\"adcos\",\"sender\":\"node:w055-alpha\",\"signature\":\"opaque-signature-material\",\"version\":1}"
+  },
+  "input": {
+    "evidence": [],
+    "expires_at": "2030-01-01T01:00:00Z",
+    "extensions": {},
+    "issued_at": "2030-01-01T00:00:00Z",
+    "message_id": "msg-w055-0006",
+    "message_type": "capability.advertise",
+    "payload": {
+      "empty_list": [],
+      "empty_map": {},
+      "empty_string": ""
+    },
+    "protocol": "adcos",
+    "sender": "node:w055-alpha",
+    "signature": "opaque-signature-material",
+    "version": 1
+  },
+  "invariant": "empty map, array, and string have exact canonical forms",
+  "outcome_class": "known_compatible",
+  "vector_id": "W055-GLD-ENC-0006"
+}
