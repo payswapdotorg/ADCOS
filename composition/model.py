@@ -29,21 +29,21 @@ COMPOSITION_STAGES: Tuple[str, ...] = (
     "CANONICAL_OBSERVATION",
 )
 
-_DOMAIN_AUTHORITIES = frozenset(
-    {
-        "WORK-041",
-        "WORK-042",
-        "WORK-044",
-        "WORK-045",
-        "WORK-046",
-        "WORK-047",
-        "WORK-048",
-        "WORK-049",
-        "WORK-051",
-        "WORK-052",
-        "WORK-053",
-    }
-)
+STAGE_AUTHORITIES = {
+    "DEVELOPER_API": "WORK-046",
+    "POLICY_ELIGIBILITY": "WORK-045",
+    "OFFER_RESERVATION_LEASE": "WORK-051",
+    "MARKETPLACE_SELECTION": "WORK-047",
+    "NETWORK_PATH_VALIDATION": "WORK-041",
+    "CONTAINMENT": "WORK-048",
+    "SESSION": "WORK-012",
+    "DELIVERY": "WORK-048",
+    "USAGE": "WORK-052",
+    "BILLABLE_FINAL": "WORK-051",
+    "ALLOCATION": "WORK-053",
+    "PAYMENT_RECONCILIATION": "WORK-044",
+    "CANONICAL_OBSERVATION": "WORK-046",
+}
 
 
 class CompositionReasonCode:
@@ -129,12 +129,13 @@ class StageReceipt:
     metadata: Mapping[str, Any] = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
-        if self.stage not in COMPOSITION_STAGES:
+        expected = STAGE_AUTHORITIES.get(self.stage)
+        if expected is None:
             raise CompositionError(CompositionReasonCode.RECEIPT_INVALID, "unknown stage %r" % self.stage)
-        if self.authority not in _DOMAIN_AUTHORITIES:
+        if self.authority != expected:
             raise CompositionError(
                 CompositionReasonCode.AUTHORITY_INVALID,
-                "stage authority %r is not an accepted domain authority" % self.authority,
+                "stage %s must be owned by %s, not %s" % (self.stage, expected, self.authority),
             )
         _text(self.operation, "operation")
         _text(self.status, "status")
@@ -144,14 +145,12 @@ class StageReceipt:
         metadata = {} if self.metadata is None else self.metadata
         if not isinstance(metadata, Mapping):
             raise CompositionError(CompositionReasonCode.RECEIPT_INVALID, "metadata must be a mapping")
-        # W054 may transport evidence references but may not claim a PHYSICAL PASS.
-        flattened = canonical_json_bytes(dict(metadata)).decode("utf-8")
-        if "PHYSICAL_PASS" in flattened or "physical_pass" in flattened:
-            raise CompositionError(CompositionReasonCode.PHYSICAL_CLAIM, "composition receipts cannot claim physical PASS")
         try:
-            canonical_json_bytes(dict(metadata))
+            flattened = canonical_json_bytes(dict(metadata)).decode("utf-8")
         except Exception as exc:
             raise CompositionError(CompositionReasonCode.RECEIPT_INVALID, "metadata is outside canonical JSON") from exc
+        if "PHYSICAL_PASS" in flattened or "physical_pass" in flattened:
+            raise CompositionError(CompositionReasonCode.PHYSICAL_CLAIM, "composition receipts cannot claim physical PASS")
 
     def to_dict(self) -> Dict[str, Any]:
         return {
