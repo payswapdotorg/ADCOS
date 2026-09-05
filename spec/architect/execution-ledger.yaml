@@ -1018,7 +1018,7 @@ work_items:
 
   - work_item: WORK-054
     title: "System Composition Conformance and Developer Connectivity Composition"
-    phase: 10.5
+    phase: 10
     branch: "work-054-system-composition-conformance"
     baseline_sha: ba3717fad3cc4a5894ff3fece4768e47e7db584c
     pr: null
