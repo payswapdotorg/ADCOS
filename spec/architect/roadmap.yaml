@@ -35,12 +35,12 @@ governance_rules:
 current_state:
   actual_main_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
   last_reconciled_snapshot_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
-  program_state: READY_FOR_R2_GOVERNED_DESIGNATION
+  program_state: R1_GOVERNANCE_RECONCILIATION_BLOCKED
   execution_mode: blocked
   active_work_item: null
   active_authorization: null
-  halt_reason: "R0_MAINLINE_RESTORATION is complete. The accepted W044-W049 implementation artifacts are restored on main. No implementation Work Item is active because R2 requires an explicit repository-local governed Work Item/authorization before implementation can begin."
-  next_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE
+  halt_reason: "R0 is complete and the accepted W044-W049 implementation artifacts are present on main. R1 remains blocked because the durable execution ledger still carries the pre-restoration lifecycle representation for W044-W050. The roadmap will not declare R1 complete until the ledger is reconciled without rewriting history."
+  next_gate: R1_GOVERNANCE_RECONCILIATION
 
 accepted_history:
   rule: "Accepted lifecycle facts remain historical truth even when a later mainline omits their artifacts; restoration does not re-accept or rewrite them."
@@ -110,13 +110,15 @@ roadmap:
     acceptance: "Architect exact-tree/provenance review; restored branch contained one commit directly on current main and no spec/architect changes."
 
   - id: R1_GOVERNANCE_RECONCILIATION
-    status: COMPLETED_WITH_LEDGER_NOTE
-    objective: "Reconcile roadmap and current execution projections to the restored mainline while preserving immutable historical lifecycle records."
-    completion_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
-    note: "The roadmap and current execution projections now identify the restored mainline as canonical. The execution ledger remains the preserved historical lifecycle record; historical W044-W049 acceptance evidence is additionally anchored by DEC-0080 and the accepted artifact tree. No historical record is rewritten merely to normalize the new snapshot."
+    status: BLOCKED_LEDGER_RECONCILIATION
+    objective: "Reconcile roadmap, current-state, execution-state, execution-ledger, decisions, authorizations, and evidence projections to the restored mainline while preserving immutable historical lifecycle records."
+    completion_sha: null
+    implementation_authorization: none
+    remaining: "Synchronize the durable execution ledger's W044-W050 lifecycle representation with the already-proven accepted history and restored mainline; preserve all prior reconciliation records and do not rewrite W001-W053 history."
+    exit_gate: "A fresh clone of main reports the same mainline SHA across roadmap/current-state/execution-state and the ledger snapshot is advanced through an explicit reconciliation; exactly zero active implementation authorizations exist."
 
   - id: R2_SYSTEM_COMPOSITION_CONFORMANCE
-    status: NEXT_GOVERNED_GATE
+    status: AFTER_R1
     objective: "Prove the complete commercial/connectivity composition without introducing a second authority."
     chain: "intent -> offer -> eligibility -> reservation/lease -> candidate selection -> NetworkPath validation -> containment -> session -> delivered traffic -> usage -> BILLABLE_FINAL -> allocation -> external payment reference -> reconciliation"
     mandatory_negative_proofs:
