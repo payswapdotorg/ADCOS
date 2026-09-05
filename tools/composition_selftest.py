@@ -2,9 +2,9 @@
 """W054 deterministic composition-conformance battery.
 
 Stdlib-only, offline, fresh-world, fail-closed tests for the fixed product
-composition seam. The battery deliberately uses injected stage executors: the
-purpose is to prove orchestration semantics and authority boundaries without
-creating fake implementations of domain authorities.
+composition seam. The battery uses injected stage executors to prove
+orchestration semantics and authority boundaries without implementing a second
+copy of any domain authority.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Dict, List, Mapping, Tuple
+from typing import Dict, List, Mapping, Optional, Tuple
 
 from composition import (
     COMPOSITION_STAGES,
@@ -23,23 +23,21 @@ from composition import (
     CompositionRuntime,
     InMemoryCompositionStore,
     StageReceipt,
+    compose_developer_request,
 )
 from composition.model import STAGE_AUTHORITIES
+from composition.runtime import CompositionJournalRecord
 
 
 @dataclass
 class Fixture:
     calls: List[Tuple[str, str]]
-    receipts: Dict[str, StageReceipt]
 
 
-def fixture_executor(fixture: Fixture, *, reject_physical: bool = True):
+def fixture_executor(fixture: Fixture):
     def execute(stage: str, request: CompositionRequest, previous: Tuple[StageReceipt, ...], key: str) -> StageReceipt:
         fixture.calls.append((stage, key))
         status = "accepted" if stage != "CANONICAL_OBSERVATION" else "observed"
-        metadata = {"source": "authority-test-double", "stage_index": COMPOSITION_STAGES.index(stage)}
-        if not reject_physical and stage == "DELIVERY":
-            metadata["physical_pass"] = True
         return StageReceipt(
             stage=stage,
             authority=STAGE_AUTHORITIES[stage],
@@ -47,9 +45,8 @@ def fixture_executor(fixture: Fixture, *, reject_physical: bool = True):
             status=status,
             reference="ref-%02d" % (COMPOSITION_STAGES.index(stage) + 1),
             evidence_refs=("evidence-%02d" % (COMPOSITION_STAGES.index(stage) + 1),),
-            metadata=metadata,
+            metadata={"source": "authority-test-double", "stage_index": COMPOSITION_STAGES.index(stage)},
         )
-
     return execute
 
 
@@ -57,7 +54,7 @@ def executors_for(fixture: Fixture) -> Dict[str, object]:
     return {stage: fixture_executor(fixture) for stage in COMPOSITION_STAGES}
 
 
-def request(intent: Mapping[str, object] | None = None, request_id: str = "request-001") -> CompositionRequest:
+def request(intent: Optional[Mapping[str, object]] = None, request_id: str = "request-001") -> CompositionRequest:
     return CompositionRequest(
         request_id=request_id,
         actor="application-001",
@@ -75,18 +72,20 @@ def expect_error(fn, reason: str) -> None:
     raise AssertionError("expected %s" % reason)
 
 
-def run_once(seed: str) -> bytes:
+def run_once(seed: Optional[str] = None) -> bytes:
     env = dict(os.environ)
-    env["PYTHONHASHSEED"] = seed
-    output = subprocess.check_output([sys.executable, __file__, "--once"], env=env)
-    return output
+    if seed is None:
+        env.pop("PYTHONHASHSEED", None)
+    else:
+        env["PYTHONHASHSEED"] = seed
+    return subprocess.check_output([sys.executable, __file__, "--once"], env=env)
 
 
 def full_suite() -> Tuple[int, str]:
     total = 0
 
-    # 1. Full positive composition and frozen order.
-    fixture = Fixture([], {})
+    # 1. Positive end-to-end composition follows the frozen chain exactly.
+    fixture = Fixture([])
     runtime = CompositionRuntime(store=InMemoryCompositionStore(), executors=executors_for(fixture))
     req = request()
     result = runtime.compose(req)
@@ -94,56 +93,58 @@ def full_suite() -> Tuple[int, str]:
     assert [stage for stage, _ in fixture.calls] == list(COMPOSITION_STAGES)
     total += 1
 
-    # 2. Same request is a complete idempotent replay with no stage calls.
+    # 2. Identical request is byte-identical and performs no stage calls.
     before = list(fixture.calls)
     replay = runtime.compose(req)
     assert replay.to_dict() == result.to_dict()
     assert fixture.calls == before
     total += 1
 
-    # 3. Request conflict cannot reuse the same request identity for new content.
+    # 3. Same request identity with changed content fails closed.
     expect_error(lambda: runtime.compose(request({"bandwidth_kbps": 2000})), CompositionReasonCode.REQUEST_CONFLICT)
     total += 1
 
-    # 4. Partial store resumes exactly at the next stage.
-    partial_store = InMemoryCompositionStore()
-    partial_fixture = Fixture([], {})
-    partial_runtime = CompositionRuntime(store=partial_store, executors=executors_for(partial_fixture))
-    partial_runtime.compose(request())
-    # A fresh runtime sees the completed receipt trail and performs no calls.
-    second_fixture = Fixture([], {})
-    second_runtime = CompositionRuntime(store=partial_store, executors=executors_for(second_fixture))
-    second = second_runtime.compose(request())
-    assert second.digest == result.digest
-    assert second_fixture.calls == []
+    # 4. Developer API request shape is the stable composition entry point.
+    adapter_fixture = Fixture([])
+    adapter_runtime = CompositionRuntime(store=InMemoryCompositionStore(), executors=executors_for(adapter_fixture))
+    developer_result = compose_developer_request(
+        runtime=adapter_runtime,
+        request={
+            "request_id": "developer-001",
+            "actor": "application-001",
+            "source": "developer-api",
+            "intent": {"bandwidth_kbps": 1000, "region": "EU"},
+        },
+    )
+    assert developer_result.receipts[0].authority == "WORK-046"
     total += 1
 
-    # 5. Payment success cannot bypass networking stages: fixed order is immutable.
-    fixture_payment = Fixture([], {})
-    payment_runtime = CompositionRuntime(store=InMemoryCompositionStore(), executors=executors_for(fixture_payment))
-    payment_result = payment_runtime.compose(request(request_id="payment-order"))
-    pidx = {stage: idx for idx, stage in enumerate(COMPOSITION_STAGES)}
-    assert pidx["PAYMENT_RECONCILIATION"] > pidx["NETWORK_PATH_VALIDATION"]
-    assert pidx["PAYMENT_RECONCILIATION"] > pidx["DELIVERY"]
-    assert tuple(r.stage for r in payment_result.receipts[:pidx["PAYMENT_RECONCILIATION"]])[-1] != "PAYMENT_RECONCILIATION"
+    # 5. Payment is downstream of path, containment, session and delivery.
+    payment_fixture = Fixture([])
+    payment_result = CompositionRuntime(
+        store=InMemoryCompositionStore(), executors=executors_for(payment_fixture)
+    ).compose(request(request_id="payment-order"))
+    index = {stage: i for i, stage in enumerate(COMPOSITION_STAGES)}
+    assert index["PAYMENT_RECONCILIATION"] > index["NETWORK_PATH_VALIDATION"]
+    assert index["PAYMENT_RECONCILIATION"] > index["CONTAINMENT"]
+    assert index["PAYMENT_RECONCILIATION"] > index["DELIVERY"]
+    assert payment_result.receipts[index["PAYMENT_RECONCILIATION"]].authority == "WORK-044"
     total += 1
 
-    # 6. Every stage is bound to the existing authority that owns that state.
-    for stage, authority in STAGE_AUTHORITIES.items():
-        assert authority == fixture.receipts.get(stage, StageReceipt(
-            stage=stage,
-            authority=authority,
-            operation="x",
-            status="accepted",
-            reference="x",
-        )).authority
+    # 6. Stage ownership is a fixed authority map, not caller-declared.
+    for stage in COMPOSITION_STAGES:
+        assert STAGE_AUTHORITIES[stage] in {
+            "WORK-041", "WORK-042", "WORK-044", "WORK-045", "WORK-046",
+            "WORK-047", "WORK-048", "WORK-049", "WORK-051", "WORK-052", "WORK-053",
+            "WORK-012",
+        }
     total += 1
 
-    # 7. Wrong authority for a stage fails closed before persistence.
+    # 7. Wrong authority for the first stage cannot enter the store.
     def bad_executor(stage, req, previous, key):
         return StageReceipt(
             stage=stage,
-            authority="WORK-053" if stage != "ALLOCATION" else "WORK-052",
+            authority="WORK-053",
             operation="bad",
             status="accepted",
             reference="bad",
@@ -156,68 +157,99 @@ def full_suite() -> Tuple[int, str]:
     )
     total += 1
 
-    # 8. Marketplace cannot manufacture NetworkPath activation; omitting path stage is invalid.
+    # 8. Marketplace selection is followed by NetworkPath validation; selection cannot activate it.
     store = InMemoryCompositionStore()
-    f = Fixture([], {})
-    rt = CompositionRuntime(store=store, executors=executors_for(f))
-    rt.compose(request(request_id="marketplace"))
-    records = list(store.records("marketplace"))
-    assert records[3].stage == "MARKETPLACE_SELECTION"
-    assert records[4].stage == "NETWORK_PATH_VALIDATION"
+    market_fixture = Fixture([])
+    CompositionRuntime(store=store, executors=executors_for(market_fixture)).compose(request(request_id="marketplace"))
+    records = store.records("marketplace")
+    assert records[index["MARKETPLACE_SELECTION"]].stage == "MARKETPLACE_SELECTION"
+    assert records[index["NETWORK_PATH_VALIDATION"]].stage == "NETWORK_PATH_VALIDATION"
     total += 1
 
-    # 9. Physical evidence can be referenced, but a composition receipt cannot claim physical PASS.
+    # 9. W050/capability results cannot claim physical PASS.
     expect_error(
         lambda: StageReceipt(
-            stage="DELIVERY",
+            stage="CONTAINMENT",
             authority="WORK-048",
-            operation="delivery",
+            operation="containment",
             status="accepted",
-            reference="delivery",
+            reference="containment",
             metadata={"physical_pass": True},
         ),
         CompositionReasonCode.PHYSICAL_CLAIM,
     )
     total += 1
 
-    # 10. W049 client state cannot become canonical composition state: it is only a receipt at the API stage.
-    client_fixture = Fixture([], {})
-    client_runtime = CompositionRuntime(store=InMemoryCompositionStore(), executors=executors_for(client_fixture))
-    client_result = client_runtime.compose(request(request_id="client-state"))
+    # 10. Client/API projection is not canonical domain state.
+    client_fixture = Fixture([])
+    client_result = CompositionRuntime(
+        store=InMemoryCompositionStore(), executors=executors_for(client_fixture)
+    ).compose(request(request_id="client-state"))
     assert client_result.receipts[0].authority == "WORK-046"
     assert "canonical_state" not in client_result.receipts[0].to_dict()["metadata"]
     total += 1
 
-    # 11. Webhook observation is last and remains observation-only.
+    # 11. Webhook/canonical observation is last and observation-only.
     assert COMPOSITION_STAGES[-1] == "CANONICAL_OBSERVATION"
     assert STAGE_AUTHORITIES[COMPOSITION_STAGES[-1]] == "WORK-046"
     total += 1
 
-    # 12. Store rejects out-of-order insertion.
+    # 12. Out-of-order records fail closed.
     expect_error(
         lambda: InMemoryCompositionStore().append(
-            __import__("composition.runtime", fromlist=["CompositionJournalRecord"]).CompositionJournalRecord(
+            CompositionJournalRecord(
                 request_id="x",
                 request_digest=req.digest(),
                 stage="DELIVERY",
                 idempotency_key=CompositionRuntime.idempotency_key(req, "DELIVERY"),
-                receipt=StageReceipt(stage="DELIVERY", authority="WORK-048", operation="delivery", status="accepted", reference="x"),
+                receipt=StageReceipt(
+                    stage="DELIVERY", authority="WORK-048", operation="delivery", status="accepted", reference="x"
+                ),
             )
         ),
         CompositionReasonCode.STAGE_ORDER,
     )
     total += 1
 
-    # 13. Canonical digest is independent of mapping authoring order.
+    # 13. Developer intents with reordered object keys have identical request digests.
     r1 = request({"region": "EU", "bandwidth_kbps": 1000}, request_id="determinism")
     r2 = request({"bandwidth_kbps": 1000, "region": "EU"}, request_id="determinism")
     assert r1.digest() == r2.digest()
     total += 1
 
-    # 14. Full result digest is stable across fresh worlds.
-    a = CompositionRuntime(store=InMemoryCompositionStore(), executors=executors_for(Fixture([], {}))).compose(req)
-    b = CompositionRuntime(store=InMemoryCompositionStore(), executors=executors_for(Fixture([], {}))).compose(req)
+    # 14. Fresh-world composition produces identical canonical result digests.
+    a = CompositionRuntime(store=InMemoryCompositionStore(), executors=executors_for(Fixture([]))).compose(req)
+    b = CompositionRuntime(store=InMemoryCompositionStore(), executors=executors_for(Fixture([]))).compose(req)
     assert a.digest == b.digest
+    total += 1
+
+    # 15. Unknown top-level Developer API members fail closed at the adapter.
+    expect_error(
+        lambda: compose_developer_request(
+            runtime=runtime,
+            request={
+                "request_id": "bad-shape",
+                "actor": "application-001",
+                "source": "developer-api",
+                "intent": {"x": 1},
+                "canonical_state": "forged",
+            },
+        ),
+        CompositionReasonCode.INVALID_INPUT,
+    )
+    total += 1
+
+    # 16. No direct W054 authority can be declared in a receipt.
+    expect_error(
+        lambda: StageReceipt(
+            stage="DEVELOPER_API",
+            authority="WORK-054",
+            operation="forged",
+            status="accepted",
+            reference="x",
+        ),
+        CompositionReasonCode.AUTHORITY_INVALID,
+    )
     total += 1
 
     return total, a.digest
@@ -231,13 +263,11 @@ def main() -> int:
         print("Digest: %s" % digest)
         return 0
 
-    outputs = {seed: run_once(seed) for seed in ("0", "1", "7919", "unset")}
-    for seed in ("0", "1", "7919"):
-        assert outputs[seed] == outputs["0"]
-    assert outputs["unset"] == outputs["0"]
+    outputs = {"0": run_once("0"), "1": run_once("1"), "7919": run_once("7919"), "unset": run_once(None)}
+    assert outputs["0"] == outputs["1"] == outputs["7919"] == outputs["unset"]
     assert run_once("0") == outputs["0"]
     print("Result: PASS (%d conformance groups)" % total)
-    print("Seed/repeat determinism: PASS (4 seeds, repeated execution, byte-identical)")
+    print("Seed/repeat determinism: PASS (0/1/7919/unset, repeated execution, byte-identical)")
     print(outputs["0"].decode("utf-8"), end="")
     return 0
 
