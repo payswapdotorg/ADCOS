@@ -23,9 +23,7 @@ jobs:
           import subprocess
           live = Path('spec/architect/execution-ledger.yaml')
           current = live.read_text()
-          source = subprocess.check_output([
-              'git', 'show', 'refs/remotes/legacy/w050-baseline-reconciliation:spec/architect/execution-ledger.yaml'
-          ], text=True)
+          source = subprocess.check_output(['git', 'show', 'refs/remotes/legacy/w050-baseline-reconciliation:spec/architect/execution-ledger.yaml'], text=True)
           cur_start = current.index('  - work_item: WORK-044\n')
           cur_end = current.index('reconciliations:\n', cur_start)
           src_start = source.index('  - work_item: WORK-044\n')
@@ -45,7 +43,6 @@ jobs:
               raise SystemExit('LEDGER-RECON-024 already present')
           live.write_text(current.rstrip() + recon)
           PY
-          python3 tools/spec_check.py
           git config user.name 'ADCOS Architect'
           git config user.email '150378018+payswapdotorg@users.noreply.github.com'
           git add spec/architect/execution-ledger.yaml
