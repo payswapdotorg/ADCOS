@@ -1,0 +1,117 @@
+name: W055 R3 activation
+on:
+  push:
+    branches:
+      - governance/w055-r3-activation-20260905
+permissions:
+  contents: write
+jobs:
+  activate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Register W055 and activate R3
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          MAIN='47348f42eea49b2614fc18e5d34ce243b11bafc3'
+          p=Path('spec/work-items.md')
+          s=p.read_text(encoding='utf-8')
+          if '### WORK-055 — Production Protocol Conformance and Canonical Wire Profile' not in s:
+              s=s.rstrip()+'''\n\n### WORK-055 — Production Protocol Conformance and Canonical Wire Profile\nObjective: Freeze and prove the production protocol wire profile already implemented by ADCOS — canonical encoding, signature-input coverage, version negotiation, unknown-field/extension behavior, replay/idempotency handling, schema evolution, compatibility/migration vectors, and deterministic digest stability — without changing the frozen protocol semantics.\nDependencies: WORK-003, WORK-004, WORK-005, WORK-054\nAcceptance criteria:\n- The production canonicalization profile is explicitly versioned and matches the existing canonical JSON supported subset; no semantic behavior is silently changed.\n- Golden canonical encoding vectors cover representative values, ordering, Unicode, control characters, nested structures, malformed values, and depth limits.\n- Signature-input coverage is explicit and proves all covered envelope members are deterministic while the signature member itself is excluded from the signing basis.\n- Version negotiation and future-version compatibility classifications are exercised for known compatible, known additive, unknown optional, incompatible major, unknown required, unknown type, temporal, replay, and malformed cases.\n- Unknown top-level envelope fields and extension members are preserved without shadowing known fields; malformed collisions fail closed.\n- Replay/idempotency and schema-evolution/migration vectors remain deterministic and backward-compatible with the accepted V1 behavior.\n- Canonical digests remain byte-identical across repeated runs and PYTHONHASHSEED variants; no wall-clock, randomness, or environment leakage enters the production wire profile.\n- The production profile is a conformance authority only; it does not create new identity, routing, session, transport, commercial, payment, or physical-connectivity authority.\nRequired verification: dedicated production-conformance battery with golden vectors, signature coverage, version/extension compatibility, replay/idempotency, schema-evolution/migration, malformed-input fail-closed cases, hash-seed/repeat determinism, fresh-world/order-independence, and source/scope audits.\nOut of scope: changing frozen protocol semantics, new wire-domain concepts, new cryptographic trust/key authority, routing/session/transport redesign, physical evidence, modifying spec/architect/ from the implementation PR.\nDefinition of done: The current ADCOS protocol wire behavior is explicitly frozen as a production conformance profile and independently reproducible by deterministic vectors without semantic drift.\n'''
+              p.write_text(s,encoding='utf-8')
+
+          p=Path('spec/dependency-graph.md')
+          s=p.read_text(encoding='utf-8')
+          if 'W055[W055 Production Protocol Conformance]' not in s:
+              s=s.replace('  W054[W054 System Composition Conformance]\n','  W054[W054 System Composition Conformance]\n  W055[W055 Production Protocol Conformance]\n',1)
+              insert='''\n  W003 --> W055\n  W004 --> W055\n  W005 --> W055\n  W054 --> W055\n'''
+              marker='  W053 --> W054\n'
+              s=s.replace(marker,marker+insert,1)
+              s=s.replace('### Phase 10.5 — System composition conformance\n','### Phase 10.5 — System composition conformance\n',1)
+              cp=s.find('## 4. Critical Path')
+              phase='''### Phase 11 — Production protocol conformance\n`W055` freezes and proves the production wire profile over the already-accepted protocol primitives. It introduces no new protocol semantics or domain authority.\n\n'''
+              if cp>=0 and '### Phase 11 — Production protocol conformance' not in s:
+                  s=s[:cp]+phase+s[cp:]
+              s=s.replace('all 53 registered Work Items','all 54 registered Work Items',1)
+              p.write_text(s,encoding='utf-8')
+
+          p=Path('tools/spec_check.py')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('EXPECTED_WORK_ITEM_COUNT = 53','EXPECTED_WORK_ITEM_COUNT = 54',1)
+          s=s.replace('53 registered items','54 registered items',1)
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('spec/architect/execution-ledger.yaml')
+          s=p.read_text(encoding='utf-8')
+          if '- work_item: WORK-055' not in s:
+              marker='reconciliations:\n'
+              block='''  - work_item: WORK-055\n    title: "Production Protocol Conformance and Canonical Wire Profile"\n    phase: 11\n    branch: "work-055-production-protocol-conformance"\n    baseline_sha: '''+MAIN+'''\n    pr: null\n    pr_head: null\n    reviewed_sha: null\n    merge_sha: null\n    merged_at: null\n    ci_run: null\n    review_rounds: null\n    acceptance_decision: null\n    correction_decisions: []\n    handoff: docs/WORK-055-handoff.md\n    handoff_required: true\n    lifecycle: registered\n    note: "Registered and authorized by DEC-0086 against exact R3 baseline '''+MAIN+'''. Sole active implementation Work Item."\n'''
+              pos=s.find(marker)
+              s=s[:pos]+block+s[pos:]
+              p.write_text(s,encoding='utf-8')
+
+          Path('spec/architect/decisions/DEC-0086-w055-r3-activation.yaml').write_text('''# ADCOS Decision Record — DEC-0086\n# Register and authorize W055 for R3 production protocol conformance\n\ndecision_id: DEC-0086\ntype: governance\nstatus: ACCEPTED\nwork_item: WORK-055\ndate: "2026-09-05"\nsubject: "Register and authorize W055 as the R3 production protocol conformance Work Item"\n\ncontext:\n  preceding_decision: DEC-0085\n  canonical_main_sha: "47348f42eea49b2614fc18e5d34ce243b11bafc3"\n  roadmap_gate: R3_PROTOCOL_PRODUCTION_CONFORMANCE\n  thesis: "R3 formalizes the already-implemented protocol wire behavior; it does not redesign protocol semantics."\n\nruling:\n  - "WORK-055 is registered in the frozen Work Item registry and dependency graph as the R3 production conformance Work Item."\n  - "WORK-055 may freeze/prove the current wire profile and compatibility behavior but may not introduce new protocol semantics."\n  - "Exactly one implementation authorization is active: WORK-055-CORE-001."\n\nimplementation_effect: "ACTIVE_WORK_ITEM_WORK-055"\nauthorization_id: WORK-055-CORE-001\n''')
+
+          Path('spec/architect/authorizations/WORK-055.yaml').write_text('''# ADCOS Work Item authorization record — WORK-055 active implementation.\n# Issued by DEC-0086 after W054 acceptance under DEC-0085.\nwork_item: WORK-055\nstatus: active\nauthorized: true\ntype: implementation\nauthorization_id: "WORK-055-CORE-001"\nauthorization_decision: DEC-0086\nbaseline_sha: 47348f42eea49b2614fc18e5d34ce243b11bafc3\nreview_basis: "W054 is accepted and R2 is complete. R3 production protocol conformance is the next governed gate."
+dependencies:\n  - WORK-003\n  - WORK-004\n  - WORK-005\n  - WORK-054\nauthority_inputs:\n  - "WORK-003 canonical envelope, versioning and serialization"\n  - "WORK-004 identity/credential abstraction"\n  - "WORK-005 capability/version negotiation primitives"\n  - "WORK-054 composition conformance"\nauthority_outputs:\n  - "Versioned production wire-profile declaration, golden conformance vectors, compatibility/migration evidence, deterministic digest proofs."
+scope:\n  - "protocol/"\n  - "tools/production_conformance_selftest.py"\n  - "docs/WORK-055-handoff.md"\n  - "docs/WORK-055-evidence.md"\n  - ".github/workflows/spec-check.yml"\nout_of_scope:\n  - "frozen protocol semantic redesign"\n  - "new cryptographic trust/key authority"\n  - "routing/session/transport/commercial/payment authority"\n  - "physical connectivity evidence"\n  - "modifying spec/architect/ from the implementation PR"\nacceptance_gate:\n  status: "Architect review required after implementation"\n  required_evidence:\n    - "dedicated production conformance battery and golden vectors"\n    - "exact reviewed delivery SHA and CI/provenance"\n    - "compatibility/migration, replay/idempotency and malformed-input negative proofs"\nhandoff: docs/WORK-055-handoff.md\nhandoff_required: true\n''')
+
+          Path('docs/WORK-055-handoff.md').write_text('''# WORK-055 Architect Handoff — Production Protocol Conformance and Canonical Wire Profile\n\n**Authorization:** WORK-055-CORE-001\n**Decision:** DEC-0086\n**Baseline:** 47348f42eea49b2614fc18e5d34ce243b11bafc3\n\n## Mission\nFreeze and prove the production wire behavior already implemented by ADCOS. Do not redesign protocol semantics.\n\n## Required conformance surface\n- canonical JSON supported subset and golden encodings\n- deterministic signature-input coverage\n- protocol version compatibility and future-version classification\n- unknown top-level fields/extensions preservation and collision rejection\n- replay/idempotency behavior\n- schema evolution and migration vectors\n- deterministic digest stability across repeats/hash seeds/order\n\n## Non-negotiable\nThe production profile is a conformance authority only. It cannot create a new identity, routing, session, transport, commercial, payment, or physical-connectivity authority.\n\nThe implementation PR may not modify `spec/architect/`.\n''')
+
+          p=Path('spec/architect/roadmap.yaml')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('roadmap_version: "1.4"','roadmap_version: "1.5"',1)
+          s=s.replace('supersedes_roadmap_version: "1.3"','supersedes_roadmap_version: "1.4"',1)
+          s=s.replace('superseding_decision: DEC-0085','superseding_decision: DEC-0086',1)
+          s=s.replace('program_state: R3_PROTOCOL_PRODUCTION_CONFORMANCE_READY','program_state: R3_PROTOCOL_PRODUCTION_CONFORMANCE_ACTIVE',1)
+          s=s.replace('execution_mode: ready','execution_mode: active',1)
+          s=s.replace('active_work_item: null','active_work_item: WORK-055',1)
+          s=s.replace('active_authorization: null','active_authorization: WORK-055-CORE-001',1)
+          s=s.replace('halt_reason: "W054 accepted under DEC-0085. R3 requires a fresh Work Item and authorization."','halt_reason: null',1)
+          s=s.replace('next_gate: R3_PROTOCOL_PRODUCTION_CONFORMANCE','next_gate: R3_PROTOCOL_PRODUCTION_CONFORMANCE',1)
+          s=s.replace('  - id: R3_PROTOCOL_PRODUCTION_CONFORMANCE\n    status: READY','  - id: R3_PROTOCOL_PRODUCTION_CONFORMANCE\n    status: ACTIVE\n    active_work_item: WORK-055\n    active_authorization: WORK-055-CORE-001',1)
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('spec/architect/execution-state.yaml')
+          s=p.read_text(encoding='utf-8')
+          s=re.sub(r'(?m)^  main_sha: .*$', '  main_sha: '+MAIN, s,count=1)
+          s=re.sub(r'(?m)^  lifecycle_ledger_snapshot_sha: .*$', '  lifecycle_ledger_snapshot_sha: '+MAIN, s,count=1)
+          s=re.sub(r'(?m)^  roadmap_version_reference: .*$', '  roadmap_version_reference: "1.5"', s,count=1)
+          s=re.sub(r'(?m)^  mode: ready$', '  mode: active', s,count=1)
+          s=re.sub(r'(?m)^  active_work_item: null$', '  active_work_item: WORK-055', s,count=1)
+          s=re.sub(r'(?m)^  active_authorization: null$', '  active_authorization: WORK-055-CORE-001', s,count=1)
+          s=re.sub(r'(?m)^  halted_reason: .*$', '  halted_reason: null', s,count=1)
+          s=s.replace('    - "Create the governed R3 production-protocol-conformance Work Item."','    - "Review and accept WORK-055."',1)
+          s=s.replace('    - "Issue exactly one repository-local implementation authorization for the R3 Work Item."','    - "Release WORK-055-CORE-001 only on acceptance."',1)
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('spec/architect/current-state.md')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('**READY — R2 W054 accepted; R3 production protocol conformance is next.**','**ACTIVE — R3 WORK-055 production protocol conformance implementation authorized.**')
+          s=s.replace('- Roadmap: `spec/architect/roadmap.yaml` — **FROZEN, Version 1.4, sole program-roadmap authority**','- Roadmap: `spec/architect/roadmap.yaml` — **FROZEN, Version 1.5, sole program-roadmap authority**')
+          s=s.replace('- R2: `COMPLETED` — WORK-054 / DEC-0085','- R2: `COMPLETED` — WORK-054 / DEC-0085\n- R3: `ACTIVE` — WORK-055 / DEC-0086')
+          s=s.replace('- Governing decisions: `DEC-0081`, `DEC-0082`, `DEC-0083`, `DEC-0084`, `DEC-0085`','- Governing decisions: `DEC-0081`, `DEC-0082`, `DEC-0083`, `DEC-0084`, `DEC-0085`, `DEC-0086`')
+          s=s.replace('- Active Work Item: none\n- Active authorization: none\n- Active implementation authorization count: zero','- Active Work Item: WORK-055\n- Active authorization: WORK-055-CORE-001\n- Active implementation authorization count: one')
+          if 'R3 implementation is active under WORK-055-CORE-001.' not in s:
+              s=s.replace('## Next governed gate','R3 implementation is active under WORK-055-CORE-001. The implementation branch must be cut from the exact authorized baseline and may not modify spec/architect/.\n\n## Next governed gate',1)
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('spec/architect/decisions/README.md')
+          s=p.read_text(encoding='utf-8')
+          if '`DEC-0086`' not in s:
+              s=s.rstrip()+'\n\n- `DEC-0086` — registers and authorizes WORK-055 as the active R3 production protocol conformance Work Item.\n'
+          p.write_text(s,encoding='utf-8')
+          PY
+          rm -f .github/workflows/w055-r3-activate.yml
+          git config user.name 'ADCOS Architect'
+          git config user.email '150378018+payswapdotorg@users.noreply.github.com'
+          git add spec docs .github/workflows/w055-r3-activate.yml
+          git commit -m 'governance: register and authorize W055 for R3 [skip ci]'
+          git push origin HEAD:governance/w055-r3-activation-20260905
