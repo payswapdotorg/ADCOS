@@ -1,10 +1,10 @@
 # ADCOS Authoritative Execution Roadmap
-# FROZEN — roadmap version 1.2 (advanced from 1.1 by DEC-0085, the R2
-# activation after DEC-0084 completed R1; a governance/version transition
-# only — Architecture Version 1.0 and Protocol Version 1.0 are unchanged)
+# FROZEN — roadmap version 1.3 (advanced from 1.2 by DEC-0087, the sequencing
+# correction after R2 activation; a governance/version transition only —
+# Architecture Version 1.0 and Protocol Version 1.0 are unchanged)
 
 schema_version: 2
-roadmap_version: "1.2"
+roadmap_version: "1.3"
 status: FROZEN_AUTHORITATIVE
 authority: "spec/architect/roadmap.yaml"
 human_projection: "spec/architect/roadmap.md"
@@ -35,14 +35,14 @@ governance_rules:
   software_never_promotes_to_physical: true
 
 current_state:
-  actual_main_sha: 461d1482180222f4b63f780d6d9ea1d54c49d643
-  last_reconciled_snapshot_sha: 13bfbda54eece391306ddb774e0700c9d862339a
+  actual_main_sha: 7e5ef8c930dfaf362481fd6927b5204f6dfb2eab
+  last_reconciled_snapshot_sha: 7e5ef8c930dfaf362481fd6927b5204f6dfb2eab
   program_state: R2_SYSTEM_COMPOSITION_CONFORMANCE_ACTIVE
   execution_mode: implementing
   active_work_item: WORK-054
   active_authorization: WORK-054-CORE-001
-  next_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE
-  reconciliation_note: "R0 was accepted and merged as PR #8 (merge a3391e86851e06032de848e6eb0b4267fa33310a). R1 was completed under DEC-0084 by PR #9 (merge 13bfbda54eece391306ddb774e0700c9d862339a). DEC-0085 activated the fresh WORK-054 R2 System Composition Conformance Work Item and its single implementation authorization. PR #10 then merged the R2 governance activation as 461d1482180222f4b63f780d6d9ea1d54c49d643. DEC-0086 reconciles this post-activation live-main pointer while preserving 13bfbda as the last R1 governance snapshot and preserving DEC-0085 as historical activation provenance. Architecture Version 1.0 and Protocol Version 1.0 remain unchanged."
+  next_gate: R3_PROTOCOL_PRODUCTION_CONFORMANCE
+  reconciliation_note: "R0 was accepted and merged as PR #8 (merge a3391e86851e06032de848e6eb0b4267fa33310a). R1 was completed under DEC-0084 by PR #9 (merge 13bfbda54eece391306ddb774e0700c9d862339a). DEC-0085 activated the fresh WORK-054 R2 System Composition Conformance Work Item and its single implementation authorization. PR #10 then merged the R2 governance activation as 461d1482180222f4b63f780d6d9ea1d54c49d643. DEC-0086 reconciled the post-activation live-main pointer. DEC-0087 now freezes the program sequence as R0 -> R1 -> R2 -> R3 -> R4/R5 -> R6 -> R7 -> R8 -> R9, with R4 and R5 parallel after R3. Architecture Version 1.0 and Protocol Version 1.0 remain unchanged."
 
 accepted_history:
   rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history. R0 (PR #8, merged as a3391e86851e06032de848e6eb0b4267fa33310a) restored the accepted W044-W049 implementation trees onto the current mainline where they belong; their current_mainline flags are reconciled by DEC-0084 without altering any reviewed SHA or accepted merge SHA, and without replacing the original acceptance provenance with the restoration merge. W048 remains explicitly accepted-not-restored."
@@ -138,15 +138,17 @@ roadmap:
     objective: "Complete the production conformance layer required before declaring wire compatibility."
     required: "canonicalization profile, canonical encoding vectors, signature coverage, version negotiation, unknown-field/extensions behavior, replay/idempotency, schema evolution, compatibility and migration vectors, deterministic digest stability"
     architecture_rule: "Do not change frozen protocol semantics without the ACR process."
+    gate_rule: "R3 is the sole next sequential gate after R2; R4/R5 do not activate before R3 is accepted unless a new durable governance decision changes the program."
 
   - id: R4_PHYSICAL_CONNECTIVITY_VALIDATION
-    status: INDEPENDENT_PARALLEL_TRACK
+    status: PARALLEL_AFTER_R3
     objective: "Complete W040 and related open physical-evidence obligations on real hardware/network environments."
-    rule: "Physical evidence is independently collected, classified, and accepted; software batteries cannot close it."
+    rule: "Physical evidence is independently collected, classified, and accepted; software batteries cannot close it. R4 is parallel with R5 after R3 and does not block R5 or R6."
 
   - id: R5_DEVELOPER_CONNECTIVITY_PLATFORM
-    status: AFTER_R2
+    status: PARALLEL_AFTER_R3
     objective: "Make ADCOS consumable like Stripe: external applications request and manage connectivity through stable APIs without adopting an ADCOS user interface or knowing provider/access/path/payment implementation details."
+    dependency_rule: "R5 starts only after R3; R4 completion is not required for R5 or for the later R6 gate."
     existing_foundation: "Accepted W046 Developer API/SDK/Webhooks implementation is the base. Future work is production hardening and ecosystem exposure, not reimplementation of its authority."
     required_surface:
       - "intent creation"
@@ -164,6 +166,7 @@ roadmap:
     status: AFTER_R5
     objective: "Enable independently operated networks, ISPs, carriers, enterprises, satellite systems, hotspots, mesh operators, and infrastructure owners to expose capacity through ADCOS without surrendering infrastructure authority."
     required: "adapter certification, capability declaration, commercial contract/profile, policy boundary, service terms, settlement configuration, observability, trust/federation onboarding"
+    dependency_rule: "R6 requires accepted R5; R4 completion is not a prerequisite unless a future durable governance decision explicitly changes this."
 
   - id: R7_UNIVERSAL_CONNECTIVITY_COMMERCE
     status: AFTER_R6
