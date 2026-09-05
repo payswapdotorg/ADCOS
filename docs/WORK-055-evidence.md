@@ -4,10 +4,11 @@ Work Item: `WORK-055` — authorization `WORK-055-CORE-001` — decision `DEC-00
 
 - Authorized baseline (ancestor of the delivery): `57963858e5a2b9d11faed94b50f94e058cede0a8`
 - Authorized branch: `work-055-protocol-production-conformance`
-- Delivery: two commits on the exact authorized lineage (round 1 —
+- Delivery: three commits on the exact authorized lineage (round 1 —
   the implementation delivery; round 2 — the review-correction commit
   responding to the Architect's CHANGES REQUIRED review of PR #15;
-  exact SHAs in §13).
+  round 3 — the documentation-correction commit responding to the
+  Architect's round-2 re-review finding; exact SHAs in §13).
 
 Everything in this record is reproducible from a fresh checkout of the
 delivery head with a single command per section (Python 3, standard
@@ -17,8 +18,10 @@ library only, no network, no wall clock).
 
 ## 1. Delivery shape
 
-The branch carries exactly two commits, both direct descendants of the
-authorized baseline (no rebase, no force over shared work, no other
+The branch carries exactly three commits, all on the authorized
+lineage — round 1 directly descended from the authorized baseline,
+round 2 directly descended from round 1, round 3 directly descended
+from round 2 (no rebase, no force over shared work, no other
 ancestry):
 
 1. **Round 1 — implementation delivery**
@@ -31,6 +34,14 @@ ancestry):
    `protocol`-member coverage gap, the evidence accounting errors, the
    W032 `case_25` edit, the CP-11/WIRE-011 traceability over-claim,
    and the CI-vs-local evidence distinction.
+3. **Round 3 — documentation-correction commit** directly descended
+   from round 2 (the same correction-round pattern), carrying the
+   single P2 correction of the Architect's round-2 re-review: this
+   §1 previously described the branch's commits as "both direct
+   descendants of the authorized baseline" — true of round 1 only;
+   round 2's parent is round 1, and round 3's parent is round 2.
+   Documentation-only: no code, vector, battery, or frozen-surface
+   change; every digest and battery result is unchanged from round 2.
 
 The complete changed-path inventory of the exact Git tree
 (`git diff --numstat 57963858e5a2b9d11faed94b50f94e058cede0a8 <head>`):
@@ -60,18 +71,18 @@ The complete changed-path inventory of the exact Git tree
 | `conformance/vectors/data/w055-gld-xcd-0001.json` | added (golden vector, test data) | +41/−0 |
 | `conformance/vectors/data/w055-gld-xcd-0002.json` | added (golden vector, test data) | +23/−0 |
 | `conformance/vectors/wire.py` | added (27 envelope-area R3 vectors; round 2: WIRE-011 extended to verify unknown-member preservation directly, WIRE-017 extended with the frozen `protocol` member + the `KNOWN_FIELDS` completeness audit) | +1184/−0 |
-| `docs/WORK-055-evidence.md` | added (this record; round 2: corrected delivery-shape accounting, W032 preservation statement, digest, CI classification) | +473/−0 |
-| `docs/WORK-055-handoff.md` | added (handoff; round 2: correction-round disclosure) | +158/−0 |
+| `docs/WORK-055-evidence.md` | added (this record; round 2: corrected delivery-shape accounting, W032 preservation statement, digest, CI classification; round 3: lineage wording corrected to the actual parent chain) | +490/−0 |
+| `docs/WORK-055-handoff.md` | added (handoff; round 2: correction-round disclosure; round 3: round-2 verdict and round-3 correction recorded) | +174/−0 |
 | `tools/conformance_selftest.py` | extended (W032 cases 1–46 byte-identical — the round-1 `case_25` output edit was reverted in round 2; W055 cases 47–63, round 2: `case_52` proves both covered-byte sabotages) | +1101/−0 |
 
-**Totals (exact Git tree): 26 files, +4254/−3.** Frozen surfaces
+**Totals (exact Git tree): 26 files, +4287/−3.** Frozen surfaces
 untouched: `spec/` (root documents, `schemas/`, `architect/`),
 `protocol/`, `upgrade/`, W040/W048, all
 business/economic/identity/session/routing/transport authorities —
 verified mechanically by battery cases 62–63 and by the scope audit
 below.
 
-Reproduce (round-1 measurement, round-2 head, and ancestry):
+Reproduce (round-1 measurement, round-3 head, and ancestry):
 
 ```bash
 git diff --numstat 57963858e5a2b9d11faed94b50f94e058cede0a8 <head>    # the table above
@@ -387,7 +398,7 @@ pass.
 ## 11. Scope, ancestry, and frozen-surface proof
 
 - Battery case 62: the delivery delta (26 changed paths at the
-  round-2 head) lies exactly within the authorized scope
+  round-3 head) lies exactly within the authorized scope
   (`conformance/`, `tools/conformance_selftest.py`,
   `docs/WORK-055-*.md`) and the authorized baseline
   `57963858e5a2b9d11faed94b50f94e058cede0a8` is an ancestor of HEAD.
@@ -460,14 +471,20 @@ the frozen protocol authorities.
   baseline; 26 files, +3981/−5), superseded by round 2 in response to
   the Architect's CHANGES REQUIRED review of PR #15; the SHA remains
   quoted here as the reviewed round-1 artifact.
-- Round 2 — review-correction head: exactly one additional commit on
-  the same branch/PR lineage (parent: `372299b…`), carrying the five
-  corrections of the review. The exact head SHA is recorded in the PR
-  body, the PR head, and the worker worklog; the battery's
-  scope/ancestry cases verify the lineage mechanically on every run,
-  so the claim does not depend on this document.
+- Round 2 — review-correction commit:
+  `f88289a95431421b8f367a9e60011405f92ca9fa` (parent: `372299b…`),
+  carrying the five corrections of the first review; directly
+  descended from round 1, not from the baseline; superseded as the
+  branch head by round 3.
+- Round 3 — documentation-correction head: exactly one additional
+  commit on the same branch/PR lineage (parent: the round-2 head
+  `f88289a…`), carrying only the §1 lineage-wording correction of
+  the Architect's round-2 re-review (P2). The exact head SHA is
+  recorded in the PR body, the PR head, and the worker worklog; the
+  battery's scope/ancestry cases verify the lineage mechanically on
+  every run, so the claim does not depend on this document.
 - Lineage discipline: no rebase, no force over shared work, no
-  cherry-picks from superseded branches — the correction is a plain
-  child of the reviewed round-1 commit on the authorized lineage
+  cherry-picks from superseded branches — each correction is a plain
+  child of the previously reviewed commit on the authorized lineage
   (the same correction-round pattern as the accepted W052
   PR #149 lineage).

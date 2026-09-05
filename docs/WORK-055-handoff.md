@@ -3,9 +3,9 @@
 Work Item `WORK-055` — authorization `WORK-055-CORE-001` — decision
 `DEC-0088`. Authorized baseline
 `57963858e5a2b9d11faed94b50f94e058cede0a8` (the post-W054-acceptance
-mainline). Worker state after the round-2 review-correction delivery:
-**WAITING_FOR_ARCHITECT** (re-review at the new exact head of
-PR #15).
+mainline). Worker state after the round-3 documentation-correction
+delivery: **WAITING_FOR_ARCHITECT** (re-review at the new exact head
+of PR #15).
 
 The full evidence record is `docs/WORK-055-evidence.md`. This handoff
 identifies the remaining non-production limitations honestly — none of
@@ -34,6 +34,20 @@ them relabeled as passes.
   exact 26-path inventory and totals from the actual Git tree; the
   worker-local vs CI evidence distinction is explicit (§11 of the
   evidence record).
+- **Round 2 verdict** (the Architect's second-round review of the
+  exact head `f88289a95431421b8f367a9e60011405f92ca9fa`, 2026-09-05):
+  **CHANGES REQUIRED** — one remaining P2 factual inconsistency: the
+  evidence record §1 said the branch's commits were "both direct
+  descendants of the authorized baseline" — true of round 1 only;
+  round 2's parent is round 1. The substantive corrections were
+  accepted in principle; no code changes were required, only the
+  lineage wording.
+- **Round 3** (the documentation-correction commit, parent
+  `f88289a…`): the evidence record §1 now states the actual parent
+  chain — round 1 directly descended from the authorized baseline,
+  round 2 directly descended from round 1, round 3 directly descended
+  from round 2. Documentation-only; every battery result, digest,
+  and frozen surface is unchanged from round 2.
 
 ## What was delivered
 
@@ -82,7 +96,9 @@ additive and hardening-only:
    baseline.
 
 Matrix: 163/163 vectors conformant (63 positive / 100 negative;
-round-2 report digest `sha256:f7135f97…`). Battery: 63/63. All prior
+round-2 report digest `sha256:f7135f97…`, unchanged by the
+round-3 documentation-only correction). Battery: 63/63, re-run at
+the round-3 head. All prior
 batteries green at the delivery head (composition 55/55, upgrade
 41/41, spec_check byte-identical to the baseline classification). All
 battery/matrix/digest results in the evidence record are
