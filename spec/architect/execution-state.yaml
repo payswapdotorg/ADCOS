@@ -7,9 +7,9 @@ last_updated: "2026-09-05"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: 22c21309390518a7f4869e057cfee59cde049be0
+  main_sha: 47348f42eea49b2614fc18e5d34ce243b11bafc3
   main_sha_semantics: "Exact canonical reconciled checkpoint for the new ADCOS development remote."
-  lifecycle_ledger_snapshot_sha: 22c21309390518a7f4869e057cfee59cde049be0
+  lifecycle_ledger_snapshot_sha: 47348f42eea49b2614fc18e5d34ce243b11bafc3
 
 versions:
   architecture_version_reference: "1.0"
@@ -48,3 +48,72 @@ open_prs:
   - pr: 47
     head: "work-035-physical-evidence-v2"
     disposition: "historical/latest W035 physical-evidence chain; requires formal disposition"
+  - pr: 48
+    head: "work-040-pilot-deployment"
+    disposition: "W040 remains in-review and unaccepted; physical obligations remain W040-owned"
+  - pr: 49
+    head: "roadmap/connectivity-economy"
+    disposition: "historical proposal; superseded by accepted ACR-009"
+  - pr: 82
+    head: "arch/acr-009-commercial-control-plane"
+    disposition: "accepted/historical"
+  - pr: 100
+    head: "governance/reconcile-w041-w042-contracts"
+    disposition: "superseded historical governance proposal"
+  - pr: 102
+    head: "governance/w040-w041-atomic-handoff"
+    disposition: "superseded by accepted DEC-0052"
+  - pr: 108
+    head: "governance/acr-010-work-item-registry-extension"
+    disposition: "superseded by DEC-0054/DEC-0055 application"
+  - pr: 156
+    head: "governance/reinstate-accepted-commercial-implementations"
+    disposition: "closed as divergent recovery attempt; superseded by clean R0 PR #157"
+  - pr: 157
+    head: "governance/r0-restoration-clean"
+    disposition: "merged as R0 restoration at 7fb47bb"
+  - pr: 158
+    head: "governance/r1-mainline-reconciliation"
+    disposition: "merged as R1 governance checkpoint at 09d77da"
+
+open_acrs: []
+open_architectural_questions: []
+
+accepted_acrs:
+  - acr: "ACR-005"
+    decision: "DEC-0047"
+  - acr: "ACR-006"
+    decision: "DEC-0048"
+  - acr: "ACR-007"
+    decision: "DEC-0049"
+  - acr: "ACR-009"
+    decision: "DEC-0050"
+  - acr: "ACR-011"
+    decision: "DEC-0056"
+
+accepted_work_items:
+  first: "WORK-001"
+  last: "WORK-054"
+  note: "W001-W039, W041, W042, W044-W053, and W054 are durable accepted-merged history. W040 remains in-review and unaccepted."
+
+mainline_integrity:
+  status: R2_COMPOSITION_COMPLETE
+  restoration_merge_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135
+  governance_checkpoint_merge_sha: 09d77dae84b430ad4a6bb22a6f01c2b7d8533cdd
+  reconciled_checkpoint_sha: 47348f42eea49b2614fc18e5d34ce243b11bafc3
+  recovered_work_items: [WORK-044, WORK-045, WORK-046, WORK-047, WORK-048, WORK-049]
+  recovered_source_tree: "91594464b836492508fd8b33c9763aeb27eb085c"
+  restoration_decision: DEC-0081
+  provenance_correction_decision: DEC-0082
+  r1_reconciliation_decision: DEC-0083
+  r2_acceptance_decision: DEC-0085
+  lifecycle_ledger_status: reconciled
+
+source_of_truth:
+  program_roadmap: "spec/architect/roadmap.yaml"
+  current_execution_projection: "spec/architect/execution-state.yaml"
+  lifecycle_history: "spec/architect/execution-ledger.yaml"
+  implementation_permission: "spec/architect/authorizations/"
+  decisions: "spec/architect/decisions/"
+  chat_dependency: PROHIBITED
+  external_memory_dependency: PROHIBITED
