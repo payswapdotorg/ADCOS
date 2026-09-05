@@ -7,7 +7,7 @@ type: implementation
 authorization_id: "WORK-054-CORE-001"
 authorization_decision: DEC-0084
 baseline_sha: ba3717fad3cc4a5894ff3fece4768e47e7db584c
-review_basis: "R1 is complete under DEC-0083. W044-W053 are accepted and reconciled; R2 is the next program gate. The exact baseline is the freshly re-read post-R1 mainline ba3717fad3cc4a5894ff3fece4768e47e7db584c."
+review_basis: "R1 is complete under DEC-0083. W044-W053 are accepted and reconciled; R2 is the next program gate. The exact baseline is the freshly re-read post-R1 mainline ba3717fad3cc4a5894ff3fe4768e47e7db584c."
 dependencies:
   - WORK-041
   - WORK-042
