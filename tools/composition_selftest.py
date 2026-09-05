@@ -27,8 +27,8 @@ from composition import (  # noqa: E402
     CompositionRequest,
     CompositionRuntime,
     InMemoryCompositionStore,
-    StageReceipt,
     STAGE_AUTHORITIES,
+    StageReceipt,
     compose_developer_request,
 )
 from composition.runtime import CompositionJournalRecord  # noqa: E402
@@ -75,6 +75,14 @@ def expect_error(fn, reason: str) -> None:
         assert exc.reason == reason, (exc.reason, reason)
         return
     raise AssertionError("expected %s" % reason)
+
+
+def expect_type_error(fn) -> None:
+    try:
+        fn()
+    except TypeError:
+        return
+    raise AssertionError("expected TypeError")
 
 
 def run_once(seed: Optional[str] = None) -> bytes:
@@ -125,9 +133,8 @@ def full_suite() -> Tuple[int, str]:
     total += 1
 
     # 5. Payment is downstream of path, containment, session and delivery.
-    payment_fixture = Fixture([])
     payment_result = CompositionRuntime(
-        store=InMemoryCompositionStore(), executors=executors_for(payment_fixture)
+        store=InMemoryCompositionStore(), executors=executors_for(Fixture([]))
     ).compose(request(request_id="payment-order"))
     index = {stage: i for i, stage in enumerate(COMPOSITION_STAGES)}
     assert index["PAYMENT_RECONCILIATION"] > index["NETWORK_PATH_VALIDATION"]
@@ -144,7 +151,7 @@ def full_suite() -> Tuple[int, str]:
     assert set(STAGE_AUTHORITIES.values()) <= expected_authorities
     total += 1
 
-    # 7. Wrong authority for the first stage cannot enter the store.
+    # 7. Wrong authority for a stage cannot enter the store.
     def bad_executor(stage, req, previous, key):
         return StageReceipt(stage=stage, authority="WORK-053", operation="bad", status="accepted", reference="bad")
     bad_exec = {stage: bad_executor for stage in COMPOSITION_STAGES}
@@ -234,15 +241,15 @@ def full_suite() -> Tuple[int, str]:
     digest_before = frozen_request.digest()
     original["bandwidth_kbps"] = 9000
     assert frozen_request.digest() == digest_before
-    expect_error(lambda: frozen_request.intent.__setitem__("x", 1), TypeError.__name__ if False else CompositionReasonCode.INVALID_INPUT)
+    expect_type_error(lambda: frozen_request.intent.__setitem__("x", 1))
     total += 1
 
-    # 18. Receipt metadata is frozen and result digest survives caller mutation attempts.
+    # 18. Receipt metadata is frozen and result state cannot be changed through aliases.
     metadata = {"note": "immutable"}
     receipt = StageReceipt(stage="DEVELOPER_API", authority="WORK-046", operation="compose", status="accepted", reference="x", metadata=metadata)
     metadata["note"] = "mutated-outside"
     assert receipt.metadata["note"] == "immutable"
-    expect_error(lambda: receipt.metadata.__setitem__("note", "forged"), CompositionReasonCode.INVALID_INPUT)
+    expect_type_error(lambda: receipt.metadata.__setitem__("note", "forged"))
     total += 1
 
     return total, a.digest
