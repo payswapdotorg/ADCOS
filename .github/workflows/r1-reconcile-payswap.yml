@@ -1,0 +1,155 @@
+name: R1 reconcile payswap
+
+on:
+  push:
+    branches:
+      - governance/r1-reconcile-payswap-20260905
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    if: github.event.head_commit.message != 'governance: reconcile R1 state [skip ci]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reconcile R1 deterministically
+        shell: bash
+        env:
+          TARGET_SHA: "338af793923e1267ff3523de4310be273d75a2cd"
+        run: |
+          set -euo pipefail
+
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA" -o "$(git rev-parse HEAD^0)" != "" || exit 1
+
+          git fetch --no-tags --depth=1 https://github.com/pectoraux/ADCOS.git \
+            refs/heads/governance/w050-baseline-reconciliation:refs/remotes/legacy/w050-baseline-reconciliation
+
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          import subprocess
+
+          root = Path('.')
+          ledger_path = root / 'spec/architect/execution-ledger.yaml'
+          old_ledger = subprocess.check_output([
+              'git', 'show',
+              'refs/remotes/legacy/w050-baseline-reconciliation:spec/architect/execution-ledger.yaml'
+          ], text=True)
+          cur_ledger = ledger_path.read_text()
+
+          def work_block(text: str, wid: str, next_wid: str) -> str:
+              m = re.search(rf'(?ms)^  - work_item: {wid}\\n.*?(?=^  - work_item: {next_wid}\\n)', text)
+              if not m:
+                  raise SystemExit(f'missing {wid} block')
+              return m.group(0)
+
+          accepted_044_049 = ''.join(
+              work_block(old_ledger, wid, next_wid)
+              for wid, next_wid in [
+                  ('WORK-044', 'WORK-045'),
+                  ('WORK-045', 'WORK-046'),
+                  ('WORK-046', 'WORK-047'),
+                  ('WORK-047', 'WORK-048'),
+                  ('WORK-048', 'WORK-049'),
+                  ('WORK-049', 'WORK-050'),
+              ]
+          )
+
+          m = re.search(r'(?ms)^  - work_item: WORK-044\\n.*?(?=^  - work_item: WORK-051\\n)', cur_ledger)
+          if not m:
+              raise SystemExit('missing current W044-W050 region')
+          region = m.group(0)
+
+          hist_050 = work_block(old_ledger, 'WORK-050', 'WORK-051')
+          w050 = hist_050
+          w050 = w050.replace('    lifecycle: registered\\n', '    lifecycle: accepted-merged\\n', 1)
+          w050 = w050.replace('    acceptance_decision: null\\n', '    acceptance_decision: DEC-0083\\n', 1)
+          w050 = w050.replace(
+              '    note: "registered-only entry added by ACR-011: WORK-050 is formally registered in the frozen registry (Phase 10, canonical commercial phase) with NO delivery yet. Definition source: tracking issue #96 and the canonical commercial dependency model. Dependencies: none. Boundary (LEDGER-RECON-005 §4.2): a capability model consumed BY WORK-048/WORK-049 — NOT an implementation vehicle for WORK-048; the W050 -> W048/W049 edges are advisory capability-input edges, not hard gates. Authorization: none — registration is representation only, never authorization; the item stays a ready-candidate until its own repository-local authorization issues."\\n',
+              '    note: "Retrospective acceptance under DEC-0083: W050.1 declaration registry accepted at 4a37408f1c36566babf58163bed26ac5a75ff655; W050.2 deterministic evaluation accepted at c5cb509d17274f1c762ce7e9b273d12acf7dac79; W050.3 versioned auditable history accepted at 279871c72039042f9674d0e191defc37dc97e5b7; W050.4 permanent deterministic verification delivered at 815f4febbc64d55d3576386e65adaa6244c4f7cb with the permanent 76/76 battery. Acceptance is SOFTWARE-class only; no physical capability is claimed and W040 remains independent and open."\\n'
+          )
+
+          new_region = accepted_044_049 + w050
+          new_ledger = cur_ledger[:m.start()] + new_region + cur_ledger[m.end():]
+          new_ledger = re.sub(r'(?m)^main_sha: .*$', 'main_sha: 338af793923e1267ff3523de4310be273d75a2cd', new_ledger, count=1)
+          header = '# DEC-0083 / LEDGER-RECON-024: W050 acceptance and W044-W049 lifecycle reconciliation on canonical mainline 338af793.\\n'
+          if 'DEC-0083 / LEDGER-RECON-024' not in new_ledger:
+              new_ledger = header + new_ledger
+
+          reconciliation = '''\\n  - reconciliation_id: LEDGER-RECON-024\\n    recorded_by: DEC-0083\\n    recorded_at: 2026-09-05T00:00:00Z\\n    from_main_sha: 7fb47bb312708d06f3b3c1ba0496104362c7d135\\n    to_main_sha: 338af793923e1267ff3523de4310be273d75a2cd\\n    reason: "R1 governance reconciliation: restore the durable accepted W044-W049 lifecycle records from repository history; retrospectively accept W050 on the exact final W050.4 delivery head after Architect review of the permanent 76/76 deterministic battery; advance the ledger snapshot to the canonical mainline checkpoint. No implementation is authorized by this reconciliation."\\n    history: "No prior reconciliation is rewritten. W044-W049 retain their historical accepted reviewed SHA, PR, merge, and acceptance provenance. W050 changes only from registered/acceptance-unresolved to accepted-merged with DEC-0083 because its final delivery and permanent battery are now sufficiently corroborated. W051-W053 are preserved byte-for-byte. W040 remains in-review with EVID-007/EVID-008 open and independent. Frozen architecture/protocol semantics are unchanged; software evidence never closes physical evidence."\\n'''
+          if 'reconciliation_id: LEDGER-RECON-024' not in new_ledger:
+              new_ledger = new_ledger.rstrip() + '\\n' + reconciliation
+          ledger_path.write_text(new_ledger)
+
+          dec = root / 'spec/architect/decisions/DEC-0083-w050-acceptance-r1-reconciliation.yaml'
+          dec.write_text('''# ADCOS Decision Record — DEC-0083\\n# R1 governance reconciliation: W050 acceptance + W044-W049 lifecycle restoration\\n\\ndecision_id: DEC-0083\\ntype: governance\\nstatus: ACCEPTED\\nwork_item: WORK-050\\ndate: "2026-09-05"\\nsubject: "Resolve W050 acceptance provenance and reconcile W044-W049 lifecycle state so R1 can close"\\n\\ncontext:\\n  governing_roadmap_previous_version: "1.1"\\n  governing_roadmap_new_version: "1.2"\\n  current_main_sha: "338af793923e1267ff3523de4310be273d75a2cd"\\n  w044_w049_provenance: "Durable repository history records accepted reviewed heads and merge commits for W044-W049; R0 restored their exact accepted implementation packages, while the current ledger retained stale registered-only projections."\\n  w050_provenance: "The repository contains W050.1/W050.2/W050.3 accepted stage heads and the W050.4 final delivery at 815f4febbc64d55d3576386e65adaa6244c4f7cb, including the permanent deterministic 76/76 verification battery and explicit SOFTWARE/PHYSICAL separation."\\n\\nruling:\\n  - "W044-W049 lifecycle entries are reconciled to their durable accepted delivery history without rewriting historical fields or prior reconciliation records."\\n  - "W050 is ACCEPTED-MERGED on the exact final W050.4 delivery head 815f4febbc64d55d3576386e65adaa6244c4f7cb."\\n  - "W050 acceptance is SOFTWARE-class only; it proves capability declaration, deterministic evaluation, auditable history, and verification, not physical platform behavior."\\n  - "W040 remains independent, in-review, and unaccepted; EVID-007 and EVID-008 remain open and W040-owned."\\n  - "R1_GOVERNANCE_RECONCILIATION is COMPLETE. No implementation authorization is created by this decision."\\n\\npreservation:\\n  - "Roadmap Version 1.1 remains preserved in Git history."\\n  - "No prior decision, reconciliation, or accepted Work Item history is deleted or rewritten."\\n  - "Frozen architecture and protocol semantics remain Version 1.0."\\n  - "Exactly zero active implementation authorizations exist at R1 exit."\\n\\nsource_of_truth:\\n  repository_only: true\\n  chat_dependency: prohibited\\n  external_memory_dependency: prohibited\\n  issue_prose_authority: prohibited\\n  implementation_authority: "spec/architect/authorizations/"\\n  lifecycle_authority: "spec/architect/execution-ledger.yaml"\\n  program_authority: "spec/architect/roadmap.yaml"\\n\\nnext_gate: R2_SYSTEM_COMPOSITION_CONFORMANCE\\nimplementation_effect: "READY_FOR_NEW_WORK_ITEM"\\n''')
+
+          roadmap = root / 'spec/architect/roadmap.yaml'
+          r = roadmap.read_text()
+          r = r.replace('roadmap_version: "1.1"', 'roadmap_version: "1.2"', 1)
+          r = r.replace('supersedes_roadmap_version: "1.0"', 'supersedes_roadmap_version: "1.1"', 1)
+          r = r.replace('superseding_decision: DEC-0082', 'superseding_decision: DEC-0083', 1)
+          r = r.replace('program_state: R1_GOVERNANCE_RECONCILIATION_BLOCKED', 'program_state: R2_SYSTEM_COMPOSITION_CONFORMANCE_READY', 1)
+          r = r.replace('execution_mode: blocked', 'execution_mode: ready', 1)
+          r = r.replace('halt_reason: "R0 is complete. R1 remains blocked because the execution ledger still carries the pre-restoration W044-W050 lifecycle representation, and W050 has implementation-stage evidence but no sufficiently corroborated durable Work Item acceptance record in the authoritative decision/ledger chain. The 09d77 governance merge is beyond the last reconciled R0 snapshot; this is an expected governance branch-point offset, not implementation authorization."', 'halt_reason: "R1 reconciliation is complete under DEC-0083. No implementation authorization is active. R2 requires a fresh repository-local Work Item and authorization."', 1)
+          r = r.replace('roadmap_version_reference: "1.1"', 'roadmap_version_reference: "1.2"', 1)
+          r = r.replace('    status: BLOCKED\\n    objective: "Reconcile the durable lifecycle/decision state to the restored mainline without rewriting history or manufacturing acceptance."', '    status: COMPLETED\\n    objective: "Reconcile the durable lifecycle/decision state to the restored mainline without rewriting history or manufacturing acceptance."', 1)
+          r = r.replace('  - id: R2_SYSTEM_COMPOSITION_CONFORMANCE\\n    status: AFTER_R1', '  - id: R2_SYSTEM_COMPOSITION_CONFORMANCE\\n    status: READY', 1)
+          r = r.replace('lifecycle_reconciliation: pending', 'lifecycle_reconciliation: reconciled', 6)
+          r = r.replace('    - id: WORK-050\\n      status: implementation-present_acceptance-unresolved', '    - id: WORK-050\\n      status: accepted-merged', 1)
+          r = r.replace('      acceptance_provenance: "Implementation-stage evidence is present, including the permanent W050 battery, but no discrete corroborated Work Item acceptance decision is found in the current authoritative decision/ledger chain. No acceptance is inferred."', '      acceptance_provenance: "Accepted by DEC-0083 on exact final W050.4 delivery head 815f4fe with permanent 76/76 deterministic verification; SOFTWARE-class only."', 1)
+          roadmap.write_text(r)
+
+          es = root / 'spec/architect/execution-state.yaml'
+          e = es.read_text()
+          e = e.replace('roadmap_version_reference: "1.1"', 'roadmap_version_reference: "1.2"', 1)
+          e = e.replace('  mode: blocked', '  mode: ready', 1)
+          e = e.replace('  halted_reason: "R0 is complete. R1 remains blocked pending explicit lifecycle-ledger reconciliation for W044-W049 and durable W050 acceptance-provenance resolution. The governance checkpoint itself is complete; no implementation authorization exists."', '  halted_reason: "R1 is complete under DEC-0083. No implementation authorization exists. R2 awaits a fresh Work Item and authorization."', 1)
+          e = re.sub(r'  - "Reconcile execution-ledger.yaml.*?\\n  - "Only after R1 acceptance create the governed Work Item/authorization required for R2 system composition conformance."', '  - "Create the governed Work Item/authorization required for R2 system composition conformance."', e, count=1, flags=re.S)
+          e = e.replace('  last: "WORK-053"\\n', '  last: "WORK-053"\\n', 1)
+          e = e.replace('status: R0_RESTORED_R1_PENDING', 'status: R1_RECONCILED', 1)
+          e = e.replace('  lifecycle_ledger_status: reconciliation_pending', '  lifecycle_ledger_status: reconciled', 1)
+          e = e.replace('  provenance_correction_decision: DEC-0082', '  provenance_correction_decision: DEC-0082\\n  r1_reconciliation_decision: DEC-0083', 1)
+          e = e.replace('W044-W049 have durable accepted delivery history and are restored on main by R0 but still require lifecycle-ledger reconciliation. W050 implementation is present but acceptance provenance is unresolved by DEC-0082.', 'W044-W049 have durable accepted delivery history and are reconciled by DEC-0083. W050 is accepted by DEC-0083. ', 1)
+          es.write_text(e)
+
+          cs = root / 'spec/architect/current-state.md'
+          c = cs.read_text()
+          c = c.replace('**BLOCKED — R0 complete; R1 governance reconciliation remains open.**', '**READY — R1 governance reconciliation complete; R2 system-composition Work Item pending.**', 1)
+          c = c.replace('- R1: `BLOCKED`', '- R1: `COMPLETED` — DEC-0083', 1)
+          c = c.replace('- Governing decisions: `DEC-0081`, `DEC-0082`', '- Governing decisions: `DEC-0081`, `DEC-0082`, `DEC-0083`', 1)
+          c = c.replace('## R1 remaining blockers', '## R1 result', 1)
+          start = c.find('## R1 result')
+          end = c.find('## Independent physical evidence')
+          if start >= 0 and end > start:
+              c = c[:start] + '''## R1 result\\n\\nR1 is complete under `DEC-0083`. W044-W049 lifecycle records now match their durable accepted delivery history; W050 is accepted on its exact final delivery head with the permanent 76/76 SOFTWARE battery; historical records remain preserved; no implementation authorization is active.\\n\\nThe next governed gate is R2 system composition conformance. It requires a fresh repository-local Work Item and authorization.\\n\\n''' + c[end:]
+          cs.write_text(c)
+
+          # Add DEC-0083 to the decision index without rewriting older rows.
+          dr = root / 'spec/architect/decisions/README.md'
+          d = dr.read_text()
+          if 'DEC-0083' not in d:
+              d = d.rstrip() + '\\n\\n- `DEC-0083` — W050 acceptance and W044-W049 lifecycle reconciliation; closes R1 and gates R2 behind fresh Work Item authorization.\\n'
+              dr.write_text(d)
+          PY
+
+          python tools/spec_check.py
+          git status --short
+          git diff --check
+          test -f spec/architect/decisions/DEC-0083-w050-acceptance-r1-reconciliation.yaml
+          git config user.name "ADCOS Architect"
+          git config user.email "architect@adc0s.invalid"
+          git add spec/architect/execution-ledger.yaml \
+            spec/architect/decisions/DEC-0083-w050-acceptance-r1-reconciliation.yaml \
+            spec/architect/roadmap.yaml \
+            spec/architect/execution-state.yaml \
+            spec/architect/current-state.md \
+            spec/architect/decisions/README.md
+          git commit -m "governance: reconcile R1 state [skip ci]"
+          git push origin HEAD:governance/r1-reconcile-payswap-20260905
