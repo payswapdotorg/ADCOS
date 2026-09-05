@@ -1021,19 +1021,19 @@ work_items:
     phase: 10
     branch: "work-054-system-composition-conformance"
     baseline_sha: ba3717fad3cc4a5894ff3fece4768e47e7db584c
-    pr: null
-    pr_head: null
-    reviewed_sha: null
-    merge_sha: null
-    merged_at: null
-    ci_run: null
-    review_rounds: null
-    acceptance_decision: null
+    pr: 4
+    pr_head: f6824ccd0beb28b69c932e87610a63856f1399d6
+    reviewed_sha: f6824ccd0beb28b69c932e87610a63856f1399d6
+    merge_sha: 22c21309390518a7f4869e057cfee59cde049be0
+    merged_at: 2026-09-05T14:07:29Z
+    ci_run: 33970713183
+    review_rounds: 4
+    acceptance_decision: DEC-0085
     correction_decisions: []
     handoff: docs/WORK-054-handoff.md
-    handoff_required: true
-    lifecycle: registered
-    note: "Registered and authorized by DEC-0084 against the exact post-R1 mainline ba3717fad3cc4a5894ff3fece4768e47e7db584c. This is the sole active implementation Work Item. W054 owns composition/conformance orchestration and evidence only; canonical commercial/connectivity state remains with the accepted component authorities."
+    handoff_required: false
+    lifecycle: accepted-merged
+    note: "Accepted by DEC-0085 on exact reviewed head f6824ccd0beb28b69c932e87610a63856f1399d6; PR #4 merged as 22c21309390518a7f4869e057cfee59cde049be0; W054 exact-head battery 33970713183 and merge-main W054 battery PASS. W054 remains orchestration/conformance evidence only."
 reconciliations:
   - reconciliation_id: LEDGER-RECON-011
     recorded_by: DEC-0063
