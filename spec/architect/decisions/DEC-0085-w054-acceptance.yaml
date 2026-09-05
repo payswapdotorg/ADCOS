@@ -1,0 +1,37 @@
+# ADCOS Architect decision record — W054 acceptance.
+# schema: spec/architect/decision-record-template.md; verified by tools/spec_check.py (ARCH-04).
+
+decision_id: DEC-0085
+type: acceptance
+work_item: WORK-054
+acr: null
+pr: 4
+reviewed_sha: f6824ccd0beb28b69c932e87610a63856f1399d6
+decision: ACCEPTED
+status: ACCEPTED
+reviewer: "Architect (payswapdotorg)"
+timestamp: 2026-09-05T14:07:29Z
+findings:
+  - "The exact WORK-054 delivery head f6824ccd0beb28b69c932e87610a63856f1399d6 was reviewed against the DEC-0084 authorization and the frozen architecture/protocol boundaries."
+  - "The implementation changes only composition/, the Developer API bridge, its deterministic conformance battery, evidence, and additive CI wiring; it does not modify spec/architect/."
+  - "The W054 exact-head deterministic battery passes on run 33970713183; the corresponding mainline run also passes the W054 battery and scope check."
+  - "W054 is accepted specifically as an orchestration/conformance layer. Canonical state remains owned by WORK-041/042/044/045/046/047/048/049/051/052/053."
+blockers: []
+required_corrections: []
+evidence:
+  merge_sha: 22c21309390518a7f4869e057cfee59cde049be0
+  ci_run: 33970713183
+  artifacts:
+    - "tools/composition_selftest.py"
+    - "docs/WORK-054-evidence.md"
+accepted_scope:
+  - "The WORK-054 contract as frozen in spec/work-items.md and authorized by DEC-0084."
+  - "Composition orchestration receipts, content-derived idempotency, Developer API bridge, and deterministic conformance evidence."
+rejected_scope:
+  - "Any new identity, routing, NetworkPath, session, containment, eligibility, marketplace, usage, allocation, payment, or client authority."
+  - "Physical connectivity evidence."
+downstream_effect:
+  - "Releases WORK-054-CORE-001."
+  - "Completes R2 system composition conformance."
+  - "Advances the program gate to R3_PROTOCOL_PRODUCTION_CONFORMANCE."
+resolved_by: null
