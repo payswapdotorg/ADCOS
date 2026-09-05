@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""W054 deterministic composition-conformance battery.
-
-Stdlib-only, offline, fresh-world, fail-closed tests for the fixed product
-composition seam. The battery uses injected stage executors to prove
-orchestration semantics and authority boundaries without implementing a second
-copy of any domain authority.
-"""
+"""W054 deterministic composition-conformance battery."""
 
 from __future__ import annotations
 
@@ -22,12 +16,12 @@ if str(ROOT) not in sys.path:
 
 from composition import (  # noqa: E402
     COMPOSITION_STAGES,
+    STAGE_AUTHORITIES,
     CompositionError,
     CompositionReasonCode,
     CompositionRequest,
     CompositionRuntime,
     InMemoryCompositionStore,
-    STAGE_AUTHORITIES,
     StageReceipt,
     compose_developer_request,
 )
@@ -42,12 +36,11 @@ class Fixture:
 def fixture_executor(fixture: Fixture):
     def execute(stage: str, request: CompositionRequest, previous: Tuple[StageReceipt, ...], key: str) -> StageReceipt:
         fixture.calls.append((stage, key))
-        status = "accepted" if stage != "CANONICAL_OBSERVATION" else "observed"
         return StageReceipt(
             stage=stage,
             authority=STAGE_AUTHORITIES[stage],
             operation="compose.%s" % stage.lower(),
-            status=status,
+            status="observed" if stage == "CANONICAL_OBSERVATION" else "accepted",
             reference="ref-%02d" % (COMPOSITION_STAGES.index(stage) + 1),
             evidence_refs=("evidence-%02d" % (COMPOSITION_STAGES.index(stage) + 1),),
             metadata={"source": "authority-test-double", "stage_index": COMPOSITION_STAGES.index(stage)},
@@ -96,6 +89,7 @@ def run_once(seed: Optional[str] = None) -> bytes:
 
 def full_suite() -> Tuple[int, str]:
     total = 0
+    index = {stage: i for i, stage in enumerate(COMPOSITION_STAGES)}
 
     fixture = Fixture([])
     runtime = CompositionRuntime(store=InMemoryCompositionStore(), executors=executors_for(fixture))
@@ -118,12 +112,7 @@ def full_suite() -> Tuple[int, str]:
     adapter_runtime = CompositionRuntime(store=InMemoryCompositionStore(), executors=executors_for(adapter_fixture))
     developer_result = compose_developer_request(
         runtime=adapter_runtime,
-        request={
-            "request_id": "developer-001",
-            "actor": "application-001",
-            "source": "developer-api",
-            "intent": {"bandwidth_kbps": 1000, "region": "EU"},
-        },
+        request={"request_id": "developer-001", "actor": "application-001", "source": "developer-api", "intent": {"bandwidth_kbps": 1000, "region": "EU"}},
     )
     assert developer_result.receipts[0].authority == "WORK-046"
     total += 1
@@ -131,18 +120,16 @@ def full_suite() -> Tuple[int, str]:
     payment_result = CompositionRuntime(
         store=InMemoryCompositionStore(), executors=executors_for(Fixture([]))
     ).compose(request(request_id="payment-order"))
-    index = {stage: i for i, stage in enumerate(COMPOSITION_STAGES)}
     assert index["PAYMENT_RECONCILIATION"] > index["NETWORK_PATH_VALIDATION"]
     assert index["PAYMENT_RECONCILIATION"] > index["CONTAINMENT"]
     assert index["PAYMENT_RECONCILIATION"] > index["DELIVERY"]
     assert payment_result.receipts[index["PAYMENT_RECONCILIATION"]].authority == "WORK-044"
     total += 1
 
-    expected_authorities = {
-        "WORK-041", "WORK-044", "WORK-045", "WORK-046", "WORK-047",
-        "WORK-048", "WORK-051", "WORK-052", "WORK-053", "WORK-012",
+    assert set(STAGE_AUTHORITIES.values()) <= {
+        "WORK-012", "WORK-041", "WORK-044", "WORK-045", "WORK-046", "WORK-047",
+        "WORK-048", "WORK-051", "WORK-052", "WORK-053",
     }
-    assert set(STAGE_AUTHORITIES.values()) <= expected_authorities
     total += 1
 
     def bad_executor(stage, req, previous, key):
@@ -164,10 +151,7 @@ def full_suite() -> Tuple[int, str]:
     total += 1
 
     expect_error(
-        lambda: StageReceipt(
-            stage="CONTAINMENT", authority="WORK-048", operation="containment", status="accepted",
-            reference="containment", metadata={"physical_pass": True}
-        ),
+        lambda: StageReceipt(stage="CONTAINMENT", authority="WORK-048", operation="containment", status="accepted", reference="containment", metadata={"physical_pass": True}),
         CompositionReasonCode.PHYSICAL_CLAIM,
     )
     total += 1
@@ -186,7 +170,9 @@ def full_suite() -> Tuple[int, str]:
     expect_error(
         lambda: InMemoryCompositionStore().append(
             CompositionJournalRecord(
-                request_id="x", request_digest=req.digest(), stage="DELIVERY",
+                request_id="x",
+                request_digest=req.digest(),
+                stage="DELIVERY",
                 idempotency_key=CompositionRuntime.idempotency_key(req, "DELIVERY"),
                 receipt=StageReceipt(stage="DELIVERY", authority="WORK-048", operation="delivery", status="accepted", reference="x"),
             )
@@ -225,7 +211,7 @@ def full_suite() -> Tuple[int, str]:
     digest_before = frozen_request.digest()
     original["bandwidth_kbps"] = 9000
     assert frozen_request.digest() == digest_before
-    expect_type_error(lambda: frozen_request.intent.__getitem__("x")) if False else expect_type_error(lambda: frozen_request.intent.__setitem__("x", 1))
+    expect_type_error(lambda: frozen_request.intent.__setitem__("x", 1))
     total += 1
 
     metadata = {"note": "immutable"}
@@ -245,7 +231,6 @@ def main() -> int:
         print("Result: PASS (%d conformance groups)" % total)
         print("Digest: %s" % digest)
         return 0
-
     outputs = {"0": run_once("0"), "1": run_once("1"), "7919": run_once("7919"), "unset": run_once(None)}
     assert outputs["0"] == outputs["1"] == outputs["7919"] == outputs["unset"]
     assert run_once("0") == outputs["0"]
