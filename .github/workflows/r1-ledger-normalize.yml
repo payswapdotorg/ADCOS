@@ -1,0 +1,33 @@
+name: Normalize R1 ledger
+on:
+  push:
+    branches:
+      - governance/r1-reconcile-payswap-20260905
+permissions:
+  contents: write
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Remove obsolete W050 duplicate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('spec/architect/execution-ledger.yaml')
+          s = p.read_text()
+          m = list(re.finditer(r'(?ms)^  - work_item: WORK-050\n.*?(?=^  - work_item: WORK-050\n|^  - work_item: WORK-051\n)', s))
+          if len(m) != 2:
+              raise SystemExit(f'expected two W050 blocks, found {len(m)}')
+          if 'lifecycle: registered' not in m[0].group(0) or 'lifecycle: accepted-merged' not in m[1].group(0):
+              raise SystemExit('unexpected W050 block ordering')
+          p.write_text(s[:m[0].start()] + s[m[0].end():])
+          PY
+          git config user.name 'ADCOS Architect'
+          git config user.email '150378018+payswapdotorg@users.noreply.github.com'
+          git add spec/architect/execution-ledger.yaml
+          git commit -m 'governance: normalize duplicate W050 ledger entry [skip ci]'
+          git push origin HEAD:governance/r1-reconcile-payswap-20260905
