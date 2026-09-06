@@ -35,14 +35,14 @@ governance_rules:
   software_never_promotes_to_physical: true
 
 current_state:
-  actual_main_sha: 57963858e5a2b9d11faed94b50f94e058cede0a8
-  last_reconciled_snapshot_sha: 57963858e5a2b9d11faed94b50f94e058cede0a8
-  program_state: R3_PROTOCOL_PRODUCTION_CONFORMANCE_ACTIVE
+  actual_main_sha: 7801549c0ed50082a4fa7c20c71e50dc7bde87f9
+  last_reconciled_snapshot_sha: 7801549c0ed50082a4fa7c20c71e50dc7bde87f9
+  program_state: R5_DEVELOPER_CONNECTIVITY_PLATFORM_ACTIVE
   execution_mode: implementing
-  active_work_item: WORK-055
-  active_authorization: WORK-055-CORE-001
-  next_gate: R4_R5_PARALLEL_AFTER_R3
-  reconciliation_note: "DEC-0088 accepts WORK-054 after PR #13 merge 57963858 and activates WORK-055 as the sole R3 implementation authorization. W048 remains explicitly accepted-not-restored. W040 remains independently in-review and unaccepted. Architecture Version 1.0 and Protocol Version 1.0 remain unchanged."
+  active_work_item: WORK-056
+  active_authorization: WORK-056-CORE-001
+  next_gate: R6_AFTER_R5
+  reconciliation_note: "DEC-0089 accepts WORK-055/R3 after PR #15 merge 7801549c and activates WORK-056 as the sole R5 software authorization. R4 remains explicitly parallel after R3 with W040 independently in-review. W048 remains explicitly accepted-not-restored. Architecture Version 1.0 and Protocol Version 1.0 remain unchanged."
 
 accepted_history:
   rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history. R0 restored the accepted W044-W049 implementation trees except the explicitly accepted-not-restored W048 material."
@@ -72,7 +72,7 @@ accepted_history:
       reviewed_sha: e2af4bd20e403c1d4ee9717f7eea8809c16a53cd
       merge_sha: ce1ccaea328743a05cf8d6fa87a114e69d9e253c
       current_mainline: accepted-not-restored
-      restoration_note: "W048 sharing/ and runtime artifacts remain absent from current main; restoring them requires an explicit Architect directive and is not part of WORK-054 or WORK-055."
+      restoration_note: "W048 sharing/ and runtime artifacts remain absent from current main; restoring them requires an explicit Architect directive and is not part of WORK-054, WORK-055, or WORK-056."
     - id: WORK-049
       status: accepted-merged
       reviewed_sha: b8cc17ef21f6c38266152552590dc73f80c056ce
@@ -103,6 +103,12 @@ accepted_history:
       merge_sha: 57963858e5a2b9d11faed94b50f94e058cede0a8
       current_mainline: present
       acceptance_decision: DEC-0088
+    - id: WORK-055
+      status: accepted-merged
+      reviewed_sha: 0fc86aac57332ca8b8043bf5ee20bb3240d70fe8
+      merge_sha: 7801549c0ed50082a4fa7c20c71e50dc7bde87f9
+      current_mainline: present
+      acceptance_decision: DEC-0089
 
 roadmap:
   - id: R0_MAINLINE_RESTORATION
@@ -111,7 +117,7 @@ roadmap:
     required_output: "One verified mainline containing the accepted W044-W050/W051-W053 implementation set and their durable acceptance/governance records."
     implementation_authorization: none
     gate: "Architect verifies exact file set, accepted-head provenance, tree equivalence of recovered packages, no unauthorized semantic delta, and complete repository-local evidence."
-    completion: "Accepted and merged as PR #8 on the exact frozen main 3bdfb6daf50f7c000d29a027584c0de5b376d8a8 (merge a3391e86851e06032de848e6eb0b4267fa33310a, tree 1d16c241d060c9c242f3025ea3afa73464574ccc byte-identical to the historical restoration tree 7fb47bb312708d06f3b3c1ba0496104362c7d135)."
+    completion: "Accepted and merged as PR #8 on the exact frozen main 3bdfb6daf50f7c000d29a027584c0de5b376d8a8 (merge a3391e86851e06032de848e6eb0b4267fa33310a8, tree 1d16c241d060c9c242f3025ea3afa73464574ccc byte-identical to the historical restoration tree 7fb47bb312708d06f3b3c1ba0496104362c7d135)."
 
   - id: R1_GOVERNANCE_RECONCILIATION
     status: COMPLETE
@@ -145,16 +151,21 @@ roadmap:
       - "software evidence cannot close physical evidence"
 
   - id: R3_PROTOCOL_PRODUCTION_CONFORMANCE
-    status: ACTIVE
+    status: COMPLETE
     objective: "Complete the production conformance layer required before declaring wire compatibility."
     work_item: WORK-055
     authorization: WORK-055-CORE-001
     authorization_decision: DEC-0088
     authorization_baseline: 57963858e5a2b9d11faed94b50f94e058cede0a8
+    completion_decision: DEC-0089
+    completion_pr: 15
+    completion_delivery_sha: 0fc86aac57332ca8b8043bf5ee20bb3240d70fe8
+    completion_merge_sha: 7801549c0ed50082a4fa7c20c71e50dc7bde87f9
     required: "canonicalization profile, canonical encoding vectors, signature coverage, version negotiation, unknown-field/extensions behavior, replay/idempotency, schema evolution, compatibility and migration vectors, deterministic digest stability, and authority/evidence separation"
     architecture_rule: "Do not change frozen protocol semantics without the ACR process."
-    gate_rule: "R3 is the sole next sequential gate after R2; R4/R5 do not activate before R3 is accepted unless a new durable governance decision changes the program."
-    existing_foundation: "WORK-032 conformance suite and its public deterministic verifier are the mandatory foundation; R3 extends/hardens that conformance layer rather than creating a second protocol authority."
+    gate_rule: "R3 is accepted. R4/R5 may proceed in parallel according to the one-active-implementation-authorization rule; no R6 activation occurs until R5 is accepted."
+    existing_foundation: "WORK-032 conformance suite and its public deterministic verifier remain the mandatory foundation; R3 extended/hardened that conformance layer rather than creating a second protocol authority."
+    result: "Accepted by the sole Architect. In-repo evidence does not constitute external interoperability evidence."
 
   - id: R4_PHYSICAL_CONNECTIVITY_VALIDATION
     status: PARALLEL_AFTER_R3
@@ -162,9 +173,13 @@ roadmap:
     rule: "Physical evidence is independently collected, classified, and accepted; software batteries cannot close it. R4 is parallel with R5 after R3 and does not block R5 or R6."
 
   - id: R5_DEVELOPER_CONNECTIVITY_PLATFORM
-    status: PARALLEL_AFTER_R3
+    status: ACTIVE
     objective: "Make ADCOS consumable like Stripe: external applications request and manage connectivity through stable APIs without adopting an ADCOS user interface or knowing provider/access/path/payment implementation details."
-    dependency_rule: "R5 starts only after R3; R4 completion is not required for R5 or for the later R6 gate."
+    work_item: WORK-056
+    authorization: WORK-056-CORE-001
+    authorization_decision: DEC-0089
+    authorization_baseline: 7801549c0ed50082a4fa7c20c71e50dc7bde87f9
+    gate_rule: "R5 starts after R3 acceptance and may execute in parallel with the independent R4/W040 track, but only WORK-056-CORE-001 may be the active implementation authorization."
     existing_foundation: "Accepted W046 Developer API/SDK/Webhooks implementation is the base. Future work is production hardening and ecosystem exposure, not reimplementation of its authority."
     required_surface:
       - "intent creation"
@@ -177,12 +192,23 @@ roadmap:
       - "idempotency and scoped credentials"
       - "sandbox/production isolation"
       - "developer-visible canonical reason codes"
+    work_item_scope:
+      - "versioned external API contract and compatibility classification"
+      - "idempotent mutation semantics under retries and duplicates"
+      - "scoped application credentials and capability boundaries"
+      - "sandbox/production namespace isolation"
+      - "canonical server-side reason-code propagation without reinterpretation"
+      - "signed webhook integrity, replay, duplicate, and out-of-order handling"
+      - "pagination and stable retrieval semantics where the existing API exposes collections"
+      - "SDK contract equivalence to canonical server semantics"
+      - "rate limiting/resource protection without changing business authority"
+      - "anti-authority proofs for API/webhook observations"
 
   - id: R6_PROVIDER_ONBOARDING_AND_FEDERATION
     status: AFTER_R5
     objective: "Enable independently operated networks, ISPs, carriers, enterprises, satellite systems, hotspots, mesh operators, and infrastructure owners to expose capacity through ADCOS without surrendering infrastructure authority."
     required: "adapter certification, capability declaration, commercial contract/profile, policy boundary, service terms, settlement configuration, observability, trust/federation onboarding"
-    dependency_rule: "R6 requires accepted R5; R4 completion is not a prerequisite unless a future durable governance decision explicitly changes this."
+    dependency_rule: "R6 requires accepted R5; R4 completion is not a prerequisite for R6 unless a future durable governance decision explicitly changes this."
 
   - id: R7_UNIVERSAL_CONNECTIVITY_COMMERCE
     status: AFTER_R6
