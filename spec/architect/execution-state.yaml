@@ -1,7 +1,7 @@
 # ADCOS execution state — persisted by the Architect.
 # This snapshot is a current-state projection, not historical delivery authority.
 # Current source of truth: spec/architect/roadmap.yaml + accepted decisions + ledger.
-# R6 governance transition active under DEC-0095 on 2026-09-06.
+# R6 governance transition merged under DEC-0095 on 2026-09-06.
 
 schema_version: 1
 package: "persistent-architect"
@@ -9,8 +9,8 @@ last_updated: "2026-09-06"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: 16c066ff4766d362f0edfcb790524b2c0ef44cae
-  main_sha_semantics: "Authoritative mainline immediately before the R6 governance transition. WORK-057 implementation baseline is this accepted mainline tree plus the durable DEC-0095 governance records."
+  main_sha: 2093de50537bca134a433042973731e860a7e3ce
+  main_sha_semantics: "Authoritative mainline after PR #22 merged the DEC-0095/ACR-013 governance transition. WORK-057 implementation authorization is active against the pre-transition implementation baseline 16c066ff4766d362f0edfcb790524b2c0ef44cae plus the merged governance records."
   lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
 execution:
@@ -55,9 +55,6 @@ in_review:
       - pilot/
 
 open_prs:
-  - pr: 22
-    head: "governance/r6-w057-autonomous-loop"
-    disposition: "R6 governance transition pending merge"
   - pr: 45
     head: "work-035-device-evidence"
     disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
@@ -97,7 +94,7 @@ accepted_work_items:
   note: "WORK-001..WORK-055 remain accepted according to durable history. WORK-056 is accepted-merged by DEC-0094 at c2b2c59 / b11cf44. WORK-040 remains in-review and unaccepted. WORK-057 is active under DEC-0095 and is represented by its gate-specific contract and dependency overlay."
 
 mainline_integrity:
-  status: R6_GOVERNANCE_ACTIVE_PENDING_MERGE
+  status: R6_ACTIVE
   reconciliation_decision: DEC-0095
   current_execution_decision: DEC-0095
   required_recovery_source: "Repository Git history / accepted delivery heads / durable decisions; no chat or external artifact may be used as the source for reconstruction."
