@@ -1,17 +1,20 @@
 # ADCOS Work Item authorization record — WORK-056 active implementation.
 # Issued by DEC-0089 after WORK-055/R3 acceptance.
-# Scope amended by DEC-0090 only for the minimal W054 composition-test oracle reconciliation.
+# Scope amended by DEC-0090 for the case_03 W054 composition-test oracle reconciliation
+# (exhausted by the Architect rejection of the amended delivery lineage).
+# The two residual W054 oracle pin sites (case_01, case_24) are amended by DEC-0091
+# per Architect review 5124685782.
 work_item: WORK-056
 status: active
 authorized: true
 type: implementation
 authorization_id: "WORK-056-CORE-001"
 authorization_decision: DEC-0089
-scope_amendment_decision: DEC-0090
+scope_amendment_decision: DEC-0091
 superseded_by: null
 supersession_decision: null
 baseline_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
-review_basis: "DEC-0089 accepts WORK-055/R3 and activates R5. WORK-056 is the sole active implementation authorization and is cut from the actual current mainline tip 7ae438d46041b228164cc8880be37dc21f972b6f; that mainline tree is content-equivalent to the accepted W055 merge 7801549c0ed50082a4fa7c20c71e50dc7bde87f9 after content-neutral cleanup commits. DEC-0090 narrowly amends the authorized scope to permit one W054 composition self-test oracle update required solely because WORK-056 repairs the previously recorded W046 import defect; no product or authority surface is added by the amendment."
+review_basis: "DEC-0089 accepts WORK-055/R3 and activates R5. WORK-056 is the sole active implementation authorization and is cut from the actual current mainline tip 7ae438d46041b228164cc8880be37dc21f972b6f; that mainline tree is content-equivalent to the accepted W055 merge 7801549c0ed50082a4fa7c20c71e50dc7bde87f9 after content-neutral cleanup commits. DEC-0090 narrowly amended the authorized scope to permit the case_03 W054 composition self-test oracle update required solely because WORK-056 repairs the previously recorded W046 import defect; DEC-0091 now permits the exact case_01 and case_24 residual oracle pin corrections for the same repaired availability state; no product or authority surface is added by either amendment."
 dependencies:
   - WORK-044
   - WORK-045
@@ -43,12 +46,12 @@ scope:
   - "docs/WORK-056-evidence.md"
   - "docs/WORK-056-handoff.md"
 scope_amendment:
-  decision: DEC-0090
-  exact_exception: "Permit the minimum W054 composition self-test oracle reconciliation required because WORK-056 repairs the previously recorded WORK-046 import defect."
+  decision: DEC-0091
+  exact_exception: "Permit the exact W054 composition self-test residual oracle pin corrections required because WORK-056 repairs the previously recorded WORK-046 import defect: only case_01 and case_24, the same single WORK-046 availability oracle DEC-0090 reconciled at case_03."
   exact_path: "tools/composition_selftest.py"
-  exact_allowed_change: "Update only case_03's WORK-046 availability classification from DEFECT to AVAILABLE and revise the corresponding detail assertion from the stale W046 import-broken wording to the repaired-state wording. No composition authority, production code, W048 behavior, or other test semantics may be changed."
+  exact_allowed_change: "Update only case_01's and case_24's WORK-046 availability classification from DEFECT to AVAILABLE and revise the corresponding detail wording to the repaired-state wording, exactly as case_03 was reconciled under DEC-0090; the DEC-0090 case_03 reconciliation is retained as already delivered. No composition authority, production code, W048 behavior, other test semantics, module docstring, or comment wording may be changed."
   authority_effect: "No new product, connectivity, commercial, identity, session, routing, transport, payment, usage, allocation, or policy authority."
-  expiry: "One delivery only: applies to WORK-056-CORE-001 at and before the first Architect acceptance of the amended WORK-056 delivery; no separate future authorization is created."
+  expiry: "One delivery only: applies to WORK-056-CORE-001 at and before the first Architect acceptance or rejection of the next amended WORK-056 delivery; no separate future authorization is created."
 out_of_scope_preserved:
   - "frozen architecture or protocol semantics"
   - "new identity/session/NetworkPath/routing/transport authority"
@@ -60,7 +63,7 @@ out_of_scope_preserved:
   - "new economic authority"
   - "CI governance changes outside this authorization"
   - "modifying spec/architect/ from the implementation PR"
-  - "changes to tools/composition_selftest.py beyond the exact DEC-0090 oracle reconciliation above"
+  - "changes to tools/composition_selftest.py beyond the exact DEC-0090 case_03 and DEC-0091 case_01/case_24 oracle reconciliations above"
 acceptance_criteria:
   - "External applications can use the existing developer boundary without adopting an ADCOS UI."
   - "API mutations are idempotent and deterministic under retries, duplicates, and replay conditions."
@@ -73,7 +76,7 @@ acceptance_criteria:
   - "Rate limiting/resource protection cannot become a second business authority."
   - "API/webhook observations never become canonical connectivity or commercial state."
   - "Existing accepted batteries remain green; no frozen authority is modified."
-  - "All changes remain within the exact authorized scope and ancestry, including the DEC-0090 exact test-oracle exception."
+  - "All changes remain within the exact authorized scope and ancestry, including the DEC-0090 and DEC-0091 exact test-oracle exceptions."
 acceptance_gate:
   status: "Architect adversarial review required after implementation"
   required_evidence:
@@ -88,6 +91,6 @@ acceptance_gate:
     - "PYTHONHASHSEED and repeat-run determinism"
     - "scope and ancestry proof from baseline 7ae438d46041b228164cc8880be37dc21f972b6f"
     - "explicit proof that no frozen semantic or wire-schema change occurred"
-    - "W054 composition self-test restored to green with no changes beyond the DEC-0090 exact oracle reconciliation"
+    - "W054 composition self-test restored to a genuine 55/55 green with no changes beyond the DEC-0090 case_03 and DEC-0091 case_01/case_24 exact oracle reconciliations"
 handoff: docs/WORK-056-handoff.md
 handoff_required: true
