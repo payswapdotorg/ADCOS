@@ -8,8 +8,8 @@ authorization_id: "WORK-056-CORE-001"
 authorization_decision: DEC-0089
 superseded_by: null
 supersession_decision: null
-baseline_sha: 7801549c0ed50082a4fa7c20c71e50dc7bde87f9
-review_basis: "DEC-0089 accepts WORK-055/R3 and activates R5. WORK-056 is the sole active implementation authorization and is cut from the post-W055 accepted mainline 7801549c0ed50082a4fa7c20c71e50dc7bde87f9."
+baseline_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
+review_basis: "DEC-0089 accepts WORK-055/R3 and activates R5. WORK-056 is the sole active implementation authorization and is cut from the actual current mainline tip 7ae438d46041b228164cc8880be37dc21f972b6f; that mainline tree is content-equivalent to the accepted W055 merge 7801549c0ed50082a4fa7c20c71e50dc7bde87f9 after content-neutral cleanup commits."
 dependencies:
   - WORK-044
   - WORK-045
@@ -75,5 +75,5 @@ acceptance_gate:
     - "SDK/server contract equivalence evidence"
     - "structural import/private-access/shadow-authority audits"
     - "PYTHONHASHSEED and repeat-run determinism"
-    - "scope and ancestry proof from baseline 7801549c"
+    - "scope and ancestry proof from baseline 7ae438d46041b228164cc8880be37dc21f972b6f"
     - "explicit proof that no frozen semantic or wire-schema change occurred"
