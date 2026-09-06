@@ -1,8 +1,7 @@
 # ADCOS execution state — persisted by the Architect.
 # This snapshot is a current-state projection, not historical delivery authority.
 # Current source of truth: spec/architect/roadmap.yaml + accepted decisions + ledger.
-# Reconciled after sole-Architect acceptance DEC-0094 on 2026-09-06.
-# R6 governance preparation is recorded through proposed ACR-012 and W057; no R6 authorization exists.
+# R6 governance transition active under DEC-0095 on 2026-09-06.
 
 schema_version: 1
 package: "persistent-architect"
@@ -11,27 +10,19 @@ last_updated: "2026-09-06"
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
   main_sha: 16c066ff4766d362f0edfcb790524b2c0ef44cae
-  main_sha_semantics: "Current authoritative mainline after sole-Architect acceptance of WORK-056 and durable drafting of ACR-012 / WORK-057 for the unlocked R6 gate. No R6 implementation is authorized."
+  main_sha_semantics: "Authoritative mainline immediately before the R6 governance transition. WORK-057 implementation baseline is this accepted mainline tree plus the durable DEC-0095 governance records."
   lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
-versions:
-  architecture_version_reference: "1.0"
-  architecture_version_authority: "spec/architecture.md"
-  protocol_version_reference: "1.0"
-  protocol_version_authority: "spec/schemas/protocol.json"
-
 execution:
-  mode: planning
-  active_work_item: null
-  active_authorization: null
-  halted_reason: "R5/W056 is accepted and merged under DEC-0094. R6 is unlocked but no implementation authorization is active. ACR-012 and the W057 contract are durably drafted; synchronized frozen backlog/DAG/roadmap registration and the resulting Architect acceptance are required before W057 can execute."
+  mode: implementing
+  active_work_item: WORK-057
+  active_authorization: WORK-057-CORE-001
+  halted_reason: null
   next_required_decisions:
-    - "Complete the ACR-012 synchronization by registering WORK-057 in the frozen Work Item backlog and recalculated dependency graph."
-    - "Advance the frozen roadmap to its next governance version with R6/W057 registration while preserving Architecture Version 1.0 and Protocol Version 1.0."
-    - "Create the durable R6 acceptance/authorization decision only after the synchronized Work Item, DAG, and roadmap records are mutually consistent."
-    - "Issue exactly one new implementation authorization for WORK-057 only after the R6 governance transition is accepted by the sole Architect."
+    - "Sole Architect review of the eventual WORK-057 implementation delivery."
+    - "No successor authorization until WORK-057 is accepted or explicitly rejected."
     - "R4/W040 remains independently in-review and unaccepted; EVID-007 and EVID-008 remain open, physical, and W040-owned."
-    - "W048 remains accepted-not-restored and must not be restored under R6 without explicit separate authority."
+    - "W048 remains accepted-not-restored and cannot be restored under WORK-057."
     - "Any frozen protocol semantic change remains blocked pending the ACR/change-control process."
 
 reconciliation:
@@ -41,17 +32,17 @@ reconciliation:
   r3_status: "R3 complete under DEC-0089; WORK-055 accepted and merged as PR #15, merge 7801549c0ed50082a4fa7c20c71e50dc7bde87f9."
   r5_status: "R5 complete under DEC-0094; WORK-056 accepted at c2b2c59 and merged as b11cf44."
   r4_status: "R4 remains parallel-after-R3 with W040 independently in-review and unaccepted."
-  r6_status: "R6 unlocked by the acceptance of R5. ACR-012 / WORK-057 are proposed governance artifacts only; R6 implementation is not activated."
-  authorization_state: "No implementation authorization is active. WORK-056-CORE-001 is closed by DEC-0094."
+  r6_status: "R6 ACTIVE under DEC-0095; WORK-057 is the sole active implementation authorization."
+  authorization_state: "Exactly one implementation authorization is active: WORK-057-CORE-001."
 
 decisions:
   latest_work_item_acceptance: DEC-0094
   latest_w056_scope_amendment: DEC-0093
   latest_w056_delivery: c2b2c59fae4749b610b721b217e18cfa9b4aab25
   latest_w056_acceptance_merge: b11cf44db922811d2518c05685aee14127243264
-  latest_r6_governance_proposal: ACR-012
-  proposed_r6_work_item: WORK-057
-  latest_w056_required_green_batteries: "developerapi 56/56; composition 55/55"
+  latest_governance_decision: DEC-0095
+  active_acr: ACR-013
+  superseded_acr: ACR-012
 
 in_review:
   - work_item: WORK-040
@@ -64,6 +55,9 @@ in_review:
       - pilot/
 
 open_prs:
+  - pr: 22
+    head: "governance/r6-w057-autonomous-loop"
+    disposition: "R6 governance transition pending merge"
   - pr: 45
     head: "work-035-device-evidence"
     disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
@@ -79,12 +73,10 @@ open_prs:
   - pr: 49
     head: "roadmap/connectivity-economy"
     disposition: "historical proposal; superseded by accepted ACR-009"
-open_acrs:
-  - acr: "ACR-012"
-    status: "PROPOSED"
-    subject: "R6 Provider Onboarding & Federation registration"
-    proposed_work_item: "WORK-057"
-accepted_architectural_changes:
+open_acrs: []
+open_architectural_questions: []
+
+accepted_acrs:
   - acr: "ACR-005"
     decision: "DEC-0047"
   - acr: "ACR-006"
@@ -95,17 +87,19 @@ accepted_architectural_changes:
     decision: "DEC-0050"
   - acr: "ACR-011"
     decision: "DEC-0056"
+  - acr: "ACR-013"
+    decision: "DEC-0095"
 
 accepted_work_items:
   first: "WORK-001"
   last: "WORK-056"
-  active: null
-  note: "WORK-001..WORK-055 remain accepted according to durable history. WORK-056 is accepted-merged by DEC-0094 at c2b2c59 / b11cf44. WORK-040 remains in-review and unaccepted. WORK-057 is a proposed R6 Work Item only and is not yet registered in the frozen backlog or authorized for implementation."
+  active: "WORK-057"
+  note: "WORK-001..WORK-055 remain accepted according to durable history. WORK-056 is accepted-merged by DEC-0094 at c2b2c59 / b11cf44. WORK-040 remains in-review and unaccepted. WORK-057 is active under DEC-0095 and is represented by its gate-specific contract and dependency overlay."
 
 mainline_integrity:
-  status: RECONCILED_R5_COMPLETE_R6_GOVERNANCE_PREPARATION
-  reconciliation_decision: DEC-0094
-  current_execution_decision: ACR-012
+  status: R6_GOVERNANCE_ACTIVE_PENDING_MERGE
+  reconciliation_decision: DEC-0095
+  current_execution_decision: DEC-0095
   required_recovery_source: "Repository Git history / accepted delivery heads / durable decisions; no chat or external artifact may be used as the source for reconstruction."
   recovery_rule: "Recover exact accepted delivery artifacts and CI/evidence surfaces; do not import unrelated ancestry; do not alter frozen architecture semantics."
 
@@ -116,6 +110,8 @@ source_of_truth:
   lifecycle_history: "spec/architect/execution-ledger.yaml"
   implementation_permission: "spec/architect/authorizations/"
   durable_decisions: "spec/architect/decisions/"
+  gate_dependency_overlays: "spec/architect/dependency-overlays/"
+  architect_autonomy_policy: "spec/architect/governance-autonomy.md"
   chat_dependency: PROHIBITED
   external_memory_dependency: PROHIBITED
   stale_projection_behavior: FAIL_CLOSED

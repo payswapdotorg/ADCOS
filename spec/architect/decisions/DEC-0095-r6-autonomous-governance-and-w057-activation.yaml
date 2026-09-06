@@ -1,0 +1,70 @@
+# DEC-0095 — R6 autonomous governance transition and WORK-057 activation
+# Durable decision by the sole Architect.
+decision_id: DEC-0095
+date: "2026-09-06"
+type: governance
+decision: ACCEPTED
+status: ACCEPTED
+owner: "Architect"
+
+subject: "Accept ACR-013, formalize autonomous post-snapshot governance, and activate WORK-057 for R6"
+
+evidence:
+  - "R5/W056 accepted under DEC-0094 at delivery c2b2c59fae4749b610b721b217e18cfa9b4aab25 and merge b11cf44db922811d2518c05685aee14127243264."
+  - "ACR-013 provides the required governance-change analysis and preserves Architecture Version 1.0 and Protocol Version 1.0."
+  - "WORK-057 contract, authorization, handoff, and R6 dependency overlay are durable repository records."
+  - "The R6 dependency set is explicit and excludes WORK-048 restoration and W040 physical completion."
+findings:
+  - "The original frozen Work Item register is a historical architectural snapshot and is not a safe mechanism for repeatedly representing later gate-specific execution units."
+  - "The repository already used gate-specific contracts and authorizations for W054-W056; ACR-013 formalizes that established pattern."
+blockers: []
+required_corrections: []
+accepted_scope:
+  - "Formalize gate-specific post-snapshot Work Item governance under spec/architect/."
+  - "Permit the sole Architect to advance unlocked roadmap gates without user prompting for routine governance sequencing."
+  - "Activate WORK-057 as the sole R6 implementation authorization."
+rejected_scope:
+  - "Any change to frozen Architecture Version 1.0 semantics."
+  - "Any change to frozen Protocol Version 1.0 wire semantics."
+  - "Implicit restoration of WORK-048."
+  - "Closure or alteration of W040 physical evidence obligations."
+  - "Creation of a second connectivity, identity, session, routing, transport, payment, usage, allocation, or policy authority."
+downstream_effect:
+  - "R6 Provider Onboarding & Federation is ACTIVE."
+  - "WORK-057-CORE-001 is the only active implementation authorization."
+  - "Successor R7 remains blocked until WORK-057 is Architect-accepted."
+
+facts:
+  predecessor_gate: R5_DEVELOPER_CONNECTIVITY_PLATFORM
+  predecessor_work_item: WORK-056
+  predecessor_acceptance: DEC-0094
+  predecessor_merge_sha: b11cf44db922811d2518c05685aee14127243264
+  current_governed_main_sha: 16c066ff4766d362f0edfcb790524b2c0ef44cae
+  acr_accepted: ACR-013
+  superseded_registration_interpretation: ACR-012
+  next_gate: R6_PROVIDER_ONBOARDING_AND_FEDERATION
+  active_work_item: WORK-057
+  active_authorization: WORK-057-CORE-001
+
+r6_activation:
+  status: "ACTIVE"
+  work_item: WORK-057
+  authorization: WORK-057-CORE-001
+  baseline_sha: 16c066ff4766d362f0edfcb790524b2c0ef44cae
+  dependency_overlay: spec/architect/dependency-overlays/R6-W057.yaml
+  contract: spec/architect/work-items/WORK-057.md
+  handoff: docs/WORK-057-handoff.md
+  successor_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE
+
+constraints:
+  - "Architecture Version 1.0 unchanged."
+  - "Protocol Version 1.0 unchanged."
+  - "Exactly one implementation authorization is active: WORK-057-CORE-001."
+  - "WORK-048 remains accepted-not-restored and receives no authority from this decision."
+  - "WORK-040 remains independent, physical, in-review, and unaccepted."
+  - "Provider implementations remain behind adapter/provider boundaries."
+  - "No vendor becomes a connectivity, identity, routing, session, transport, payment, usage, allocation, or policy authority."
+  - "No implementation PR may modify spec/architect/."
+  - "No physical evidence may be manufactured from software or simulation."
+
+next_action: "Execute WORK-057 only under WORK-057-CORE-001, then return to the sole Architect for adversarial review and acceptance before any successor authorization is issued."
