@@ -9,8 +9,8 @@ last_updated: "2026-09-06"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: 2093de50537bca134a433042973731e860a7e3ce
-  main_sha_semantics: "Authoritative mainline after PR #22 merged the DEC-0095/ACR-013 governance transition. WORK-057 implementation authorization is active against the pre-transition implementation baseline 16c066ff4766d362f0edfcb790524b2c0ef44cae plus the merged governance records."
+  main_sha: eb1fc4372203fa0185b5a4d5bba51ac0def2cb58
+  main_sha_semantics: "Authoritative mainline after PR #22 merged the DEC-0095/ACR-013 governance transition and the roadmap reconciliation. WORK-057 implementation authorization is active against the pre-transition implementation baseline 16c066ff4766d362f0edfcb790524b2c0ef44cae plus the merged governance records."
   lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
 execution:
@@ -60,7 +60,7 @@ open_prs:
     disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
   - pr: 46
     head: "work-035-android-mobile-agent"
-    disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
+    disposition: "historical/superseded physical-evidence chain; requires formal disposition"
   - pr: 47
     head: "work-035-physical-evidence-v2"
     disposition: "historical/latest W035 physical-evidence chain; requires formal disposition"
