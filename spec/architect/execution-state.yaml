@@ -2,6 +2,7 @@
 # This snapshot is a current-state projection, not historical delivery authority.
 # Current source of truth: spec/architect/roadmap.yaml + accepted decisions + ledger.
 # R6 governance transition merged under DEC-0095 on 2026-09-06.
+# WORK-057 Round 1 reviewed under DEC-0096: CHANGES_REQUIRED.
 
 schema_version: 1
 package: "persistent-architect"
@@ -9,18 +10,26 @@ last_updated: "2026-09-06"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: 37deca5ccb247e0552c4f0ccb8a91dcb79bb269b
-  main_sha_semantics: "Authoritative mainline after PR #22 merged the DEC-0095/ACR-013 governance transition, roadmap reconciliation, and publication of the durable WORK-057 implementation prompt. WORK-057 implementation authorization is active against baseline 16c066ff4766d362f0edfcb790524b2c0ef44cae plus the merged governance records."
+  main_sha: 976b729bb2042894a9c6852bf557fbfc1d62f707
+  main_sha_semantics: "Authoritative mainline after the R6 governance transition and durable WORK-057 Round 1 review decision DEC-0096. The active WORK-057 implementation authorization remains bound to baseline 16c066ff4766d362f0edfcb790524b2c0ef44cae and is unchanged by this review disposition."
   lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
+
+versions:
+  architecture_version_reference: "1.0"
+  architecture_version_authority: "spec/architecture.md"
+  protocol_version_reference: "1.0"
+  protocol_version_authority: "spec/schemas/protocol.json"
 
 execution:
   mode: implementing
   active_work_item: WORK-057
   active_authorization: WORK-057-CORE-001
+  review_state: CHANGES_REQUIRED
+  reviewed_delivery_sha: 6d64678d9e5b862f2d139cb991d3662c7f12a244
   halted_reason: null
   next_required_decisions:
-    - "Sole Architect review of the WORK-057 implementation delivery."
-    - "No successor authorization until WORK-057 is accepted or explicitly rejected."
+    - "Worker corrects the same WORK-057 delivery under WORK-057-CORE-001; no new authorization is required."
+    - "Corrected WORK-057 delivery returns to the sole Architect for adversarial review."
     - "R4/W040 remains independently in-review and unaccepted; EVID-007 and EVID-008 remain open, physical, and W040-owned."
     - "W048 remains accepted-not-restored and cannot be restored under WORK-057."
     - "Any frozen protocol semantic change remains blocked pending the ACR/change-control process."
@@ -32,7 +41,7 @@ reconciliation:
   r3_status: "R3 complete under DEC-0089; WORK-055 accepted and merged as PR #15, merge 7801549c0ed50082a4fa7c20c71e50dc7bde87f9."
   r5_status: "R5 complete under DEC-0094; WORK-056 accepted at c2b2c59 and merged as b11cf44."
   r4_status: "R4 remains parallel-after-R3 with W040 independently in-review and unaccepted."
-  r6_status: "R6 ACTIVE under DEC-0095; WORK-057 is the sole active implementation authorization."
+  r6_status: "R6 ACTIVE under DEC-0095; WORK-057 is the sole active implementation authorization. Round 1 review is CHANGES_REQUIRED under DEC-0096."
   authorization_state: "Exactly one implementation authorization is active: WORK-057-CORE-001."
 
 decisions:
@@ -41,6 +50,7 @@ decisions:
   latest_w056_delivery: c2b2c59fae4749b610b721b217e18cfa9b4aab25
   latest_w056_acceptance_merge: b11cf44db922811d2518c05685aee14127243264
   latest_governance_decision: DEC-0095
+  latest_w057_review: DEC-0096
   active_acr: ACR-013
   superseded_acr: ACR-012
 
@@ -53,8 +63,21 @@ in_review:
     state: "in-review"
     areas:
       - pilot/
+  - work_item: WORK-057
+    branch: "pectoraux:work-057-provider-onboarding-federation"
+    pr: 23
+    pr_head: 6d64678d9e5b862f2d139cb991d3662c7f12a244
+    baseline_sha: 12ae8f7159aa7ddbc82b7e6aa6a3dc5d61ae676a
+    state: "changes-required"
+    review_decision: DEC-0096
+    blockers:
+      - "Adapter certification authority bypass"
+      - "Federation proposal self-acceptance / missing independent peer authorization"
 
 open_prs:
+  - pr: 23
+    head: "pectoraux:work-057-provider-onboarding-federation"
+    disposition: "WORK-057 Round 1; CHANGES_REQUIRED under DEC-0096; do not merge"
   - pr: 45
     head: "work-035-device-evidence"
     disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
@@ -70,6 +93,7 @@ open_prs:
   - pr: 49
     head: "roadmap/connectivity-economy"
     disposition: "historical proposal; superseded by accepted ACR-009"
+
 open_acrs: []
 open_architectural_questions: []
 
@@ -91,12 +115,12 @@ accepted_work_items:
   first: "WORK-001"
   last: "WORK-056"
   active: "WORK-057"
-  note: "WORK-001..WORK-055 remain accepted according to durable history. WORK-056 is accepted-merged by DEC-0094 at c2b2c59 / b11cf44. WORK-040 remains in-review and unaccepted. WORK-057 is active under DEC-0095 and is represented by its gate-specific contract, dependency overlay, authorization, handoff, and implementation prompt."
+  note: "WORK-001..WORK-055 remain accepted according to durable history. WORK-056 is accepted-merged by DEC-0094 at c2b2c59 / b11cf44. WORK-040 remains in-review and unaccepted. WORK-057 is active under DEC-0095; Round 1 delivery head 6d64678 is CHANGES_REQUIRED under DEC-0096 and has not been accepted."
 
 mainline_integrity:
-  status: R6_ACTIVE
-  reconciliation_decision: DEC-0095
-  current_execution_decision: DEC-0095
+  status: R6_ACTIVE_W057_CHANGES_REQUIRED
+  reconciliation_decision: DEC-0096
+  current_execution_decision: DEC-0096
   required_recovery_source: "Repository Git history / accepted delivery heads / durable decisions; no chat or external artifact may be used as the source for reconstruction."
   recovery_rule: "Recover exact accepted delivery artifacts and CI/evidence surfaces; do not import unrelated ancestry; do not alter frozen architecture semantics."
 
