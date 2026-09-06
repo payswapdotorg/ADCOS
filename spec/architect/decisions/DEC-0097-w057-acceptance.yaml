@@ -1,0 +1,55 @@
+# DEC-0097 — WORK-057 Round 2 acceptance
+# Durable sole-Architect acceptance after correction of DEC-0096 blockers.
+decision_id: DEC-0097
+date: "2026-09-06"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: WORK-057
+authorization: WORK-057-CORE-001
+reviewed_delivery_sha: 58eced2f7864bd8d6e9cac658574d8c7b0b48965
+merge_sha: a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19
+pr: 23
+review_basis: "DEC-0095 activation, DEC-0096 Round 1 CHANGES_REQUIRED decision, live PR #23 Round 2 head, implementation diff, WORK-015 federation authority, WORK-016 adapter certification authority, WORK-057 evidence manifest, and the required acceptance battery."
+
+decision: ACCEPTED
+
+round_1_blockers_closed:
+  - id: W057-R1-P0-001
+    result: "Closed. Adapter certification admission is authority-verified through the adapter authority's verifier; claimed certification identity is recomputed, certification requirements are enforced, validity is evaluated at the supplied instant, and journaled certifications are re-verified during recovery."
+  - id: W057-R1-P0-002
+    result: "Closed. Federation acceptance is authorized by the relationship peer domain's registered operator and peer key proof; proposer self-acceptance and wrong-peer acceptance fail closed; scope narrowing remains owned by WORK-015."
+
+accepted_evidence:
+  - "W057 corrected delivery head 58eced2f7864bd8d6e9cac658574d8c7b0b48965 was reviewed by the sole Architect and guarded-merged as PR #23, merge a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19."
+  - "Worker reports 80/80 W057 adversarial battery cases, repeat-run determinism, and PYTHONHASHSEED 0/1/7919 byte identity."
+  - "Targeted cases 74–80 cover forged certification identity/content, attestation/evidence/validity requirements, verifier construction/recovery, journal certification tamper, proposer self-acceptance, wrong-peer operators, genuine independent peer acceptance, and journal-forged peer authorization."
+  - "Worker reports unchanged sibling batteries relative to the branch point and explicitly surfaces the W056 case_41 cross-era condition rather than modifying the accepted W056 oracle."
+  - "Current CI remains action_required for the cross-network PR path; no CI result is treated as independently executed W057 acceptance evidence."
+
+accepted_scope:
+  - "WORK-057 objective and lifecycle are accepted under the existing authorization."
+  - "Architecture Version 1.0 remains unchanged."
+  - "Protocol Version 1.0 remains unchanged."
+  - "Existing identity, capability, resource, policy, federation, commercial, observability, and compatibility authorities remain the governing authorities."
+  - "W048 remains accepted-not-restored."
+  - "W040 remains independent physical evidence and is not closed or altered."
+  - "The W056 case_41 cross-era oracle remains a separately governed Architect-owned matter."
+
+rejected_scope:
+  - "No new identity, federation, capability, resource, policy, routing, session, transport, usage, payment, allocation, settlement, topology, or physical authority."
+  - "No frozen protocol semantic or wire-format change."
+  - "No CI workflow expansion."
+  - "No successor Work Item is implicitly created."
+
+required_post_acceptance:
+  - "Close WORK-057-CORE-001 authorization; no implementation authorization remains active until a subsequent Work Item is explicitly activated."
+  - "Reconcile execution-state, authorization, roadmap, and execution ledger to merge a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19 without rewriting history."
+  - "R6 becomes COMPLETE; R7 becomes the next unlocked program gate but is not activated by this decision."
+
+downstream_effect:
+  - "WORK-057 is accepted-merged."
+  - "R6 provider onboarding and federation is complete."
+  - "The WORK-057 implementation authorization is closed."
+  - "R7 remains unactivated pending its own gate-specific authorization/governance transition."
+  - "R4/W040 remains parallel and independent."
