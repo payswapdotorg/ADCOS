@@ -2809,64 +2809,81 @@ def case_50_frozen_spec_intact(results: List[Result]) -> None:
     )
 
 
+#: The fixed ends of the historical W054 delta this case proves
+#: (DEC-0093): the authorized W054 baseline and the accepted W054
+#: delivery. The proof is immutable — it never diffs the live
+#: worktree against a moving ref, so a later authorized Work Item
+#: cannot be misclassified as a W054 scope violation.
+_W054_AUTHORIZED_BASELINE = "461d1482180222f4b63f780d6d9ea1d54c49d643"
+_W054_ACCEPTED_DELIVERY = "93ad4130f8308832e432ce3e83988f5a6a9b32e3"
+
+
 def case_51_pr_delta_scope(results: List[Result]) -> None:
     name = "case_51_pr_delta_authorized_scope"
-    if not _origin_main_available():
+    # Immutable historical W054 scope/provenance proof (DEC-0093): the
+    # delta between the fixed W054 authorized baseline and the fixed
+    # accepted W054 delivery — not the current worktree against
+    # origin/main — must lie exactly within the authorized W054
+    # surfaces, must contain no spec/ delta, and the accepted W054
+    # delivery must remain on the tested HEAD lineage.
+    diff = subprocess.run(
+        [
+            "git", "diff", "--name-only",
+            _W054_AUTHORIZED_BASELINE, _W054_ACCEPTED_DELIVERY,
+        ],
+        capture_output=True, text=True, cwd=str(REPO_ROOT),
+    )
+    if diff.returncode != 0:
         results.append(
-            ok(
-                name,
-                "skipped (no origin/main ref; the CI provenance step "
-                "enforces the authorized scope)",
-            )
+            fail(name, "cannot compute the historical W054 delta")
         )
         return
-    delta: set = set()
-    diff = subprocess.run(
-        ["git", "diff", "--name-only", "origin/main"],
-        capture_output=True, text=True, cwd=str(REPO_ROOT),
-    )
-    if diff.returncode == 0:
-        delta |= {line for line in diff.stdout.splitlines() if line.strip()}
-    untracked = subprocess.run(
-        ["git", "ls-files", "--others", "--exclude-standard"],
-        capture_output=True, text=True, cwd=str(REPO_ROOT),
-    )
-    if untracked.returncode == 0:
-        delta |= {line for line in untracked.stdout.splitlines() if line.strip()}
+    delta: set = {
+        line for line in diff.stdout.splitlines() if line.strip()
+    }
     if not delta:
-        results.append(ok(name, "no delta (clean main)"))
+        results.append(ok(name, "no historical W054 delta"))
         return
     problems: List[str] = []
     for path in sorted(delta):
         if path.startswith("spec/"):
-            problems.append("delta touches frozen spec/: %s" % path)
+            problems.append(
+                "historical W054 delta touches frozen spec/: %s" % path
+            )
             continue
         if not any(
             path == surface or path.startswith(surface)
             for surface in _AUTHORIZED_PATHS
         ):
-            problems.append("delta outside the authorized scope: %s" % path)
-    # the authorized baseline is an ancestor of the delivery head
+            problems.append(
+                "historical W054 delta outside the authorized scope: %s"
+                % path
+            )
+    # the accepted W054 delivery is an ancestor of the tested HEAD
     ancestry = subprocess.run(
         [
             "git", "merge-base", "--is-ancestor",
-            "461d1482180222f4b63f780d6d9ea1d54c49d643", "HEAD",
+            _W054_ACCEPTED_DELIVERY, "HEAD",
         ],
         capture_output=True, cwd=str(REPO_ROOT),
     )
     if ancestry.returncode != 0:
-        problems.append("the authorized baseline is not an ancestor of HEAD")
+        problems.append(
+            "the accepted W054 delivery is not an ancestor of HEAD"
+        )
     if problems:
         results.append(fail(name, "; ".join(problems)))
         return
     results.append(
         ok(
             name,
-            "the %d-file delta lies exactly within the authorized "
-            "WORK-054 scope (composition/, tools/composition_selftest.py, "
-            "docs/WORK-054-*.md) and the authorized baseline "
-            "461d1482180222f4b63f780d6d9ea1d54c49d643 is an ancestor of "
-            "HEAD" % len(delta),
+            "the %d-file historical W054 delta between the authorized "
+            "baseline 461d1482180222f4b63f780d6d9ea1d54c49d643 and the "
+            "accepted delivery 93ad4130f8308832e432ce3e83988f5a6a9b32e3 "
+            "lies exactly within the authorized WORK-054 scope "
+            "(composition/, tools/composition_selftest.py, "
+            "docs/WORK-054-*.md), contains no spec/ delta, and the "
+            "accepted delivery remains an ancestor of HEAD" % len(delta),
         )
     )
 
