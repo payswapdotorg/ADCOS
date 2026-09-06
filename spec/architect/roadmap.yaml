@@ -35,8 +35,8 @@ governance_rules:
   software_never_promotes_to_physical: true
 
 current_state:
-  actual_main_sha: 7801549c0ed50082a4fa7c20c71e50dc7bde87f9
-  last_reconciled_snapshot_sha: 7801549c0ed50082a4fa7c20c71e50dc7bde87f9
+  actual_main_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
+  last_reconciled_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
   program_state: R5_DEVELOPER_CONNECTIVITY_PLATFORM_ACTIVE
   execution_mode: implementing
   active_work_item: WORK-056
@@ -178,7 +178,7 @@ roadmap:
     work_item: WORK-056
     authorization: WORK-056-CORE-001
     authorization_decision: DEC-0089
-    authorization_baseline: 7801549c0ed50082a4fa7c20c71e50dc7bde87f9
+    authorization_baseline: 7ae438d46041b228164cc8880be37dc21f972b6f
     gate_rule: "R5 starts after R3 acceptance and may execute in parallel with the independent R4/W040 track, but only WORK-056-CORE-001 may be the active implementation authorization."
     existing_foundation: "Accepted W046 Developer API/SDK/Webhooks implementation is the base. Future work is production hardening and ecosystem exposure, not reimplementation of its authority."
     required_surface:

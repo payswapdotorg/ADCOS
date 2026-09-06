@@ -6,7 +6,7 @@
 
 ## Current repository state
 
-R3 is complete and R5 is active under WORK-056. W055 was accepted by the sole Architect and merged as PR #15 (`7801549c`). The R5 developer-platform hardening track is authorized from that exact post-W055 baseline by DEC-0089. W040 remains an independent R4 physical track in-review.
+R3 is complete and R5 is active under WORK-056. W055 was accepted by the sole Architect and merged as PR #15 (`7801549c`). The R5 developer-platform hardening track is authorized from the actual current main tip `7ae438d` — content-equivalent to that post-W055 merge after preserved content-neutral cleanup commits — by DEC-0089. W040 remains an independent R4 physical track in-review.
 
 **R0 is complete**: the canonical mainline restoration was accepted and merged as PR #8 on the exact frozen main `3bdfb6d` (merge `a3391e8`, tree `1d16c24`, byte-identical to the historical restoration tree `7fb47bb`). W048 remains explicitly accepted-but-not-restored.
 

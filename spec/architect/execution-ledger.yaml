@@ -1,3 +1,13 @@
+# DEC-0089 / LEDGER-RECON-013: R3-acceptance/R5-activation reconciliation —
+# WORK-054 appended accepted-merged (reviewed head 93ad4130f8308832e432ce3e83988f5a6a9b32e3, PR #13, merge
+# 57963858e5a2b9d11faed94b50f94e058cede0a8, DEC-0088), WORK-055 appended accepted-merged (reviewed
+# delivery 0fc86aac57332ca8b8043bf5ee20bb3240d70fe8, PR #15, merge 7801549c0ed50082a4fa7c20c71e50dc7bde87f9, DEC-0089), WORK-056
+# appended registered with the sole active implementation authorization
+# WORK-056-CORE-001 (baseline 7ae438d46041b228164cc8880be37dc21f972b6f = the actual current main tip,
+# content-equivalent to the accepted W055 merge after the preserved
+# content-neutral write-and-cleanup commits); snapshot baseline advanced
+# a3391e86851e06032de848e6eb0b4267fa33310a -> 7ae438d46041b228164cc8880be37dc21f972b6f; no prior record rewritten, three entries appended, the
+# reconciliation record appended newest-first.
 # DEC-0084 / LEDGER-RECON-012: R1 governance reconciliation after the accepted
 # R0 restoration (PR #8, merge a3391e86851e06032de848e6eb0b4267fa33310a) —
 # W044-W049 lifecycle projections reconciled to their existing accepted
@@ -93,8 +103,8 @@
 # semantic changes.
 
 schema_version: 1
-main_sha: a3391e86851e06032de848e6eb0b4267fa33310a
-last_updated: "2026-09-05"
+main_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
+last_updated: "2026-09-06"
 work_items:
   - work_item: WORK-001
     title: "Protocol specification/governance foundation"
@@ -1023,8 +1033,69 @@ work_items:
     handoff_required: true
     lifecycle: accepted-merged
     note: "Architect-accepted at the exact reviewed head on the first review round with zero correction rounds on the PR (the durable exact-SHA acceptance record is the PR #152 Architect acceptance comment 5549039574, 2026-09-05T03:27:11Z): exact reviewed head 4a0021c4d464bf1e0e9d9b29ff8a87ed8eb8146a; merged as bb29c11c8bba6c9db5b87f85b1d62faad0bf7825 (2026-09-05T03:27:16Z); CI run 33931905976 SUCCESS on the exact head including the dedicated W053 battery step and provenance. Delivered under WORK-053-CORE-001 (DEC-0061, authorization baseline bcaf0d0 = the post-W052-merge mainline) on the branch work-053-economic-allocation-2 cut from the post-DEC-0061-reconciliation live main cdf451f (the standing governance-only branch-point offset); the superseded PR #124 lineage was deliberately left untouched. WORK-053-CORE-001 superseded by DEC-0063; scope/provenance preserved. SOFTWARE-class evidence only (docs/WORK-053-evidence.md); no PHYSICAL claim is made (EVID-007/EVID-008 remain OPEN and W040-owned)."
+  - work_item: WORK-054
+    title: "System Composition Conformance"
+    phase: 2
+    branch: "work-054-system-composition-conformance"
+    baseline_sha: 461d1482180222f4b63f780d6d9ea1d54c49d643
+    pr: 13
+    pr_head: 93ad4130f8308832e432ce3e83988f5a6a9b32e3
+    reviewed_sha: 93ad4130f8308832e432ce3e83988f5a6a9b32e3
+    merge_sha: 57963858e5a2b9d11faed94b50f94e058cede0a8
+    merged_at: 2026-09-05T19:45:27Z
+    ci_run: null
+    review_rounds: 1
+    acceptance_decision: DEC-0088
+    correction_decisions: []
+    handoff: docs/WORK-054-handoff.md
+    handoff_required: true
+    lifecycle: accepted-merged
+    note: "R5-gate-era entry appended by LEDGER-RECON-013 (DEC-0089). WORK-054 is the R2 System Composition Conformance gate (phase 2 = the frozen-roadmap release gate per DEC-0087, not the legacy spec/work-items.md phase numbering). Activation provenance preserved: WORK-054-CORE-001 issued by DEC-0085 from the historical activation baseline 13bfbda54eece391306ddb774e0700c9d862339a, live baseline reconciled to 461d1482180222f4b63f780d6d9ea1d54c49d643 by DEC-0086 (PR #10 / PR #11; the exact delivery branch point). Delivery provenance, preserved exactly: reviewed and accepted on the exact single-commit head 93ad4130f8308832e432ce3e83988f5a6a9b32e3 (branch work-054-system-composition-conformance, PR #13, one Architect review round with zero correction rounds; +7033/-0 over 9 files exactly within composition/ + tools/composition_selftest.py + docs/WORK-054-evidence.md + docs/WORK-054-handoff.md), merged as 57963858e5a2b9d11faed94b50f94e058cede0a8 (2026-09-05T19:45:27Z; the merge commit second parent is the exact reviewed head); the acceptance record is DEC-0088 (the R2-acceptance/R3-activation transition on main at 5cbe452; acceptance basis: the Architect acceptance comment on PR #13; sole-Architect acceptance and merge authority applies because GitHub disallows a self-authored APPROVE review). The recorded result is the honest accepted verdict: the strict production composition is BLOCKED_MISSING_AUTHORITY at the containment edge (WORK-048 accepted-not-restored; the chain correctly fails closed; production_composition false) while segment conformance exercises the available links as labeled, disclaimed evidence — never a production claim. No successful specification-consistency CI run exists on the exact head or merge commit (the recorded runs stop at the already-known inherited spec/architect condition; the composition battery was not CI-wired — disclosed in the delivery evidence; worker-local battery 55/55 with byte-identical determinism proof). SOFTWARE-class evidence only; W040 physical obligations EVID-007/EVID-008 remain independent, open, and W040-owned."
+  - work_item: WORK-055
+    title: "Protocol Production Conformance"
+    phase: 3
+    branch: "work-055-protocol-production-conformance"
+    baseline_sha: 57963858e5a2b9d11faed94b50f94e058cede0a8
+    pr: 15
+    pr_head: 0fc86aac57332ca8b8043bf5ee20bb3240d70fe8
+    reviewed_sha: 0fc86aac57332ca8b8043bf5ee20bb3240d70fe8
+    merge_sha: 7801549c0ed50082a4fa7c20c71e50dc7bde87f9
+    merged_at: 2026-09-06T02:42:58Z
+    ci_run: null
+    review_rounds: 3
+    acceptance_decision: DEC-0089
+    correction_decisions: []
+    handoff: docs/WORK-055-handoff.md
+    handoff_required: true
+    lifecycle: accepted-merged
+    note: "R5-gate-era entry appended by LEDGER-RECON-013 (DEC-0089). WORK-055 is the R3 Protocol Production Conformance gate (phase 3 = the frozen-roadmap release gate). Activation provenance preserved: WORK-055-CORE-001 issued by DEC-0088 as the sole active implementation authorization after the W054/R2 acceptance, authorized baseline 57963858e5a2b9d11faed94b50f94e058cede0a8 (the W054 acceptance merge). Delivery provenance, preserved exactly: adversarially reviewed over three rounds on one PR lineage — round 1 372299b (26 files +3981/-5), round 2 f88289a (the CHANGES REQUIRED response: WIRE-017 frozen-protocol-member coverage with the KNOWN_FIELDS completeness audit, the exact 26-path evidence inventory, case_25 reverted to the byte-original W032 text, both CP-11 conjuncts directly verified, the worker-local-vs-CI evidence distinction explicit), round 3 0fc86aac (documentation-only lineage correction) — every push a fast-forward on the authorized lineage, no force; accepted on the exact reviewed delivery head 0fc86aac57332ca8b8043bf5ee20bb3240d70fe8 (PR #15, review_rounds 3, final round documentation-only) and merged as 7801549c0ed50082a4fa7c20c71e50dc7bde87f9 (2026-09-06T02:42:58Z; the merge commit second parent is the exact reviewed head); the acceptance record is DEC-0089 (acceptance basis: the Architect final acceptance comment on PR #15 followed by the normal guarded merge; sole-Architect review and merge authority). Result: R3 production-conformance evidence accepted — the 63-case deterministic battery, the 163/163 conformance matrix (63 positive / 100 negative), the 16-vector golden corpus, and the nine mandated sabotage discriminations; wire compatibility is NOT claimed from in-repo evidence alone and external interoperability remains separately unproven. No successful specification-consistency CI run exists on the exact reviewed head or merge commit (CI terminates at the inherited spec_check ARCH-02/03/04/05/06/07 merge-context failures before the conformance step executes — the identical signature as the accepted W054 PR #13, classified in the delivery evidence; CI run 33986020968 is NOT the W055 acceptance run and is not recorded as success; the 63/63 battery result is worker-local evidence, never claimed as CI evidence). SOFTWARE-class evidence only; W040 physical obligations EVID-007/EVID-008 remain independent, open, and W040-owned."
+  - work_item: WORK-056
+    title: "Developer Connectivity Platform Production Hardening"
+    phase: 5
+    branch: null
+    baseline_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
+    pr: null
+    pr_head: null
+    reviewed_sha: null
+    merge_sha: null
+    merged_at: null
+    ci_run: null
+    review_rounds: null
+    acceptance_decision: null
+    correction_decisions: []
+    handoff: docs/WORK-056-handoff.md
+    handoff_required: true
+    lifecycle: registered
+    note: "R5-gate-era registered entry appended by LEDGER-RECON-013 (DEC-0089). WORK-056 is the R5 Developer Connectivity Platform Production Hardening gate (phase 5 = the frozen-roadmap release gate; R4 remains parallel-after-R3 with W040 independently in-review — this entry records the R5 software track only). Active authorization: WORK-056-CORE-001 (DEC-0089), the sole active implementation authorization — WORK-055-CORE-001 is superseded by DEC-0089 with scope and provenance preserved; the authorization record, the work-item definition, the decision record, and the worker handoff are carried by this governance PR (the reviewed authority), NOT by the accidental unreviewed direct-main writes (the DEC-0089 proposal writes c8883e7/ac37655 and the W056 contract write 9ec7a73, each removed by the preserved Architect cleanups 74dd375/d1bd4a1/7ae438d — the transparent record stays in main history). Authorized baseline 7ae438d46041b228164cc8880be37dc21f972b6f — the actual current main tip, content-equivalent to the accepted W055 merge 7801549c after the preserved content-neutral cleanup commits (pinned by DEC-0089 and recorded in the WORK-056.yaml authorization, the execution-state/roadmap/current-state projections, and docs/WORK-056-handoff.md). Scope: developerapi/ + tools/developerapi_selftest.py + docs/WORK-056-evidence.md + docs/WORK-056-handoff.md — production-hardening of the accepted WORK-046 developer boundary only; no second commercial, connectivity, identity, session, NetworkPath, routing, transport, usage, allocation, payment, or policy authority. Registered-only entry: no delivery, PR, review, merge, or acceptance fact is claimed (branch/pr/delivery fields null); the entry stays lifecycle registered until a real WORK-056 delivery advances it through a real PR — the same representation discipline as the registered pre-delivery entries of the earlier activation eras (e.g. the WORK-052 entry while WORK-052-CORE-001 was active, per LEDGER-RECON-008/009)."
 
 reconciliations:
+  - reconciliation_id: LEDGER-RECON-013
+    recorded_by: DEC-0089
+    recorded_at: 2026-09-06T03:43:16Z
+    from_main_sha: a3391e86851e06032de848e6eb0b4267fa33310a
+    to_main_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
+    reason: "R3-acceptance/R5-activation reconciliation under DEC-0089 (the decision carried by this governance PR). The mainline advanced from the LEDGER-RECON-012 snapshot a3391e86851e06032de848e6eb0b4267fa33310a through the R1 reconciliation merge 13bfbda (PR #9, DEC-0084), the R2 activation and live-baseline reconciliation 461d148 / 7a5df73 (PR #10 / PR #11, DEC-0085 / DEC-0086), the frozen R0-R9 sequencing b5f929b (DEC-0087, with its own preserved write-and-cleanup placeholder/revert pairs), the W054 acceptance (reviewed head 93ad4130, PR #13, merge 57963858, 2026-09-05T19:45:27Z, DEC-0088 at 5cbe452 accepting R2 and activating R3), the W055 delivery and acceptance (reviewed delivery 0fc86aac, PR #15, three review rounds, merge 7801549, 2026-09-06T02:42:58Z, accepted per DEC-0089), and the preserved content-neutral write-and-cleanup commits c8883e7/74dd375/ac37655/d1bd4a1/9ec7a73/7ae438d (the accidental unreviewed DEC-0089-proposal and W056-contract writes to main, each removed by the Architect cleanup; the trees are content-neutral and the transparent record stays in main history), landing at the current main tip 7ae438d46041b228164cc8880be37dc21f972b6f — content-equivalent to the accepted W055 merge, pinned by DEC-0089 as the WORK-056-CORE-001 baseline. This reconciliation records the WORK-054 and WORK-055 lifecycle transitions to accepted-merged with their exact durable delivery facts, records WORK-056 registered with the sole active implementation authorization WORK-056-CORE-001 (baseline 7ae438d), and advances the ledger snapshot baseline in lockstep with the execution-state/roadmap/current-state projections and the WORK-056.yaml authorization baseline so no governance projection retains 7801549 as a current-state baseline."
+    history: "No work-item history is rewritten and no prior reconciliation entry is altered: every WORK-001..WORK-053 entry and every prior reconciliation record LEDGER-RECON-001..012 is byte-identical to the pre-reconciliation state (including the WORK-040 entry — in-review, acceptance_decision null, EVID-007/EVID-008 OPEN and W040-owned). The WORK-054, WORK-055, and WORK-056 entries are appended after WORK-053 in numeric order; nothing existing is altered and no delivery fact is invented — the acceptance authorities are exactly the recorded decisions DEC-0088 and DEC-0089, and the CI classification is honest (no successful specification-consistency run exists on the W054/W055 exact heads or merges; CI run 33986020968 is NOT the W055 acceptance run). The accidental direct-main commits (c8883e7, ac37655, 9ec7a73) and their Architect cleanups (74dd375, d1bd4a1, 7ae438d) are neither rewritten nor fabricated away — main history preserves the transparent record of the unreviewed writes and their tree-exact removals. No frozen architecture document is modified and no registry file changes: spec/architecture.md, spec/architecture-lock.md, spec/mission.md, spec/work-items.md, spec/dependency-graph.md, spec/schemas/, and spec/acr/ are byte-identical to the pre-reconciliation state. No implementation code changes: the only deltas of this governance correction are this execution-ledger.yaml reconciliation and the synchronized current-baseline advancement of the governance projections (execution-state.yaml main_sha / lifecycle_ledger_snapshot_sha / the W056 delivery-baseline bullet, roadmap.yaml current_state actual_main_sha / last_reconciled_snapshot_sha and the R5 gate authorization_baseline, the current-state.md and roadmap.md current-baseline lines, and the WORK-056.yaml resolvable handoff reference); 7801549 is retained only as historical provenance (the W055 acceptance merge), never as a current-state baseline. WORK-056 stays lifecycle registered until a real delivery advances it (no delivery, PR, review, merge, or acceptance fact is claimed); W040 physical obligations EVID-007/EVID-008 remain independent, open, and W040-owned; W048 remains accepted-not-restored with no restoration authorized; exactly one implementation authorization is active (WORK-056-CORE-001; WORK-055-CORE-001 superseded by DEC-0089 with scope and provenance preserved)."
   - reconciliation_id: LEDGER-RECON-012
     recorded_by: DEC-0084
     recorded_at: 2026-09-05T17:07:06Z

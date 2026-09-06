@@ -77,3 +77,5 @@ acceptance_gate:
     - "PYTHONHASHSEED and repeat-run determinism"
     - "scope and ancestry proof from baseline 7ae438d46041b228164cc8880be37dc21f972b6f"
     - "explicit proof that no frozen semantic or wire-schema change occurred"
+handoff: docs/WORK-056-handoff.md
+handoff_required: true

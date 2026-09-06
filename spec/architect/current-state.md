@@ -5,7 +5,7 @@
 ## Repository
 
 - Repository: `github.com/payswapdotorg/ADCOS`
-- Post-W055 mainline: `7801549c0ed50082a4fa7c20c71e50dc7bde87f9`
+- Current main tip: `7ae438d46041b228164cc8880be37dc21f972b6f` (content-equivalent to the post-W055 mainline after preserved content-neutral cleanup commits)
 - W055 delivery: `0fc86aac57332ca8b8043bf5ee20bb3240d70fe8`, merged by PR #15 as `7801549c0ed50082a4fa7c20c71e50dc7bde87f9`
 - Governance transition: DEC-0089
 - Architecture: `1.0` frozen
@@ -29,7 +29,7 @@ DEC-0089 activates WORK-056 — Developer Connectivity Platform Production Harde
 
 - Work Item: `WORK-056`
 - Authorization: `WORK-056-CORE-001`
-- Authorized baseline: `7801549c0ed50082a4fa7c20c71e50dc7bde87f9`
+- Authorized baseline: `7ae438d46041b228164cc8880be37dc21f972b6f`
 - Branch to be cut: `work-056-developer-platform-hardening`
 - Objective: production-harden the accepted WORK-046 developer API/SDK/webhook boundary so external applications can consume ADCOS without adopting an ADCOS UI or acquiring canonical connectivity or commercial authority.
 - Execution mode: `implementing`
@@ -50,7 +50,7 @@ W040 remains `in-review`, unaccepted, and independent. EVID-007 and EVID-008 rem
 
 Exactly one implementation authorization is active: `WORK-056-CORE-001`. `WORK-055-CORE-001` is superseded under DEC-0089. No second implementation authorization may become active concurrently. R4 remains parallel in the roadmap but its W040 implementation/physical track is not replaced or subordinated by W056.
 
-The implementation worker must cut its branch from `7801549c0ed50082a4fa7c20c71e50dc7bde87f9` and may not modify `spec/architect/` from the implementation PR.
+The implementation worker must cut its branch from `7ae438d46041b228164cc8880be37dc21f972b6f` and may not modify `spec/architect/` from the implementation PR.
 
 ## Next transition
 
