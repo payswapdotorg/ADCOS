@@ -9,8 +9,8 @@ last_updated: "2026-09-06"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: eb1fc4372203fa0185b5a4d5bba51ac0def2cb58
-  main_sha_semantics: "Authoritative mainline after PR #22 merged the DEC-0095/ACR-013 governance transition and the roadmap reconciliation. WORK-057 implementation authorization is active against the pre-transition implementation baseline 16c066ff4766d362f0edfcb790524b2c0ef44cae plus the merged governance records."
+  main_sha: 37deca5ccb247e0552c4f0ccb8a91dcb79bb269b
+  main_sha_semantics: "Authoritative mainline after PR #22 merged the DEC-0095/ACR-013 governance transition, roadmap reconciliation, and publication of the durable WORK-057 implementation prompt. WORK-057 implementation authorization is active against baseline 16c066ff4766d362f0edfcb790524b2c0ef44cae plus the merged governance records."
   lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
 execution:
@@ -19,7 +19,7 @@ execution:
   active_authorization: WORK-057-CORE-001
   halted_reason: null
   next_required_decisions:
-    - "Sole Architect review of the eventual WORK-057 implementation delivery."
+    - "Sole Architect review of the WORK-057 implementation delivery."
     - "No successor authorization until WORK-057 is accepted or explicitly rejected."
     - "R4/W040 remains independently in-review and unaccepted; EVID-007 and EVID-008 remain open, physical, and W040-owned."
     - "W048 remains accepted-not-restored and cannot be restored under WORK-057."
@@ -60,7 +60,7 @@ open_prs:
     disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
   - pr: 46
     head: "work-035-android-mobile-agent"
-    disposition: "historical/superseded physical-evidence chain; requires formal disposition"
+    disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
   - pr: 47
     head: "work-035-physical-evidence-v2"
     disposition: "historical/latest W035 physical-evidence chain; requires formal disposition"
@@ -91,7 +91,7 @@ accepted_work_items:
   first: "WORK-001"
   last: "WORK-056"
   active: "WORK-057"
-  note: "WORK-001..WORK-055 remain accepted according to durable history. WORK-056 is accepted-merged by DEC-0094 at c2b2c59 / b11cf44. WORK-040 remains in-review and unaccepted. WORK-057 is active under DEC-0095 and is represented by its gate-specific contract and dependency overlay."
+  note: "WORK-001..WORK-055 remain accepted according to durable history. WORK-056 is accepted-merged by DEC-0094 at c2b2c59 / b11cf44. WORK-040 remains in-review and unaccepted. WORK-057 is active under DEC-0095 and is represented by its gate-specific contract, dependency overlay, authorization, handoff, and implementation prompt."
 
 mainline_integrity:
   status: R6_ACTIVE
@@ -109,6 +109,7 @@ source_of_truth:
   durable_decisions: "spec/architect/decisions/"
   gate_dependency_overlays: "spec/architect/dependency-overlays/"
   architect_autonomy_policy: "spec/architect/governance-autonomy.md"
+  implementation_prompt: "docs/WORK-057-IMPLEMENTATION-PROMPT.md"
   chat_dependency: PROHIBITED
   external_memory_dependency: PROHIBITED
   stale_projection_behavior: FAIL_CLOSED
