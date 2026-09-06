@@ -2,6 +2,8 @@
 # This snapshot is a current-state projection, not historical delivery authority.
 # Current source of truth: spec/architect/roadmap.yaml + accepted decisions + ledger.
 # Reconciled by DEC-0091 on 2026-09-06 after rejection of W056 delivery 0581f7c.
+# Governance cleanup removed the duplicate DEC-0091 record; the canonical decision
+# remains spec/architect/decisions/DEC-0091-w056-residual-oracle-amendment.yaml.
 
 schema_version: 1
 package: "persistent-architect"
@@ -9,8 +11,8 @@ last_updated: "2026-09-06"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: 698f3b96e387d3720f9db0a9c5a7076f9376ef04
-  main_sha_semantics: "Current governance mainline tip carrying the durable LLM handoff, execution-state reconciliation, DEC-0091, and its WORK-056 authorization reconciliation. The W056 implementation branch remains unmerged and separate."
+  main_sha: 6ee6c39b4ddbe22b2082ad344e083c4c96274ec6
+  main_sha_semantics: "Current governance snapshot preceding the W056 re-delivery. The W056 implementation branch remains unmerged and separate; any delivery must incorporate the latest governance mainline before acceptance."
   lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
 versions:
@@ -23,12 +25,13 @@ execution:
   mode: implementing
   active_work_item: WORK-056
   active_authorization: WORK-056-CORE-001
-  halted_reason: "Current W056 delivery 0581f7c is rejected; next delivery requires DEC-0091 exact oracle reconciliation and independent Architect acceptance."
+  halted_reason: "Round-4 delivery 35ec48a is not accepted. Governance mainline subsequently advanced through DEC-0091 duplicate cleanup, canonical-record restoration, and execution-state reconciliation. The worker must incorporate the latest governance mainline and return at a new exact delivery head for independent Architect verification."
   next_required_decisions:
     - "WORK-056 delivery must retain exact implementation ancestry from authorized baseline 7ae438d46041b228164cc8880be37dc21f972b6f."
-    - "The next delivery must incorporate the governance mainline carrying DEC-0091 without rewriting history."
-    - "Only the three existing W046 availability-oracle pins in tools/composition_selftest.py may change under DEC-0091."
+    - "The next delivery must incorporate current governance mainline without rewriting history."
+    - "Only the three existing W046 availability-oracle pins in tools/composition_selftest.py may change under DEC-0091; no additional implementation is authorized."
     - "Architect adversarial review is required before WORK-056 can transition to accepted-merged and before R6 can activate."
+    - "The Architect must independently verify the full W056 developer battery and W054 composition battery at the new exact delivery head."
     - "R4/W040 remains independently in-review and unaccepted; EVID-007 and EVID-008 remain open, physical, and W040-owned."
     - "Any frozen protocol semantic change discovered as necessary is blocked pending the ACR/change-control process."
 
@@ -37,13 +40,14 @@ reconciliation:
   r1_status: "R1 complete under DEC-0084."
   r2_status: "R2 complete under DEC-0088; WORK-054 accepted and merged as PR #13, merge 57963858e5a2b9d11faed94b50f94e058cede0a8."
   r3_status: "R3 complete under DEC-0089; WORK-055 accepted and merged as PR #15, merge 7801549c0ed50082a4fa7c20c71e50dc7bde87f9."
-  r5_status: "R5 active under DEC-0089 with WORK-056 and the single authorization WORK-056-CORE-001; implementation delivery 0581f7c is rejected and the successor scope amendment DEC-0091 is active for the next delivery."
+  r5_status: "R5 active under DEC-0089 with WORK-056 and the single authorization WORK-056-CORE-001; round-4 delivery 35ec48a is not accepted and must incorporate the latest governance reconciliation before further acceptance review."
   r4_status: "R4 remains parallel-after-R3 with W040 independently in-review and unaccepted."
-  authorization_state: "Exactly one implementation authorization exists and is active: WORK-056-CORE-001. WORK-055-CORE-001 is superseded. The active scope amendment for the next W056 delivery is DEC-0091."
+  authorization_state: "Exactly one implementation authorization exists and is active: WORK-056-CORE-001. WORK-055-CORE-001 is superseded. The active scope amendment is DEC-0091."
 
 decisions:
   latest_w056_scope_amendment: DEC-0091
   latest_w056_rejected_delivery: 0581f7cba05972dd47961de9c7ae821c7153e595
+  latest_w056_delivery_reviewed_but_not_accepted: 35ec48a1a207b755da7deb2e7b45c00eba0578ac
   latest_w056_required_green_batteries: "developerapi 56/56; composition 55/55"
 
 in_review:
@@ -57,6 +61,9 @@ in_review:
       - pilot/
 
 open_prs:
+  - pr: 17
+    head: "work-056-developer-platform-hardening"
+    disposition: "W056 active; round-4 delivery 35ec48a not accepted; governance mainline has advanced since delivery; worker must incorporate current governance mainline and return at a new exact head"
   - pr: 45
     head: "work-035-device-evidence"
     disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
@@ -72,27 +79,6 @@ open_prs:
   - pr: 49
     head: "roadmap/connectivity-economy"
     disposition: "historical proposal; superseded by accepted ACR-009"
-  - pr: 82
-    head: "arch/acr-009-commercial-control-plane"
-    disposition: "accepted/historical"
-  - pr: 100
-    head: "governance/reconcile-w041-w042-contracts"
-    disposition: "superseded historical governance proposal"
-  - pr: 102
-    head: "governance/w040-w041-atomic-handoff"
-    disposition: "superseded by accepted DEC-0052"
-  - pr: 108
-    head: "governance/acr-010-work-item-registry-extension"
-    disposition: "superseded by DEC-0054/DEC-0055 application"
-  - pr: 13
-    head: "work-054-system-composition-conformance"
-    disposition: "accepted/merged under DEC-0088"
-  - pr: 15
-    head: "work-055-protocol-production-conformance"
-    disposition: "accepted/merged under DEC-0089"
-  - pr: 17
-    head: "work-056-developer-platform-hardening"
-    disposition: "W056 active; current delivery 0581f7c rejected; do not merge; awaiting next exact delivery under DEC-0091"
 open_acrs: []
 open_architectural_questions: []
 
