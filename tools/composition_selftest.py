@@ -6,8 +6,10 @@ accepted authorities' public boundaries (the W032/W041/W051/W052/
 W053 battery conventions).  The battery proves:
 
 - the authority availability table (W048 accepted-not-restored is
-  DETECTED and fails closed; the W046 inherited import defect is
-  recorded and disclosed, never repaired or bypassed);
+  DETECTED and fails closed; the W046 boundary was defect-
+  inherited at the WORK-054 acceptance and is now REPAIRED and
+  available on the WORK-056 mainline -- the case_03 oracle
+  reconciled by DEC-0090);
 - the STRICT production-composition chain: intent -> offer ->
   eligibility -> reservation/lease -> candidate selection ->
   NetworkPath validation -> containment (FAIL_CLOSED: the W048
@@ -323,8 +325,9 @@ _AUTHORITY_CLASS_TOKENS = (
 )
 
 #: The forbidden dependency directions (never imported by the
-#: composition family: the absent W048 runtime, the defective W046
-#: boundary, and the out-of-scope families).
+#: composition family: the absent W048 runtime, the W046
+#: boundary (an out-of-family surface), and the out-of-scope
+#: families).
 _FORBIDDEN_IMPORT_ROOTS = (
     "sharing",
     "developerapi",
@@ -391,17 +394,23 @@ def case_01_authority_availability(results: List[Result]) -> None:
         probe for probe in AUTHORITY_PROBES
         if probe.availability == AuthorityAvailability.ABSENT
     ]
-    defect = [
-        probe for probe in AUTHORITY_PROBES
-        if probe.availability == AuthorityAvailability.DEFECT
-    ]
     problems: List[str] = []
     if len(available) < 13:
         problems.append("only %d available authorities" % len(available))
     if not absent or all(p.work_item != "WORK-048" for p in absent):
         problems.append("WORK-048 is not classified ABSENT")
-    if not defect or all(p.work_item != "WORK-046" for p in defect):
-        problems.append("WORK-046 is not classified DEFECT")
+    # the W046 availability oracle, reconciled by DEC-0090: the
+    # boundary repaired by WORK-056 imports cleanly (the same
+    # single oracle pinned in case_03 and case_24)
+    w046 = [
+        probe for probe in AUTHORITY_PROBES
+        if probe.work_item == "WORK-046"
+    ]
+    if not w046 or w046[0].availability != AuthorityAvailability.AVAILABLE:
+        problems.append(
+            "WORK-046 is not classified AVAILABLE (DEC-0090 "
+            "reconciliation)"
+        )
     if problems:
         results.append(fail(name, "; ".join(problems)))
         return
@@ -409,7 +418,7 @@ def case_01_authority_availability(results: List[Result]) -> None:
         ok(
             name,
             "%d available, WORK-048 absent-fail-closed, WORK-046 "
-            "defect-inherited (recorded, disclosed)" % len(available),
+            "repaired-available (DEC-0090 reconciled)" % len(available),
         )
     )
 
@@ -484,12 +493,19 @@ def case_03_w046_defect_disclosed(results: List[Result]) -> None:
         return
     probe = probes[0]
     problems: List[str] = []
-    if probe.availability != AuthorityAvailability.DEFECT:
+    # DEC-0090 reconciliation (the W054 WORK-046 availability
+    # oracle): the historical inherited import defect was
+    # repaired by WORK-056 within developerapi/ (re-bound to the
+    # current accepted W052/W053 public surfaces), so the
+    # boundary now imports cleanly and is AVAILABLE -- the
+    # repaired-state classification, replacing the obsolete
+    # import-broken/no-repair expectation
+    if probe.availability != AuthorityAvailability.AVAILABLE:
         problems.append("availability %r" % probe.availability)
-    if "UsageLedgerError" not in probe.detail:
-        problems.append("the defect detail lacks the stale symbol")
-    if "never repaired" not in probe.detail:
-        problems.append("the defect detail lacks the no-repair disclosure")
+    if "imports cleanly" not in probe.detail:
+        problems.append(
+            "the availability detail lacks the repaired-state wording"
+        )
     # the composition family must not import developerapi statically
     source = "\n".join(
         path.read_text(encoding="utf-8") for path in _FAMILY_FILES
@@ -502,10 +518,11 @@ def case_03_w046_defect_disclosed(results: List[Result]) -> None:
     results.append(
         ok(
             name,
-            "the restored W046 artifacts fail to import (stale "
-            "usage.errors.UsageLedgerError cross-import); classified "
-            "defect-inherited, disclosed, never repaired or bypassed; "
-            "composition never statically imports it",
+            "the W046 boundary imports cleanly on the WORK-056-repaired "
+            "mainline (the historical usage.errors.UsageLedgerError "
+            "cross-import defect repaired within developerapi/); the "
+            "availability oracle reconciled per DEC-0090; composition "
+            "never statically imports it",
         )
     )
 
@@ -1586,10 +1603,11 @@ def case_24_neg_webhook_not_source_of_truth(results: List[Result]) -> None:
         except UsageError as error:
             if error.reason != expected:
                 problems.append("usage kind reason %r != %r" % (error.reason, expected))
-    # the W046 boundary itself is the disclosed inherited defect
+    # the W046 boundary is repaired and available (the same
+    # single availability oracle, DEC-0090 reconciled)
     probes = [p for p in AUTHORITY_PROBES if p.work_item == "WORK-046"]
-    if probes and probes[0].availability != AuthorityAvailability.DEFECT:
-        problems.append("W046 is not disclosed as defective")
+    if probes and probes[0].availability != AuthorityAvailability.AVAILABLE:
+        problems.append("W046 is not reconciled as available")
     if problems:
         results.append(fail(name, "; ".join(problems)))
         return
@@ -1600,8 +1618,9 @@ def case_24_neg_webhook_not_source_of_truth(results: List[Result]) -> None:
             "only through the explicit exactly-once apply command); "
             "redelivery is an idempotent no-op; payment/provider "
             "observations are refused by the W052 kind table; the W046 "
-            "webhook boundary is the disclosed inherited defect (never "
-            "bypassed)",
+            "webhook boundary is repaired and available (DEC-0090 "
+            "reconciled) and its observations still never bypass the "
+            "fold",
         )
     )
 

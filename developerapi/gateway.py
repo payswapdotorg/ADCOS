@@ -58,7 +58,14 @@ audit):
   corrections renamed ``usage.lifecycle`` -> ``usage.ledger``
   and ``allocation.lifecycle`` -> ``allocation.ledger`` and
   reshaped the usage/policy projections); the boundary's frozen
-  route/capability/envelope contract is unchanged.
+  route/capability/envelope contract is unchanged, INCLUDING
+  the frozen 1.x economic-policy REST shape (GET
+  /economic-policies/{id}/{version} and the 11-member 1.x
+  request/response contract): the 1.x wire contract is
+  preserved verbatim and adapted to the current canonical
+  terms-derived policy model through the boundary's 1.x
+  compatibility layer (see :func:`_encode_1x_policy_label`),
+  never silently redefined.
 
 - The gateway NEVER imports or touches the identity, session,
   NetworkPath, routing, transport, packet, payment, or
@@ -339,7 +346,7 @@ ROUTES: Dict[Tuple[str, str], RouteSpec] = {
         "policy_register", Capability.ECONOMIC_POLICY_WRITE, True,
         "economic_policy",
     ),
-    ("GET", "economic-policies/{}"): RouteSpec(
+    ("GET", "economic-policies/{}/{}"): RouteSpec(
         "policy_get", Capability.ECONOMIC_POLICY_READ, False, ""
     ),
     ("GET", "webhook-endpoints"): RouteSpec(
@@ -401,6 +408,116 @@ def match_route(method: str, route: str) -> Tuple[RouteSpec, List[str]]:
         "no %s route matches %r (declared: %s)"
         % (method, route, sorted({r[1] for r in ROUTES if r[0] == method})),
     )
+
+
+# ---------------------------------------------------------------------------
+# The frozen-1.x economic-policy compatibility layer
+#
+# WORK-056 preserves the accepted WORK-046 1.0/1.1 economic-policy
+# contract VERBATIM (the GET /economic-policies/{id}/{version}
+# route, the 11-member request/response model, the
+# client-chosen (policy_id, version) coordinates, tax_bps, and
+# the open-ended effective window) while adapting internally to
+# the CURRENT canonical W053 terms-derived immutable
+# PolicyVersion model.  The adaptation is honest and
+# single-sited:
+#
+# - The canonical free-text LABEL term carries the 1.x-only
+#   coordinate block (the (policy_id, version) coordinates,
+#   tax_bps, and the open-ended flag) as canonical JSON under a
+#   reserved prefix.  The label participates in the canonical
+#   policy-id derivation, so distinct 1.x coordinates stay
+#   distinct immutable versions, identical 1.x bodies dedup
+#   canonically, and a same-coordinates/different-economics
+#   re-registration is detectable and fails closed (the frozen
+#   1.x conflict semantic).
+#
+# - The shared economics members map one-to-one onto the
+#   canonical terms (adc_os_share_bps -> adcos_share_bps,
+#   developer_share_min/max_bps -> provider_min/max_bps,
+#   rounding -> rounding_mode, exponent -> minor_unit_digits,
+#   currency and the effective window unchanged).
+#
+# - The 1.x open-ended window (absent/empty effective_until)
+#   is represented canonically as the maximal closed window
+#   (the sentinel instant below); the open-ended flag round-
+#   trips through the label block so the 1.x response
+#   projects effective_until = "" exactly as the 1.x contract
+#   defines it.
+#
+# - 1.x-only member constraints the current canonical model
+#   cannot carry (tax_bps range, version >= 1, and the frozen
+#   adc_os_share_bps + tax_bps <= 10000 sum rule) are enforced
+#   at the boundary as boundary-local validation.
+#
+# - Canonical policies registered through OTHER surfaces (with
+#   non-1.x labels) are NOT projected onto the 1.x surface: the
+#   boundary never fabricates 1.x members for a canonical
+#   record that does not carry them.
+# ---------------------------------------------------------------------------
+
+#: The reserved label prefix of a 1.x-coordinate policy block.
+_1X_POLICY_LABEL_PREFIX = "adc-os-1x-policy:v1:"
+
+#: The canonical closed-window representation of the 1.x
+#: open-ended effective window (the maximal RFC 3339 instant;
+#: deterministic, disclosed, and round-tripped through the
+#: label block's open_ended flag).
+_1X_OPEN_ENDED_UNTIL = "9999-12-31T23:59:59Z"
+
+#: The 1.x policy members the canonical terms model does not
+#: carry (carried in the label block instead).
+_1X_POLICY_BLOCK_MEMBERS = ("policy_id", "version", "tax_bps", "open_ended")
+
+
+def _encode_1x_policy_label(
+    policy_id: str, version: int, tax_bps: int, open_ended: bool
+) -> str:
+    """The canonical label encoding the frozen 1.x coordinate
+    block (injective and deterministic: canonical JSON under
+    the reserved prefix)."""
+    return _1X_POLICY_LABEL_PREFIX + canonical_json_bytes(
+        {
+            "policy_id": policy_id,
+            "version": version,
+            "tax_bps": tax_bps,
+            "open_ended": open_ended,
+        }
+    ).decode("ascii")
+
+
+def _decode_1x_policy_label(label: object) -> Optional[Dict[str, Any]]:
+    """Decode a 1.x coordinate block from a canonical policy
+    label; None when the label is not a 1.x-coordinate block
+    (a policy registered through another surface)."""
+    if not isinstance(label, str) or not label.startswith(
+        _1X_POLICY_LABEL_PREFIX
+    ):
+        return None
+    import json
+
+    try:
+        block = json.loads(label[len(_1X_POLICY_LABEL_PREFIX):])
+    except ValueError:
+        return None
+    if not isinstance(block, dict) or sorted(block) != sorted(
+        _1X_POLICY_BLOCK_MEMBERS
+    ):
+        return None
+    if not isinstance(block.get("policy_id"), str) or not block["policy_id"]:
+        return None
+    for member in ("version", "tax_bps"):
+        value = block.get(member)
+        if not isinstance(value, int) or isinstance(value, bool):
+            return None
+    if not isinstance(block.get("open_ended"), bool):
+        return None
+    return {
+        "policy_id": block["policy_id"],
+        "version": block["version"],
+        "tax_bps": block["tax_bps"],
+        "open_ended": block["open_ended"],
+    }
 
 
 @dataclass(frozen=True)
@@ -1453,13 +1570,31 @@ class DeveloperApiService:
                     "prior mutation %r stores a malformed canonical "
                     "response body" % key,
                 )
+            # the frozen 1.x coordinate identity ("policy_id@
+            # version") recovers from the canonical command's
+            # label (the command subject carries the 1.x
+            # coordinate block); the stored response body's id
+            # member is the fallback
+            block = _decode_1x_policy_label(record.command.subject_id)
+            if block is not None:
+                resource_id = "%s@%s" % (
+                    block["policy_id"],
+                    block["version"],
+                )
+            elif isinstance(data.get("id"), str) and data["id"]:
+                resource_id = data["id"]
+            else:
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                    "prior mutation %r stores an economic-policy record "
+                    "whose 1.x coordinates cannot be recovered" % key,
+                )
             return _MutationEmission(
                 event_type="economic_policy.registered",
                 event_id=record.event.event_id,
                 occurred_at=record.event.instant,
                 resource_kind="economic_policy",
-                resource_id="%s@%s"
-                % (record.command.policy_id, record.command.policy_version),
+                resource_id=resource_id,
                 resource_version=1,
                 correlation=derive_request_id(
                     self._environment,
@@ -1839,9 +1974,15 @@ class DeveloperApiService:
             )
 
         if spec.operation == "policies_list":
+            # the frozen 1.x surface: only canonical policies
+            # registered through the 1.x contract (a decodable
+            # 1.x coordinate label) are projected -- the boundary
+            # never fabricates 1.x members for canonical policy
+            # records registered through other surfaces.
             items = [
                 self._policy_resource(policy)
                 for policy in self._allocation.policies()
+                if _decode_1x_policy_label(policy.label) is not None
             ]
             page, cursor, more = self._page(
                 items, "economic_policy", developer, {}, body
@@ -1852,7 +1993,31 @@ class DeveloperApiService:
             )
 
         if spec.operation == "policy_get":
-            policy = self._allocation.policy(positional[0])
+            try:
+                policy_version = int(positional[1])
+            except (TypeError, ValueError):
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.INVALID_INPUT,
+                    "the policy version path segment %r must be an integer"
+                    % positional[1],
+                ) from None
+            policy = self._find_1x_policy(positional[0], policy_version)
+            if policy is None:
+                # the 1.x coordinate is unknown: the canonical
+                # policy-unknown classification, preserved
+                from allocation.errors import (
+                    AllocationError as _AllocationError,
+                    AllocationReasonCode as _AllocationReasonCode,
+                )
+
+                raise self._adapted_error(
+                    _AllocationError(
+                        _AllocationReasonCode.POLICY_UNKNOWN,
+                        "economic policy %r is not a registered immutable "
+                        "version" % ("%s@%s" % (positional[0], policy_version)),
+                    ),
+                    request_id=request_id,
+                ) from None
             return self._envelope(
                 request,
                 request_id,
@@ -2328,38 +2493,114 @@ class DeveloperApiService:
             return data, "", "", {}, emission
 
         if spec.operation == "policy_register":
-            # the CURRENT canonical W053 register_policy terms
-            # (the policy_id is derived canonically from the
-            # terms -- the developer does not choose it)
+            # The FROZEN 1.x economic-policy request contract,
+            # preserved verbatim (the WORK-046 accepted surface):
+            # the 11 members, effective_until OPTIONAL (absent =
+            # the open-ended window).  Internally the boundary
+            # adapts to the CURRENT canonical W053 terms-derived
+            # immutable policy version (the 1.x compatibility
+            # layer above the service class).
             required = (
-                "label",
-                "adcos_share_bps",
-                "provider_min_bps",
-                "provider_max_bps",
-                "rounding_mode",
+                "policy_id",
+                "version",
                 "currency",
-                "minor_unit_digits",
+                "exponent",
+                "rounding",
                 "effective_from",
                 "effective_until",
+                "adc_os_share_bps",
+                "tax_bps",
+                "developer_share_min_bps",
+                "developer_share_max_bps",
             )
             payload = {}
             for member in required:
                 if member not in body:
+                    if member == "effective_until":
+                        # the open-ended window (the 1.x model:
+                        # absent until = open-ended)
+                        payload[member] = ""
+                        continue
                     raise DeveloperApiError(
                         DeveloperApiReasonCode.INVALID_INPUT,
                         "economic policy registration is missing member %r"
                         % member,
                     )
                 payload[member] = body[member]
+            open_ended = payload["effective_until"] == ""
+            # the 1.x-only member constraints the current
+            # canonical terms model does not carry (boundary-
+            # local validation, fail closed)
+            if payload["version"] < 1:
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.INVALID_INPUT,
+                    "economic policy version %r must be a positive integer"
+                    % payload["version"],
+                )
+            if not 0 <= payload["tax_bps"] <= 10_000:
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.INVALID_INPUT,
+                    "economic policy tax_bps %r must be within [0, 10000]"
+                    % payload["tax_bps"],
+                )
+            if payload["adc_os_share_bps"] + payload["tax_bps"] > 10_000:
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.INVALID_INPUT,
+                    "economic policy adc_os_share_bps %r plus tax_bps %r "
+                    "must not exceed 10000"
+                    % (
+                        payload["adc_os_share_bps"],
+                        payload["tax_bps"],
+                    ),
+                )
+            # the canonical terms (the label term carries the 1.x
+            # coordinate block; the shared economics map 1:1)
+            label = _encode_1x_policy_label(
+                payload["policy_id"],
+                payload["version"],
+                payload["tax_bps"],
+                open_ended,
+            )
             command_id = derive_api_command_id(
                 self._environment, developer, key
             )
+            # the frozen 1.x conflict semantic: a conflicting
+            # re-registration of the same (policy_id, version)
+            # fails closed BEFORE any canonical admission (an
+            # exact redelivery stays the idempotent no-op: the
+            # identical label derives the identical canonical
+            # version, which deduplicates below)
+            existing = self._find_1x_policy(
+                payload["policy_id"], payload["version"]
+            )
+            if existing is not None and existing.label != label:
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.IDEMPOTENCY_CONFLICT,
+                    "economic policy %r was already registered with "
+                    "different content (conflicting re-registration "
+                    "rejected; policy versions are immutable)"
+                    % ("%s@%s" % (payload["policy_id"], payload["version"])),
+                    request_id="",
+                    environment=self._environment,
+                )
             try:
                 outcome = self._allocation.register_policy(
                     command_id=command_id,
+                    label=label,
+                    adcos_share_bps=payload["adc_os_share_bps"],
+                    provider_min_bps=payload["developer_share_min_bps"],
+                    provider_max_bps=payload["developer_share_max_bps"],
+                    rounding_mode=payload["rounding"],
+                    currency=payload["currency"],
+                    minor_unit_digits=payload["exponent"],
+                    effective_from=payload["effective_from"],
+                    effective_until=(
+                        payload["effective_until"]
+                        if not open_ended
+                        else _1X_OPEN_ENDED_UNTIL
+                    ),
                     actor=developer,
                     source=source,
-                    **payload,
                 )
             except AllocationError as error:
                 raise self._adapted_error(error, request_id="") from error
@@ -2375,7 +2616,8 @@ class DeveloperApiService:
                 event_id=outcome.event_id,
                 occurred_at=outcome.instant,
                 resource_kind="economic_policy",
-                resource_id=policy_id,
+                resource_id="%s@%s"
+                % (payload["policy_id"], payload["version"]),
                 resource_version=1,
                 correlation=derive_request_id(
                     self._environment,
@@ -2581,10 +2823,13 @@ class DeveloperApiService:
         if resource_kind == "economic_policy":
             policy_id, _, version = resource_id.rpartition("@")
             try:
-                policy = self._allocation.policy(
-                    policy_id, int(version)
-                )
-            except (AllocationError, ValueError):
+                policy_version = int(version)
+            except ValueError:
+                return None
+            # the frozen 1.x coordinate identity resolves through
+            # the boundary's 1.x compatibility layer (the label
+            # block carries the coordinates)
+            if self._find_1x_policy(policy_id, policy_version) is None:
                 return None
             # policies are platform-level: notify every endpoint
             # subscribed to the event type
@@ -2813,33 +3058,66 @@ class DeveloperApiService:
                 resource[member] = content[member]
         return resource
 
+    def _find_1x_policy(self, policy_id: str, version: int) -> Optional[Any]:
+        """Resolve one frozen-1.x (policy_id, version) coordinate
+        to its canonical immutable PolicyVersion (the label block
+        is the coordinate identity; deterministic registry scan).
+        None when the coordinate is not registered on the 1.x
+        surface (including canonical policies registered through
+        other surfaces, which never carry 1.x coordinates)."""
+        for policy in self._allocation.policies():
+            block = _decode_1x_policy_label(policy.label)
+            if (
+                block is not None
+                and block["policy_id"] == policy_id
+                and block["version"] == version
+            ):
+                return policy
+        return None
+
     def _policy_resource(self, policy: Any) -> Dict[str, Any]:
         """The developer-facing economic-policy projection: the
-        CURRENT canonical W053 PolicyVersion serialization,
-        verbatim in meaning (the terms-derived immutable policy
-        version), plus the boundary envelope members only."""
+        FROZEN WORK-046 1.x contract, preserved verbatim (the
+        "policy_id@version" resource id and the 11 response
+        members).  The projection adapts the CURRENT canonical
+        W053 terms-derived immutable PolicyVersion back onto the
+        1.x member names (the coordinate block -- policy_id,
+        version, tax_bps, the open-ended flag -- decodes from
+        the canonical label; the shared economics map 1:1); the
+        boundary never re-shapes canonical state in either
+        direction."""
         content = policy.to_dict()
+        block = _decode_1x_policy_label(content.get("label", ""))
         resource = {
-            "id": content.get("policy_id", ""),
+            "id": "%s@%s"
+            % (
+                block["policy_id"] if block else content.get("policy_id", ""),
+                block["version"] if block else "",
+            ),
             "kind": "economic_policy",
             "environment": self._environment,
         }
-        for member in (
-            "policy_id",
-            "label",
-            "adcos_share_bps",
-            "provider_min_bps",
-            "provider_max_bps",
-            "rounding_mode",
-            "currency",
-            "minor_unit_digits",
-            "effective_from",
-            "effective_until",
-            "command_id",
-            "registered_at",
-        ):
-            if member in content:
-                resource[member] = content[member]
+        if block is not None:
+            # the frozen 1.x member set, projected from the
+            # canonical terms + the coordinate block
+            resource.update(
+                {
+                    "policy_id": block["policy_id"],
+                    "version": block["version"],
+                    "currency": content["currency"],
+                    "exponent": content["minor_unit_digits"],
+                    "rounding": content["rounding_mode"],
+                    "effective_from": content["effective_from"],
+                    "effective_until": (
+                        "" if block["open_ended"]
+                        else content["effective_until"]
+                    ),
+                    "adc_os_share_bps": content["adcos_share_bps"],
+                    "tax_bps": block["tax_bps"],
+                    "developer_share_min_bps": content["provider_min_bps"],
+                    "developer_share_max_bps": content["provider_max_bps"],
+                }
+            )
         return resource
 
     def _delivery_resource(self, state: Any) -> Dict[str, Any]:

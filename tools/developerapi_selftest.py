@@ -25,13 +25,18 @@ WORK-056 hardening delta proven by this battery:
   at the authorized baseline (it named the W046-era
   usage/allocation module layout that the accepted W052/W053
   review corrections replaced); the boundary's adapted
-  authority layer, reason-code table, and the economic-policy
-  request schema are re-bound to the CURRENT accepted public
-  APIs with the frozen route/capability/envelope contract
-  preserved (the sole route-shape delta: policy_get is the
-  single-segment /economic-policies/{id} -- the current
-  canonical policy identity is terms-derived, there is no
-  separate version coordinate), and the usage/billing reads
+  authority layer, reason-code table, and the usage/billing
+  reads are re-bound to the CURRENT accepted public APIs with
+  the frozen route/capability/envelope contract preserved,
+  INCLUDING the frozen 1.x economic-policy REST contract
+  VERBATIM (the two-segment GET /economic-policies/{id}/
+  {version} route and the 11-member 1.x request/response
+  model with client-chosen (policy_id, version) coordinates,
+  tax_bps, and the optional open-ended effective window -- the
+  round-2 compatibility correction: the boundary adapts the
+  1.x wire contract onto the current canonical terms-derived
+  policy model through its 1.x compatibility layer, never
+  silently redefining 1.0/1.1), and the usage/billing reads
   project the CURRENT W052 transaction-scoped model
   (delivery-evidence windows -> sealed billable statement ->
   three-way allocation).
@@ -334,14 +339,19 @@ CELL_IF = "vpn0"
 #: pinned here; the package must match exactly).
 _EXPECTED_API = sorted(developerapi.__all__)
 
-#: The authorized W056 delta surface (the exact scope of
-#: WORK-056-CORE-001): the developerapi package, this battery,
-#: and the two W056 delivery documents.  The W046-era CI-wiring
-#: exception is NOT carried over (the workflow already invokes
-#: this battery; no CI change is part of the W056 delivery).
+#: The authorized WORK-056 delta surface: the DEC-0089 scope of
+#: WORK-056-CORE-001 (the developerapi package, this battery,
+#: and the two W056 delivery documents; the W046-era CI-wiring
+#: exception is NOT carried over -- no CI change is part of the
+#: delivery) PLUS the DEC-0090 narrow amendment (the single W054
+#: composition-test oracle reconciliation in
+#: tools/composition_selftest.py -- see the amended
+#: spec/architect/authorizations/WORK-056.yaml on the DEC-0090
+#: mainline; nothing else in that file may change).
 _AUTHORIZED_PATHS = (
     "developerapi/",
     "tools/developerapi_selftest.py",
+    "tools/composition_selftest.py",
     "docs/WORK-056-evidence.md",
     "docs/WORK-056-handoff.md",
 )
@@ -1043,22 +1053,25 @@ def _scenario_stream() -> Dict[str, str]:
         )
     )
 
-    # economic policy through the API (the CURRENT W053 terms)
+    # economic policy through the API (the frozen 1.x request
+    # contract, preserved verbatim)
     policy_resp = service.handle(
         _req(
             "POST",
             "/api/1.0/economic-policies",
             app_a,
             body={
-                "label": "policy-a",
-                "adcos_share_bps": 500,
-                "provider_min_bps": 1000,
-                "provider_max_bps": 9000,
-                "rounding_mode": "half-even",
+                "policy_id": "policy-a",
+                "version": 1,
                 "currency": "GHS",
-                "minor_unit_digits": 2,
+                "exponent": 2,
+                "rounding": "half-even",
                 "effective_from": "2026-09-01T00:00:00Z",
                 "effective_until": "2030-01-01T00:00:00Z",
+                "adc_os_share_bps": 500,
+                "tax_bps": 250,
+                "developer_share_min_bps": 1000,
+                "developer_share_max_bps": 9000,
             },
             idempotency_key="policy-1",
         )
@@ -3387,26 +3400,34 @@ def case_26_usage_billing_reads(results: List[Result]) -> None:
         )
 
 def case_27_economic_policy(results: List[Result]) -> None:
-    """Economic policy configuration through the API: register,
-    read, idempotency, the canonical duplicate semantics for
-    identical terms, and the canonical policy-invalid /
-    policy-unknown reasons preserved (the CURRENT W053
-    terms-derived immutable policy version model)."""
+    """Economic policy configuration through the API: the FROZEN
+    1.x contract, preserved verbatim (the round-2 compatibility
+    correction).  The two-segment GET /economic-policies/{id}/
+    {version} route, the 11-member request/response model with
+    client-chosen (policy_id, version) coordinates, tax_bps,
+    and the optional open-ended effective window are all pinned
+    here; the boundary adapts internally to the canonical W053
+    terms-derived immutable policy version (register/read/
+    replay/coordinate-identity, the canonical policy-invalid /
+    policy-unknown reasons preserved, the frozen 1.x conflict
+    semantics, and the 1.x-only member constraints)."""
     problems: List[str] = []
     service, *_ = _compose_service()
     app = _full_app(service, "dev-pol", "pol")
 
-    def policy_body(label: str) -> Dict[str, Any]:
+    def policy_body(policy_id: str, version: int = 1) -> Dict[str, Any]:
         return {
-            "label": label,
-            "adcos_share_bps": 500,
-            "provider_min_bps": 1000,
-            "provider_max_bps": 9000,
-            "rounding_mode": "half-even",
+            "policy_id": policy_id,
+            "version": version,
             "currency": "GHS",
-            "minor_unit_digits": 2,
+            "exponent": 2,
+            "rounding": "half-even",
             "effective_from": "2026-09-01T00:00:00Z",
             "effective_until": "2030-01-01T00:00:00Z",
+            "adc_os_share_bps": 500,
+            "tax_bps": 250,
+            "developer_share_min_bps": 1000,
+            "developer_share_max_bps": 9000,
         }
 
     first = service.handle(
@@ -3420,9 +3441,29 @@ def case_27_economic_policy(results: List[Result]) -> None:
     )
     if first.status != 200:
         problems.append("policy registration failed")
-    policy_id = first.body["data"]["policy_id"]
-    if not policy_id or first.body["data"]["label"] != "pol-1":
-        problems.append("policy resource shape wrong")
+    data = first.body["data"]
+    if data.get("id") != "pol-1@1" or data.get("kind") != (
+        "economic_policy"
+    ):
+        problems.append("policy resource identity wrong")
+    # the frozen 1.x member set, projected verbatim
+    for member, expected in (
+        ("policy_id", "pol-1"),
+        ("version", 1),
+        ("currency", "GHS"),
+        ("exponent", 2),
+        ("rounding", "half-even"),
+        ("effective_from", "2026-09-01T00:00:00Z"),
+        ("effective_until", "2030-01-01T00:00:00Z"),
+        ("adc_os_share_bps", 500),
+        ("tax_bps", 250),
+        ("developer_share_min_bps", 1000),
+        ("developer_share_max_bps", 9000),
+    ):
+        if data.get(member) != expected:
+            problems.append(
+                "policy member %r = %r != %r" % (member, data.get(member), expected)
+            )
     # duplicate: byte-identical replay
     duplicate = service.handle(
         _req(
@@ -3442,7 +3483,7 @@ def case_27_economic_policy(results: List[Result]) -> None:
             "POST",
             "/api/1.0/economic-policies",
             app,
-            body=policy_body("pol-1-alt"),
+            body=policy_body("pol-1", version=2),
             idempotency_key="pol-1",
         )
     )
@@ -3450,10 +3491,10 @@ def case_27_economic_policy(results: List[Result]) -> None:
         response.body["error"]["reason"] != "idempotency-conflict"
     ):
         problems.append("policy key conflict not rejected")
-    # a NEW key with IDENTICAL terms: the canonical W053
-    # duplicate semantics (identical terms are the identical
-    # immutable version -- an idempotent no-op, NOT a second
-    # version)
+    # a NEW key with the IDENTICAL 1.x body: the canonical
+    # terms+label identity deduplicates (identical terms are the
+    # identical immutable version -- an idempotent no-op, NOT a
+    # second version)
     same_terms = service.handle(
         _req(
             "POST",
@@ -3464,38 +3505,158 @@ def case_27_economic_policy(results: List[Result]) -> None:
         )
     )
     if same_terms.status != 200 or (
-        same_terms.body["data"]["policy_id"] != policy_id
+        same_terms.body["data"]["id"] != "pol-1@1"
     ):
-        problems.append("identical terms did not deduplicate canonically")
-    # reads: listing and the exact policy version
+        problems.append("identical 1.x body did not deduplicate canonically")
+    # the frozen 1.x conflict semantic: a conflicting
+    # re-registration of the same (policy_id, version) fails
+    # closed (policy versions are immutable)
+    conflicting = policy_body("pol-1")
+    conflicting["tax_bps"] = 500
+    response = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/economic-policies",
+            app,
+            body=conflicting,
+            idempotency_key="pol-1-conflict",
+        )
+    )
+    if response.status != 409 or response.body["error"]["reason"] != (
+        "idempotency-conflict"
+    ) or "immutable" not in response.body["error"]["message"]:
+        problems.append(
+            "conflicting re-registration not rejected: %r/%r"
+            % (response.status, response.body["error"]["reason"])
+        )
+    # a genuinely NEW coordinate: distinct 1.x coordinates stay
+    # distinct immutable versions even with identical economics
+    response = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/economic-policies",
+            app,
+            body=policy_body("pol-1", version=2),
+            idempotency_key="pol-1-v2",
+        )
+    )
+    if response.status != 200 or response.body["data"]["id"] != "pol-1@2":
+        problems.append("distinct 1.x coordinate not a distinct version")
+    # the open-ended window: absent effective_until registers
+    # and round-trips as the open-ended 1.x window
+    open_body = policy_body("pol-open")
+    del open_body["effective_until"]
+    response = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/economic-policies",
+            app,
+            body=open_body,
+            idempotency_key="pol-open",
+        )
+    )
+    if response.status != 200 or response.body["data"].get(
+        "effective_until"
+    ) != "":
+        problems.append("open-ended window did not round-trip")
+    # reads: listing (the 1.x surface projects exactly the
+    # 1.x-coordinate policies) and the exact versioned record
     listing = service.handle(
         _req("GET", "/api/1.0/economic-policies", app)
     )
-    if len(listing.body["data"]["items"]) != 1:
-        problems.append("policy listing wrong (identical terms grew it)")
+    items = listing.body["data"]["items"]
+    if len(items) != 3 or sorted(
+        item["id"] for item in items
+    ) != ["pol-1@1", "pol-1@2", "pol-open@1"]:
+        problems.append("policy listing wrong: %s" % [
+            item.get("id") for item in items
+        ])
     detail = service.handle(
-        _req("GET", "/api/1.0/economic-policies/%s" % policy_id, app)
+        _req("GET", "/api/1.0/economic-policies/pol-1/1", app)
     )
-    if detail.body["data"]["policy_id"] != policy_id:
+    if detail.status != 200 or detail.body["data"]["id"] != "pol-1@1":
         problems.append("policy detail wrong")
+    if detail.body["data"]["tax_bps"] != 250:
+        problems.append("policy detail lost tax_bps")
+    # an unregistered version coordinate fails closed with the
+    # canonical policy-unknown classification (the coordinate
+    # identity is exact -- no laundering)
     response = service.handle(
-        _req("GET", "/api/1.0/economic-policies/%s" % ("sha256:" + "0" * 64), app)
+        _req("GET", "/api/1.0/economic-policies/pol-1/9", app)
     )
     if response.status != 404 or (
         response.body["error"]["canonical_reason"] != "policy-unknown"
     ):
-        problems.append("unknown policy not rejected canonically")
-    # the canonical validation reason preserved: provider_min_bps
-    # exceeding provider_max_bps fails closed policy-invalid
-    invalid = policy_body("pol-bad")
-    invalid["provider_min_bps"] = 9500
+        problems.append("unknown policy version not rejected canonically")
+    # the version path segment must be an integer (the 1.x
+    # route contract)
+    response = service.handle(
+        _req("GET", "/api/1.0/economic-policies/pol-1/latest", app)
+    )
+    if response.status != 400 or response.body["error"]["reason"] != (
+        "invalid-input"
+    ):
+        problems.append("non-integer version segment not rejected")
+    # the 1.x request schema is strict: the terms-shaped body of
+    # the round-1 delivery is NOT a 1.x body (undeclared member
+    # rejected -- the 1.x member set IS the contract)
+    response = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/economic-policies",
+            app,
+            body={
+                "label": "not-a-1x-body",
+                "adcos_share_bps": 500,
+                "provider_min_bps": 1000,
+                "provider_max_bps": 9000,
+                "rounding_mode": "half-even",
+                "currency": "GHS",
+                "minor_unit_digits": 2,
+                "effective_from": "2026-09-01T00:00:00Z",
+                "effective_until": "2030-01-01T00:00:00Z",
+            },
+            idempotency_key="pol-not-1x",
+        )
+    )
+    if response.status != 400 or "undeclared" not in response.body[
+        "error"
+    ]["message"]:
+        problems.append("non-1.x policy body not rejected")
+    # the 1.x-only member constraints (boundary-local): tax_bps
+    # range and the adc_os + tax sum rule
+    for mutate, member in (
+        (lambda b: b.update({"tax_bps": -1}), "tax range"),
+        (lambda b: b.update({"adc_os_share_bps": 9900}), "adc+tax sum"),
+        (lambda b: b.update({"version": 0}), "version positivity"),
+    ):
+        bad = policy_body("pol-bad")
+        mutate(bad)
+        response = service.handle(
+            _req(
+                "POST",
+                "/api/1.0/economic-policies",
+                app,
+                body=bad,
+                idempotency_key="pol-bad-%s" % member.replace(" ", "-"),
+            )
+        )
+        if response.status != 400 or response.body["error"]["reason"] != (
+            "invalid-input"
+        ):
+            problems.append("1.x constraint %s not enforced" % member)
+    # the canonical validation reason preserved: the shared
+    # economics members fail closed policy-invalid through the
+    # canonical terms model
+    invalid = policy_body("pol-bad-bounds")
+    invalid["developer_share_min_bps"] = 9500
     response = service.handle(
         _req(
             "POST",
             "/api/1.0/economic-policies",
             app,
             body=invalid,
-            idempotency_key="pol-bad",
+            idempotency_key="pol-bad-bounds",
         )
     )
     error = response.body["error"]
@@ -3510,10 +3671,13 @@ def case_27_economic_policy(results: List[Result]) -> None:
         results.append(
             ok(
                 "27 economic policy",
-                "register/read/replay/term-identity with the canonical "
-                "policy-invalid and policy-unknown preserved",
+                "the frozen 1.x contract preserved verbatim: register/read/"
+                "replay/coordinate-identity, conflict-immutability, the "
+                "open-ended window, tax_bps, the 11-member projection, "
+                "and the canonical policy-invalid/policy-unknown preserved",
             )
         )
+
 
 def case_28_authority_import_discipline(results: List[Result]) -> None:
     """Structural: the developerapi family imports ONLY the
@@ -6254,10 +6418,16 @@ class _VersionLaunderingGateway:
     """W056 sabotage (criterion 1): a boundary that silently
     rewrites every request's version attribution to the current
     supported version, admitting retired versions and laundering
-    route/header disagreement instead of failing closed."""
+    route/header disagreement instead of failing closed -- AND
+    launders the frozen 1.x economic-policy version coordinate
+    (silently substituting the requested {version} path segment
+    of GET /economic-policies/{id}/{version} with a coordinate
+    it knows is registered), fabricating success for an
+    unregistered coordinate."""
 
     def __init__(self, service: Any) -> None:
         self._service = service
+        self._known_coordinate = "1"
 
     def handle(self, request: ApiRequest) -> Any:
         from dataclasses import replace
@@ -6266,6 +6436,16 @@ class _VersionLaunderingGateway:
         parts = [part for part in route.split("/") if part]
         if len(parts) >= 2 and parts[0] == "api":
             parts[1] = "1.0"  # the vulnerability: silent rewrite
+            # the 1.x policy version-coordinate laundering: any
+            # GET of /economic-policies/{id}/{version} has its
+            # version segment silently substituted
+            if (
+                request.method == "GET"
+                and len(parts) == 5
+                and parts[2] == "economic-policies"
+                and parts[4] != self._known_coordinate
+            ):
+                parts[4] = self._known_coordinate
             route = "/" + "/".join(parts)
         return self._service.handle(
             replace(request, api_version="1.0", route=route)
@@ -6587,10 +6767,12 @@ class _ObservationAsCommandConsumer:
 
 
 def case_46_sabotage_version_laundering(results: List[Result]) -> None:
-    """Discrimination (criterion 1): retired versions and
-    disagreeing attribution must fail closed -- a candidate that
-    launders version attribution must be DETECTED by the paired
-    vector."""
+    """Discrimination (criterion 1): retired versions,
+    disagreeing attribution, and unregistered 1.x economic-
+    policy version coordinates must fail closed -- a candidate
+    that launders version attribution (either the API version
+    or the policy version coordinate) must be DETECTED by the
+    paired vectors."""
     problems: List[str] = []
     service, *_ = _compose_service()
     app = _full_app(service, "dev-ver", "ver")
@@ -6610,7 +6792,42 @@ def case_46_sabotage_version_laundering(results: List[Result]) -> None:
         "version-unsupported"
     ):
         problems.append("genuine boundary admitted attribution disagreement")
-    # sabotaged: the laundering gateway admits both
+    # genuine: an unregistered 1.x policy version coordinate
+    # fails closed policy-unknown (the coordinate identity is
+    # exact -- never silently substituted)
+    registered = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/economic-policies",
+            app,
+            body={
+                "policy_id": "ver-pol",
+                "version": 1,
+                "currency": "GHS",
+                "exponent": 2,
+                "rounding": "half-even",
+                "effective_from": "2026-09-01T00:00:00Z",
+                "effective_until": "2030-01-01T00:00:00Z",
+                "adc_os_share_bps": 500,
+                "tax_bps": 250,
+                "developer_share_min_bps": 1000,
+                "developer_share_max_bps": 9000,
+            },
+            idempotency_key="ver-pol-1",
+        )
+    )
+    if registered.status != 200:
+        problems.append("the 1.x policy registration failed")
+    genuine = service.handle(
+        _req("GET", "/api/1.0/economic-policies/ver-pol/7", app)
+    )
+    if genuine.status != 404 or genuine.body["error"][
+        "canonical_reason"
+    ] != "policy-unknown":
+        problems.append(
+            "genuine boundary admitted an unregistered coordinate"
+        )
+    # sabotaged: the laundering gateway admits all three
     sabotaged = _VersionLaunderingGateway(service)
     response = sabotaged.handle(
         _req("GET", "/api/0.8/offers", app, api_version="0.8")
@@ -6622,14 +6839,20 @@ def case_46_sabotage_version_laundering(results: List[Result]) -> None:
     )
     if response.status != 200:
         problems.append("laundered disagreement was not admitted")
+    response = sabotaged.handle(
+        _req("GET", "/api/1.0/economic-policies/ver-pol/7", app)
+    )
+    if response.status != 200:
+        problems.append("laundered policy coordinate was not admitted")
     if problems:
         results.append(fail("46 sabotage version laundering", "; ".join(problems)))
     else:
         results.append(
             ok(
                 "46 sabotage version laundering",
-                "retired/disagreement vectors FAIL genuine (400) and PASS "
-                "the laundering candidate -> detected",
+                "retired/disagreement/policy-coordinate vectors FAIL "
+                "genuine (400/404) and PASS the laundering candidate "
+                "-> detected",
             )
         )
 

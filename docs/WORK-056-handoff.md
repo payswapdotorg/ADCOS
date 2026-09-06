@@ -2,20 +2,58 @@
 
 ## Status
 
-**DELIVERED — WAITING FOR ARCHITECT**
+**ROUND-2 DELIVERED — WAITING FOR ARCHITECT**
 
 Work Item: `WORK-056` — Developer Connectivity Platform Production Hardening  
-Authorization: `WORK-056-CORE-001`  
-Decision: `DEC-0089`  
+Authorization: `WORK-056-CORE-001` (scope amended by `DEC-0090`)  
+Decision: `DEC-0089` / amendment `DEC-0090`  
 Authorized baseline: `7ae438d46041b228164cc8880be37dc21f972b6f`  
 Implementation branch: `work-056-developer-platform-hardening` (rooted at the
 post-governance mainline `4852a016fce61cecec8078084da1d9bbe81d2681`, the PR #16
-guarded merge, itself descending from the authorized baseline)
+guarded merge, itself descending from the authorized baseline; the round-2
+delivery additionally incorporates the authoritative DEC-0090 mainline
+`e0b8e0f39a7adc885e0a8da9180ad06db9bd14a8` — PR #18 — by a plain merge)
+
+## Round-2 correction record (the Architect disposition)
+
+The round-1 delivery (head `4ac8107811546e14f9a29a50139000e1a0231752`)
+received **CHANGES REQUIRED** (no merge). The round-2 delivery corrects
+both findings:
+
+1. **the 1.x developer API contract is preserved verbatim** — the
+   frozen W046 REST surface `GET /economic-policies/{id}/{version}` and
+   the 11-member economic-policy request/response model (client-chosen
+   `(policy_id, version)` coordinates, `tax_bps`, the optional
+   open-ended `effective_until`, the `policy_id@version` resource
+   identity, the fail-closed conflicting-re-registration semantic) are
+   restored and pinned by the battery (case 27; the version-coordinate
+   laundering vector extends case 46); internally the boundary adapts
+   the 1.x contract onto the current canonical W053 terms-derived
+   immutable policy model through a single-sited 1.x compatibility
+   layer (the canonical label term carries the 1.x coordinate block);
+   the value-level adaptation boundaries are disclosed in the evidence
+   record §R2.1;
+2. **the DEC-0090-authorized W054 oracle reconciliation is applied** —
+   the W046 availability oracle in `tools/composition_selftest.py`
+   expects the repaired AVAILABLE state (the named case_03
+   reconciliation plus the same single oracle's pin sites in case_01
+   and case_24, disclosed in the evidence record §R2.2); the W054
+   composition battery returns to **55/55**; nothing else in that file
+   or the composition package changes.
+
+Fresh proof at the round-2 head: the W056 battery **56/56** with
+byte-identical determinism, the W054 composition battery **55/55**,
+the sibling batteries unchanged (commercial 38/38, usage 49/49,
+allocation 60/60), the inherited `spec_check` and conformance
+signatures byte-identical to the clean branch root, and the scope/
+ancestry proof against the 7ae438d / 4852a016 / e0b8e0f lineages.
 
 ## Delivery record (WORK-056-CORE-001)
 
-The implementation is delivered as one plain commit on the authorized
-lineage (the exact head SHA is recorded in the PR body, the PR head, and
+The round-1 implementation was delivered as one plain commit on the
+authorized lineage; the round-2 correction adds a plain merge of the
+DEC-0090 mainline and the correction commit on top (no rebase, no
+force; the exact head SHA is recorded in the PR body, the PR head, and
 the worker worklog; the battery's scope/ancestry case verifies the
 lineage mechanically). The delivery:
 
@@ -23,11 +61,12 @@ lineage mechanically). The delivery:
    import-broken against the current accepted W052/W053 public surfaces
    (the W054 composition battery had classified this honestly as
    `WORK-046 DEFECT`); the adapted-authority layer, the
-   canonical-reason table, and the economic-policy request schema are
+   canonical-reason table, and the usage/billing projections are
    re-bound to the CURRENT accepted public APIs with the frozen
-   route/capability/envelope contract preserved (the sole route-shape
-   delta, disclosed in the evidence record §2: the single-segment
-   policy read);
+   route/capability/envelope contract preserved — INCLUDING the frozen
+   1.x economic-policy REST contract, preserved verbatim and adapted
+   through the 1.x compatibility layer (the round-2 correction; the
+   round-1 route-shape delta is eliminated, not disclosed);
 2. **adds the W056 discrimination layer** — eleven sabotaged
    candidates (battery fixtures only, implemented over public APIs)
    paired with cases 46–56 across every required category: version
@@ -41,10 +80,9 @@ lineage mechanically). The delivery:
 3. **the battery is green at the delivery head**:
    `python3 tools/developerapi_selftest.py` → `PASS (56/56)`.
 
-The full evidence record, the sibling-battery classification (including
-the disclosed composition-pin follow-up, which lies outside the W056
-authorized scope and awaits Architect disposition), and the honest
-boundaries are in `docs/WORK-056-evidence.md`.
+The full evidence record (the round-2 correction record, the
+sibling-battery classification, and the honest boundaries) is in
+`docs/WORK-056-evidence.md`.
 
 ## Governance transition
 
