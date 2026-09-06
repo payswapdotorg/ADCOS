@@ -1,0 +1,69 @@
+# DEC-0094 — WORK-056 acceptance and R5 closure
+# Durable governance decision by the sole Architect.
+# No frozen Architecture Version 1.0 or Protocol Version 1.0 semantics change.
+decision_id: DEC-0094
+date: "2026-09-06"
+type: "work-item-acceptance"
+status: accepted
+owner: "Architect"
+
+subject: "Accept WORK-056 at the exact Round-6 delivery and close the R5 Developer Connectivity Platform gate"
+
+facts:
+  work_item: WORK-056
+  authorization: WORK-056-CORE-001
+  acceptance_basis: "Sole Architect adversarial review of the exact delivery head c2b2c59fae4749b610b721b217e18cfa9b4aab25, followed by guarded merge of PR #17 as b11cf44db922811d2518c05685aee14127243264."
+  reviewed_delivery: "c2b2c59fae4749b610b721b217e18cfa9b4aab25"
+  merge_sha: "b11cf44db922811d2518c05685aee14127243264"
+  pr: 17
+  prior_rejected_delivery: "0581f7cba05972dd47961de9c7ae821c7153e595"
+  prior_reviewed_unaccepted_delivery: "cda6c969155864dd410d66e8687026e34b217aef"
+  governance_predecessors:
+    - DEC-0089
+    - DEC-0090
+    - DEC-0091
+    - DEC-0093
+  independent_ci_run: 34036129663
+
+acceptance_evidence:
+  - "W056 developer battery PASS 56/56 at the exact delivery head."
+  - "W054 composition battery PASS 55/55 at the exact delivery head on a fresh GitHub full-history checkout; case_51 executes on its real non-skip path."
+  - "Repeat-run and PYTHONHASHSEED=0/1/7919 determinism is byte-identical for both batteries."
+  - "The exact-head GitHub acceptance-battery job succeeded at run 34036129663."
+  - "W050 exact-head battery succeeded."
+  - "The remaining specification/conformance failures match the current mainline inherited signatures and introduce no new W056 failure."
+  - "Implementation delta remains within the WORK-056 authorized scope as amended by DEC-0091 and DEC-0093."
+  - "Frozen Architecture 1.0 and Protocol 1.0 surfaces remain unchanged; no W048 restoration and no W040 physical evidence change occurred."
+  - "Historical W054 scope/provenance proof is now immutable and independent of a moving origin/main ref."
+
+adjudication:
+  result: "ACCEPT"
+  rationale: "The exact Round-6 delivery satisfies the W056 acceptance contract. The production developer boundary remains within the frozen architecture, the repaired W046 compatibility issue is implemented inside developerapi, the W046/W054 oracle pins are reconciled only under DEC-0091, and the inherited W054 case_51 cross-era oracle is corrected only under DEC-0093. Independent GitHub execution confirms the decisive 56/56 and 55/55 batteries plus determinism at the exact delivery head. No new authority, frozen semantic change, or unauthorized scope was found."
+
+lifecycle_transition:
+  from: "active/implementation"
+  to: "accepted-merged"
+  acceptance_decision: DEC-0094
+  accepted_delivery_sha: "c2b2c59fae4749b610b721b217e18cfa9b4aab25"
+  acceptance_merge_sha: "b11cf44db922811d2518c05685aee14127243264"
+  active_implementation_authorization_after_transition: null
+
+r5_transition:
+  status: "COMPLETE"
+  gate: "R5_DEVELOPER_CONNECTIVITY_PLATFORM"
+  result: "WORK-056 accepted and merged; R5 acceptance gate is satisfied."
+  next_program_gate: "R6_PROVIDER_ONBOARDING_AND_FEDERATION"
+  r6_state: "UNLOCKED_NOT_AUTHORIZED"
+  rule: "R6 may not begin implementation until a separate Work Item is registered, a precise implementation authorization is issued, and an exact dependency/scope/evidence contract is established by the Architect."
+
+constraints_preserved:
+  - "Architecture Version 1.0 unchanged."
+  - "Protocol Version 1.0 unchanged."
+  - "Exactly one active implementation authorization rule remains enforced; WORK-056 authorization is no longer active after acceptance."
+  - "R4/W040 remains independent, in-review, unaccepted, physical, and W040-owned."
+  - "W048 remains accepted-not-restored."
+  - "Software evidence never closes physical evidence."
+  - "No provider onboarding/federation implementation is authorized by this decision."
+  - "No future Work Item inherits DEC-0091 or DEC-0093 as implementation authority."
+
+next_action: "Register and define the R6 Provider Onboarding & Federation Work Item from the frozen roadmap and existing architecture, then issue a separate implementation authorization only after its exact contract is adversarially reviewed by the sole Architect."
