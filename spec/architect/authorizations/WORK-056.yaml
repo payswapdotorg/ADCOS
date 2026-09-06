@@ -2,6 +2,7 @@
 # Issued by DEC-0089 after WORK-055/R3 acceptance.
 # Scope amended by DEC-0090, then precisely extended by DEC-0091 only for
 # the same W046 availability-oracle pins required to restore W054 55/55.
+# DEC-0092 designates the sole canonical DEC-0091 record file named below.
 work_item: WORK-056
 status: active
 authorized: true
@@ -9,6 +10,7 @@ type: implementation
 authorization_id: "WORK-056-CORE-001"
 authorization_decision: DEC-0089
 scope_amendment_decision: DEC-0091
+scope_amendment_record: "spec/architect/decisions/DEC-0091-w056-residual-oracle-amendment.yaml"
 superseded_by: null
 supersession_decision: null
 baseline_sha: 7ae438d46041b228164cc8880be37dc21f972b6f

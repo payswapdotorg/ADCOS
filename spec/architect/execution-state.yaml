@@ -1,7 +1,11 @@
 # ADCOS execution state — persisted by the Architect.
 # This snapshot is a current-state projection, not historical delivery authority.
 # Current source of truth: spec/architect/roadmap.yaml + accepted decisions + ledger.
-# Reconciled by DEC-0091 on 2026-09-06 after rejection of W056 delivery 0581f7c.
+# Reconciled by DEC-0091 on 2026-09-06 after rejection of W056 delivery 0581f7c,
+# then by DEC-0092 on 2026-09-06 after review 5558422610 withheld acceptance of
+# the round-4 delivery 35ec48a: the DEC-0091 identity disambiguated (one
+# canonical record), the state pins reconciled to the authorization-anchor /
+# actual-tip model, and the exact-head battery-execution vehicle established.
 
 schema_version: 1
 package: "persistent-architect"
@@ -9,8 +13,8 @@ last_updated: "2026-09-06"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: 698f3b96e387d3720f9db0a9c5a7076f9376ef04
-  main_sha_semantics: "Current governance mainline tip carrying the durable LLM handoff, execution-state reconciliation, DEC-0091, and its WORK-056 authorization reconciliation. The W056 implementation branch remains unmerged and separate."
+  main_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
+  main_sha_semantics: "The immutable authorized mainline baseline of the sole active authorization WORK-056-CORE-001 (the actual main tip at R5 activation under DEC-0089 / LEDGER-RECON-013, content-equivalent to the accepted W055 merge 7801549c) — this is the authorization anchor compared by tools/spec_check.py ARCH-03/ARCH-05/ARCH-08, not a moving governance-commit tip. The actual current governance mainline tip is e3682732ccb2c2416def38d53f40ff0bffdec59a (advanced from 7ae438d by the DEC-0090/DEC-0091 governance-only landings) and is durably recorded in spec/architect/roadmap.yaml actual_main_sha and in DEC-0092. Reconciled by DEC-0092."
   lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
 versions:
@@ -23,11 +27,11 @@ execution:
   mode: implementing
   active_work_item: WORK-056
   active_authorization: WORK-056-CORE-001
-  halted_reason: "Current W056 delivery 0581f7c is rejected; next delivery requires DEC-0091 exact oracle reconciliation and independent Architect acceptance."
+  halted_reason: "Round-4 W056 delivery 35ec48a is under Architect review 5558422610 (acceptance withheld — neither accepted nor rejected). The acceptance gate is blocked pending the DEC-0092 mainline reconciliation (DEC-0091 identity disambiguation + state pins) and the independent exact-head battery execution at 35ec48a."
   next_required_decisions:
-    - "WORK-056 delivery must retain exact implementation ancestry from authorized baseline 7ae438d46041b228164cc8880be37dc21f972b6f."
-    - "The next delivery must incorporate the governance mainline carrying DEC-0091 without rewriting history."
-    - "Only the three existing W046 availability-oracle pins in tools/composition_selftest.py may change under DEC-0091."
+    - "DEC-0092 must be present on the authoritative governance mainline (the DEC-0091 decision identity unambiguous, one canonical record) before the Architect acceptance decision on the W056 round-4 delivery."
+    - "The full W056 (developerapi 56/56) and W054 (composition 55/55) batteries must be independently executed at the exact head 35ec48a with a durable record — the dispatch-only exact-head acceptance-battery job established by DEC-0092, or an Architect-local checkout run."
+    - "PR #17 must remain at 35ec48a until the acceptance decision (no new commits, no rebase, no force); the delivery retains exact implementation ancestry from authorized baseline 7ae438d46041b228164cc8880be37dc21f972b6f."
     - "Architect adversarial review is required before WORK-056 can transition to accepted-merged and before R6 can activate."
     - "R4/W040 remains independently in-review and unaccepted; EVID-007 and EVID-008 remain open, physical, and W040-owned."
     - "Any frozen protocol semantic change discovered as necessary is blocked pending the ACR/change-control process."
@@ -37,13 +41,17 @@ reconciliation:
   r1_status: "R1 complete under DEC-0084."
   r2_status: "R2 complete under DEC-0088; WORK-054 accepted and merged as PR #13, merge 57963858e5a2b9d11faed94b50f94e058cede0a8."
   r3_status: "R3 complete under DEC-0089; WORK-055 accepted and merged as PR #15, merge 7801549c0ed50082a4fa7c20c71e50dc7bde87f9."
-  r5_status: "R5 active under DEC-0089 with WORK-056 and the single authorization WORK-056-CORE-001; implementation delivery 0581f7c is rejected and the successor scope amendment DEC-0091 is active for the next delivery."
+  r5_status: "R5 active under DEC-0089 with WORK-056 and the single authorization WORK-056-CORE-001; the round-4 delivery 35ec48a is under review 5558422610 with acceptance withheld (not accepted, not rejected) pending DEC-0092 and the exact-head battery execution."
   r4_status: "R4 remains parallel-after-R3 with W040 independently in-review and unaccepted."
-  authorization_state: "Exactly one implementation authorization exists and is active: WORK-056-CORE-001. WORK-055-CORE-001 is superseded. The active scope amendment for the next W056 delivery is DEC-0091."
+  authorization_state: "Exactly one implementation authorization exists and is active: WORK-056-CORE-001. WORK-055-CORE-001 is superseded. The active scope amendment for the W056 delivery under review is DEC-0091 (canonical record designated by DEC-0092)."
 
 decisions:
   latest_w056_scope_amendment: DEC-0091
+  latest_w056_scope_amendment_canonical_record: "spec/architect/decisions/DEC-0091-w056-residual-oracle-amendment.yaml (designated by DEC-0092)"
   latest_w056_rejected_delivery: 0581f7cba05972dd47961de9c7ae821c7153e595
+  latest_w056_delivery_under_review: 35ec48a1a207b755da7deb2e7b45c00eba0578ac
+  latest_w056_review: "5558422610 (acceptance withheld — do not merge, 2026-09-06)"
+  latest_governance_reconciliation: DEC-0092
   latest_w056_required_green_batteries: "developerapi 56/56; composition 55/55"
 
 in_review:
@@ -92,7 +100,7 @@ open_prs:
     disposition: "accepted/merged under DEC-0089"
   - pr: 17
     head: "work-056-developer-platform-hardening"
-    disposition: "W056 active; current delivery 0581f7c rejected; do not merge; awaiting next exact delivery under DEC-0091"
+    disposition: "W056 active; round-4 delivery 35ec48a under Architect review 5558422610 (acceptance withheld — not accepted, not rejected); do not merge; blocked pending the DEC-0092 mainline reconciliation and the exact-head battery execution at 35ec48a"
 open_acrs: []
 open_architectural_questions: []
 
@@ -115,8 +123,8 @@ accepted_work_items:
   note: "WORK-001..WORK-054 remain accepted according to durable history. WORK-055 is accepted-merged by DEC-0089 with merge 7801549c. WORK-056 remains active for R5 and is not accepted/merged. WORK-040 remains in-review and unaccepted."
 
 mainline_integrity:
-  status: RECONCILED_PENDING_W056_DELIVERY
-  reconciliation_decision: DEC-0091
+  status: RECONCILED_PENDING_W056_ACCEPTANCE
+  reconciliation_decision: DEC-0092
   current_execution_decision: DEC-0091
   required_recovery_source: "Repository Git history / accepted delivery heads / durable decisions; no chat or external artifact may be used as the source for reconstruction."
   recovery_rule: "Recover exact accepted delivery artifacts and CI/evidence surfaces; do not import unrelated ancestry; do not alter frozen architecture semantics."

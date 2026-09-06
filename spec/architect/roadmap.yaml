@@ -35,14 +35,14 @@ governance_rules:
   software_never_promotes_to_physical: true
 
 current_state:
-  actual_main_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
-  last_reconciled_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
+  actual_main_sha: e3682732ccb2c2416def38d53f40ff0bffdec59a
+  last_reconciled_snapshot_sha: e3682732ccb2c2416def38d53f40ff0bffdec59a
   program_state: R5_DEVELOPER_CONNECTIVITY_PLATFORM_ACTIVE
   execution_mode: implementing
   active_work_item: WORK-056
   active_authorization: WORK-056-CORE-001
   next_gate: R6_AFTER_R5
-  reconciliation_note: "DEC-0089 accepts WORK-055/R3 after PR #15 merge 7801549c and activates WORK-056 as the sole R5 software authorization. R4 remains explicitly parallel after R3 with W040 independently in-review. W048 remains explicitly accepted-not-restored. Architecture Version 1.0 and Protocol Version 1.0 remain unchanged."
+  reconciliation_note: "DEC-0089 accepts WORK-055/R3 after PR #15 merge 7801549c and activates WORK-056 as the sole R5 software authorization. R4 remains explicitly parallel after R3 with W040 independently in-review. W048 remains explicitly accepted-not-restored. Architecture Version 1.0 and Protocol Version 1.0 remain unchanged. DEC-0092 reconciles the actual_main_sha pin to the current governance mainline tip e368273 (advanced from 7ae438d by the DEC-0090/DEC-0091 governance-only landings) and disambiguates the DEC-0091 decision identity; the WORK-056 authorization_baseline remains 7ae438d; the frozen roadmap semantics and sequencing are unchanged. Pin reconciliation only — no roadmap re-freeze, no reordering, no gate change."
 
 accepted_history:
   rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history. R0 restored the accepted W044-W049 implementation trees except the explicitly accepted-not-restored W048 material."
