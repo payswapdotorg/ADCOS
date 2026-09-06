@@ -57,8 +57,3 @@ governance_requirements:
   - "The composition battery must return to a genuine 55/55 with no other changes introduced under this amendment."
 
 result: "WORK-056 remains the active R5 implementation track; PR #17 remains unaccepted pending the DEC-0091-authorized residual oracle reconciliation and the genuine 55/55 composition result at the next exact delivery head."
-
-# Governance identity note: this is the sole authoritative DEC-0091 record.
-# The accidental duplicate file DEC-0091-w056-w054-oracle-scope-amendment.yaml
-# was removed by the Architect in commit 88eda140. The removed artifact had
-# the same decision_id but was not a distinct decision.
