@@ -1,0 +1,105 @@
+# ADCOS Work Item authorization record — WORK-057 active implementation.
+# Issued by DEC-0095 after acceptance of ACR-013.
+work_item: WORK-057
+status: active
+authorized: true
+type: implementation
+authorization_id: "WORK-057-CORE-001"
+authorization_decision: DEC-0095
+scope_amendment_decision: null
+scope_amendment_chain: []
+superseded_by: null
+supersession_decision: null
+baseline_sha: 16c066ff4766d362f0edfcb790524b2c0ef44cae
+review_basis: "DEC-0095 activates R6 after sole-Architect acceptance of WORK-056 and ACR-013. WORK-057 is the sole active implementation authorization and must execute only against the accepted Architecture Version 1.0 / Protocol Version 1.0 authorities and the R6 gate-specific dependency overlay."
+dependencies:
+  - WORK-015
+  - WORK-016
+  - WORK-026
+  - WORK-029
+  - WORK-039
+  - WORK-044
+  - WORK-045
+  - WORK-046
+  - WORK-047
+  - WORK-050
+  - WORK-051
+  - WORK-052
+  - WORK-053
+  - WORK-055
+  - WORK-056
+authority_inputs:
+  - "Frozen Architecture Version 1.0 contracts"
+  - "Frozen Protocol Version 1.0 contracts and schemas"
+  - "WORK-015 Federation protocol"
+  - "WORK-016 Adapter SDK/runtime"
+  - "WORK-026 Telemetry/observability"
+  - "WORK-029 Upgrade/rollback/compatibility"
+  - "WORK-039 Federation at scale"
+  - "WORK-044 Payment-provider boundary"
+  - "WORK-045 Eligibility/trust/jurisdiction policy"
+  - "WORK-046 Developer API/SDK/webhook platform"
+  - "WORK-047 Marketplace discovery/path-selection boundary"
+  - "WORK-050 Capability/isolation matrix"
+  - "WORK-051 CommercialCore"
+  - "WORK-052 UsageLedger"
+  - "WORK-053 EconomicAllocation"
+  - "WORK-055 Protocol production conformance"
+  - "WORK-056 Developer Connectivity Platform production hardening"
+  - "Existing identity, trust, capability, resource, policy, federation, routing, session, transport and telemetry authorities through their public interfaces only"
+authority_outputs:
+  - "Deterministic, auditable provider/domain onboarding and federation lifecycle using existing authorities and adapter/provider boundaries"
+scope:
+  - "federation/"
+  - "adapters/"
+  - "capabilities/"
+  - "resources/"
+  - "policy/"
+  - "telemetry/"
+  - "management/"
+  - "developerapi/"
+  - "tools/"
+  - "docs/WORK-057-evidence.md"
+  - "docs/WORK-057-handoff.md"
+scope_constraints:
+  - "Do not modify spec/architect/."
+  - "Do not modify frozen protocol schemas or wire semantics."
+  - "Do not create a new identity/session/routing/transport/payment/usage/allocation/policy authority."
+  - "Provider-specific SDKs/types remain behind adapters and are never imported into the core domain."
+  - "WORK-048 remains accepted-not-restored and cannot be restored under this authorization."
+  - "WORK-040 physical evidence remains independent and cannot be closed by this Work Item."
+  - "No live regulated-funds custody, KYC/KYB authority, or vendor authority is introduced."
+acceptance_criteria:
+  - "An independently operated provider/domain can be registered deterministically with explicit operator/domain identity binding."
+  - "Federation membership is scoped, explicitly accepted, revocable, non-transitive, and auditable."
+  - "Adapter declarations and certification evidence are validated without importing provider implementation semantics into core authorities."
+  - "Capability/resource declarations retain provenance, validity, expiry, and source and cannot silently become reachability truth."
+  - "Commercial/service profiles and settlement configuration are references/bindings to existing commercial authorities and cannot create payment authority."
+  - "Eligibility and policy evaluation fail closed for expired, revoked, incompatible, unauthorized, malformed, or conflicting inputs."
+  - "Suspension, revocation, and deterministic offboarding are idempotent and cannot rewrite historical records."
+  - "Interrupted onboarding recovers durably without duplicated membership or authority."
+  - "Mixed-version negotiation remains compatible under existing compatibility authority."
+  - "Onboarding/federation cannot directly create connectivity sessions, paths, routes, transport state, usage, payments, or settlement."
+  - "Replay, duplicate, out-of-order, concurrent, and stale inputs are deterministic and fail safely."
+  - "Forbidden-import and authority-boundary audits remain clean."
+  - "Required existing conformance/regression batteries remain green or any inherited failure is explicitly proven unchanged from baseline."
+  - "Determinism is demonstrated across repeat runs and relevant PYTHONHASHSEED values."
+acceptance_gate:
+  status: "Architect adversarial review required after implementation"
+  required_evidence:
+    - "provider/domain registration lifecycle evidence"
+    - "trust-domain membership and non-transitivity evidence"
+    - "adapter certification and forbidden-import evidence"
+    - "capability/resource provenance and expiry evidence"
+    - "eligibility/policy negative-path evidence"
+    - "commercial/payment reference-only authority-boundary evidence"
+    - "federation accept/suspend/revoke/offboard evidence"
+    - "duplicate/replay/out-of-order/concurrency evidence"
+    - "mixed-version compatibility evidence"
+    - "credential and secret-separation evidence"
+    - "audit/evidence immutability and provenance evidence"
+    - "determinism evidence"
+    - "scope/ancestry proof from baseline 16c066ff4766d362f0edfcb790524b2c0ef44cae"
+    - "proof that no W048 restoration occurred and no W040 physical evidence obligation was altered"
+handoff: docs/WORK-057-handoff.md
+handoff_required: true
