@@ -18,7 +18,8 @@ facts:
   w055_result: "R3 production-conformance evidence accepted. Wire compatibility is not claimed from in-repo evidence alone; external interoperability remains separately unproven."
   physical_status: "W040 remains in-review and unaccepted; EVID-007 and EVID-008 remain open PHYSICAL obligations."
   w048_status: "W048 remains accepted-not-restored; no restoration is authorized by this transition."
-  new_main_sha: "7801549c0ed50082a4fa7c20c71e50dc7bde87f9"
+  new_main_sha: "7ae438d46041b228164cc8880be37dc21f972b6f"
+  mainline_note: "The current main tip is content-equivalent to the W055 accepted merge after content-neutral cleanup commits; those cleanup commits are preserved in Git history and are not rewritten."
 
 transitions:
   - "R3_PROTOCOL_PRODUCTION_CONFORMANCE: ACTIVE -> COMPLETE"
@@ -65,10 +66,10 @@ w056_required_coverage:
 
 w056_non_authority_rule: "WORK-056 hardens the developer boundary only. It may not create a second commercial, connectivity, identity, session, NetworkPath, routing, transport, usage, allocation, payment, or policy authority."
 
-baseline: "7801549c0ed50082a4fa7c20c71e50dc7bde87f9"
+baseline: "7ae438d46041b228164cc8880be37dc21f972b6f"
 
 notes:
   - "DEC-0088 and all historical decisions remain immutable."
   - "R4 remains independently represented by W040; no physical evidence is promoted by W056."
   - "W048 remains accepted-not-restored and is neither repaired nor substituted by W056."
-  - "The governance ledger snapshot must be reconciled to the accepted W055 merge before this transition is considered fully projected."
+  - "The current main tip 7ae438d is the authoritative baseline for W056; its tree is content-equivalent to the accepted W055 merge 7801549c after content-neutral cleanup commits that remain in history."
