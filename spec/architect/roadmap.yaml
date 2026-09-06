@@ -117,7 +117,7 @@ roadmap:
     required_output: "One verified mainline containing the accepted W044-W050/W051-W053 implementation set and their durable acceptance/governance records."
     implementation_authorization: none
     gate: "Architect verifies exact file set, accepted-head provenance, tree equivalence of recovered packages, no unauthorized semantic delta, and complete repository-local evidence."
-    completion: "Accepted and merged as PR #8 on the exact frozen main 3bdfb6daf50f7c000d29a027584c0de5b376d8a8 (merge a3391e86851e06032de848e6eb0b4267fa33310a8, tree 1d16c241d060c9c242f3025ea3afa73464574ccc byte-identical to the historical restoration tree 7fb47bb312708d06f3b3c1ba0496104362c7d135)."
+    completion: "Accepted and merged as PR #8 on the exact frozen main 3bdfb6daf50f7c000d29a027584c0de5b376d8a8 (merge a3391e86851e06032de848e6eb0b4267fa33310a, tree 1d16c241d060c9c242f3025ea3afa73464574ccc byte-identical to the historical restoration tree 7fb47bb312708d06f3b3c1ba0496104362c7d135)."
 
   - id: R1_GOVERNANCE_RECONCILIATION
     status: COMPLETE
