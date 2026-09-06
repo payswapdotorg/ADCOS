@@ -11,8 +11,8 @@ last_updated: "2026-09-06"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: 857ce2c95363b60d3e505150f9961f2f5b4c2adc
-  main_sha_semantics: "Current governance snapshot commit after DEC-0091 duplicate cleanup, canonical-record restoration, and execution-state reconciliation. The W056 implementation branch remains unmerged and separate; any delivery must incorporate the latest governance mainline before acceptance."
+  main_sha: 6ee6c39b4ddbe22b2082ad344e083c4c96274ec6
+  main_sha_semantics: "Current governance snapshot preceding the W056 re-delivery. The W056 implementation branch remains unmerged and separate; any delivery must incorporate the latest governance mainline before acceptance."
   lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
 versions:
@@ -69,7 +69,7 @@ open_prs:
     disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
   - pr: 46
     head: "work-035-android-mobile-agent"
-    disposition: "historical/superseded physical-evidence chain; requires formal disposition"
+    disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
   - pr: 47
     head: "work-035-physical-evidence-v2"
     disposition: "historical/latest W035 physical-evidence chain; requires formal disposition"
