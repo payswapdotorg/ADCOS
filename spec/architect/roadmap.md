@@ -1,12 +1,12 @@
 # ADCOS Authoritative Roadmap
 
-**FROZEN — Roadmap Version 1.3**
+**FROZEN — Roadmap Version 1.4**
 
-`spec/architect/roadmap.yaml` is the sole canonical program roadmap. This document is its human-readable projection. Neither this file nor the roadmap grants implementation authority. The roadmap version remains 1.3; DEC-0089 is a lifecycle transition only — Architecture Version 1.0 and Protocol Version 1.0 are unchanged.
+`spec/architect/roadmap.yaml` is the sole canonical program roadmap. This document is its human-readable projection. Neither this file nor the roadmap grants implementation authority. The roadmap version is 1.4 under DEC-0095/ACR-013; Architecture Version 1.0 and Protocol Version 1.0 are unchanged.
 
 ## Current repository state
 
-R3 is complete and R5 is active under WORK-056. W055 was accepted by the sole Architect and merged as PR #15 (`7801549c`). The R5 developer-platform hardening track is authorized from the actual current main tip `7ae438d` — content-equivalent to that post-W055 merge after preserved content-neutral cleanup commits — by DEC-0089. W040 remains an independent R4 physical track in-review.
+R3 is complete. R5 is complete under DEC-0094, and R6 is active under WORK-057 / `WORK-057-CORE-001`. W055 was accepted by the sole Architect and merged as PR #15 (`7801549c`). W056 was accepted by the sole Architect and merged as `b11cf44` after delivery head `c2b2c59`. R6 governance was accepted under DEC-0095 and merged as PR #22. W040 remains an independent R4 physical track in-review.
 
 **R0 is complete**: the canonical mainline restoration was accepted and merged as PR #8 on the exact frozen main `3bdfb6d` (merge `a3391e8`, tree `1d16c24`, byte-identical to the historical restoration tree `7fb47bb`). W048 remains explicitly accepted-but-not-restored.
 
@@ -16,7 +16,9 @@ R3 is complete and R5 is active under WORK-056. W055 was accepted by the sole Ar
 
 **R3 is complete**: WORK-055 established the production conformance layer over the WORK-032 foundation. Its final delivery `0fc86aa` was accepted after adversarial review and merged as `7801549c`. In-repo conformance evidence does not constitute independent external interoperability evidence.
 
-**R5 is active**: DEC-0089 activates WORK-056 — Developer Connectivity Platform Production Hardening — with the sole active implementation authorization `WORK-056-CORE-001`.
+**R5 is complete**: DEC-0094 accepted WORK-056 — Developer Connectivity Platform Production Hardening — after the 56/56 developer battery, 55/55 W054 composition battery including the real CI `case_51`, repeat/determinism evidence, scope/ancestry proof, and architecture-preservation review.
+
+**R6 is active**: DEC-0095 accepts ACR-013 and activates WORK-057 — Provider Onboarding & Federation — as the sole active implementation authorization `WORK-057-CORE-001`. The post-snapshot gate-specific governance layer is now authoritative, so routine roadmap sequencing does not require user prompting.
 
 ## Frozen execution roadmap
 
@@ -44,17 +46,27 @@ R3 remains bounded to verification. It did not modify frozen protocol semantics 
 
 ### R4 — Physical connectivity validation — PARALLEL AFTER R3
 
-Continue W040 and the open physical-evidence obligations on real hardware/network environments. R4 is independently collected, classified, and accepted. Software evidence never closes this track. R4 does **not** block R5 or the later R6 gate.
+Continue W040 and the open physical-evidence obligations on real hardware/network environments. R4 is independently collected, classified, and accepted. Software evidence never closes this track. R4 does **not** block R5 or R6.
 
-### R5 — Developer Connectivity Platform — ACTIVE
+### R5 — Developer Connectivity Platform — COMPLETE
 
-Use accepted W046 as the foundation for a production developer surface. WORK-056 hardens the existing `developerapi/` boundary so external applications can request and manage connectivity through stable APIs and webhooks without adopting an ADCOS UI or acquiring direct authority over canonical identity, session, NetworkPath, routing, transport, usage, allocation, eligibility, marketplace, or payment state.
+Use accepted W046 as the foundation for a production developer surface. WORK-056 hardened the existing `developerapi/` boundary so external applications can request and manage connectivity through stable APIs and webhooks without adopting an ADCOS UI or acquiring direct authority over canonical identity, session, NetworkPath, routing, transport, usage, allocation, eligibility, marketplace, or payment state.
 
-Required W056 hardening covers versioned API compatibility, idempotent mutations, scoped application credentials, sandbox/production isolation, canonical reason-code preservation, signed webhook integrity and replay/order handling, stable retrieval/pagination where exposed, SDK/server contract equivalence, rate/resource protection, and anti-authority proofs. R4 completion is not required. Only `WORK-056-CORE-001` is the active implementation authorization.
+W056 was accepted under DEC-0094 and merged as `b11cf44`. Its successor gate R6 is now active.
 
-### R6 — Provider onboarding and federation — AFTER R5
+### R6 — Provider onboarding and federation — ACTIVE
 
-Enable independently operated networks, ISPs, carriers, enterprises, satellite systems, hotspots, mesh operators, and infrastructure owners to expose connectivity through ADCOS while retaining infrastructure authority. R6 requires accepted R5; R4 completion is not a prerequisite unless a future durable decision explicitly changes the sequence.
+Enable independently operated networks, ISPs, carriers, enterprises, satellite systems, hotspots, mesh operators, and infrastructure owners to expose connectivity through ADCOS while retaining infrastructure authority.
+
+WORK-057 governs the lifecycle:
+
+`registration → operator/domain identity binding → scoped credential issuance → adapter declaration/certification → capability/resource declaration → service/commercial profile binding → eligibility/policy evaluation → federation proposal → explicit acceptance → active federated membership → suspension/revocation/offboarding`
+
+R6 is deliberately an integration/orchestration layer. It consumes existing identity, trust, capability, resource, federation, policy, routing, session, transport, telemetry, and commercial authorities and must not create substitutes for them.
+
+Provider SDKs and access-technology specifics remain behind provider/adapter boundaries. Federation is scoped, explicit, revocable, and non-transitive. Capability and resource evidence retains provenance and validity. Commercial and settlement configuration binds to existing commercial authorities rather than creating payment authority.
+
+`WORK-057-CORE-001` is the only active implementation authorization. WORK-048 remains accepted-not-restored and cannot be restored implicitly. W040 remains an independent physical evidence track.
 
 ### R7 — Universal connectivity commerce — AFTER R6
 
@@ -72,7 +84,9 @@ Add new access technologies strictly through the adapter boundary without changi
 
 `R0 → R1 → R2 → R3 → R4/R5 → R6 → R7 → R8 → R9`
 
-R4 and R5 are parallel tracks after R3. The one-active-implementation-authorization rule means W056 is the current software authorization while W040 remains an independent physical review track. R6 waits for accepted R5, not R4.
+R4 remains a parallel physical-evidence track. R5 is complete. R6 is the active software governance/implementation gate. Exactly one implementation authorization is active at any time.
+
+Routine sequencing of these gates is owned by the sole Architect. User prompting is not a governance dependency. The repository-local governance records, not this document or conversation history, determine implementation permission.
 
 ## The Stripe-of-connectivity exit criterion
 
@@ -85,5 +99,7 @@ A clean clone of `main` is the starting point for every new Architect, implement
 The authority chain is:
 
 `mission → frozen architecture/locks → frozen Work Item contract + dependency graph → frozen roadmap.yaml → accepted decisions + execution ledger/state → active authorization → implementation evidence`
+
+For Work Items created after the original frozen snapshot, the accepted post-snapshot governance model uses canonical contracts under `spec/architect/work-items/` and explicit dependency overlays under `spec/architect/dependency-overlays/`, as established by ACR-013 / DEC-0095.
 
 `roadmap.md` is only a projection. Issues, PR discussions, chat messages, old handoffs, and external planning documents cannot override `roadmap.yaml`.
