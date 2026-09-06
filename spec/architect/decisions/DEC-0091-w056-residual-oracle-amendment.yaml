@@ -1,0 +1,59 @@
+# DEC-0091 — WORK-056 minimal scope amendment for the two residual W054 oracle pin sites
+# Durable governance decision. Does not change frozen Architecture Version 1.0
+# or Protocol Version 1.0 semantics and does not create a new Work Item.
+# Enacts exactly the amendment prescribed by Architect review 5124685782
+# (PR #17 at 0581f7cba05972dd47961de9c7ae821c7153e595, CHANGES REQUIRED).
+decision_id: DEC-0091
+date: "2026-09-06"
+type: "governance-scope-amendment"
+status: accepted
+owner: "Architect"
+
+subject: "Amend WORK-056-CORE-001 narrowly to reconcile the two residual W054 WORK-046 oracle pin sites (case_01 and case_24) after the W046 repair"
+
+facts:
+  work_item: WORK-056
+  authorization: WORK-056-CORE-001
+  parent_decision: DEC-0090
+  prior_amendment_status: "DEC-0090 authorized only the case_03 oracle reconciliation and required the composition battery to return to 55/55; DEC-0090 is now exhausted by the Architect rejection of the amended delivery lineage (reviews 5124542587 at e5af68b and 5124685782 at 0581f7c)."
+  delivery_under_review: "0581f7cba05972dd47961de9c7ae821c7153e595"
+  architect_review: "5124685782 (CHANGES REQUIRED — DO NOT MERGE, 2026-09-06)"
+  base_mainline: "e0b8e0f39a7adc885e0a8da9180ad06db9bd14a8"
+  authorized_baseline: "7ae438d46041b228164cc8880be37dc21f972b6f"
+  case_03_state: "green at 0581f7c under the DEC-0090 exception; the case_03 function is retained byte-identical from the round-2 correction and is not re-applied or altered by this amendment."
+  residual_defect: "The accepted W054 composition battery is 53/55 at 0581f7c: case_01 (the fail-fast authority-availability classification pin) and case_24 (the webhook negative-proof's W046 availability pin) still expect the historical WORK-046 DEFECT classification while the repaired developer boundary is AVAILABLE; the delivered full run fails fast at case_01."
+  correction_path: "The two residual sites are Architect-owned oracle surface. The worker correctly restored the unauthorized round-2 edits and disclosed the residual red rather than self-expanding DEC-0090; review 5124685782 directs this narrow amendment as the Architect disposition."
+
+amendment:
+  exact_path: "tools/composition_selftest.py"
+  allowed_change: "Only reconcile the two residual W054 WORK-046 oracle pin sites to the repaired availability state, exactly as case_03 was reconciled under DEC-0090: case_01 must expect AuthorityAvailability.AVAILABLE for WORK-046 instead of DEFECT (the classification pin and its ok message); case_24 must expect AVAILABLE instead of DEFECT (the webhook-case pin and its ok message)."
+  prohibited_changes:
+    - "any composition authority implementation"
+    - "any production networking, connectivity, commercial, identity, session, NetworkPath, routing, transport, payment, usage, allocation, or policy behavior"
+    - "any W048 restoration or substitution"
+    - "any W040 physical evidence or disposition"
+    - "any change to W054 semantic coverage outside the exact WORK-046 availability oracle reconciliation"
+    - "any change to the module docstring or the _FORBIDDEN_IMPORT_ROOTS comment in tools/composition_selftest.py (both remain the disclosed stale wording)"
+    - "any change outside tools/composition_selftest.py under this amendment"
+  duration: "one WORK-056 delivery only; expires with the first Architect acceptance or rejection of the next amended WORK-056 delivery"
+
+architecture_constraints:
+  architecture_version: "1.0"
+  protocol_version: "1.0"
+  frozen_semantics_unchanged: true
+  new_work_item_created: false
+  exactly_one_active_implementation_authorization: true
+  active_authorization_remains: WORK-056-CORE-001
+  sole_architect_review_merge_authority: true
+  software_never_promotes_to_physical: true
+
+rationale: "DEC-0090's own requirement that the W054 composition battery return to 55/55 cannot be satisfied while the two residual pin sites retain the stale DEFECT expectation for the already-repaired W046 boundary. The narrowest valid remedy is to authorize exactly those two site corrections under the same WORK-056 authorization — the same single W046 availability oracle DEC-0090 already reconciled at case_03. No production surface, composition authority, or other test semantics is affected; no new Work Item or roadmap change is warranted."
+
+governance_requirements:
+  - "The W056 worker must not apply this exception until the amendment is present on the authoritative governance mainline."
+  - "The implementation PR must remain within the amended exact scope and must disclose the amendment by DEC-0091 together with the retained DEC-0090 case_03 reconciliation."
+  - "The next delivery must land as a new exact head on the same PR #17 lineage (a plain child commit; no rebase, no force) and must carry the full scope and ancestry proofs."
+  - "The Architect must re-run the full W056 battery and the W054 composition battery at the corrected delivery head."
+  - "The composition battery must return to a genuine 55/55 with no other changes introduced under this amendment."
+
+result: "WORK-056 remains the active R5 implementation track; PR #17 remains unaccepted pending the DEC-0091-authorized residual oracle reconciliation and the genuine 55/55 composition result at the next exact delivery head."
