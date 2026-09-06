@@ -63,7 +63,7 @@ open_prs:
     disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
   - pr: 46
     head: "work-035-android-mobile-agent"
-    disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
+    disposition: "historical/superseded physical-evidence chain; requires formal disposition"
   - pr: 47
     head: "work-035-physical-evidence-v2"
     disposition: "historical/latest W035 physical-evidence chain; requires formal disposition"
