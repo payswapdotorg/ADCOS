@@ -1,15 +1,13 @@
-# ADCOS Work Item authorization record — WORK-056 active implementation.
-# Issued by DEC-0089 after WORK-055/R3 acceptance.
-# Scope amended by DEC-0090, then precisely extended by DEC-0091 and DEC-0093.
-# DEC-0091 covers the three W046 availability-oracle pins; DEC-0093 covers
-# only the inherited W054 case_51 cross-era scope-oracle correction.
+# ADCOS Work Item authorization record — WORK-056 accepted delivery.
+# Issued by DEC-0089; scope amended by DEC-0090, DEC-0091 and DEC-0093.
+# The authorization is now closed by sole-Architect acceptance DEC-0094.
 work_item: WORK-056
-status: active
-authorized: true
+status: accepted
+authorized: false
 type: implementation
 authorization_id: "WORK-056-CORE-001"
 authorization_decision: DEC-0089
-scope_amendment_decision: DEC-0091
+scope_amendment_decision: DEC-0093
 scope_amendment_chain:
   - DEC-0090
   - DEC-0091
@@ -17,7 +15,7 @@ scope_amendment_chain:
 superseded_by: null
 supersession_decision: null
 baseline_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
-review_basis: "DEC-0089 accepts WORK-055/R3 and activates R5. WORK-056 is the sole active implementation authorization and is governed by the authorized baseline 7ae438d46041b228164cc8880be37dc21f972b6f. DEC-0090 narrowly amended the authorized scope to permit the W046 availability-oracle reconciliation required because WORK-056 repairs the previously recorded W046 import defect. DEC-0091 precisely extended the same factual reconciliation to the three existing W046 assertion sites. DEC-0093 now separately authorizes only the correction of the inherited W054 case_51 scope/provenance oracle, whose current-live-PR comparison is invalid across later authorized Work Items. No production behavior or new semantic authority is authorized."
+review_basis: "DEC-0089 activated WORK-056 as the sole R5 implementation authorization. DEC-0090 and DEC-0091 authorized the three W046 availability-oracle reconciliations, and DEC-0093 authorized the inherited W054 case_51 historical scope/provenance oracle correction. DEC-0094 accepts the exact Round-6 delivery at c2b2c59fae4749b610b721b217e18cfa9b4aab25 after independent Architect review and exact-head CI evidence."
 dependencies:
   - WORK-044
   - WORK-045
@@ -54,11 +52,11 @@ scope_amendment:
   prior_amendments:
     - DEC-0090
     - DEC-0091
-  exact_exception: "Permit exactly two inherited W054 oracle corrections under this authorization: DEC-0091's three W046 availability pins, and DEC-0093's single case_51 scope/provenance oracle correction."
+  exact_exception: "DEC-0091 covered the three existing W046 availability pins; DEC-0093 covered only case_51_pr_delta_scope's historical W054 scope/provenance correction. Both exceptions were consumed by the accepted Round-6 delivery and create no future authorization."
   exact_path: "tools/composition_selftest.py"
-  exact_allowed_change: "Under DEC-0091, update only the three existing W046 availability pins. Under DEC-0093, update only case_51_pr_delta_scope so it proves the fixed historical W054 baseline-to-accepted-delivery scope and accepted-delivery ancestry instead of diffing the entire current worktree against origin/main. Preserve _AUTHORIZED_PATHS and the W054 baseline identity; no current-PR delta, later Work Item allowlist, or generic governance dependency may be introduced."
+  exact_allowed_change: "Round-6 changed case_01, case_03, and case_24 only as authorized by DEC-0091, and case_51_pr_delta_scope only as authorized by DEC-0093. No other implementation scope was authorized."
   authority_effect: "No new product, connectivity, commercial, identity, session, routing, transport, payment, usage, allocation, or policy authority."
-  expiry: "DEC-0091 applies through the first Architect disposition of the next amended W056 delivery. DEC-0093 applies to that same W056 delivery; after acceptance or rejection, the resulting case_51 remains the corrected W054 regression oracle and carries no future W056 scope entitlement."
+  expiry: "Consumed by the first Architect disposition of the amended Round-6 W056 delivery; no future Work Item inherits these exceptions."
 out_of_scope_preserved:
   - "frozen architecture or protocol semantics"
   - "new identity/session/NetworkPath/routing/transport authority"
@@ -68,9 +66,7 @@ out_of_scope_preserved:
   - "payment custody or regulated funds movement"
   - "full marketplace UI"
   - "new economic authority"
-  - "CI governance changes outside the explicit DEC-0092 governance vehicle already recorded historically"
   - "modifying spec/architect/ from the implementation PR"
-  - "changes to tools/composition_selftest.py beyond the exact DEC-0091 three-pin reconciliation and DEC-0093 case_51 oracle correction"
 acceptance_criteria:
   - "External applications can use the existing developer boundary without adopting an ADCOS UI."
   - "API mutations are idempotent and deterministic under retries, duplicates, and replay conditions."
@@ -83,21 +79,18 @@ acceptance_criteria:
   - "Rate limiting/resource protection cannot become a second business authority."
   - "API/webhook observations never become canonical connectivity or commercial state."
   - "Existing accepted batteries remain green; no frozen authority is modified."
-  - "All changes remain within the exact authorized scope and ancestry, including DEC-0091 and DEC-0093 exact test-oracle exceptions."
+  - "All changes remained within the exact authorized scope and ancestry, including DEC-0091 and DEC-0093 exact test-oracle exceptions."
 acceptance_gate:
-  status: "Architect adversarial review required after implementation"
-  required_evidence:
-    - "deterministic developer API conformance battery"
-    - "idempotency, retry, duplicate and replay evidence"
-    - "credential scope and privilege-boundary negatives"
-    - "sandbox/production isolation evidence"
-    - "signed webhook integrity and ordering evidence"
-    - "canonical reason-code equivalence evidence"
-    - "SDK/server contract equivalence evidence"
-    - "structural import/private-access/shadow-authority audits"
-    - "PYTHONHASHSEED and repeat-run determinism"
-    - "scope and ancestry proof from baseline 7ae438d46041b228164cc8880be37dc21f972b6f"
-    - "explicit proof that no frozen semantic or wire-schema change occurred"
-    - "W054 composition self-test restored to green with no changes beyond the DEC-0091 and DEC-0093 exact oracle corrections"
+  status: "accepted-merged"
+  acceptance_decision: DEC-0094
+  accepted_delivery_sha: "c2b2c59fae4749b610b721b217e18cfa9b4aab25"
+  acceptance_merge_sha: "b11cf44db922811d2518c05685aee14127243264"
+  required_evidence_satisfied:
+    - "W056 developer battery 56/56"
+    - "W054 composition battery 55/55 including real CI case_51 path"
+    - "repeat-run and PYTHONHASHSEED determinism"
+    - "scope and ancestry proof"
+    - "frozen Architecture/Protocol surface preservation"
+    - "independent exact-head GitHub acceptance battery run 34036129663"
 handoff: docs/WORK-056-handoff.md
 handoff_required: true
