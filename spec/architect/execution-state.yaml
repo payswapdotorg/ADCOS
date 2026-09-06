@@ -11,8 +11,8 @@ last_updated: "2026-09-06"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: 8cfebdc2c4587096f9e19fcfc1310f180b06e8d7
-  main_sha_semantics: "Current governance snapshot commit after DEC-0091 duplicate cleanup, canonical-record restoration, and execution-state reconciliation. The W056 implementation branch remains unmerged and separate; any delivery must incorporate the governance mainline preceding this snapshot before acceptance."
+  main_sha: e762689180911f002728002a6cd39b07b8b34d60
+  main_sha_semantics: "Current governance mainline after DEC-0091 duplicate cleanup, canonical-record restoration, and execution-state reconciliation. The W056 implementation branch remains unmerged and separate; any delivery must incorporate the governance mainline preceding this snapshot before acceptance."
   lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
 versions:
@@ -25,11 +25,11 @@ execution:
   mode: implementing
   active_work_item: WORK-056
   active_authorization: WORK-056-CORE-001
-  halted_reason: "Round-4 delivery 35ec48a is not accepted. Governance mainline subsequently advanced through duplicate DEC-0091 cleanup and canonical-record restoration. The worker must incorporate the latest governance mainline and return at a new exact delivery head for independent Architect verification."
+  halted_reason: "Round-4 delivery 35ec48a is not accepted. Governance mainline subsequently advanced through duplicate DEC-0091 cleanup, canonical-record restoration, and execution-state reconciliation. The worker must incorporate the latest governance mainline and return at a new exact delivery head for independent Architect verification."
   next_required_decisions:
     - "WORK-056 delivery must retain exact implementation ancestry from authorized baseline 7ae438d46041b228164cc8880be37dc21f972b6f."
-    - "The next delivery must incorporate the latest governance mainline without rewriting history."
-    - "Only the three existing W046 availability-oracle pins in tools/composition_selftest.py may change under DEC-0091; no additional implementation change is authorized."
+    - "The next delivery must incorporate current governance mainline e762689180911f002728002a6cd39b07b8b34d60 without rewriting history."
+    - "Only the three existing W046 availability-oracle pins in tools/composition_selftest.py may change under DEC-0091; no additional implementation is authorized."
     - "Architect adversarial review is required before WORK-056 can transition to accepted-merged and before R6 can activate."
     - "The Architect must independently verify the full W056 developer battery and W054 composition battery at the new exact delivery head."
     - "R4/W040 remains independently in-review and unaccepted; EVID-007 and EVID-008 remain open, physical, and W040-owned."
@@ -63,7 +63,7 @@ in_review:
 open_prs:
   - pr: 17
     head: "work-056-developer-platform-hardening"
-    disposition: "W056 active; round-4 delivery 35ec48a not accepted; latest governance mainline has advanced since delivery; worker must incorporate current governance mainline and return at a new exact head"
+    disposition: "W056 active; round-4 delivery 35ec48a not accepted; current governance mainline e762689 is newer than delivery; worker must incorporate it and return at a new exact head"
   - pr: 45
     head: "work-035-device-evidence"
     disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
