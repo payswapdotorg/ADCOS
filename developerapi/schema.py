@@ -285,18 +285,26 @@ _WEBHOOK_ENDPOINT_FIELDS_V1 = (
     FieldSpec("event_types", "list"),
 )
 
+#: The request-shape of the economic-policy registration,
+#: re-bound by WORK-056 to the CURRENT canonical W053 policy
+#: terms (the W053 review corrections replaced the W046-era
+#: versioned policy model with the terms-derived immutable
+#: policy version): the boundary NEVER re-shapes canonical
+#: state, so the developer-facing request members are exactly
+#: the canonical register_policy terms.  The policy_id is
+#: DERIVED canonically from the terms (the developer does not
+#: choose it); the effective window is a closed RFC 3339
+#: window in the current canonical model.
 _ECONOMIC_POLICY_FIELDS_V1 = (
-    FieldSpec("policy_id", "text"),
-    FieldSpec("version", "integer"),
+    FieldSpec("label", "text"),
+    FieldSpec("adcos_share_bps", "integer"),
+    FieldSpec("provider_min_bps", "integer"),
+    FieldSpec("provider_max_bps", "integer"),
+    FieldSpec("rounding_mode", "text"),
     FieldSpec("currency", "text"),
-    FieldSpec("exponent", "integer"),
-    FieldSpec("rounding", "text"),
+    FieldSpec("minor_unit_digits", "integer"),
     FieldSpec("effective_from", "text"),
-    FieldSpec("effective_until", "text", required=False),
-    FieldSpec("adc_os_share_bps", "integer"),
-    FieldSpec("tax_bps", "integer"),
-    FieldSpec("developer_share_min_bps", "integer"),
-    FieldSpec("developer_share_max_bps", "integer"),
+    FieldSpec("effective_until", "text"),
 )
 
 _INTENT_REQUEST_FIELDS_V1 = (

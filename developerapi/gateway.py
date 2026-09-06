@@ -49,11 +49,16 @@ audit):
   :class:`commercial.lifecycle.CommercialCore` (``submit_intent``
   / ``hold_reservation`` for the two sanctioned
   developer-mutating commercial operations; the public reads
-  otherwise), :class:`usage.lifecycle.UsageLedger` (public reads
+  otherwise), :class:`usage.ledger.UsageLedger` (public reads
   only -- usage truth is never developer-writable), and
-  :class:`allocation.lifecycle.AllocationLedger`
+  :class:`allocation.ledger.AllocationLedger`
   (``register_policy`` for economic-policy configuration; the
-  public reads otherwise).
+  public reads otherwise).  WORK-056 re-binds these adapters to
+  the CURRENT accepted public surfaces (the W052/W053 review
+  corrections renamed ``usage.lifecycle`` -> ``usage.ledger``
+  and ``allocation.lifecycle`` -> ``allocation.ledger`` and
+  reshaped the usage/policy projections); the boundary's frozen
+  route/capability/envelope contract is unchanged.
 
 - The gateway NEVER imports or touches the identity, session,
   NetworkPath, routing, transport, packet, payment, or
@@ -130,10 +135,10 @@ from protocol.canonicalization import canonical_json_bytes
 
 from commercial.errors import CommercialError
 from commercial.lifecycle import CommercialCore
-from usage.errors import UsageLedgerError
-from usage.lifecycle import UsageLedger
+from usage.errors import UsageError
+from usage.ledger import UsageLedger
 from allocation.errors import AllocationError
-from allocation.lifecycle import AllocationLedger
+from allocation.ledger import AllocationLedger
 
 from . import webhooks as webhook_platform
 from .credentials import (
@@ -334,7 +339,7 @@ ROUTES: Dict[Tuple[str, str], RouteSpec] = {
         "policy_register", Capability.ECONOMIC_POLICY_WRITE, True,
         "economic_policy",
     ),
-    ("GET", "economic-policies/{}/{}"): RouteSpec(
+    ("GET", "economic-policies/{}"): RouteSpec(
         "policy_get", Capability.ECONOMIC_POLICY_READ, False, ""
     ),
     ("GET", "webhook-endpoints"): RouteSpec(
@@ -1580,7 +1585,7 @@ class DeveloperApiService:
             return self._handle(request, request_id)
         except DeveloperApiError as error:
             return self._error_response(request, request_id, error)
-        except (CommercialError, UsageLedgerError, AllocationError) as error:
+        except (CommercialError, UsageError, AllocationError) as error:
             return self._error_response(
                 request,
                 request_id,
@@ -1775,8 +1780,10 @@ class DeveloperApiService:
 
         if spec.operation == "usage_list":
             items = [
-                self._usage_resource(account_id)
-                for account_id in self._developer_usage_ids(developer)
+                self._usage_resource(usage_transaction_id)
+                for usage_transaction_id in self._developer_usage_ids(
+                    developer
+                )
             ]
             filters = normalize_filters(body.get("filters"), ("state",))
             page, cursor, more = self._page(
@@ -1790,7 +1797,7 @@ class DeveloperApiService:
         if spec.operation == "usage_get":
             if positional[0] not in self._developer_usage_ids(developer):
                 raise self._resource_unknown(
-                    "usage account", positional[0], request_id
+                    "usage transaction", positional[0], request_id
                 )
             return self._envelope(
                 request,
@@ -1802,18 +1809,25 @@ class DeveloperApiService:
 
         if spec.operation == "billing_list":
             items = []
-            for account_id in self._developer_usage_ids(developer):
-                account = self._usage.account(account_id).to_dict()
-                if not account.get("finality"):
+            for usage_transaction_id in self._developer_usage_ids(developer):
+                projection = self._usage.transaction(usage_transaction_id)
+                if projection.statement is None:
+                    # only the sealed billable-final facts are
+                    # billing records (the current W052 model:
+                    # BILLABLE_FINAL == the sealed statement)
                     continue
                 billing = {
-                    "id": account_id,
+                    "id": usage_transaction_id,
                     "kind": "billing_record",
-                    "transaction_id": account.get("transaction_id", ""),
+                    "transaction_id": usage_transaction_id,
                     "environment": self._environment,
-                    "usage": self._usage_resource(account_id),
-                    "finality": dict(account.get("finality") or {}),
-                    "allocation": self._allocation_snapshot(account_id),
+                    "usage": self._usage_resource(usage_transaction_id),
+                    "finality": self._usage.reconciliation_statement(
+                        usage_transaction_id
+                    ),
+                    "allocation": self._allocation_snapshot(
+                        usage_transaction_id
+                    ),
                 }
                 items.append(billing)
             page, cursor, more = self._page(
@@ -1838,17 +1852,7 @@ class DeveloperApiService:
             )
 
         if spec.operation == "policy_get":
-            try:
-                policy_version = int(positional[1])
-            except (TypeError, ValueError):
-                raise DeveloperApiError(
-                    DeveloperApiReasonCode.INVALID_INPUT,
-                    "the policy version path segment %r must be an integer"
-                    % positional[1],
-                ) from None
-            policy = self._allocation.policy(
-                positional[0], policy_version
-            )
+            policy = self._allocation.policy(positional[0])
             return self._envelope(
                 request,
                 request_id,
@@ -2324,27 +2328,23 @@ class DeveloperApiService:
             return data, "", "", {}, emission
 
         if spec.operation == "policy_register":
+            # the CURRENT canonical W053 register_policy terms
+            # (the policy_id is derived canonically from the
+            # terms -- the developer does not choose it)
             required = (
-                "policy_id",
-                "version",
+                "label",
+                "adcos_share_bps",
+                "provider_min_bps",
+                "provider_max_bps",
+                "rounding_mode",
                 "currency",
-                "exponent",
-                "rounding",
+                "minor_unit_digits",
                 "effective_from",
                 "effective_until",
-                "adc_os_share_bps",
-                "tax_bps",
-                "developer_share_min_bps",
-                "developer_share_max_bps",
             )
             payload = {}
             for member in required:
                 if member not in body:
-                    if member == "effective_until":
-                        # the open-ended window (the W053 model:
-                        # absent until = open-ended)
-                        payload[member] = ""
-                        continue
                     raise DeveloperApiError(
                         DeveloperApiReasonCode.INVALID_INPUT,
                         "economic policy registration is missing member %r"
@@ -2363,9 +2363,11 @@ class DeveloperApiService:
                 )
             except AllocationError as error:
                 raise self._adapted_error(error, request_id="") from error
-            policy = self._allocation.policy(
-                payload["policy_id"], payload["version"]
-            )
+            # the canonical terms-derived policy version id (the
+            # register outcome's fact id; the composed W054
+            # precedent)
+            policy_id = outcome.fact_id
+            policy = self._allocation.policy(policy_id)
             data = self._policy_resource(policy)
 
             emission = _MutationEmission(
@@ -2373,8 +2375,7 @@ class DeveloperApiService:
                 event_id=outcome.event_id,
                 occurred_at=outcome.instant,
                 resource_kind="economic_policy",
-                resource_id="%s@%s"
-                % (payload["policy_id"], payload["version"]),
+                resource_id=policy_id,
                 resource_version=1,
                 correlation=derive_request_id(
                     self._environment,
@@ -2789,57 +2790,53 @@ class DeveloperApiService:
             "evidence_class": evidence_class(self._environment),
         }
 
-    def _usage_resource(self, account_id: str) -> Dict[str, Any]:
-        account = self._usage.account(account_id).to_dict()
+    def _usage_resource(self, usage_transaction_id: str) -> Dict[str, Any]:
+        """The developer-facing usage projection: the CURRENT
+        canonical W052 UsageTransaction serialization, verbatim
+        in meaning, plus the boundary envelope members only.
+        The boundary never re-shapes, renames, or re-semantics
+        the canonical projection (no second domain model)."""
+        content = self._usage.transaction(usage_transaction_id).to_dict()
         resource = {
-            "id": account_id,
-            "kind": "usage_account",
+            "id": usage_transaction_id,
+            "kind": "usage_transaction",
             "environment": self._environment,
         }
         for member in (
             "transaction_id",
             "state",
-            "actor",
-            "source",
-            "created_at",
-            "session_ref",
-            "path_ref",
-            "unit",
-            "total_quantity",
-            "evidence_refs",
-            "payment_refs",
-            "reconciliation",
-            "finality",
+            "observations",
+            "statement",
             "compensations",
-            "compensated_amount",
-            "last_action",
-            "last_instant",
-            "event_count",
         ):
-            if member in account:
-                resource[member] = account[member]
+            if member in content:
+                resource[member] = content[member]
         return resource
 
     def _policy_resource(self, policy: Any) -> Dict[str, Any]:
+        """The developer-facing economic-policy projection: the
+        CURRENT canonical W053 PolicyVersion serialization,
+        verbatim in meaning (the terms-derived immutable policy
+        version), plus the boundary envelope members only."""
         content = policy.to_dict()
         resource = {
-            "id": "%s@%s"
-            % (content.get("policy_id", ""), content.get("version", "")),
+            "id": content.get("policy_id", ""),
             "kind": "economic_policy",
             "environment": self._environment,
         }
         for member in (
             "policy_id",
-            "version",
+            "label",
+            "adcos_share_bps",
+            "provider_min_bps",
+            "provider_max_bps",
+            "rounding_mode",
             "currency",
-            "exponent",
-            "rounding",
+            "minor_unit_digits",
             "effective_from",
             "effective_until",
-            "adc_os_share_bps",
-            "tax_bps",
-            "developer_share_min_bps",
-            "developer_share_max_bps",
+            "command_id",
+            "registered_at",
         ):
             if member in content:
                 resource[member] = content[member]
@@ -2894,14 +2891,15 @@ class DeveloperApiService:
             ),
         }
 
-    def _allocation_snapshot(self, account_id: str) -> Any:
-        account = self._usage.account(account_id).to_dict()
-        finality = account.get("finality") or {}
-        record_id = finality.get("record_id", "")
-        if not record_id:
-            return ""
+    def _allocation_snapshot(self, usage_transaction_id: str) -> Any:
+        """The canonical W053 allocation projection for one
+        billable-final usage transaction (the CURRENT model:
+        allocations are keyed by the usage transaction id), or
+        the empty marker when no allocation exists yet."""
         try:
-            allocation_entry = self._allocation.allocation(record_id)
+            allocation_entry = self._allocation.allocation(
+                usage_transaction_id
+            )
         except AllocationError:
             return ""
         return allocation_entry.to_dict()
@@ -2969,11 +2967,15 @@ class DeveloperApiService:
         return transaction
 
     def _developer_usage_ids(self, developer: str) -> List[str]:
+        """The usage transactions visible to one developer: the
+        CURRENT W052 transaction-scoped projections whose cited
+        commercial transaction is owned by the developer (the
+        tenant-scope proof -- cross-tenant usage is invisible)."""
         owned = set(self._developer_transaction_ids(developer))
         out = []
-        for account in self._usage.accounts():
-            if account.to_dict().get("transaction_id") in owned:
-                out.append(account.to_dict()["transaction_id"])
+        for projection in self._usage.transactions():
+            if projection.transaction_id in owned:
+                out.append(projection.transaction_id)
         return sorted(out)
 
     # -- envelope / error mapping -------------------------------------------
@@ -3066,11 +3068,15 @@ class DeveloperApiService:
             boundary_reason = DeveloperApiReasonCode.IDEMPOTENCY_CONFLICT
         elif canonical_reason in (
             "transaction-unknown",
-            "account-unknown",
             "policy-unknown",
             "reference-unknown",
             "allocation-unknown",
+            "usage-unknown",
+            "evidence-unknown",
         ):
+            # the CURRENT canonical not-found families (the
+            # W046-era "account-unknown" no longer exists in any
+            # adapted vocabulary)
             boundary_reason = DeveloperApiReasonCode.RESOURCE_UNKNOWN
         else:
             boundary_reason = DeveloperApiReasonCode.INVALID_INPUT
