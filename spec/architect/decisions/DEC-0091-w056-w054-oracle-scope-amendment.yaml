@@ -1,0 +1,56 @@
+# DEC-0091 — W056 successor amendment for the same W046 availability oracle
+# Durable governance decision. Does not change frozen Architecture Version 1.0
+# or Protocol Version 1.0 semantics and does not create a new Work Item.
+decision_id: DEC-0091
+date: "2026-09-06"
+type: "governance-scope-amendment"
+status: accepted
+owner: "Architect"
+
+subject: "Permit the minimum additional W054 assertion-site reconciliation required to restore the already-required 55/55 battery after W046 repair"
+
+facts:
+  work_item: WORK-056
+  authorization: WORK-056-CORE-001
+  parent_decision: DEC-0090
+  prior_delivery_rejected: "0581f7cba05972dd47961de9c7ae821c7153e595"
+  authorized_baseline: "7ae438d46041b228164cc8880be37dc21f972b6f"
+  governing_mainline: "f24a6c847924a59de2c3d61c931e6706923d7d00"
+  regression_observed: "After W056 honestly repairs the inherited W046 developerapi import defect, the W054 battery's single W046 availability fact is represented by three existing assertions: case_03 plus duplicate descriptive pins in case_01 and case_24. DEC-0090 permitted only case_03, leaving the accepted 55/55 battery mechanically red even though the underlying fact is the same repaired availability state."
+  prior_disposition: "The Architect rejected the 0581f7c delivery rather than allowing the worker to broaden DEC-0090 implicitly."
+
+amendment:
+  exact_path: "tools/composition_selftest.py"
+  allowed_change: "Reconcile ONLY the existing W046 availability fact from historical DEFECT to AVAILABLE at all three existing assertion sites that pin that same fact: case_01, case_03, and case_24. Update only the stale wording that asserts the old W046 import-broken/defective state."
+  semantic_limit: "All three edits must be projections of the same single availability fact already probed by AUTHORITY_PROBES; no new probe, coverage, production behavior, dependency, authority, or expected outcome may be introduced."
+  prohibited_changes:
+    - "any composition authority implementation"
+    - "any production networking, connectivity, commercial, identity, session, NetworkPath, routing, transport, payment, usage, allocation, or policy behavior"
+    - "any W048 restoration or substitution"
+    - "any W040 physical evidence or disposition"
+    - "any change to W054 semantic coverage other than the three redundant textual pins of the same W046 availability oracle"
+    - "any change outside tools/composition_selftest.py under this amendment"
+  duration: "one WORK-056 delivery only; expires with the first Architect acceptance or rejection of the next amended WORK-056 delivery"
+
+architecture_constraints:
+  architecture_version: "1.0"
+  protocol_version: "1.0"
+  frozen_semantics_unchanged: true
+  new_work_item_created: false
+  exactly_one_active_implementation_authorization: true
+  active_authorization_remains: WORK-056-CORE-001
+  sole_architect_review_merge_authority: true
+  software_never_promotes_to_physical: true
+
+rationale: "DEC-0090 was intentionally minimal and correctly limited the worker to case_03. The subsequent Architect rejection established that the accepted W054 55/55 requirement cannot be satisfied under that literal scope because the exact same W046 availability fact is independently pinned at case_01 and case_24. This successor amendment does not expand semantic coverage: it removes only two stale duplicate assertions of the same already-authorized oracle state, preserving the existing battery's meaning and allowing the acceptance criterion to become mechanically satisfiable without authorizing any composition or production behavior."
+
+governance_requirements:
+  - "This amendment must be present on the authoritative governance mainline before the worker applies the additional assertion-site edits."
+  - "The next W056 implementation delivery must disclose DEC-0091 and remain otherwise within WORK-056-CORE-001 plus the amended exact path."
+  - "The three W046 availability pins must be the only semantic changes in tools/composition_selftest.py relative to the 0581f7c branch state."
+  - "The Architect must independently verify the full W056 battery and W054 composition battery at the next exact delivery head."
+  - "The composition battery must return to 55/55 and remain byte-identical across repeat runs and required PYTHONHASHSEED values."
+  - "No production or composition authority code may change under this amendment."
+  - "W048 remains accepted-not-restored and W040 physical evidence remains independent."
+
+result: "WORK-056 remains active. The 0581f7c delivery is rejected. A subsequent delivery may implement the exact DEC-0091 assertion-site reconciliation and return to the Architect for adversarial acceptance review."
