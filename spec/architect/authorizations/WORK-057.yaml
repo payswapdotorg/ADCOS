@@ -1,8 +1,9 @@
-# ADCOS Work Item authorization record — WORK-057 active implementation.
-# Issued by DEC-0095 after acceptance of ACR-013.
+# ADCOS Work Item authorization record — WORK-057 accepted delivery.
+# Issued by DEC-0095; reviewed/corrected under DEC-0096; accepted by DEC-0097.
+# The authorization is now closed by sole-Architect acceptance DEC-0097.
 work_item: WORK-057
-status: active
-authorized: true
+status: accepted
+authorized: false
 type: implementation
 authorization_id: "WORK-057-CORE-001"
 authorization_decision: DEC-0095
@@ -11,7 +12,7 @@ scope_amendment_chain: []
 superseded_by: null
 supersession_decision: null
 baseline_sha: 16c066ff4766d362f0edfcb790524b2c0ef44cae
-review_basis: "DEC-0095 activates R6 after sole-Architect acceptance of WORK-056 and ACR-013. WORK-057 is the sole active implementation authorization and must execute only against the accepted Architecture Version 1.0 / Protocol Version 1.0 authorities and the R6 gate-specific dependency overlay."
+review_basis: "DEC-0095 activated WORK-057 as the sole R6 implementation authorization. DEC-0096 required correction of two P0 authority defects. DEC-0097 accepts the corrected exact delivery at 58eced2f7864bd8d6e9cac658574d8c7b0b48965, merged as a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19."
 dependencies:
   - WORK-015
   - WORK-016
@@ -45,7 +46,7 @@ authority_inputs:
   - "WORK-053 EconomicAllocation"
   - "WORK-055 Protocol production conformance"
   - "WORK-056 Developer Connectivity Platform production hardening"
-  - "Existing identity, trust, capability, resource, policy, federation, routing, session, transport and telemetry authorities through their public interfaces only"
+  - "Existing identity, trust, capability, resource, policy, federation, routing, session, transport and telemetry authorities through public interfaces only"
 authority_outputs:
   - "Deterministic, auditable provider/domain onboarding and federation lifecycle using existing authorities and adapter/provider boundaries"
 scope:
@@ -89,21 +90,17 @@ acceptance_criteria:
   - "Required existing conformance/regression batteries remain green or any inherited failure is explicitly proven unchanged from baseline."
   - "Determinism is demonstrated across repeat runs and relevant PYTHONHASHSEED values."
 acceptance_gate:
-  status: "Architect adversarial review required after implementation"
-  required_evidence:
-    - "provider/domain registration lifecycle evidence"
-    - "trust-domain membership and non-transitivity evidence"
-    - "adapter certification and forbidden-import evidence"
-    - "capability/resource provenance and expiry evidence"
-    - "eligibility/policy negative-path evidence"
-    - "commercial/payment reference-only authority-boundary evidence"
-    - "federation accept/suspend/revoke/offboard evidence"
-    - "duplicate/replay/out-of-order/concurrency evidence"
-    - "mixed-version compatibility evidence"
-    - "credential and secret-separation evidence"
-    - "audit/evidence immutability and provenance evidence"
-    - "determinism evidence"
-    - "scope/ancestry proof from baseline 16c066ff4766d362f0edfcb790524b2c0ef44cae"
-    - "proof that no W048 restoration occurred and no W040 physical evidence obligation was altered"
+  status: "accepted-merged"
+  acceptance_decision: DEC-0097
+  accepted_delivery_sha: "58eced2f7864bd8d6e9cac658574d8c7b0b48965"
+  acceptance_merge_sha: "a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19"
+  required_evidence_satisfied:
+    - "W057 corrected adversarial battery 80/80 as worker-local evidence"
+    - "DEC-0096 P0-1 and P0-2 corrections verified by sole-Architect review"
+    - "repeat-run and PYTHONHASHSEED determinism evidence"
+    - "scope and ancestry proof"
+    - "frozen Architecture/Protocol surface preservation"
+    - "no W048 restoration and no W040 alteration"
+    - "PR #23 exact-head guarded merge"
 handoff: docs/WORK-057-handoff.md
 handoff_required: true
