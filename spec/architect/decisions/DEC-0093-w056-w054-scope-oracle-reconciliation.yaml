@@ -1,0 +1,78 @@
+# DEC-0093 — WORK-056/W054 scope-oracle reconciliation
+# Durable governance decision. Does not change frozen Architecture Version 1.0
+# or Protocol Version 1.0 semantics and does not create a new Work Item.
+# This decision authorizes one narrowly bounded correction to the inherited
+# W054 scope/provenance oracle that has become invalid across later authorized
+# Work Items. It does NOT broaden WORK-056 product scope.
+decision_id: DEC-0093
+date: "2026-09-06"
+type: "governance-scope-amendment"
+status: accepted
+owner: "Architect"
+
+subject: "Reconcile W054 case_51 from a live-current-PR scope gate to an immutable accepted-W054-delivery scope proof"
+
+facts:
+  work_item: WORK-056
+  authorization: WORK-056-CORE-001
+  predecessor_decisions:
+    - DEC-0090
+    - DEC-0091
+  w054_authorized_baseline: "461d1482180222f4b63f780d6d9ea1d54c49d643"
+  w054_accepted_delivery: "93ad4130f8308832e432ce3e83988f5a6a9b32e3"
+  w054_accepted_merge: "57963858e5a2b9d11faed94b50f94e058cede0a8"
+  observed_delivery: "cda6c969155864dd410d66e8687026e34b217aef"
+  architect_review: "Round-5 verdict; case_51 CI divergence independently reproduced at the exact delivery head"
+  defect: "tools/composition_selftest.py case_51 currently computes the entire current worktree delta against origin/main and applies the historical W054 _AUTHORIZED_PATHS tuple, so any later authorized Work Item legitimately changing the repository is falsely classified as outside W054 scope."
+  evidence: "At cda6c96 with origin/main=e82a8ee, case_51 is the sole W054 failure and flags the six non-composition files belonging to the authorized WORK-056 delivery; the separate W056 developer battery is 56/56, and the case_51 ancestry sub-check for the W054 baseline passes."
+  governance_boundary: "DEC-0091 authorizes only the three existing W046 availability-pin reconciliations and therefore does not authorize any case_51 change. The worker must not self-expand DEC-0091."
+
+amendment:
+  exact_path: "tools/composition_selftest.py"
+  exact_function: "case_51_pr_delta_scope"
+  allowed_change: "Replace only the current-live-PR scope comparison against origin/main with an immutable historical W054 scope/provenance proof that compares the fixed W054 authorized baseline 461d1482180222f4b63f780d6d9ea1d54c49d643 to the fixed accepted W054 delivery 93ad4130f8308832e432ce3e83988f5a6a9b32e3. The proof must verify that the historical W054 delta contains only _AUTHORIZED_PATHS surfaces, contains no spec/ delta, and that the accepted W054 delivery is on the current HEAD lineage. Preserve the existing W054 authorized path tuple and baseline identity. Update only the case_51 assertion logic, associated local constants/comments, and its result text as strictly necessary to express this historical proof."
+  intent: "Make the W054 test an evergreen regression/provenance oracle for the accepted W054 delivery rather than an accidental gate on unrelated later Work Item deltas."
+  required_invariants:
+    - "W054 baseline identity remains 461d1482180222f4b63f780d6d9ea1d54c49d643."
+    - "W054 accepted delivery identity remains 93ad4130f8308832e432ce3e83988f5a6a9b32e3."
+    - "The historical W054 delta must remain limited to composition/, tools/composition_selftest.py, docs/WORK-054-evidence.md, and docs/WORK-054-handoff.md."
+    - "Any historical W054 spec/ delta remains a failure."
+    - "The accepted W054 delivery must be an ancestor of the tested HEAD."
+    - "No current-PR delta, later Work Item authorization, or generic allowlist may be introduced into the W054 oracle."
+
+prohibited_changes:
+  - "any composition authority implementation"
+  - "any production networking, connectivity, commercial, identity, session, NetworkPath, routing, transport, payment, usage, allocation, or policy behavior"
+  - "any W048 restoration or substitution"
+  - "any W040 physical evidence or disposition"
+  - "any change to _AUTHORIZED_PATHS as a way to admit later Work Items"
+  - "any generic future-Work-Item allowlist, authorization parser, or live governance dependency inside case_51"
+  - "any weakening or removal of the W054 baseline/delivery provenance proof"
+  - "any change outside tools/composition_selftest.py"
+  - "any change to W054 composition coverage other than the exact case_51 oracle correction"
+
+architecture_constraints:
+  architecture_version: "1.0"
+  protocol_version: "1.0"
+  frozen_semantics_unchanged: true
+  new_work_item_created: false
+  exactly_one_active_implementation_authorization: true
+  active_authorization_remains: "WORK-056-CORE-001"
+  sole_architect_review_merge_authority: true
+  software_never_promotes_to_physical: true
+
+duration: "One WORK-056 amended delivery only. After Architect acceptance or rejection of that delivery, the resulting case_51 implementation remains part of the W054 regression suite as the corrected historical oracle; no future Work Item inherits any temporary scope expansion from this decision."
+
+governance_requirements:
+  - "The WORK-056 worker must not apply this amendment until this decision is present on the authoritative governance mainline and the active authorization explicitly records DEC-0093 in its amendment chain."
+  - "The implementation PR must remain on the existing PR #17 lineage and must add only the exact case_51 correction permitted here; no rebase and no force-push."
+  - "The next exact delivery must provide a clean repository delta proving that no spec/ file changed in the implementation PR."
+  - "The full W056 developer battery must be 56/56 at the exact delivery head."
+  - "The full W054 composition battery must be 55/55 at the exact delivery head, including the corrected case_51."
+  - "Repeat-run and PYTHONHASHSEED determinism must remain byte-identical for both batteries."
+  - "The historical W054 scope proof must pass, including baseline-to-delivery scope, no-spec restriction, and accepted-delivery ancestry."
+  - "No new production authority or frozen semantic/wire-schema change may appear."
+
+acceptance_disposition: "WORK-056 remains unaccepted and R6 remains blocked pending the amended exact-head delivery and the Architect's independent acceptance decision."
+
+result: "DEC-0093 authorizes only the correction of the inherited W054 case_51 cross-era scope oracle described above. It does not authorize broadening WORK-056, changing W054 composition semantics, or treating the current WORK-056 PR delta as W054 scope."
