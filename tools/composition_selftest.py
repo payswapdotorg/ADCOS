@@ -391,17 +391,23 @@ def case_01_authority_availability(results: List[Result]) -> None:
         probe for probe in AUTHORITY_PROBES
         if probe.availability == AuthorityAvailability.ABSENT
     ]
-    defect = [
-        probe for probe in AUTHORITY_PROBES
-        if probe.availability == AuthorityAvailability.DEFECT
-    ]
     problems: List[str] = []
     if len(available) < 13:
         problems.append("only %d available authorities" % len(available))
     if not absent or all(p.work_item != "WORK-048" for p in absent):
         problems.append("WORK-048 is not classified ABSENT")
-    if not defect or all(p.work_item != "WORK-046" for p in defect):
-        problems.append("WORK-046 is not classified DEFECT")
+    # the W046 availability oracle, reconciled by DEC-0090: the
+    # boundary repaired by WORK-056 imports cleanly (the same
+    # single oracle pinned in case_03 and case_24)
+    w046 = [
+        probe for probe in AUTHORITY_PROBES
+        if probe.work_item == "WORK-046"
+    ]
+    if not w046 or w046[0].availability != AuthorityAvailability.AVAILABLE:
+        problems.append(
+            "WORK-046 is not classified AVAILABLE (DEC-0090 "
+            "reconciliation)"
+        )
     if problems:
         results.append(fail(name, "; ".join(problems)))
         return
@@ -409,7 +415,7 @@ def case_01_authority_availability(results: List[Result]) -> None:
         ok(
             name,
             "%d available, WORK-048 absent-fail-closed, WORK-046 "
-            "defect-inherited (recorded, disclosed)" % len(available),
+            "repaired-available (DEC-0090 reconciled)" % len(available),
         )
     )
 
@@ -1594,10 +1600,11 @@ def case_24_neg_webhook_not_source_of_truth(results: List[Result]) -> None:
         except UsageError as error:
             if error.reason != expected:
                 problems.append("usage kind reason %r != %r" % (error.reason, expected))
-    # the W046 boundary itself is the disclosed inherited defect
+    # the W046 boundary is repaired and available (the same
+    # single availability oracle, DEC-0090 reconciled)
     probes = [p for p in AUTHORITY_PROBES if p.work_item == "WORK-046"]
-    if probes and probes[0].availability != AuthorityAvailability.DEFECT:
-        problems.append("W046 is not disclosed as defective")
+    if probes and probes[0].availability != AuthorityAvailability.AVAILABLE:
+        problems.append("W046 is not reconciled as available")
     if problems:
         results.append(fail(name, "; ".join(problems)))
         return
@@ -1608,8 +1615,9 @@ def case_24_neg_webhook_not_source_of_truth(results: List[Result]) -> None:
             "only through the explicit exactly-once apply command); "
             "redelivery is an idempotent no-op; payment/provider "
             "observations are refused by the W052 kind table; the W046 "
-            "webhook boundary is the disclosed inherited defect (never "
-            "bypassed)",
+            "webhook boundary is repaired and available (DEC-0090 "
+            "reconciled) and its observations still never bypass the "
+            "fold",
         )
     )
 

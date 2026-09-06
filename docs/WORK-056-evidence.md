@@ -1,14 +1,17 @@
 # WORK-056 — Developer Connectivity Platform Production Hardening (R5) — Evidence Record
 
 Work Item: `WORK-056` — authorization `WORK-056-CORE-001` — decision
-`DEC-0089` (scope amended by `DEC-0090`).
+`DEC-0089` (scope amended by `DEC-0090`, then precisely extended by
+`DEC-0091` for the same W046 availability-oracle pins).
 
 - Authorized baseline (ancestor of the delivery): `7ae438d46041b228164cc8880be37dc21f972b6f`
 - Branch root (the post-governance mainline the Architect cut): `4852a016fce61cecec8078084da1d9bbe81d2681` (the PR #16 guarded merge)
 - Authoritative mainline incorporated by the round-2 delivery: `e0b8e0f39a7adc885e0a8da9180ad06db9bd14a8` (PR #18, DEC-0090)
+- Authoritative mainline incorporated by the round-4 delivery: `e3682732ccb2c2416def38d53f40ff0bffdec59a` (DEC-0091, the WORK-056.yaml re-binding, the durable LLM architect handoff, and the reconciled execution state; landed on main by the Architect, with the operative records also applied to the delivery branch as `3243cb9`/`2240b7f`)
 - Authorized branch: `work-056-developer-platform-hardening`
 - Round-2 delivery: the round-1 commit `4ac8107811546e14f9a29a50139000e1a0231752`, then a plain merge of the DEC-0090 mainline, then the round-2 correction commit directly on top (no rebase of published history, no force; the exact head SHA is recorded in the PR body, the PR head, and the worker worklog — the battery's scope/ancestry case verifies the lineage mechanically on every run, so the claim does not depend on this document).
 - Round-3 correction: one plain commit directly on top of the round-2 head `e5af68b58ad78435e2220a181bdb51e4f7529855` (the review-5124542587 disposition; no rebase, no force). The exact new head SHA is recorded in the PR head and the worker delivery comment.
+- Round-4 correction: the Architect governance commits `3243cb9`/`2240b7f` on top of the rejected round-3 head `0581f7cba05972dd47961de9c7ae821c7153e595`, then a plain merge of the DEC-0091 mainline `e368273` (no rebase, no force), then the round-4 oracle-reconciliation commit directly on top (the review-5124685782 / DEC-0091 disposition). The exact new head SHA is recorded in the PR head and the worker delivery comment.
 
 Everything in this record is reproducible from a fresh checkout
 of the delivery head with a single command per section (Python
@@ -16,7 +19,195 @@ of the delivery head with a single command per section (Python
 
 ---
 
+# ROUND 4 — the DEC-0091 residual-oracle reconciliation (review 5124685782)
+
+The round-3 delivery (head `0581f7cba05972dd47961de9c7ae821c7153e595`)
+received **CHANGES REQUIRED — DO NOT MERGE** (formal review
+5124685782). The Architect adjudicated the implementation
+materially corrected — the 1.x contract restored, the W052/W053
+bindings correct, the delta confined to the authorized seven paths,
+`spec/architect/` untouched, W056 56/56 deterministic — and
+identified the sole acceptance blocker as the honestly reported W054
+residual: **53/55** with exactly `case_01` and `case_24` red while
+DEC-0090 authorized only `case_03`. The prescribed remedy — a narrow
+successor amendment authorizing exactly the residual W046
+availability-oracle pins — was issued as **DEC-0091** (presented on
+the governance mainline; the drafted PR #19 was closed because it
+was cut from the older main snapshot, its operative content having
+entered main directly). Round 4 executes exactly the frozen target:
+incorporate the DEC-0091 mainline, apply only the three-pin
+reconciliation, re-prove everything, return at a new exact head.
+
+## R4.1 The correction (lineage + byte-exact)
+
+Two actions, in the order the frozen target prescribes:
+
+1. **Incorporate the DEC-0091 governance mainline without rewriting
+   history.** The Architect landed DEC-0091 on main and applied the
+   operative records to the delivery branch (`3243cb9` binds
+   `WORK-056.yaml` to DEC-0091; `2240b7f` carries the DEC-0091
+   record). The round-4 delivery then merges the governance
+   mainline `e3682732ccb2c2416def38d53f40ff0bffdec59a` into the
+   branch as a **plain merge** (no rebase, no force). After the
+   merge the branch literally contains the governance mainline as
+   an ancestor, and its `spec/` surface is **byte-identical to
+   main**: `git diff e368273 HEAD -- spec/` is empty (the identical
+   WORK-056.yaml and DEC-0091-record changes made on both sides
+   resolve to the same bytes).
+2. **Apply exactly the three-pin reconciliation.** At the round-3
+   head `case_03` already carries the DEC-0090 reconciliation
+   (retained byte-identical — **not re-applied or altered**, per the
+   DEC-0091 record). The round-4 change replaces exactly the
+   `case_01_authority_availability` and
+   `case_24_neg_webhook_not_source_of_truth` function bodies with
+   their round-2 bytes (head `e5af68b58ad78435e2220a181bdb51e4f7529855`)
+   — the exact two-site DEFECT→AVAILABLE reconciliation DEC-0091
+   authorizes, spliced by a mechanical function-boundary script
+   that asserts the old bodies pin DEFECT and the new bodies pin
+   AVAILABLE before writing. The module docstring and the
+   `_FORBIDDEN_IMPORT_ROOTS` comment remain **byte-identical to
+   main** (the disclosed stale wording DEC-0091 explicitly
+   preserves).
+
+Reproducible proofs (all from a fresh checkout of the round-4 head;
+`<main>` = `e3682732ccb2c2416def38d53f40ff0bffdec59a`,
+`<r3>` = `0581f7cba05972dd47961de9c7ae821c7153e595`,
+`<r2>` = `e5af68b58ad78435e2220a181bdb51e4f7529855`):
+
+```
+# the branch contains the governance mainline (merge, not rebase)
+git merge-base --is-ancestor <main> HEAD && echo merged-mainline
+git merge-base --is-ancestor <r3> HEAD && echo round3-ancestry-preserved
+
+# spec/ surface identical to the governance mainline
+git diff <main> HEAD -- spec/ | wc -l            # -> 0
+
+# the whole W046 oracle surface vs main: exactly 6 hunks in the
+# three authorized case functions (+37/-21 = DEC-0090 case_03 26
+# lines + DEC-0091 case_01/case_24 32 lines)
+git diff <main> HEAD -- tools/composition_selftest.py | grep -c '^@@'   # -> 6
+
+# each of the two round-4 functions is byte-identical to round 2
+# (function-boundary comparison, e.g. via difflib on the extracted
+# def-blocks case_01..case_02 and case_24..case_25)
+
+# the module docstring and the _FORBIDDEN_IMPORT_ROOTS comment are
+# byte-identical to main (cmp of the head/tail slices of the file)
+```
+
+The developerapi implementation, the W052/W053 re-binding, and the
+rest of the authorized seven-path delta are **retained
+byte-identical** from the round-3 head: the only production/battery
+bytes that change in round 4 are inside the two case functions in
+`tools/composition_selftest.py`.
+
+## R4.2 Fresh verification at the round-4 head (honest)
+
+| Battery | Round-4 result at the exact head | Classification |
+|---|---|---|
+| `tools/developerapi_selftest.py` | **PASS 56/56** — including case 41 ("PR delta shape: 7 file(s) confined to the authorized W056 scope; ancestry from the authorized baseline proven") and case 27/46 (the restored 1.x contract) | the W056 acceptance battery — green |
+| `tools/composition_selftest.py` | **PASS 55/55** — the genuine full fail-fast chain green end-to-end, including case_01 (the authority-table AVAILABLE pin), case_03 (the DEC-0090 reconciliation), and case_24 (the webhook negative-proof AVAILABLE pin) | the W054 acceptance battery — **genuinely green, no red accepted** |
+| determinism (both batteries) | two consecutive full runs + `PYTHONHASHSEED=0/1/7919` — all outputs **byte-identical** (`cmp`) for both batteries | deterministic evidence |
+| commercial / usage / allocation selftests | 38/38, 49/49, 60/60 — unchanged | accepted sibling batteries remain green |
+| `spec_check.py` | 10/16 blocking + 2 advisory + 1 SKIP — **byte-identical** to the same run at the governance mainline `e368273` itself (run in an isolated detached worktree) | inherited governance-state signature of the current mainline; no new failure from the delivery |
+| conformance selftest | 2/63 — exactly `case_62_w055_pr_delta_scope` and `case_63_frozen_authorities_untouched` red, the **same failing case set** as at the governance mainline `e368273` itself; no new failure | inherited signature; the case-62 file list differs only in the expected per-tree delta enumeration |
+
+The round-3 honest residual is resolved **by authorization, not by
+scope expansion**: the same two pin sites round 3 left red are now
+the two sites DEC-0091 names. No other case in the composition
+battery changed state (the other 53 cases were green before and
+after; `case_03` was and remains green under DEC-0090).
+
+## R4.3 Scope and ancestry (round 4)
+
+- The cumulative implementation delta measured against the
+  authoritative governance mainline `e368273` is confined to the
+  amended authorized scope: `developerapi/errors.py`,
+  `developerapi/gateway.py`, `developerapi/schema.py`,
+  `tools/developerapi_selftest.py`,
+  `tools/composition_selftest.py` (exactly the three W046
+  availability-oracle pins: 6 hunks, +37/−21, all inside the
+  case_01/case_03/case_24 functions), and the worker's own
+  evidence/handoff records — **7 files, nothing else**.
+- `spec/architect/` is **byte-identical to main** on the delivery
+  branch: the DEC-0091 records and the amended `WORK-056.yaml`
+  arrive ONLY through the Architect's own commits and the plain
+  merge of the Architect-merged mainline. The implementation commit
+  touches no file outside `tools/composition_selftest.py` and the
+  two worker evidence/handoff records.
+- Frozen surfaces unchanged from the authorized baseline
+  `7ae438d`: `spec/architecture.md`, `spec/architecture-lock.md`,
+  `spec/schemas/protocol.json`, `spec/mission.md`,
+  `spec/work-items.md`, `spec/dependency-graph.md` all byte-identical;
+  `composition/` (the composition authority) unchanged vs both the
+  baseline and main; no W048 restoration; no W040 touch.
+- Ancestry: `7ae438d` (authorized baseline), `4852a016` (branch
+  root), `e0b8e0f` (DEC-0090 mainline), `0581f7c` (the rejected
+  round-3 head — **preserved, not rewritten**), `2240b7f` (the
+  Architect's branch governance tip), and `e368273` (the DEC-0091
+  governance mainline) are all ancestors of the round-4 head; the
+  push to the authorized branch is a fast-forward. The battery's
+  scope/ancestry case (case 41) verifies the lineage mechanically
+  on every run.
+- No rebase of published history and no force: the governance
+  commits and the merge arrive as-is; the round-4 correction is one
+  plain commit on top; PR #17 remains open and unmerged.
+
+## R4.4 DEC-0091 disclosure and governance requirements
+
+- This delivery operates under `WORK-056-CORE-001` with the scope
+  amended by **DEC-0090** (case_03, applied at round 3 and retained
+  byte-identical) and precisely extended by **DEC-0091** (the two
+  residual pin sites case_01 and case_24, applied here exactly as
+  the amendment's `allowed_change` prescribes: the classification
+  pin and its ok message in case_01; the webhook-case pin and its ok
+  message in case_24).
+- The amendment was present on the authoritative governance
+  mainline **before** the assertion-site edits were applied (the
+  merge precedes the correction commit in the delivery chain).
+- The delivery lands as a new exact head on the same PR #17
+  lineage (the architect governance commits + a plain merge + one
+  plain commit; no rebase, no force) and carries the full scope and
+  ancestry proofs (§R4.1, §R4.3).
+- The W054 composition battery returns to a **genuine 55/55** with
+  no other changes introduced under the amendment; the W056
+  battery remains 56/56; both are byte-deterministic across repeat
+  runs and `PYTHONHASHSEED=0/1/7919`.
+- No production or composition-authority code changed under this
+  amendment (`composition/` and every production package are
+  byte-identical to main); W048 remains accepted-not-restored and
+  W040 physical evidence remains independent.
+- The module docstring and the `_FORBIDDEN_IMPORT_ROOTS` comment
+  remain the disclosed stale wording (byte-identical to main), as
+  both DEC-0091 records explicitly require.
+
+## R4.5 Honest boundaries (round 4)
+
+- All W056 evidence remains SOFTWARE; W040's PHYSICAL obligations
+  (EVID-007/EVID-008) remain open; software never promotes to
+  physical.
+- The value-level adaptation boundaries of §R2.1 (retired `ceiling`
+  rounding, narrowed exponent range, the conflict classification's
+  boundary-local reason) remain disclosed and unchanged.
+- No CI success is claimed for the specification-consistency job
+  (the inherited signature is byte-identical to the governance
+  mainline itself); the W050 exact-head battery is the CI-verified
+  ancestry leg.
+- `WAITING_FOR_ARCHITECT` at the round-4 head; not self-accepted,
+  not self-merged; the guarded merge remains Architect-only. R5
+  close and R6 activation remain Architect decisions after
+  adversarial review.
+
+---
+
 # ROUND 3 — the exact-scope correction (review 5124542587)
+
+> **Superseded by ROUND 4 where ROUND 4 says so.** ROUND 3's honest
+> residual red (53/55, exactly case_01/case_24) was the state
+> DEC-0090's literal scope produced; DEC-0091 now authorizes exactly
+> those two pin sites, and the authoritative current result is the
+> genuine 55/55 recorded in §R4.2. The round-3 record is retained
+> below as the historical record of that delivery.
 
 The round-2 delivery (head `e5af68b58ad78435e2220a181bdb51e4f7529855`)
 received **CHANGES REQUIRED** (formal review 5124542587, with two

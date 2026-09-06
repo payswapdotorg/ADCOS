@@ -2,22 +2,80 @@
 
 ## Status
 
-**ROUND-3 DELIVERED — WAITING FOR ARCHITECT**
+**ROUND-4 DELIVERED — WAITING FOR ARCHITECT**
 
 Work Item: `WORK-056` — Developer Connectivity Platform Production Hardening  
-Authorization: `WORK-056-CORE-001` (scope amended by `DEC-0090`)  
-Decision: `DEC-0089` / amendment `DEC-0090`  
+Authorization: `WORK-056-CORE-001` (scope amended by `DEC-0090`, then precisely extended by `DEC-0091`)  
+Decision: `DEC-0089` / amendments `DEC-0090`, `DEC-0091`  
 Authorized baseline: `7ae438d46041b228164cc8880be37dc21f972b6f`  
 Implementation branch: `work-056-developer-platform-hardening` (rooted at the
 post-governance mainline `4852a016fce61cecec8078084da1d9bbe81d2681`, the PR #16
 guarded merge, itself descending from the authorized baseline; the delivery
 incorporates the authoritative DEC-0090 mainline
-`e0b8e0f39a7adc885e0a8da9180ad06db9bd14a8` — PR #18 — by a plain merge; the
-round-3 correction is one plain commit on top of the round-2 head
-`e5af68b58ad78435e2220a181bdb51e4f7529855`, the review-5124542587
-disposition — no rebase, no force)
+`e0b8e0f39a7adc885e0a8da9180ad06db9bd14a8` — PR #18 — by the round-2 plain merge;
+the round-3 correction is one plain commit on the round-2 head
+`e5af68b58ad78435e2220a181bdb51e4f7529855` (rejected at review 5124685782 as
+`0581f7cba05972dd47961de9c7ae821c7153e595`); the Architect then applied the
+DEC-0091 operative records to the branch (`3243cb9`/`2240b7f`) and landed
+DEC-0091 on the governance mainline `e368273`; the round-4 delivery merges
+that mainline as a plain merge and applies the DEC-0091 oracle reconciliation
+as one plain commit on top — no rebase, no force)
+
+## Round-4 correction record (DEC-0091)
+
+The round-3 delivery received **CHANGES REQUIRED — DO NOT MERGE** (formal
+review 5124685782): the implementation was adjudicated materially corrected,
+and the sole acceptance blocker was the honest W054 residual 53/55
+(`case_01`/`case_24` red under the case_03-only DEC-0090 scope). The Architect
+prescribed and issued the narrow successor amendment **DEC-0091** — present
+on the governance mainline `e368273` (PR #19, the drafted presentation, was
+closed because it was cut from the older main snapshot; its operative content
+entered main directly). The round-4 delivery executes exactly the frozen
+target:
+
+1. **the governance mainline carrying DEC-0091 is incorporated without
+   rewriting history** — the Architect's branch governance commits
+   (`3243cb9`/`2240b7f`) plus a plain merge of `e368273`; after the merge the
+   branch's `spec/` surface is byte-identical to main
+   (`git diff e368273 HEAD -- spec/` is empty) and the mainline is literally
+   an ancestor of the delivery;
+2. **exactly the three W046 availability-oracle pins change in
+   `tools/composition_selftest.py`** — `case_03` retains the DEC-0090
+   reconciliation byte-identical (not re-applied); `case_01` and `case_24`
+   carry the DEC-0091 DEFECT→AVAILABLE reconciliation, byte-identical to the
+   round-2 function bodies (the classification pin + its ok message in
+   case_01; the webhook-case pin + its ok message in case_24); the module
+   docstring and the `_FORBIDDEN_IMPORT_ROOTS` comment remain the disclosed
+   stale wording, byte-identical to main;
+3. **the genuine result is proven at the exact head** — W056 developerapi
+   battery **56/56**; W054 composition battery **55/55** (the full fail-fast
+   chain green, no red accepted); both byte-identical across consecutive
+   repeat runs and `PYTHONHASHSEED=0/1/7919`; siblings 38/38, 49/49, 60/60;
+   `spec_check` byte-identical to the governance mainline `e368273` itself;
+   conformance 2/63 with the same failing case set as the mainline — no new
+   failure (evidence record §R4.2);
+4. **scope and ancestry are proven** — the cumulative delta from the
+   governance mainline `e368273` is the 7 authorized files (developerapi ×3,
+   tools ×2, the worker evidence/handoff records) and nothing else; the
+   `spec/architect/` delta is zero; the composition/ authority and every
+   frozen surface are byte-identical to the authorized baseline; `7ae438d`,
+   `0581f7c`, `2240b7f`, and `e368273` are all ancestors (the rejected
+   round-3 head preserved, not rewritten); the push is a fast-forward; the
+   W056 battery's own case 41 verifies scope + ancestry mechanically
+   (evidence record §R4.1/§R4.3).
+
+DEC-0091 expires with the first Architect acceptance or rejection of this
+delivery. The worker does not self-accept, does not merge, and does not
+start any follow-on work: the guarded merge, the R5 close, and the R6
+activation remain Architect-only actions after adversarial review at the
+new exact head.
 
 ## Round-3 correction record (review 5124542587)
+
+> Superseded by the round-4 correction record above where it says so:
+> DEC-0091 now authorizes exactly the two residual pin sites this round
+> left honestly red, and the authoritative current result is the genuine
+> 55/55 in the evidence record §R4.2.
 
 The round-2 delivery received **CHANGES REQUIRED** (formal review
 5124542587 with two inline findings). The 1.x compatibility correction was
