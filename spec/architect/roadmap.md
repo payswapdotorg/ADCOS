@@ -1,12 +1,12 @@
 # ADCOS Authoritative Roadmap
 
-**FROZEN — Roadmap Version 1.4**
+**FROZEN — Roadmap Version 1.5**
 
-`spec/architect/roadmap.yaml` is the sole canonical program roadmap. This document is its human-readable projection. Neither this file nor the roadmap grants implementation authority. The roadmap version is 1.4 under DEC-0095/ACR-013; Architecture Version 1.0 and Protocol Version 1.0 are unchanged.
+`spec/architect/roadmap.yaml` is the sole canonical program roadmap. This document is its human-readable projection. Neither this file nor the roadmap grants implementation authority. The roadmap version is 1.5 under DEC-0097; Architecture Version 1.0 and Protocol Version 1.0 are unchanged.
 
 ## Current repository state
 
-R3 is complete. R5 is complete under DEC-0094, and R6 is active under WORK-057 / `WORK-057-CORE-001`. W055 was accepted by the sole Architect and merged as PR #15 (`7801549c`). W056 was accepted by the sole Architect and merged as `b11cf44` after delivery head `c2b2c59`. R6 governance was accepted under DEC-0095 and merged as PR #22. W040 remains an independent R4 physical track in-review.
+R3 is complete. R5 is complete under DEC-0094. R6 is now complete under DEC-0097: WORK-057 was accepted at `58eced2` and guarded-merged as PR #23 (`a08ce85`). Its sole implementation authorization `WORK-057-CORE-001` is closed. R7 is the next unlocked program gate but is not activated. W040 remains an independent R4 physical track in-review.
 
 **R0 is complete**: the canonical mainline restoration was accepted and merged as PR #8 on the exact frozen main `3bdfb6d` (merge `a3391e8`, tree `1d16c24`, byte-identical to the historical restoration tree `7fb47bb`). W048 remains explicitly accepted-but-not-restored.
 
@@ -18,7 +18,7 @@ R3 is complete. R5 is complete under DEC-0094, and R6 is active under WORK-057 /
 
 **R5 is complete**: DEC-0094 accepted WORK-056 — Developer Connectivity Platform Production Hardening — after the 56/56 developer battery, 55/55 W054 composition battery including the real CI `case_51`, repeat/determinism evidence, scope/ancestry proof, and architecture-preservation review.
 
-**R6 is active**: DEC-0095 accepts ACR-013 and activates WORK-057 — Provider Onboarding & Federation — as the sole active implementation authorization `WORK-057-CORE-001`. The post-snapshot gate-specific governance layer is now authoritative, so routine roadmap sequencing does not require user prompting.
+**R6 is complete**: DEC-0097 accepted the corrected WORK-057 delivery. Round 1 had two P0 blockers under DEC-0096: adapter certification authority bypass and proposer self-acceptance of federation. Round 2 corrected both, added targeted adversarial coverage through case 80, and was accepted at exact head `58eced2` and merged as `a08ce85`. The cross-network PR CI path remained `action_required`, so worker-local test evidence was not represented as CI evidence.
 
 ## Frozen execution roadmap
 
@@ -46,15 +46,15 @@ R3 remains bounded to verification. It did not modify frozen protocol semantics 
 
 ### R4 — Physical connectivity validation — PARALLEL AFTER R3
 
-Continue W040 and the open physical-evidence obligations on real hardware/network environments. R4 is independently collected, classified, and accepted. Software evidence never closes this track. R4 does **not** block R5 or R6.
+Continue W040 and the open physical-evidence obligations on real hardware/network environments. R4 is independently collected, classified, and accepted. Software evidence never closes this track. R4 does **not** block downstream software sequencing.
 
 ### R5 — Developer Connectivity Platform — COMPLETE
 
 Use accepted W046 as the foundation for a production developer surface. WORK-056 hardened the existing `developerapi/` boundary so external applications can request and manage connectivity through stable APIs and webhooks without adopting an ADCOS UI or acquiring direct authority over canonical identity, session, NetworkPath, routing, transport, usage, allocation, eligibility, marketplace, or payment state.
 
-W056 was accepted under DEC-0094 and merged as `b11cf44`. Its successor gate R6 is now active.
+W056 was accepted under DEC-0094 and merged as `b11cf44`. Its successor gate R6 was activated under DEC-0095 and is now complete.
 
-### R6 — Provider onboarding and federation — ACTIVE
+### R6 — Provider onboarding and federation — COMPLETE
 
 Enable independently operated networks, ISPs, carriers, enterprises, satellite systems, hotspots, mesh operators, and infrastructure owners to expose connectivity through ADCOS while retaining infrastructure authority.
 
@@ -62,15 +62,17 @@ WORK-057 governs the lifecycle:
 
 `registration → operator/domain identity binding → scoped credential issuance → adapter declaration/certification → capability/resource declaration → service/commercial profile binding → eligibility/policy evaluation → federation proposal → explicit acceptance → active federated membership → suspension/revocation/offboarding`
 
-R6 is deliberately an integration/orchestration layer. It consumes existing identity, trust, capability, resource, federation, policy, routing, session, transport, telemetry, and commercial authorities and must not create substitutes for them.
+R6 is deliberately an integration/orchestration layer. It consumes existing identity, trust, capability, resource, federation, policy, routing, session, transport, telemetry, and commercial authorities and does not create substitutes for them.
 
-Provider SDKs and access-technology specifics remain behind provider/adapter boundaries. Federation is scoped, explicit, revocable, and non-transitive. Capability and resource evidence retains provenance and validity. Commercial and settlement configuration binds to existing commercial authorities rather than creating payment authority.
+The sole implementation authorization `WORK-057-CORE-001` is closed by DEC-0097. Adapter certification admission is bound to the existing adapter authority, including content-derived identity and evidence/attestation validation. Federation acceptance is bound to the relationship peer domain's registered operator and peer key proof; proposer self-acceptance fails closed. Federation scope narrowing remains owned by WORK-015.
 
-`WORK-057-CORE-001` is the only active implementation authorization. WORK-048 remains accepted-not-restored and cannot be restored implicitly. W040 remains an independent physical evidence track.
+The W056/W057 cross-era oracle condition remains handled as an Architect-owned historical scope matter and was not used to mutate accepted W056 history during W057 correction. WORK-048 remains accepted-not-restored and W040 remains an independent physical evidence track.
 
 ### R7 — Universal connectivity commerce — AFTER R6
 
 Normalize heterogeneous connectivity resources into programmable offers selected by intent, policy, evidence, availability, geography, quality, and price. ADCOS coordinates the transaction and lifecycle; it does not need to own the underlying network.
+
+R7 is **unlocked but not activated**. Its implementation requires a fresh gate-specific Work Item, dependency overlay, authorization, and sole-Architect acceptance under the post-snapshot governance model.
 
 ### R8 — Resilience, mobility and scale — AFTER R7
 
@@ -84,7 +86,7 @@ Add new access technologies strictly through the adapter boundary without changi
 
 `R0 → R1 → R2 → R3 → R4/R5 → R6 → R7 → R8 → R9`
 
-R4 remains a parallel physical-evidence track. R5 is complete. R6 is the active software governance/implementation gate. Exactly one implementation authorization is active at any time.
+R4 remains a parallel physical-evidence track. R5 is complete. R6 is complete. No implementation authorization is active. R7 is the next unlocked software gate but is not activated until its own gate-specific authorization is issued.
 
 Routine sequencing of these gates is owned by the sole Architect. User prompting is not a governance dependency. The repository-local governance records, not this document or conversation history, determine implementation permission.
 
