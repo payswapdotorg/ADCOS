@@ -1,0 +1,59 @@
+# DEC-0096 — WORK-057 Round 1 adversarial review
+# Durable sole-Architect review decision. Does not create a new authorization.
+decision_id: DEC-0096
+date: "2026-09-06"
+type: correction
+status: CHANGES_REQUIRED
+owner: "Architect"
+work_item: WORK-057
+authorization: WORK-057-CORE-001
+reviewed_delivery_sha: 6d64678d9e5b862f2d139cb991d3662c7f12a244
+review_basis: "WORK-057-CORE-001, DEC-0095, Architecture Version 1.0, Protocol Version 1.0, R6 dependency overlay, live PR #23, implementation diff, existing WORK-015 federation authority, and the WORK-057 delivery evidence."
+
+decision: CHANGES_REQUIRED
+
+findings:
+  - id: W057-R1-P0-001
+    severity: P0
+    title: "Adapter certification authority bypass"
+    result: "ProviderOnboardingService accepts an arbitrary certification mapping and only checks that certification_id has a sha256: prefix plus required fields/provider-node equality; it does not recompute and verify the content-derived certification identity or enforce the adapters authority's attestation/evidence requirements."
+    evidence: "adapters/certification.py defines certification as evidence requiring validated AdapterDescriptor, attestation, and non-empty evidence; federation/onboarding_service.py accepts caller-supplied mappings without reconstructing that authority's validated artifact."
+  - id: W057-R1-P0-002
+    severity: P0
+    title: "Federation proposal can be self-accepted"
+    result: "accept_federation authenticates the operator associated with the proposing onboarding application and then calls FederationStore.accept_relationship for that same relationship. There is no independent peer-operator authorization binding."
+    evidence: "The service authentication path binds commands to projection.application.operator_node_id; case_44 accepts and narrows the proposal using actor=_NODE_A, the same operator that proposed it."
+
+blockers:
+  - "A forged certification document can enter the onboarding state as certified without passing the adapters certification authority."
+  - "A proposing domain can establish its own federation relationship without an independently authorized peer-domain acceptance."
+
+required_corrections:
+  - "Make certification admission consume only a tamper-evidently validated adapters-authority artifact, including recomputed content-derived identity and attestation/evidence requirements; do not weaken the adapter boundary to solve this."
+  - "Make federation acceptance explicitly peer-authorized: the accepting principal must be bound to the peer domain of the relationship, and proposer self-acceptance must fail closed. Preserve scope narrowing and existing WORK-015 authority ownership."
+  - "Add adversarial tests for forged certification id, mutated certification contents, missing evidence, false attestation, proposer self-acceptance, wrong peer operator, and positive independent peer acceptance."
+  - "Rerun the complete W057 73-case battery, relevant federation/adapter/regression batteries, determinism checks, and scope/ancestry proof at the corrected delivery head."
+
+accepted_scope:
+  - "The existing WORK-057 objective and lifecycle remain authorized."
+  - "The existing R6 dependency overlay remains authoritative."
+  - "Architecture Version 1.0 and Protocol Version 1.0 remain unchanged."
+  - "W048 remains accepted-not-restored."
+  - "W040 remains independent physical evidence."
+
+rejected_scope:
+  - "No new core identity, federation, routing, session, transport, payment, usage, allocation, settlement, topology, or policy authority."
+  - "No protocol message type or frozen wire semantic change."
+  - "No CI workflow expansion under the current authorization."
+  - "No successor Work Item or new authorization."
+
+accepted_evidence:
+  - "PR #23 exists and is the reviewed WORK-057 Round 1 delivery."
+  - "Worker-local W057 battery claim of 73/73 is evidence only and does not override the two P0 authority defects."
+  - "Existing WORK-015 scope-narrowing semantics remain correct and are not a blocker."
+
+required_follow_up: "Worker may correct the same WORK-057 delivery under WORK-057-CORE-001 and return a new delivery head for sole-Architect adversarial review."
+downstream_effect:
+  - "WORK-057 remains the sole active implementation authorization."
+  - "R6 remains ACTIVE."
+  - "R7 remains locked until WORK-057 is accepted."
