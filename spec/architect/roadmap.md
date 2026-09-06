@@ -2,19 +2,21 @@
 
 **FROZEN — Roadmap Version 1.3**
 
-`spec/architect/roadmap.yaml` is the sole canonical program roadmap. This document is its human-readable projection. Neither this file nor the roadmap grants implementation authority. The roadmap version remains 1.3; DEC-0088 is a lifecycle transition only — Architecture Version 1.0 and Protocol Version 1.0 are unchanged.
+`spec/architect/roadmap.yaml` is the sole canonical program roadmap. This document is its human-readable projection. Neither this file nor the roadmap grants implementation authority. The roadmap version remains 1.3; DEC-0089 is a lifecycle transition only — Architecture Version 1.0 and Protocol Version 1.0 are unchanged.
 
 ## Current repository state
 
-R2 is complete and R3 is active under WORK-055. W054 was accepted by the sole Architect and merged as PR #13 (`57963858e5a2b9d11faed94b50f94e058cede0a8`). R3 is authorized from that exact post-W054 baseline by DEC-0088.
+R3 is complete and R5 is active under WORK-056. W055 was accepted by the sole Architect and merged as PR #15 (`7801549c`). The R5 developer-platform hardening track is authorized from that exact post-W055 baseline by DEC-0089. W040 remains an independent R4 physical track in-review.
 
 **R0 is complete**: the canonical mainline restoration was accepted and merged as PR #8 on the exact frozen main `3bdfb6d` (merge `a3391e8`, tree `1d16c24`, byte-identical to the historical restoration tree `7fb47bb`). W048 remains explicitly accepted-but-not-restored.
 
 **R1 is complete**: the durable governance projections were reconciled by DEC-0084 and merged as PR #9 (`13bfbda`).
 
-**R2 is complete**: WORK-054 proved the complete connectivity-commercial chain and the seven mandatory negative proofs. The strict chain remains `BLOCKED_MISSING_AUTHORITY` at W048 because W048 is accepted-not-restored; no W048 implementation was recreated or substituted.
+**R2 is complete**: WORK-054 proved the complete connectivity-commercial chain and seven mandatory negative proofs. The strict chain remains `BLOCKED_MISSING_AUTHORITY` at W048 because W048 is accepted-not-restored; no W048 implementation was recreated or substituted.
 
-**R3 is active**: DEC-0088 activates WORK-055 — Protocol Production Conformance — with the sole active implementation authorization `WORK-055-CORE-001`.
+**R3 is complete**: WORK-055 established the production conformance layer over the WORK-032 foundation. Its final delivery `0fc86aa` was accepted after adversarial review and merged as `7801549c`. In-repo conformance evidence does not constitute independent external interoperability evidence.
+
+**R5 is active**: DEC-0089 activates WORK-056 — Developer Connectivity Platform Production Hardening — with the sole active implementation authorization `WORK-056-CORE-001`.
 
 ## Frozen execution roadmap
 
@@ -34,19 +36,21 @@ WORK-054 proved the complete connectivity-commercial chain:
 
 The seven mandatory negative proofs passed. The containment edge correctly failed closed because W048 is absent from current mainline; downstream stages were not entered and no production-composition claim was made.
 
-### R3 — Protocol production conformance — ACTIVE
+### R3 — Protocol production conformance — COMPLETE
 
-R3 is the **sole active sequential implementation gate** after R2. WORK-055 must complete the production conformance layer required before declaring wire compatibility: canonicalization and canonical encoding profiles, golden vectors, signature coverage, version negotiation and downgrade resistance, unknown-field/extension behavior, replay/idempotency, schema evolution and migration compatibility, compatibility vectors, deterministic digest stability, and strict evidence/authority separation.
+WORK-055 completed the production conformance layer required before declaring wire compatibility: canonicalization and canonical encoding profiles, golden vectors, signature coverage, version negotiation and downgrade resistance, unknown-field/extension behavior, replay/idempotency, schema evolution and migration compatibility, compatibility vectors, deterministic digest stability, and strict evidence/authority separation.
 
-R3 builds on the existing WORK-032 conformance foundation. It is a verifier/evidence layer, not a new protocol authority. Frozen protocol semantics and wire schemas cannot be changed under WORK-055; any such requirement is blocked pending the ACR/change-control process.
+R3 remains bounded to verification. It did not modify frozen protocol semantics or wire schemas. External interoperability is still a separate evidence obligation.
 
 ### R4 — Physical connectivity validation — PARALLEL AFTER R3
 
 Continue W040 and the open physical-evidence obligations on real hardware/network environments. R4 is independently collected, classified, and accepted. Software evidence never closes this track. R4 does **not** block R5 or the later R6 gate.
 
-### R5 — Developer Connectivity Platform — PARALLEL AFTER R3
+### R5 — Developer Connectivity Platform — ACTIVE
 
-Use accepted W046 as the foundation for a production developer surface. External applications request connectivity through stable APIs and webhooks without adopting an ADCOS UI or knowing provider, access technology, route implementation, or payment-rail internals. R5 begins only after R3; R4 completion is not required.
+Use accepted W046 as the foundation for a production developer surface. WORK-056 hardens the existing `developerapi/` boundary so external applications can request and manage connectivity through stable APIs and webhooks without adopting an ADCOS UI or acquiring direct authority over canonical identity, session, NetworkPath, routing, transport, usage, allocation, eligibility, marketplace, or payment state.
+
+Required W056 hardening covers versioned API compatibility, idempotent mutations, scoped application credentials, sandbox/production isolation, canonical reason-code preservation, signed webhook integrity and replay/order handling, stable retrieval/pagination where exposed, SDK/server contract equivalence, rate/resource protection, and anti-authority proofs. R4 completion is not required. Only `WORK-056-CORE-001` is the active implementation authorization.
 
 ### R6 — Provider onboarding and federation — AFTER R5
 
@@ -68,7 +72,7 @@ Add new access technologies strictly through the adapter boundary without changi
 
 `R0 → R1 → R2 → R3 → R4/R5 → R6 → R7 → R8 → R9`
 
-R4 and R5 are parallel tracks after R3. R6 waits for R5, not R4.
+R4 and R5 are parallel tracks after R3. The one-active-implementation-authorization rule means W056 is the current software authorization while W040 remains an independent physical review track. R6 waits for accepted R5, not R4.
 
 ## The Stripe-of-connectivity exit criterion
 
