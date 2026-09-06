@@ -9,8 +9,8 @@ last_updated: "2026-09-06"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: bf5a842d308943c74f4d40218b196456ae9b9b51
-  main_sha_semantics: "Current governance mainline tip carrying the durable LLM handoff plus DEC-0091 and its WORK-056 authorization reconciliation. The W056 implementation branch remains unmerged and separate."
+  main_sha: 698f3b96e387d3720f9db0a9c5a7076f9376ef04
+  main_sha_semantics: "Current governance mainline tip carrying the durable LLM handoff, execution-state reconciliation, DEC-0091, and its WORK-056 authorization reconciliation. The W056 implementation branch remains unmerged and separate."
   lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
 versions:
