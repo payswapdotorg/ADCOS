@@ -1,9 +1,7 @@
 # ADCOS execution state — persisted by the Architect.
 # This snapshot is a current-state projection, not historical delivery authority.
 # Current source of truth: spec/architect/roadmap.yaml + accepted decisions + ledger.
-# Reconciled after DEC-0093 on 2026-09-06: the inherited W054 case_51
-# cross-era scope oracle is separately amended for the next WORK-056 delivery.
-# DEC-0091 remains the historical three-pin W046 availability amendment.
+# Reconciled after sole-Architect acceptance DEC-0094 on 2026-09-06.
 
 schema_version: 1
 package: "persistent-architect"
@@ -11,8 +9,8 @@ last_updated: "2026-09-06"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: bd9e9fa079dde7148454b319dac43651794e1655
-  main_sha_semantics: "Current governance snapshot containing DEC-0093 and the explicit WORK-056 amendment chain. The WORK-056 implementation branch remains unmerged and separate; any delivery must incorporate this governance mainline before acceptance."
+  main_sha: b11cf44db922811d2518c05685aee14127243264
+  main_sha_semantics: "Current authoritative mainline after sole-Architect acceptance of WORK-056. The WORK-056 delivery was reviewed at c2b2c59 and merged as b11cf44 under DEC-0094."
   lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
 versions:
@@ -22,36 +20,33 @@ versions:
   protocol_version_authority: "spec/schemas/protocol.json"
 
 execution:
-  mode: implementing
-  active_work_item: WORK-056
-  active_authorization: WORK-056-CORE-001
-  halted_reason: "Round-5 delivery cda6c96 is not accepted. The full W056 battery is reported 56/56, but W054 case_51 fails under the GitHub CI current-PR condition because the inherited W054 scope oracle diffs the entire current worktree against origin/main. DEC-0093 now authorizes only the exact case_51 historical-oracle correction described there. The worker must incorporate the DEC-0093 governance mainline and return a new exact delivery head; no other implementation change is authorized."
+  mode: planning
+  active_work_item: null
+  active_authorization: null
+  halted_reason: "R5/W056 is accepted and merged under DEC-0094. No implementation authorization is currently active. R6 is unlocked by the satisfied roadmap dependency but remains UNAUTHORIZED until the sole Architect registers an exact R6 Work Item and issues a separate implementation authorization."
   next_required_decisions:
-    - "WORK-056 delivery must retain exact implementation ancestry from authorized baseline 7ae438d46041b228164cc8880be37dc21f972b6f."
-    - "The next delivery must incorporate current governance mainline bd9e9fa079dde7148454b319dac43651794e1655 without rewriting history."
-    - "DEC-0091 remains limited to the three existing W046 availability-oracle pins; DEC-0093 separately authorizes only case_51_pr_delta_scope's historical W054 scope/provenance correction."
-    - "No current-PR delta allowlist, generic future-Work-Item authorization logic, or weakening of W054 provenance may be introduced."
-    - "Architect adversarial review is required before WORK-056 can transition to accepted-merged and before R6 can activate."
-    - "The Architect must independently verify the full W056 developer battery and W054 composition battery at the new exact delivery head."
+    - "Register and define the R6 Provider Onboarding & Federation Work Item from the frozen roadmap and existing architecture."
+    - "Adversarially define exact R6 scope, dependencies, invariants, acceptance evidence, and negative proofs before implementation authorization."
+    - "Issue exactly one new implementation authorization for R6 only after its Work Item contract is durable and approved by the sole Architect."
     - "R4/W040 remains independently in-review and unaccepted; EVID-007 and EVID-008 remain open, physical, and W040-owned."
-    - "Any frozen protocol semantic change discovered as necessary is blocked pending the ACR/change-control process."
+    - "W048 remains accepted-not-restored and must not be restored under R6 without explicit separate authority."
+    - "Any frozen protocol semantic change remains blocked pending the ACR/change-control process."
 
 reconciliation:
   r0_status: "R0 complete under accepted PR #8."
   r1_status: "R1 complete under DEC-0084."
   r2_status: "R2 complete under DEC-0088; WORK-054 accepted and merged as PR #13, merge 57963858e5a2b9d11faed94b50f94e058cede0a8."
   r3_status: "R3 complete under DEC-0089; WORK-055 accepted and merged as PR #15, merge 7801549c0ed50082a4fa7c20c71e50dc7bde87f9."
-  r5_status: "R5 active under DEC-0089 with WORK-056 and the single authorization WORK-056-CORE-001. Round-5 delivery cda6c96 is unaccepted; DEC-0093 is now the active narrow case_51 oracle amendment for the next delivery."
+  r5_status: "R5 complete under DEC-0094; WORK-056 accepted at c2b2c59 and merged as b11cf44."
   r4_status: "R4 remains parallel-after-R3 with W040 independently in-review and unaccepted."
-  authorization_state: "Exactly one implementation authorization exists and is active: WORK-056-CORE-001. WORK-055-CORE-001 is superseded. The W056 amendment chain is DEC-0090, DEC-0091, DEC-0093."
+  r6_status: "R6 unlocked by the acceptance of R5, but not activated; no R6 implementation authorization exists."
+  authorization_state: "No implementation authorization is active. WORK-056-CORE-001 is closed by DEC-0094."
 
 decisions:
+  latest_work_item_acceptance: DEC-0094
   latest_w056_scope_amendment: DEC-0093
-  prior_w056_scope_amendments:
-    - DEC-0090
-    - DEC-0091
-  latest_w056_rejected_delivery: 0581f7cba05972dd47961de9c7ae821c7153e595
-  latest_w056_delivery_reviewed_but_not_accepted: cda6c969155864dd410d66e8687026e34b217aef
+  latest_w056_delivery: c2b2c59fae4749b610b721b217e18cfa9b4aab25
+  latest_w056_acceptance_merge: b11cf44db922811d2518c05685aee14127243264
   latest_w056_required_green_batteries: "developerapi 56/56; composition 55/55"
 
 in_review:
@@ -65,12 +60,6 @@ in_review:
       - pilot/
 
 open_prs:
-  - pr: 17
-    head: "work-056-developer-platform-hardening"
-    disposition: "W056 active; Round-5 delivery cda6c96 unaccepted. Worker is WAITING_FOR_ARCHITECT and may apply only DEC-0093's exact case_51 oracle correction before returning a new exact delivery head."
-  - pr: 20
-    head: "governance/dec-0092-dec-0091-identity-disambiguation"
-    disposition: "historical/stale governance PR; its identity cleanup and execution vehicle were superseded or partially landed by subsequent governance commits. No worker action is authorized from this PR without fresh Architect disposition."
   - pr: 45
     head: "work-035-device-evidence"
     disposition: "historical/superseded physical-evidence chain; requires formal repository disposition"
@@ -103,14 +92,14 @@ accepted_acrs:
 
 accepted_work_items:
   first: "WORK-001"
-  last: "WORK-055"
-  active: "WORK-056"
-  note: "WORK-001..WORK-054 remain accepted according to durable history. WORK-055 is accepted-merged by DEC-0089 with merge 7801549c. WORK-056 remains active for R5 and is not accepted/merged. WORK-040 remains in-review and unaccepted."
+  last: "WORK-056"
+  active: null
+  note: "WORK-001..WORK-055 remain accepted according to durable history. WORK-056 is accepted-merged by DEC-0094 at c2b2c59 / b11cf44. WORK-040 remains in-review and unaccepted. No R6 Work Item has yet been registered or authorized."
 
 mainline_integrity:
-  status: RECONCILED_PENDING_W056_DELIVERY
-  reconciliation_decision: DEC-0093
-  current_execution_decision: DEC-0093
+  status: RECONCILED_R5_COMPLETE_R6_UNLOCKED
+  reconciliation_decision: DEC-0094
+  current_execution_decision: DEC-0094
   required_recovery_source: "Repository Git history / accepted delivery heads / durable decisions; no chat or external artifact may be used as the source for reconstruction."
   recovery_rule: "Recover exact accepted delivery artifacts and CI/evidence surfaces; do not import unrelated ancestry; do not alter frozen architecture semantics."
 
