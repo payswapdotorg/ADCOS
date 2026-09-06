@@ -115,6 +115,9 @@ class OnboardingReason:
     CREDENTIAL_REVOKED_CODE = "credential-revoked"
     CREDENTIAL_EXPIRED = "credential-expired"
     CREDENTIAL_SCOPE = "credential-scope"
+    CERTIFICATION_INVALID = "certification-invalid"
+    PEER_NOT_AUTHORIZED = "peer-not-authorized"
+    PEER_KEY_PROOF_INVALID = "peer-key-proof-invalid"
     SEQUENCE_CONFLICT = "sequence-conflict"
     SEQUENCE_GAP = "sequence-gap"
     REPLAY_STALE = "replay-stale"
@@ -165,6 +168,9 @@ class OnboardingReason:
             cls.CREDENTIAL_REVOKED_CODE,
             cls.CREDENTIAL_EXPIRED,
             cls.CREDENTIAL_SCOPE,
+            cls.CERTIFICATION_INVALID,
+            cls.PEER_NOT_AUTHORIZED,
+            cls.PEER_KEY_PROOF_INVALID,
             cls.SEQUENCE_CONFLICT,
             cls.SEQUENCE_GAP,
             cls.REPLAY_STALE,
@@ -346,6 +352,12 @@ class OnboardingCredentialScope:
 #: is an identity claim and needs no credential; bind-identity and the
 #: bootstrap credential issuance authenticate with the operator key
 #: proof instead -- proof of possession, never a stored secret).
+#: ACCEPT_FEDERATION is deliberately NOT in this map (DEC-0096
+#: W057-R1-P0-002): acceptance is authorized by the PEER domain's
+#: operator (actor binding to the relationship's peer domain plus the
+#: peer key proof), never by the proposing application's own
+#: operator or scoped credentials -- the proposer cannot
+#: self-accept.
 COMMAND_REQUIRED_SCOPE: Dict[str, str] = {
     OnboardingCommandKind.ISSUE_CREDENTIAL: OnboardingCredentialScope.CREDENTIAL_ISSUE,
     OnboardingCommandKind.REVOKE_CREDENTIAL: OnboardingCredentialScope.CREDENTIAL_ISSUE,
@@ -356,7 +368,6 @@ COMMAND_REQUIRED_SCOPE: Dict[str, str] = {
     OnboardingCommandKind.BIND_COMMERCIAL_PROFILE: OnboardingCredentialScope.PROFILE_DECLARE,
     OnboardingCommandKind.EVALUATE_ELIGIBILITY: OnboardingCredentialScope.FEDERATION_PROPOSE,
     OnboardingCommandKind.PROPOSE_FEDERATION: OnboardingCredentialScope.FEDERATION_PROPOSE,
-    OnboardingCommandKind.ACCEPT_FEDERATION: OnboardingCredentialScope.FEDERATION_MANAGE,
     OnboardingCommandKind.ACTIVATE_MEMBERSHIP: OnboardingCredentialScope.FEDERATION_MANAGE,
     OnboardingCommandKind.SUSPEND_MEMBERSHIP: OnboardingCredentialScope.FEDERATION_MANAGE,
     OnboardingCommandKind.RESUME_MEMBERSHIP: OnboardingCredentialScope.FEDERATION_MANAGE,
@@ -627,6 +638,29 @@ def derive_key_proof_digest(key_material: bytes, application_id: str) -> str:
         )
     proof = hmac.new(bytes(key_material), application_id.encode("utf-8"), hashlib.sha256)
     return "sha256:" + hashlib.sha256(proof.hexdigest().encode("ascii")).hexdigest()
+
+
+def peer_key_proof_fingerprint(key_material: bytes) -> str:
+    """Proof-of-possession fingerprint for a PEER operator's key
+    material (DEC-0096 W057-R1-P0-002): the bare 64-hex sha256
+    digest, shape-matched to the WORK-015 domain record's
+    ``identity_public_key`` member (the domain-id-deriving identity
+    material, opaque to the federation authority itself).
+
+    The peer-acceptance contract: the accepting principal presents
+    key material whose fingerprint is constant-time-compared
+    against the RELATIONSHIP's peer domain's registered
+    ``identity_public_key``. The material itself is never stored or
+    journaled; only the registered public fingerprint exists in the
+    composed authorities. This creates no new identity authority --
+    it reuses the WORK-015 domain identity material as the
+    proof-of-possession anchor, exactly as the WORK-004 operator
+    key proof reuses the application identity as its anchor."""
+    if not isinstance(key_material, (bytes, bytearray)) or not key_material:
+        raise OnboardingError(
+            OnboardingReason.INVALID_INPUT, "peer key material must be non-empty bytes"
+        )
+    return hashlib.sha256(bytes(key_material)).hexdigest()
 
 
 # ----------------------------------------------------------------------
@@ -1487,6 +1521,7 @@ __all__ = [
     "derive_application_id",
     "derive_command_id",
     "derive_key_proof_digest",
+    "peer_key_proof_fingerprint",
     "derive_onboarding_credential_secret",
     "onboarding_transition_is_legal",
     "secret_digest",

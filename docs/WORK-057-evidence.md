@@ -2,10 +2,108 @@
 
 **Work Item:** WORK-057 — Provider Onboarding & Federation
 **Authorization:** `WORK-057-CORE-001` (DEC-0095) — the only active implementation authorization
+**Round-1 delivery:** `6d64678d9e5b862f2d139cb991d3662c7f12a244` — reviewed by **DEC-0096**:
+**CHANGES_REQUIRED** (two P0 blockers, same Work Item corrected — no successor authorization)
 **Delivery branch:** `work-057-provider-onboarding-federation` (created from main `12ae8f7`)
 **Pinned baseline:** `16c066ff4766d362f0edfcb790524b2c0ef44cae`
 **Governed baseline of the branch point:** `12ae8f7159aa7ddbc82b7e6aa6a3dc5d61ae676a`
 **Architecture Version:** 1.0 (unchanged) — **Protocol Version:** 1.0 (unchanged)
+
+---
+
+## §E.0 Round-2 correction (DEC-0096 — the two P0 blockers)
+
+The round-1 delivery was adversarially reviewed against the live repository
+(DEC-0096, `spec/architect/decisions/DEC-0096-w057-round1-review.yaml`). Both P0
+blockers are corrected **in the same Work Item** under the same authorization;
+the scope list, the frozen surfaces, and every other authority boundary are
+unchanged.
+
+### P0-1 — Adapter certification admission is authority-verified
+
+**Defect (W057-R1-P0-001):** `federation/onboarding_service.py` accepted a
+caller-supplied certification mapping with shape checks only (required members,
+verdict vocabulary, `sha256:` id prefix, operator equality) — a forged
+`verdict: certified` document could enter the onboarding state without passing
+the adapters certification authority.
+
+**Correction:**
+
+- `adapters/certification.py` (the authority) now owns the admission
+  verification: `verify_certification_document(data, *, evaluation_instant)`
+  requires the record's OWN claimed non-empty `certification_id` (the
+  omit-and-rederive path is closed at the admission boundary), reconstructs the
+  record through the authority's own fail-closed construction — which
+  RECOMPUTES the content-derived identity (forged ids and any mutated content
+  fail) and validates grammar/vocabulary/instants/tokens/secrets — enforces the
+  authority's admission requirements (verdict `certified` + reason `certified`,
+  `attested` true, non-empty `evidence_refs`), and evaluates the validity
+  window at the admission instant. `make_certification_admission_verifier()` is
+  the composition-root seam (plain data in, plain result out).
+- `federation/onboarding_service.py` (the consumer) now REQUIRES the injected
+  verifier at construction AND at recovery (no verifier → construction error;
+  there is no shape-check fallback — the fallback was the bypass). The check is
+  deterministic and runs in BOTH execute and fold mode, so the fold
+  **re-verifies every journaled certification**: a certification mutated in the
+  journal is journal-tamper, not state. On success the onboarding state records
+  exactly the VERIFIED document. The frozen import boundary is untouched (the
+  federation package still never imports the adapter boundary; DEC-0096's
+  "do not weaken the adapter boundary" holds — the authority owns the logic,
+  the consumer owns only the seam).
+
+### P0-2 — Federation acceptance is peer-domain-authorized
+
+**Defect (W057-R1-P0-002):** `accept_federation` authenticated the command
+against the proposing application's own operator identity; the round-1
+battery's explicit-acceptance test performed proposal and acceptance with the
+same operator — the proposer could self-accept its own federation relationship.
+
+**Correction:** acceptance is now authorized by the **peer domain**:
+
+- the accepting `actor` must be the RELATIONSHIP's peer domain's registered
+  operator (`FederationDomain.operator_node_id`, the WORK-015 authority's own
+  binding) and must NOT be the proposing application's operator — proposer
+  self-acceptance and wrong-peer acceptance fail closed (deterministic,
+  enforced in the acceptance handler, **re-derived by the recovery fold**: a
+  journal-forged acceptance is journal-tamper);
+- the accepting principal presents the **peer operator key proof** (material
+  at execute time only, never stored or journaled) whose fingerprint is
+  constant-time compared against the peer domain's REGISTERED
+  `identity_public_key` — the WORK-015 domain-id-deriving identity material
+  (proof of possession anchored in the existing authority; no new identity
+  authority). The proposing application's operator identity, scoped
+  credentials, and key proof are the WRONG authority for acceptance;
+  `ACCEPT_FEDERATION` is removed from `COMMAND_REQUIRED_SCOPE` (peer-authorized
+  commands carry no application-operator scope);
+- WORK-015 ownership is preserved: acceptance still flows through
+  `FederationStore.accept_relationship` (scope may only narrow);
+  no federation vocabulary value was added.
+
+### The mandated negative test set (battery cases 74–80)
+
+| DEC-0096 requirement | Cases |
+|---|---|
+| forged certification id | 74(a) |
+| mutated certification contents | 74(b) |
+| missing evidence (self-consistent forgery) | 75(b) |
+| false attestation (self-consistent forgery) | 75(a) |
+| admission validity window | 75(c) |
+| verifier required (construction + recovery) | 76 |
+| journaled certification tamper → fold re-verification | 77 |
+| proposer self-acceptance (wrong authority / with peer material) | 78(a)/(b) |
+| wrong-peer operator (unregistered / unrelated peer domain) | 79(a)/(b) |
+| genuine independent peer acceptance (positive) | 44, 78(c), golden step 12 |
+| journal-forged peer authorization → fold re-derivation | 80 |
+
+The corrected lifecycle, exercised by every golden-path case:
+
+```text
+registration → operator/domain identity binding → scoped credential issuance →
+adapter declaration/certification (authority-verified admission) →
+capability/resource declaration → service/commercial profile binding →
+eligibility/policy evaluation → federation proposal → PEER-AUTHORIZED explicit
+acceptance → active federated membership → suspension/revocation/offboarding
+```
 
 ---
 
@@ -17,21 +115,21 @@ layer** over the existing authorities — exactly the smallest coherent set requ
 
 ```text
 registration → operator/domain identity binding → scoped credential issuance →
-adapter declaration/certification → capability/resource declaration →
-service/commercial profile binding → eligibility/policy evaluation →
-federation proposal → explicit acceptance → active federated membership →
-suspension/revocation/offboarding
+adapter declaration/certification (authority-verified admission) →
+capability/resource declaration → service/commercial profile binding →
+eligibility/policy evaluation → federation proposal → PEER-AUTHORIZED explicit
+acceptance → active federated membership → suspension/revocation/offboarding
 ```
 
 New files (the complete delivery delta — see §E.8):
 
 | Path | Role |
 |---|---|
-| `federation/onboarding_model.py` | Domain model: 14-state lifecycle, 18 command kinds, 5 least-authority credential scopes, 46 reason codes; application/credential/declaration/profile-binding/journal records; content-derived ids; LOCK-023 secret rejection; LOCK-001/002/003/017 token rejection |
+| `federation/onboarding_model.py` | Domain model: 14-state lifecycle, 18 command kinds, 5 least-authority credential scopes, 49 reason codes; application/credential/declaration/profile-binding/journal records; content-derived ids; operator + PEER key-proof fingerprints; LOCK-023 secret rejection; LOCK-001/002/003/017 token rejection |
 | `federation/onboarding_store.py` | Append-only command journal (memory + file-backed, single-writer canonical JSON lines, torn-write fail closed) with per-application sequence watermarks, idempotent duplicate detection, key-conflict fail-closed; the fold-state projection with deterministic snapshot |
-| `federation/onboarding_service.py` | The lifecycle executor: authentication (key proof-of-possession + scoped credentials), journal-first fold, `load()` construction-is-recovery with journal-tamper verification, all 18 command handlers composing the federation authority |
-| `adapters/certification.py` | The adapters authority's certification record + fail-closed certification evaluation (attestation + evidence required; tamper-evident content-derived ids; LOCK-023; vendor isolation) |
-| `tools/onboarding_selftest.py` | The WORK-057 acceptance battery: 73 deterministic adversarial cases |
+| `federation/onboarding_service.py` | The lifecycle executor: authentication (operator key proof-of-possession + scoped credentials for application-operator commands; peer-domain authorization + peer key proof for acceptance), authority-verified certification admission (injected verifier, fold-re-verified), journal-first fold, `load()` construction-is-recovery with journal-tamper verification, all 18 command handlers composing the federation authority |
+| `adapters/certification.py` | The adapters authority's certification record + fail-closed certification evaluation (attestation + evidence required; tamper-evident content-derived ids; LOCK-023; vendor isolation) **and the authority-owned admission verifier** (`verify_certification_document` / `make_certification_admission_verifier` — recomputed identity, attestation/evidence/verdict requirements, validity window) |
+| `tools/onboarding_selftest.py` | The WORK-057 acceptance battery: 80 deterministic adversarial cases (73 round-1 + the 7 DEC-0096 round-2 cases) |
 | `docs/WORK-057-evidence.md` | This evidence manifest |
 | `docs/WORK-057-handoff.md` | Updated with the delivery record |
 
@@ -92,9 +190,9 @@ of this delivery (see §E.3). The layering that achieves it:
 $ python3 tools/onboarding_selftest.py
 ADCOS provider onboarding self-test (WORK-057)
 ========================================================================
-... 73 cases ...
+... 80 cases ...
 ------------------------------------------------------------------------
-Result: PASS (73/73 cases)
+Result: PASS (80/80 cases)
 ```
 
 - Two consecutive runs: **byte-identical** (`cmp`).
@@ -107,7 +205,9 @@ Result: PASS (73/73 cases)
   closed (case 64).
 
 **Sibling regression (all at this exact working tree, vs. the same batteries at
-the clean branch point `12ae8f7`):**
+the clean branch point `12ae8f7`, and additionally verified byte-identical to
+the round-1 reviewed head `6d64678` after path normalization — the round-2
+correction introduces zero sibling deltas):**
 
 | Battery | At `12ae8f7` (clean) | At this delivery | Verdict |
 |---|---|---|---|
@@ -154,6 +254,8 @@ is the worker-local execution with full determinism proofs above.
 | mixed-version behavior | 65–66 |
 | credential and secret separation | 08–16 |
 | auditability and evidence provenance | 02, 18, 49, 61–63 (journal + snapshot discipline) |
+| DEC-0096 P0-1 corrections (forged/mutated/missing-evidence/false-attestation/validity/verifier-required/journal-tamper) | 74–77 (+17–19, 21) |
+| DEC-0096 P0-2 corrections (self-acceptance/wrong-peer/genuine peer/journal-forged acceptance) | 78–80 (+44, golden step 12) |
 | onboarding cannot create connectivity/…/settlement state | 22, 52–53 (+ §E.2 structural proof) |
 | deterministic repeat-run evidence | 67–68 (+ battery-level `cmp`, §E.3) |
 | regression compatibility with accepted W054/W055/W056 surfaces | §E.3 table |
@@ -237,7 +339,7 @@ advances by plain commits only (no rebase, no force).
 ## §E.9 Exact verification commands
 
 ```bash
-python3 tools/onboarding_selftest.py            # PASS 73/73
+python3 tools/onboarding_selftest.py            # PASS 80/80
 python3 tools/onboarding_selftest.py > r1.txt 2>&1
 python3 tools/onboarding_selftest.py > r2.txt 2>&1
 cmp r1.txt r2.txt                               # byte-identical

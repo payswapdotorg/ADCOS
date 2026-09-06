@@ -3,18 +3,31 @@
 
 Deterministic, offline verification of the WORK-057 provider
 onboarding & federation integration layer against the frozen
-authorization ``WORK-057-CORE-001`` (DEC-0095), the R6 dependency
-overlay, and the exact implementation prompt
+authorization ``WORK-057-CORE-001`` (DEC-0095), the DEC-0096 round-1
+adversarial-review corrections, the R6 dependency overlay, and the
+exact implementation prompt
 (``docs/WORK-057-IMPLEMENTATION-PROMPT.md``):
 
 - the complete deterministic lifecycle: registration -> identity
-  binding -> scoped credentials -> adapter certification ->
-  declarations -> commercial profile binding -> eligibility/policy
-  gate -> federation proposal -> explicit acceptance -> active
+  binding -> scoped credentials -> adapter certification
+  (authority-verified admission) -> declarations -> commercial
+  profile binding -> eligibility/policy gate -> federation
+  proposal -> PEER-AUTHORIZED explicit acceptance -> active
   membership -> suspension/revocation/offboarding;
 - least-authority credentials (fail closed on wrong scope, wrong
   secret, revocation, expiry; secrets never journaled or stored);
-- adapter certification evidence with fail-closed negatives;
+- adapter certification admission through the injected
+  adapters-authority verifier: forged ids, mutated contents,
+  self-consistent forgeries without attestation/evidence, and
+  out-of-window records all fail closed; the verifier is REQUIRED at
+  construction and recovery; the fold re-verifies journaled
+  certifications (journal tamper);
+- federation acceptance is authorized by the PEER domain's
+  registered operator with the peer key proof: proposer
+  self-acceptance (with or without the peer material), wrong-peer
+  operators, and journal-forged acceptances all fail closed;
+  genuine independent peer acceptance succeeds (scope may only
+  narrow);
 - declaration provenance/validity/expiry/withdrawal (claims, never
   reachability truth);
 - the eligibility/policy gate (tamper-evident WORK-010 ALLOW +
@@ -59,6 +72,7 @@ from adapters.certification import (  # noqa: E402
     AdapterCertification,
     CertificationCode,
     certify_adapter_descriptor,
+    make_certification_admission_verifier,
 )
 from adapters.model import (  # noqa: E402
     AdapterDescriptor,
@@ -79,12 +93,15 @@ from federation.onboarding_model import (  # noqa: E402
     OnboardingCommandKind,
     OnboardingCommandRecord,
     OnboardingCredentialScope,
+    OnboardingError,
     OnboardingReason,
     OnboardingState,
     derive_application_id,
+    derive_command_id,
     derive_key_proof_digest,
     derive_onboarding_credential_secret,
     onboarding_transition_is_legal,
+    peer_key_proof_fingerprint,
 )
 from federation.onboarding_service import (  # noqa: E402
     CommandAuth,
@@ -116,6 +133,14 @@ _KEY_C = "33" * 32
 _PLATFORM_PROFILE = (1, 0)
 _ISSUANCE_KEY = b"onboarding-issuance-key-2026-09"
 _KEY_MATERIAL = b"operator-identity-key-material-alpha"
+#: the PEER operator's key proof material (presented at acceptance
+#: time only; its fingerprint is the peer domain's registered
+#: identity_public_key -- DEC-0096 W057-R1-P0-002)
+_PEER_KEY_MATERIAL = b"platform-peer-operator-key-material-beta"
+#: the composition-root-injected adapters-authority admission
+#: verifier (DEC-0096 W057-R1-P0-001) -- every service construction,
+#: including recovery, injects it; there is no shape-check fallback
+_VERIFIER = make_certification_admission_verifier()
 _VF = "2026-09-01T00:00:00Z"
 _VU = "2027-09-01T00:00:00Z"
 _NOW = "2026-09-07T12:00:00Z"
@@ -215,9 +240,14 @@ def _descriptor(attested: bool = True, suffix: str = "c") -> AdapterDescriptor:
 
 
 def _platform_setup(federation_store: FederationStore) -> str:
+    # The peer (platform) domain is registered with its operator's
+    # key-proof FINGERPRINT as the domain's identity_public_key (the
+    # WORK-015 domain-id-deriving identity material): the peer operator
+    # later proves possession of the material at acceptance time
+    # (constant-time fingerprint compare; DEC-0096 W057-R1-P0-002).
     peer = federation_store.create_domain(
         "platform-operator-reference",
-        _KEY_B,
+        peer_key_proof_fingerprint(_PEER_KEY_MATERIAL),
         operator_node_id=_NODE_B,
         display_name="Platform",
         created_at="2026-09-06T00:00:00Z",
@@ -473,15 +503,12 @@ def _lifecycle(
         ),
         12: lambda: service.accept_federation(
             application_id=application_id,
+            peer_key_material=_PEER_KEY_MATERIAL,
             command_key="accept-1",
-            actor=_NODE_A,
+            actor=_NODE_B,
             issued_at=_STEP_T[12],
             effective_at=_STEP_T[12],
             policy_decision=policy_decision,
-            auth=CommandAuth(
-                credential_reference=_reference(service, application_id, "onboarding.federation.manage"),
-                credential_secret=secrets.get("onboarding.federation.manage", ""),
-            ),
         ),
         13: lambda: service.activate_membership(
             application_id=application_id,
@@ -522,6 +549,7 @@ def _golden(
         federation_store=federation_store,
         platform_profile=platform_profile or _PLATFORM_PROFILE,
         issuance_key=_ISSUANCE_KEY,
+        certification_verifier=_VERIFIER,
     )
     peer_domain_id = _platform_setup(federation_store)
     context = _lifecycle(service, start=0, stop=stop)
@@ -570,6 +598,7 @@ def _load_tampered(journal_document: Dict[str, Any]) -> Tuple[bool, str]:
             federation_store=federation_store,
             platform_profile=_PLATFORM_PROFILE,
             issuance_key=_ISSUANCE_KEY,
+            certification_verifier=_VERIFIER,
         )
         return False, ""
     except Exception as error:  # OnboardingError expected
@@ -1794,12 +1823,15 @@ def case_43_peer_identity_mismatch(results: List[Tuple[str, bool, str]]) -> None
 
 def case_44_explicit_acceptance_and_narrowing(results: List[Tuple[str, bool, str]]) -> None:
     golden, _ = _golden(stop=12)
+    # The accepting principal is the PEER domain's registered operator
+    # presenting the peer key proof (DEC-0096 W057-R1-P0-002): the
+    # proposing application's operator can never self-accept.
     widen = golden.service.execute_command(
         application_id=golden.application_id, command_kind=OnboardingCommandKind.ACCEPT_FEDERATION,
-        command_key="accept-widen", actor=_NODE_A,
+        command_key="accept-widen", actor=_NODE_B,
         issued_at=_STEP_T[12], effective_at=_STEP_T[12],
         payload={"scopes": [Scope.SERVICE_INVOKE], "policy_decision": policy_decision_document(_policy_decision())},
-        auth=golden.auth("onboarding.federation.manage"),
+        auth=CommandAuth(key_material=_PEER_KEY_MATERIAL),
     )
     if widen.ok or widen.code != OnboardingReason.INVALID_INPUT:
         results.append(_fail("case_44_explicit_acceptance_and_narrowing",
@@ -1807,10 +1839,10 @@ def case_44_explicit_acceptance_and_narrowing(results: List[Tuple[str, bool, str
         return
     narrow = golden.service.accept_federation(
         application_id=golden.application_id, scopes=(Scope.CAPABILITY_READ,),
-        command_key="accept-narrow", actor=_NODE_A,
+        peer_key_material=_PEER_KEY_MATERIAL,
+        command_key="accept-narrow", actor=_NODE_B,
         issued_at=_STEP_T[12], effective_at=_STEP_T[12],
         policy_decision=_policy_decision(),
-        auth=golden.auth("onboarding.federation.manage"),
     )
     if not narrow.ok:
         results.append(_fail("case_44_explicit_acceptance_and_narrowing",
@@ -1837,7 +1869,8 @@ def case_44_explicit_acceptance_and_narrowing(results: List[Tuple[str, bool, str
         results.append(_fail("case_44_explicit_acceptance_and_narrowing", "grants not narrowed"))
         return
     results.append(_ok("case_44_explicit_acceptance_and_narrowing",
-                      "acceptance is explicit, may only narrow, and grants follow the narrowed envelope"))
+                      "peer-authorized acceptance is explicit, may only narrow, and grants "
+                      "follow the narrowed envelope"))
 
 
 def case_45_scope_envelope_least_authority(results: List[Tuple[str, bool, str]]) -> None:
@@ -2077,6 +2110,7 @@ def case_51_membership_non_transitive(results: List[Tuple[str, bool, str]]) -> N
     service = ProviderOnboardingService(
         journal=journal, federation_store=federation_store,
         platform_profile=_PLATFORM_PROFILE, issuance_key=_ISSUANCE_KEY,
+        certification_verifier=_VERIFIER,
     )
     _platform_setup(federation_store)
     context_alpha = _lifecycle(service, start=0, stop=_STEP_COUNT)
@@ -2173,13 +2207,14 @@ def case_51_membership_non_transitive(results: List[Tuple[str, bool, str]]) -> N
         results.append(_fail("case_51_membership_non_transitive",
                              "beta proposal failed: %r" % beta_proposal.code))
         return
-    service.accept_federation(
-        application_id=beta_id, command_key="beta-accept", actor=_NODE_C,
-        issued_at=_STEP_T[12], effective_at=_STEP_T[12], policy_decision=beta_pd,
-        auth=CommandAuth(
-            credential_reference=[k for k in sorted(service.application(beta_id).credentials)
-                                  if service.application(beta_id).credentials[k].scope == "onboarding.federation.manage"][0],
-            credential_secret=beta_manage.secret))
+    beta_accept = service.accept_federation(
+        application_id=beta_id, command_key="beta-accept", actor=_NODE_B,
+        peer_key_material=_PEER_KEY_MATERIAL,
+        issued_at=_STEP_T[12], effective_at=_STEP_T[12], policy_decision=beta_pd)
+    if not beta_accept.ok:
+        results.append(_fail("case_51_membership_non_transitive",
+                             "beta acceptance (peer-authorized) failed: %r" % beta_accept.code))
+        return
     beta_activation = service.activate_membership(
         application_id=beta_id, command_key="beta-activate", actor=_NODE_C,
         issued_at=_STEP_T[13], effective_at=_STEP_T[13],
@@ -2215,10 +2250,12 @@ def case_52_no_second_authorities(results: List[Tuple[str, bool, str]]) -> None:
         results.append(_fail("case_52_no_second_authorities", "capability registry changed"))
         return
     # the service structurally holds ONLY the composing authorities
+    # (plus the composition-root-injected adapters-authority admission
+    # verifier -- a callable seam, not an authority the service owns)
     attributes = set(vars(golden.service))
     expected_attributes = {
         "_journal", "_federation_store", "_platform_profile", "_issuance_key",
-        "_state", "_lock",
+        "_certification_verifier", "_state", "_lock",
     }
     if attributes != expected_attributes:
         results.append(_fail("case_52_no_second_authorities",
@@ -2255,7 +2292,7 @@ def case_53_no_connectivity_state_created(results: List[Tuple[str, bool, str]]) 
     attributes = set(vars(golden.service))
     expected_attributes = {
         "_journal", "_federation_store", "_platform_profile", "_issuance_key",
-        "_state", "_lock",
+        "_certification_verifier", "_state", "_lock",
     }
     if attributes != expected_attributes:
         results.append(_fail("case_53_no_connectivity_state_created",
@@ -2422,6 +2459,7 @@ def case_59_journal_prefix_fold(results: List[Tuple[str, bool, str]]) -> None:
     recovered = ProviderOnboardingService.load(
         journal=journal, federation_store=federation_store,
         platform_profile=_PLATFORM_PROFILE, issuance_key=_ISSUANCE_KEY,
+        certification_verifier=_VERIFIER,
     )
     if recovered.state_digest() != prefix_golden.state_digest():
         results.append(_fail("case_59_journal_prefix_fold", "prefix fold mismatch"))
@@ -2461,6 +2499,7 @@ def case_60_interrupted_onboarding_recovery(results: List[Tuple[str, bool, str]]
     recovered = ProviderOnboardingService.load(
         journal=journal, federation_store=federation_store,
         platform_profile=_PLATFORM_PROFILE, issuance_key=_ISSUANCE_KEY,
+        certification_verifier=_VERIFIER,
     )
     if recovered.state_digest() != golden.state_digest():
         results.append(_fail("case_60_interrupted_onboarding_recovery", "state digest mismatch"))
@@ -2562,6 +2601,7 @@ def case_64_file_journal_durability(results: List[Tuple[str, bool, str]]) -> Non
         recovered = ProviderOnboardingService.load(
             journal=reloaded, federation_store=federation_store,
             platform_profile=_PLATFORM_PROFILE, issuance_key=_ISSUANCE_KEY,
+            certification_verifier=_VERIFIER,
         )
         if recovered.state_digest() != golden.state_digest():
             results.append(_fail("case_64_file_journal_durability", "file-journal recovery mismatch"))
@@ -2625,6 +2665,7 @@ def case_66_incompatible_version_fails_closed(results: List[Tuple[str, bool, str
     service = ProviderOnboardingService(
         journal=journal, federation_store=federation_store,
         platform_profile=_PLATFORM_PROFILE, issuance_key=_ISSUANCE_KEY,
+        certification_verifier=_VERIFIER,
     )
     outcome = service.register_application(
         operator_reference="operator-reference-future", identity_public_key=_KEY_C,
@@ -2738,14 +2779,24 @@ def case_69_source_level_determinism_audit(results: List[Tuple[str, bool, str]])
 
 
 def case_70_vocabulary_freeze(results: List[Tuple[str, bool, str]]) -> None:
+    # Round-2 (DEC-0096) vocabulary deltas, pinned at their corrected
+    # values: 49 reasons (added certification-invalid,
+    # peer-not-authorized, peer-key-proof-invalid) and 15
+    # required-scope entries (ACCEPT_FEDERATION removed -- acceptance
+    # is peer-authorized, never application-operator-credentialed).
     checks = (
         ("states", len(OnboardingState.values()), 14),
         ("command kinds", len(OnboardingCommandKind.values()), 18),
         ("credential scopes", len(OnboardingCredentialScope.values()), 5),
-        ("reasons", len(OnboardingReason.values()), 46),
+        ("reasons", len(OnboardingReason.values()), 49),
         ("transition entries", len(ONBOARDING_TRANSITIONS), 14),
-        ("required-scope entries", len(COMMAND_REQUIRED_SCOPE), 16),
+        ("required-scope entries", len(COMMAND_REQUIRED_SCOPE), 15),
     )
+    if OnboardingCommandKind.ACCEPT_FEDERATION in COMMAND_REQUIRED_SCOPE:
+        results.append(_fail("case_70_vocabulary_freeze",
+                             "acceptance still mapped to an application-operator scope "
+                             "(peer-authorized commands carry no application scope)"))
+        return
     for label, actual, expected in checks:
         if actual != expected:
             results.append(_fail("case_70_vocabulary_freeze",
@@ -2755,7 +2806,8 @@ def case_70_vocabulary_freeze(results: List[Tuple[str, bool, str]]) -> None:
         results.append(_fail("case_70_vocabulary_freeze", "transition table changed"))
         return
     results.append(_ok("case_70_vocabulary_freeze",
-                      "onboarding vocabularies pinned (14 states, 18 commands, 5 scopes, 46 reasons)"))
+                      "onboarding vocabularies pinned (14 states, 18 commands, 5 scopes, "
+                      "49 reasons; acceptance is peer-authorized, not scoped)"))
 
 
 _FROZEN_SURFACES = (
@@ -2819,7 +2871,7 @@ def case_73_w048_w040_untouched(results: List[Tuple[str, bool, str]]) -> None:
         return
     w040 = _git("diff", _BASELINE, "--", "docs/WORK-040-correction-handoff.md")
     if w040.returncode != 0 or w040.stdout.strip():
-        results.append(_fail("case_73_w048_w040_untouched", "W040 surface changed"))
+        results.append(_fail("case_73_w040_untouched", "W040 surface changed"))
         return
     log = _git("log", "--diff-filter=A", "--name-only", "--format=%H",
                _BASELINE + "..HEAD", "--", "pilot/", "*sharing*", "*WORK-048*")
@@ -2828,6 +2880,404 @@ def case_73_w048_w040_untouched(results: List[Tuple[str, bool, str]]) -> None:
         return
     results.append(_ok("case_73_w048_w040_untouched",
                       "W048 remains un-restored and W040 physical-evidence surfaces are untouched"))
+
+
+# ----------------------------------------------------------------------
+# O. DEC-0096 round-2 adversarial corrections (the two P0 blockers'
+# negative test set: forged ids, mutated contents, missing evidence,
+# false attestation, validity window, verifier-required construction,
+# journal certification tamper, proposer self-acceptance, wrong-peer
+# acceptance, genuine independent peer acceptance, journal-forged
+# peer authorization)
+# ----------------------------------------------------------------------
+
+
+def _genuine_certification_document(suffix: str = "c") -> Dict[str, Any]:
+    """A genuine adapters-authority certification document (the golden
+    lifecycle's certification path)."""
+    return certify_adapter_descriptor(
+        descriptor=_descriptor(suffix=suffix),
+        provider_node_id=_NODE_A,
+        evidence_refs=("evidence:adapter:alpha:1",),
+        certified_at=_STEP_T[4],
+        valid_from=_VF,
+        valid_until=_VU,
+        provider_operator_reference="operator-reference-alpha",
+    ).to_dict()
+
+
+def case_74_certification_forgery_fail_closed(results: List[Tuple[str, bool, str]]) -> None:
+    golden, _ = _golden(stop=4)
+    document = _genuine_certification_document()
+    # (a) FORGED ID: a different well-shaped sha256: id
+    forged_id = dict(document)
+    forged_id["certification_id"] = "sha256:" + "ab" * 32
+    # (b) MUTATED CONTENT: the genuine id, mutated evidence
+    mutated = dict(document)
+    mutated["evidence_refs"] = ["evidence:adapter:forged:9"]
+    for label, payload_document in (("forged-id", forged_id), ("mutated-content", mutated)):
+        outcome = golden.service.certify_adapter(
+            application_id=golden.application_id,
+            certification=payload_document,
+            command_key="cert-forged-%s" % label,
+            actor=_NODE_A,
+            issued_at=_STEP_T[4], effective_at=_STEP_T[4],
+            auth=golden.auth("onboarding.adapter.certify"),
+        )
+        if outcome.ok or outcome.code != OnboardingReason.CERTIFICATION_INVALID:
+            results.append(_fail("case_74_certification_forgery_fail_closed",
+                                 "%s: %r" % (label, outcome.code)))
+            return
+    projection = golden.service.application(golden.application_id)
+    if projection.certifications:
+        results.append(_fail("case_74_certification_forgery_fail_closed",
+                             "forged certification entered the state"))
+        return
+    # the genuine document still admits on the same application
+    genuine = golden.service.certify_adapter(
+        application_id=golden.application_id,
+        certification=document,
+        command_key="cert-genuine-after-forgery",
+        actor=_NODE_A,
+        issued_at=_STEP_T[4], effective_at=_STEP_T[4],
+        auth=golden.auth("onboarding.adapter.certify"),
+    )
+    if not genuine.ok:
+        results.append(_fail("case_74_certification_forgery_fail_closed",
+                             "genuine document rejected after forgeries: %r" % genuine.code))
+        return
+    results.append(_ok("case_74_certification_forgery_fail_closed",
+                      "forged certification ids and mutated contents fail closed at the "
+                      "admission boundary (recomputed identity); the genuine artifact admits"))
+
+
+def case_75_forged_admission_requirements_fail_closed(
+    results: List[Tuple[str, bool, str]],
+) -> None:
+    golden, _ = _golden(stop=4)
+    document = _genuine_certification_document()
+
+    def _self_consistent(overrides: Dict[str, Any]) -> Dict[str, Any]:
+        # rebuild a record whose certification_id is RECOMPUTED over the
+        # (forged) content -- an internally consistent forgery that
+        # passes any pure identity check; only the authority's own
+        # admission requirements can refuse it
+        forged = dict(document)
+        forged.update(overrides)
+        record = AdapterCertification(
+            certification_id="",
+            adapter_id=forged["adapter_id"],
+            access_technology_id=forged["access_technology_id"],
+            descriptor_digest=forged["descriptor_digest"],
+            provider_node_id=forged["provider_node_id"],
+            provider_operator_reference=forged["provider_operator_reference"],
+            supported_profile_versions=tuple(forged["supported_profile_versions"]),
+            capabilities=tuple(forged["capabilities"]),
+            attested=forged["attested"],
+            evidence_refs=tuple(forged["evidence_refs"]),
+            certified_at=forged["certified_at"],
+            valid_from=forged["valid_from"],
+            valid_until=forged["valid_until"],
+            verdict=forged["verdict"],
+            reason_code=forged["reason_code"],
+            detail=forged["detail"],
+        )
+        return record.to_dict()
+
+    # (a) FALSE ATTESTATION: attested=False while claiming certified
+    false_attestation = _self_consistent({"attested": False})
+    # (b) MISSING EVIDENCE: no evidence references while claiming certified
+    missing_evidence = _self_consistent({"evidence_refs": []})
+    for label, payload_document, expected in (
+        ("false-attestation", false_attestation, OnboardingReason.ADAPTER_REJECTED),
+        ("missing-evidence", missing_evidence, OnboardingReason.ADAPTER_REJECTED),
+    ):
+        outcome = golden.service.certify_adapter(
+            application_id=golden.application_id,
+            certification=payload_document,
+            command_key="cert-req-%s" % label,
+            actor=_NODE_A,
+            issued_at=_STEP_T[4], effective_at=_STEP_T[4],
+            auth=golden.auth("onboarding.adapter.certify"),
+        )
+        if outcome.ok or outcome.code != expected:
+            results.append(_fail("case_75_forged_admission_requirements_fail_closed",
+                                 "%s: %r (expected %r)" % (label, outcome.code, expected)))
+            return
+    projection = golden.service.application(golden.application_id)
+    if projection.certifications:
+        results.append(_fail("case_75_forged_admission_requirements_fail_closed",
+                             "requirement-failing forgery entered the state"))
+        return
+    # (c) VALIDITY WINDOW: a genuine certified record whose window does
+    # not cover the command instant fails closed
+    stale_window = certify_adapter_descriptor(
+        descriptor=_descriptor(suffix="a"),
+        provider_node_id=_NODE_A,
+        evidence_refs=("evidence:adapter:alpha:window",),
+        certified_at="2026-09-07T01:04:00Z",
+        valid_from="2026-09-07T01:04:00Z",
+        valid_until="2026-09-07T02:04:00Z",
+        provider_operator_reference="operator-reference-alpha",
+    )
+    stale = golden.service.certify_adapter(
+        application_id=golden.application_id,
+        certification=stale_window,
+        command_key="cert-stale-window",
+        actor=_NODE_A,
+        issued_at=_STEP_T[4], effective_at=_STEP_T[4],
+        auth=golden.auth("onboarding.adapter.certify"),
+    )
+    if stale.ok or stale.code != OnboardingReason.CERTIFICATION_INVALID:
+        results.append(_fail("case_75_forged_admission_requirements_fail_closed",
+                             "validity-window: %r" % stale.code))
+        return
+    results.append(_ok("case_75_forged_admission_requirements_fail_closed",
+                      "self-consistent forgeries without attestation or evidence fail "
+                      "closed (the authority's own requirements, not just identity); "
+                      "expired/not-yet-valid windows fail closed at the command instant"))
+
+
+def case_76_verifier_required_at_construction(results: List[Tuple[str, bool, str]]) -> None:
+    # fresh construction without the authority verifier is a construction
+    # error (fail closed -- no shape-check fallback exists)
+    try:
+        ProviderOnboardingService(
+            journal=OnboardingJournal(),
+            federation_store=FederationStore(),
+            platform_profile=_PLATFORM_PROFILE,
+            issuance_key=_ISSUANCE_KEY,
+            certification_verifier=None,
+        )
+        results.append(_fail("case_76_verifier_required_at_construction",
+                             "service constructed without the authority verifier"))
+        return
+    except OnboardingError as error:
+        if error.code != OnboardingReason.INVALID_INPUT:
+            results.append(_fail("case_76_verifier_required_at_construction",
+                                 "wrong error: %r" % error.code))
+            return
+    except TypeError:
+        results.append(_fail("case_76_verifier_required_at_construction",
+                             "verifier is a positional requirement, not a fail-closed check"))
+        return
+    # recovery without the verifier fails closed the same way
+    try:
+        ProviderOnboardingService.load(
+            journal=OnboardingJournal(),
+            federation_store=FederationStore(),
+            platform_profile=_PLATFORM_PROFILE,
+            issuance_key=_ISSUANCE_KEY,
+            certification_verifier=None,
+        )
+        results.append(_fail("case_76_verifier_required_at_construction",
+                             "recovery constructed without the authority verifier"))
+        return
+    except OnboardingError as error:
+        if error.code != OnboardingReason.INVALID_INPUT:
+            results.append(_fail("case_76_verifier_required_at_construction",
+                                 "wrong recovery error: %r" % error.code))
+            return
+    except TypeError:
+        results.append(_fail("case_76_verifier_required_at_construction",
+                             "verifier is a positional requirement at recovery, not fail-closed"))
+        return
+    results.append(_ok("case_76_verifier_required_at_construction",
+                      "the adapters authority's admission verifier is REQUIRED at both "
+                      "construction and recovery (no uncertified service can exist)"))
+
+
+def case_77_journal_certification_tamper(results: List[Tuple[str, bool, str]]) -> None:
+    golden, _ = _golden()
+    document = golden.journal.to_mapping()
+    replaced = False
+    for index, entry in enumerate(document["records"]):
+        if entry["command_key"] == "cert-1":
+            # mutate the journaled certification's evidence while keeping a
+            # RECORD-consistent command id (the fold's re-verification, not
+            # deserialization, must catch this)
+            mutated_payload = dict(entry["payload"])
+            mutated_certification = dict(mutated_payload["certification"])
+            mutated_certification["evidence_refs"] = ["evidence:adapter:tampered:1"]
+            mutated_payload["certification"] = mutated_certification
+            forged = OnboardingCommandRecord(
+                command_id="",
+                application_id=entry["application_id"],
+                command_kind=entry["command_kind"],
+                command_key=entry["command_key"],
+                sequence=entry["sequence"],
+                issued_at=entry["issued_at"],
+                effective_at=entry["effective_at"],
+                actor=entry["actor"],
+                credential_reference=entry["credential_reference"],
+                payload=tuple(sorted(mutated_payload.items())),
+                status=entry["status"],
+                reason_code=entry["reason_code"],
+                detail=entry["detail"],
+            )
+            document["records"][index] = forged.to_dict()
+            replaced = True
+    if not replaced:
+        results.append(_fail("case_77_journal_certification_tamper", "cert-1 record not found"))
+        return
+    failed, code = _load_tampered(document)
+    if not failed or code != OnboardingReason.JOURNAL_TAMPER:
+        results.append(_fail("case_77_journal_certification_tamper",
+                             "tamper not detected by the fold: %r" % code))
+        return
+    results.append(_ok("case_77_journal_certification_tamper",
+                      "a certification mutated in the journal is detected by the fold's "
+                      "admission re-verification (tamper, not state)"))
+
+
+def case_78_proposer_self_acceptance_fail_closed(results: List[Tuple[str, bool, str]]) -> None:
+    golden, _ = _golden(stop=12)
+    # (a) the round-1 repro: the PROPOSER accepts with its own operator
+    # identity and manage credential (the exact authority confusion the
+    # round-1 battery's case_44 performed) -- the wrong authority, no
+    # peer key proof
+    repro = golden.service.execute_command(
+        application_id=golden.application_id, command_kind=OnboardingCommandKind.ACCEPT_FEDERATION,
+        command_key="accept-self-1", actor=_NODE_A,
+        issued_at=_STEP_T[12], effective_at=_STEP_T[12],
+        payload={"scopes": [Scope.CAPABILITY_READ]},
+        auth=golden.auth("onboarding.federation.manage"),
+    )
+    if repro.ok or repro.code != OnboardingReason.PEER_KEY_PROOF_INVALID:
+        results.append(_fail("case_78_proposer_self_acceptance_fail_closed",
+                             "proposer self-acceptance with operator auth: %r" % repro.code))
+        return
+    # (b) the proposer presents even the GENUINE peer key material: the
+    # actor binding still forbids the proposer
+    stolen = golden.service.accept_federation(
+        application_id=golden.application_id,
+        peer_key_material=_PEER_KEY_MATERIAL,
+        scopes=(Scope.CAPABILITY_READ,),
+        command_key="accept-self-2", actor=_NODE_A,
+        issued_at=_STEP_T[12], effective_at=_STEP_T[12],
+    )
+    if stolen.ok or stolen.code != OnboardingReason.PEER_NOT_AUTHORIZED:
+        results.append(_fail("case_78_proposer_self_acceptance_fail_closed",
+                             "proposer self-acceptance with peer material: %r" % stolen.code))
+        return
+    relationship = golden.federation_store.get_relationship(
+        golden.service.application(golden.application_id).application.relationship_id
+    )
+    projection = golden.service.application(golden.application_id)
+    if (
+        relationship.state != "PROPOSED"
+        or projection.application.lifecycle_state != OnboardingState.PROPOSED
+        or projection.membership_status == "active"
+    ):
+        results.append(_fail("case_78_proposer_self_acceptance_fail_closed",
+                             "self-acceptance mutated the lifecycle"))
+        return
+    # (c) genuine independent peer acceptance still succeeds afterwards
+    genuine = golden.service.accept_federation(
+        application_id=golden.application_id,
+        peer_key_material=_PEER_KEY_MATERIAL,
+        command_key="accept-genuine", actor=_NODE_B,
+        issued_at=_STEP_T[12], effective_at=_STEP_T[12],
+        policy_decision=_policy_decision(),
+    )
+    if not genuine.ok:
+        results.append(_fail("case_78_proposer_self_acceptance_fail_closed",
+                             "genuine peer acceptance failed: %r" % genuine.code))
+        return
+    results.append(_ok("case_78_proposer_self_acceptance_fail_closed",
+                      "proposer self-acceptance fails closed with or without the peer "
+                      "material; the genuine peer operator accepts independently"))
+
+
+def case_79_wrong_peer_operator_fail_closed(results: List[Tuple[str, bool, str]]) -> None:
+    golden, _ = _golden(stop=12)
+    # (a) an unregistered third operator presenting the peer material
+    wrong_actor = golden.service.accept_federation(
+        application_id=golden.application_id,
+        peer_key_material=_PEER_KEY_MATERIAL,
+        command_key="accept-wrong-actor", actor=_NODE_C,
+        issued_at=_STEP_T[12], effective_at=_STEP_T[12],
+    )
+    if wrong_actor.ok or wrong_actor.code != OnboardingReason.PEER_NOT_AUTHORIZED:
+        results.append(_fail("case_79_wrong_peer_operator_fail_closed",
+                             "wrong actor: %r" % wrong_actor.code))
+        return
+    # (b) the registered operator of an UNRELATED peer domain presenting
+    # ITS OWN genuine key material: not the relationship's peer
+    gamma_material = b"gamma-domain-operator-key-material"
+    gamma = golden.federation_store.create_domain(
+        "gamma-operator-reference",
+        peer_key_proof_fingerprint(gamma_material),
+        operator_node_id=_NODE_C,
+        display_name="Gamma",
+        created_at=_STEP_T[11],
+    )
+    wrong_peer = golden.service.accept_federation(
+        application_id=golden.application_id,
+        peer_key_material=gamma_material,
+        command_key="accept-wrong-peer", actor=_NODE_C,
+        issued_at=_STEP_T[12], effective_at=_STEP_T[12],
+    )
+    if wrong_peer.ok or wrong_peer.code not in (
+        OnboardingReason.PEER_NOT_AUTHORIZED, OnboardingReason.PEER_KEY_PROOF_INVALID,
+    ):
+        results.append(_fail("case_79_wrong_peer_operator_fail_closed",
+                             "wrong peer domain operator: %r" % wrong_peer.code))
+        return
+    relationship = golden.federation_store.get_relationship(
+        golden.service.application(golden.application_id).application.relationship_id
+    )
+    if gamma.domain.domain_id == relationship.peer_domain_id:
+        results.append(_fail("case_79_wrong_peer_operator_fail_closed", "gamma is the peer?"))
+        return
+    if relationship.state != "PROPOSED":
+        results.append(_fail("case_79_wrong_peer_operator_fail_closed",
+                             "wrong-peer attempts mutated the relationship"))
+        return
+    results.append(_ok("case_79_wrong_peer_operator_fail_closed",
+                      "acceptance by any operator other than the relationship's peer "
+                      "domain's registered operator fails closed (including operators of "
+                      "unrelated peer domains with their own genuine material)"))
+
+
+def case_80_journal_peer_authorization_tamper(results: List[Tuple[str, bool, str]]) -> None:
+    golden, _ = _golden()
+    document = golden.journal.to_mapping()
+    replaced = False
+    for index, entry in enumerate(document["records"]):
+        if entry["command_key"] == "accept-1":
+            # forge the journaled acceptance as the PROPOSER (recomputed
+            # command id; the fold's deterministic peer-authorization must
+            # refuse it as journal tamper)
+            forged = OnboardingCommandRecord(
+                command_id="",
+                application_id=entry["application_id"],
+                command_kind=entry["command_kind"],
+                command_key=entry["command_key"],
+                sequence=entry["sequence"],
+                issued_at=entry["issued_at"],
+                effective_at=entry["effective_at"],
+                actor=_NODE_A,
+                credential_reference=entry["credential_reference"],
+                payload=tuple(sorted(entry["payload"].items())),
+                status=entry["status"],
+                reason_code=entry["reason_code"],
+                detail=entry["detail"],
+            )
+            document["records"][index] = forged.to_dict()
+            replaced = True
+    if not replaced:
+        results.append(_fail("case_80_journal_peer_authorization_tamper",
+                             "accept-1 record not found"))
+        return
+    failed, code = _load_tampered(document)
+    if not failed or code != OnboardingReason.JOURNAL_TAMPER:
+        results.append(_fail("case_80_journal_peer_authorization_tamper",
+                             "forged self-acceptance not detected by the fold: %r" % code))
+        return
+    results.append(_ok("case_80_journal_peer_authorization_tamper",
+                      "a journal-forged proposer self-acceptance is refused by the fold's "
+                      "deterministic peer-authorization re-derivation (tamper, not state)"))
 
 
 # ----------------------------------------------------------------------
@@ -2908,6 +3358,13 @@ _CASES = [
     case_71_frozen_surfaces_unchanged,
     case_72_delivery_scope_discipline,
     case_73_w048_w040_untouched,
+    case_74_certification_forgery_fail_closed,
+    case_75_forged_admission_requirements_fail_closed,
+    case_76_verifier_required_at_construction,
+    case_77_journal_certification_tamper,
+    case_78_proposer_self_acceptance_fail_closed,
+    case_79_wrong_peer_operator_fail_closed,
+    case_80_journal_peer_authorization_tamper,
 ]
 
 

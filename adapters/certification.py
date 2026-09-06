@@ -27,6 +27,14 @@ Authority boundaries (the layering contract):
 - **No new authority.** This module creates no identity, capability,
   resource, session, routing, transport, usage, payment, settlement,
   or policy authority.
+- **Admission is verified, never shape-checked** (DEC-0096
+  W057-R1-P0-001). A consumer that would treat a record as certified
+  must run ``verify_certification_document`` (or inject
+  ``make_certification_admission_verifier`` at its composition root):
+  the content-derived identity is RECOMPUTED (forged ids and mutated
+  contents fail), and the authority's own attestation/evidence/
+  verdict requirements are enforced. A caller-supplied mapping that
+  merely *claims* ``verdict: certified`` is never a certification.
 
 Determinism: content-derived ids over canonical JSON (WORK-003 house
 style: empty at construction means "derive it"; a supplied non-empty
@@ -45,7 +53,7 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, Mapping, Tuple
+from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
 from protocol.canonicalization import CanonicalizationError, canonical_json_bytes
 from protocol.temporal import TemporalError, parse_instant
@@ -63,6 +71,8 @@ class CertificationCode:
     CERTIFIED = "certified"
     NOT_ATTESTED = "not-attested"
     EVIDENCE_MISSING = "evidence-missing"
+    NOT_CERTIFIED = "not-certified"
+    VALIDITY_WINDOW = "validity-window"
     INVALID_INPUT = "invalid-input"
     SECRET_MATERIAL = "secret-material"
     ACCESS_TECHNOLOGY_LEAKAGE = "access-technology-leakage"
@@ -73,6 +83,8 @@ class CertificationCode:
             cls.CERTIFIED,
             cls.NOT_ATTESTED,
             cls.EVIDENCE_MISSING,
+            cls.NOT_CERTIFIED,
+            cls.VALIDITY_WINDOW,
             cls.INVALID_INPUT,
             cls.SECRET_MATERIAL,
             cls.ACCESS_TECHNOLOGY_LEAKAGE,
@@ -596,6 +608,143 @@ def certification_from_mapping(data: object) -> AdapterCertification:
     return AdapterCertification.from_mapping(data)
 
 
+# ----------------------------------------------------------------------
+# Admission verification (the onboarding boundary's ONLY certifiable
+# path; DEC-0096 W057-R1-P0-001 correction)
+# ----------------------------------------------------------------------
+
+
+def verify_certification_document(
+    data: object,
+    *,
+    evaluation_instant: str = "",
+) -> AdapterCertification:
+    """Fail-closed ADMISSION verification of one certification record.
+
+    This is the authority-owned check a certification CONSUMER must
+    run before treating a record as certified (round-1's consumer-side
+    shape check accepted forged ``verdict: certified`` documents; this
+    verifier closes that bypass). It enforces, in order:
+
+    - ``data`` is a mapping carrying a NON-EMPTY ``certification_id``
+      -- admission requires the claimed identity; the
+      omit-and-rederive construction path is closed at the admission
+      boundary (a record that does not claim its own identity is not
+      an artifact, it is raw content);
+    - the record reconstructs through the authority's own
+      fail-closed construction (``AdapterCertification.from_mapping``),
+      which RECOMPUTES the content-derived identity and rejects a
+      forged id, any mutated content, malformed members, vocabulary
+      drift, leakage tokens, and secret-shaped material;
+    - the certification authority's admission requirements hold:
+      verdict ``certified`` with reason ``certified``, attestation
+      actually declared (``attested`` true), and non-empty evidence
+      references -- a self-consistent document that claims certified
+      without the authority's own requirements is still NOT a
+      certification (fail closed);
+    - when an ``evaluation_instant`` is supplied, the record's
+      validity window covers it (evaluated, never observed).
+
+    Returns the validated ``AdapterCertification`` artifact (a pure
+    data record; vendor isolation is preserved). Raises
+    ``AdapterCertificationError`` fail closed on ANY failure -- a
+    consumer never sees a partial verdict.
+    """
+    if not isinstance(data, Mapping):
+        raise AdapterCertificationError(
+            CertificationCode.INVALID_INPUT,
+            "certification record must be a mapping (the adapters authority's "
+            "public record document)",
+        )
+    certification_id = data.get("certification_id", "")
+    if not isinstance(certification_id, str) or not certification_id:
+        raise AdapterCertificationError(
+            CertificationCode.INVALID_INPUT,
+            "certification admission requires the record's own claimed "
+            "certification_id (non-empty; identity must be claimed, not "
+            "rederived, at the admission boundary)",
+        )
+    artifact = AdapterCertification.from_mapping(data)
+    if artifact.verdict != "certified" or artifact.reason_code != CertificationCode.CERTIFIED:
+        raise AdapterCertificationError(
+            CertificationCode.NOT_CERTIFIED,
+            "certification record is not a certified verdict (admission "
+            "requires verdict %r with reason %r; rejected declarations are "
+            "audit records, never admissions)"
+            % ("certified", CertificationCode.CERTIFIED),
+        )
+    if not artifact.attested:
+        raise AdapterCertificationError(
+            CertificationCode.NOT_CERTIFIED,
+            "certification record claims certified without a declared "
+            "attestation (false attestation fails closed)",
+        )
+    if not artifact.evidence_refs:
+        raise AdapterCertificationError(
+            CertificationCode.NOT_CERTIFIED,
+            "certification record claims certified with no evidence "
+            "references (certification without evidence is not a "
+            "certification)",
+        )
+    if evaluation_instant:
+        if not artifact.validity_at(evaluation_instant):
+            raise AdapterCertificationError(
+                CertificationCode.VALIDITY_WINDOW,
+                "certification record is not valid at the admission instant "
+                "%r (validity is evaluated, never observed; window %r..%r)"
+                % (evaluation_instant, artifact.valid_from, artifact.valid_until),
+            )
+    return artifact
+
+
+#: The admission-verifier seam contract (plain data in, plain result
+#: out -- no federation type crosses the adapter boundary, and no
+#: adapter type crosses into a consumer package).
+AdmissionOutcome = Tuple[bool, str, str, Optional[Dict[str, Any]]]
+
+
+def make_certification_admission_verifier() -> "Callable[[object, str], AdmissionOutcome]":
+    """Build the composition-root injection seam for consumers of
+    certification artifacts (the WORK-057 onboarding service).
+
+    The returned verifier maps
+    ``(document, evaluation_instant) -> (ok, code, detail, document)``,
+    where ``code``/``detail`` are the adapters authority's own stable
+    fail-closed vocabulary (never a consumer-coined reason) and
+    ``document`` is the VERIFIED record document on success (the
+    caller records exactly what the authority verified, never what
+    the caller supplied). This module OWNS the verification logic; the
+    consuming package owns only the seam. Fail closed on every
+    unexpected condition -- an admission verifier never passes.
+    """
+
+    def _verify(document: object, evaluation_instant: str = "") -> AdmissionOutcome:
+        try:
+            artifact = verify_certification_document(
+                document, evaluation_instant=evaluation_instant
+            )
+        except AdapterCertificationError as error:
+            return False, error.code, error.detail, None
+        except Exception as error:  # unexpected consumer input shape
+            return (
+                False,
+                CertificationCode.INVALID_INPUT,
+                "certification admission failed unexpectedly: %s" % (type(error).__name__,),
+                None,
+            )
+        return (
+            True,
+            CertificationCode.CERTIFIED,
+            (
+                "certification identity recomputed and matched; attestation and "
+                "evidence requirements hold; validity covers the admission instant"
+            ),
+            artifact.to_dict(),
+        )
+
+    return _verify
+
+
 __all__ = [
     "AdapterCertificationError",
     "AdapterCertification",
@@ -604,4 +753,6 @@ __all__ = [
     "certify_adapter_descriptor",
     "descriptor_digest",
     "descriptor_document",
+    "make_certification_admission_verifier",
+    "verify_certification_document",
 ]

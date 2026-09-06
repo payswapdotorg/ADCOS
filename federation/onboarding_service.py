@@ -6,21 +6,44 @@ state while composing the existing authorities through their public
 interfaces ONLY.
 
     registration -> identity binding -> scoped credentials ->
-    adapter certification -> declarations -> commercial profile
-    binding -> eligibility/policy gate -> federation proposal ->
-    explicit acceptance -> active membership ->
+    adapter certification (authority-verified admission) ->
+    declarations -> commercial profile binding -> eligibility/policy
+    gate -> federation proposal -> PEER-AUTHORIZED explicit
+    acceptance -> active membership ->
     suspension/revocation/offboarding
+
+Authorization model (DEC-0096 corrections, round 2):
+
+- **Certification admission is authority-verified** (W057-R1-P0-001):
+  a certification document enters the onboarding state ONLY through
+  the composition-root-injected adapters-authority admission
+  verifier, which recomputes the content-derived identity (forged
+  ids and mutated contents fail), enforces the authority's own
+  attestation/evidence/verdict requirements, and evaluates the
+  validity window at the journaled command instant. The check is
+  deterministic and runs in BOTH execute and fold mode -- the fold
+  re-verifies every journaled certification.
+- **Federation acceptance is peer-authorized** (W057-R1-P0-002):
+  acceptance is executed by the RELATIONSHIP's peer domain's
+  registered operator (actor binding, deterministic, fold-
+  re-derivable) presenting the peer operator key proof (fingerprint
+  constant-time compared against the peer domain's registered
+  ``identity_public_key``; execute-time auth, trusted-as-journaled
+  by the secret-free fold). The proposing application's operator,
+  scoped credentials, and key proof are the WRONG authority for
+  acceptance -- proposer self-acceptance and wrong-peer acceptance
+  fail closed.
 
 Recovery model (construction-is-recovery): ``ProviderOnboardingService.load``
 re-folds the journaled command prefix onto a FRESH federation store;
 the fold is a pure function of (journal, platform profile, issuance
-key), so the recovered state is byte-identical to the pre-interruption
-state and resuming from the watermark never duplicates a domain, a
-relationship, a grant, or a membership. A journaled outcome the fold
-cannot reproduce is ``journal-tamper`` (fail closed); the only
-trusted-as-journaled outcomes are the secret-dependent authentication
-rejections, which cannot be re-derived without the secrets -- by
-design.
+key, certification verifier), so the recovered state is byte-identical
+to the pre-interruption state and resuming from the watermark never
+duplicates a domain, a relationship, a grant, or a membership. A
+journaled outcome the fold cannot reproduce is ``journal-tamper``
+(fail closed); the only trusted-as-journaled outcomes are the
+secret-dependent authentication rejections, which cannot be
+re-derived without the secrets -- by design.
 
 Layering (the frozen import boundaries of the composed packages are
 respected exactly): this module lives in the federation package and
@@ -29,12 +52,14 @@ temporal, and the WORK-003 version line used by the mixed-version
 gate), the WORK-004 NodeID reference validation, the WORK-005 id
 classification, the WORK-010 decision record, and the WORK-045
 decision record. Adapter certifications are the adapters authority's
-tamper-evident artifacts, CONSUMED here as validated data documents
-(never imported); resource ownership is checked over the frozen
-WORK-008 reference grammar (never imported); the mixed-version gate
-consumes the WORK-003 version line directly -- the battery proves all
-three behaviors verdict-for-verdict against the adapters, resource,
-and upgrade authorities' own surfaces.
+tamper-evident artifacts, admitted ONLY through the injected
+adapters-authority admission verifier (the authority owns the
+verification logic; this package owns only the seam -- the adapter
+boundary is not weakened); resource ownership is checked over the
+frozen WORK-008 reference grammar (never imported); the
+mixed-version gate consumes the WORK-003 version line directly --
+the battery proves all three behaviors verdict-for-verdict against
+the adapters, resource, and upgrade authorities' own surfaces.
 
 Onboarding can NEVER create connectivity, session, path, route,
 transport, usage, payment, or settlement state: structurally, this
@@ -54,7 +79,7 @@ import hashlib
 import hmac
 import threading
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
 from capabilities.classification import CapabilityIdClass, classify_capability_id
 from eligibility.decision import DecisionRecord
@@ -84,6 +109,7 @@ from .onboarding_model import (
     derive_key_proof_digest,
     derive_onboarding_credential_secret,
     onboarding_transition_is_legal,
+    peer_key_proof_fingerprint,
     secret_digest,
     _reject_secret_material,
     validate_free_text,
@@ -126,6 +152,7 @@ _AUTH_DEPENDENT_REASONS = frozenset(
         OnboardingReason.CREDENTIAL_REVOKED_CODE,
         OnboardingReason.CREDENTIAL_EXPIRED,
         OnboardingReason.CREDENTIAL_SCOPE,
+        OnboardingReason.PEER_KEY_PROOF_INVALID,
     }
 )
 
@@ -296,6 +323,29 @@ def verify_policy_decision_tamper_evidence(decision: PolicyDecision) -> None:
 # ProviderOnboardingService
 # ----------------------------------------------------------------------
 
+#: The certification admission-verifier seam (DEC-0096
+#: W057-R1-P0-001). The federation package NEVER imports the adapters
+#: authority; instead the composition root injects the adapters
+#: authority's own verifier (built by
+#: ``adapters.certification.make_certification_admission_verifier``)
+#: at construction AND at recovery. The contract is plain data:
+#: ``(document, evaluation_instant) -> (ok, code, detail, verified)``
+#: where ``code``/``detail`` are the adapters authority's own stable
+#: fail-closed vocabulary and ``verified`` is the VERIFIED document
+#: (None on failure). A service constructed WITHOUT a verifier is a
+#: construction error (fail closed) -- there is no shape-check
+#: fallback, because a shape check is exactly the round-1 bypass.
+CertificationAdmissionVerifier = Callable[
+    [Mapping[str, Any], str], Tuple[bool, str, str, Optional[Mapping[str, Any]]]
+]
+
+#: the adapters authority's admission-requirement failure code (a
+#: genuine REJECTED-verdict record or an admission-requirement
+#: failure -- mapped to the onboarding ADAPTER_REJECTED audit reason;
+#: every other verifier failure is a tamper/shape failure and maps to
+#: CERTIFICATION_INVALID)
+_CERTIFICATION_NOT_CERTIFIED_CODE = "not-certified"
+
 
 class ProviderOnboardingService:
     """The WORK-057 onboarding lifecycle service.
@@ -312,6 +362,7 @@ class ProviderOnboardingService:
         federation_store: FederationStore,
         platform_profile: Tuple[int, int],
         issuance_key: bytes,
+        certification_verifier: CertificationAdmissionVerifier,
     ) -> None:
         if not isinstance(journal, OnboardingJournal):
             raise OnboardingError(
@@ -320,6 +371,14 @@ class ProviderOnboardingService:
         if not isinstance(federation_store, FederationStore):
             raise OnboardingError(
                 OnboardingReason.INVALID_INPUT, "federation_store must be a FederationStore"
+            )
+        if not callable(certification_verifier):
+            raise OnboardingError(
+                OnboardingReason.INVALID_INPUT,
+                "certification_verifier must be the adapters authority's admission "
+                "verifier (composition-root injected; a service without the "
+                "authority's verifier cannot admit ANY certification -- fail "
+                "closed, there is no shape-check fallback)",
             )
         if (
             not isinstance(platform_profile, tuple)
@@ -352,6 +411,7 @@ class ProviderOnboardingService:
         self._federation_store = federation_store
         self._platform_profile = platform_profile
         self._issuance_key = bytes(issuance_key)
+        self._certification_verifier = certification_verifier
         self._state = OnboardingFoldState()
         self._lock = threading.RLock()
 
@@ -365,13 +425,18 @@ class ProviderOnboardingService:
         federation_store: FederationStore,
         platform_profile: Tuple[int, int],
         issuance_key: bytes,
+        certification_verifier: CertificationAdmissionVerifier,
     ) -> "ProviderOnboardingService":
         """Recover deterministically from the journaled command prefix.
 
         The fold re-executes every appended command's effects on a
         fresh federation store and verifies every journaled outcome it
         can re-derive; an unreproducible outcome is ``journal-tamper``
-        and the service refuses to start (fail closed).
+        and the service refuses to start (fail closed). The fold
+        RE-VERIFIES every journaled certification through the injected
+        adapters-authority admission verifier (recomputed identity,
+        attestation/evidence requirements, validity window) -- a
+        certification mutated in the journal is tamper, not state.
         """
         service = cls.__new__(cls)
         if not isinstance(journal, OnboardingJournal):
@@ -381,6 +446,13 @@ class ProviderOnboardingService:
         if not isinstance(federation_store, FederationStore):
             raise OnboardingError(
                 OnboardingReason.INVALID_INPUT, "federation_store must be a FederationStore"
+            )
+        if not callable(certification_verifier):
+            raise OnboardingError(
+                OnboardingReason.INVALID_INPUT,
+                "certification_verifier must be the adapters authority's admission "
+                "verifier (composition-root injected at recovery too; the fold "
+                "re-verifies journaled certifications through it -- fail closed)",
             )
         if (
             not isinstance(platform_profile, tuple)
@@ -406,6 +478,7 @@ class ProviderOnboardingService:
         service._federation_store = federation_store
         service._platform_profile = platform_profile
         service._issuance_key = bytes(issuance_key)
+        service._certification_verifier = certification_verifier
         service._state = OnboardingFoldState()
         service._lock = threading.RLock()
         with service._lock:
@@ -673,6 +746,17 @@ class ProviderOnboardingService:
         reasons."""
         if command.command_kind == OnboardingCommandKind.REGISTER_APPLICATION:
             return
+        if command.command_kind == OnboardingCommandKind.ACCEPT_FEDERATION:
+            # DEC-0096 W057-R1-P0-002: acceptance is NOT an application-operator
+            # command. The proposing application's operator, credentials, and
+            # key proof are all WRONG authorities here -- acceptance is
+            # authorized by the PEER domain: the actor must be the
+            # relationship's peer domain's registered operator (a deterministic,
+            # fold-re-derivable binding enforced in the acceptance handler) and
+            # the principal must present the peer operator key proof (the
+            # secret-dependent check; fold-trusted as journaled).
+            self._authorize_peer_acceptance(projection, command, auth)
+            return
         if command.actor != projection.application.operator_node_id:
             raise OnboardingError(
                 OnboardingReason.PRECONDITION_UNMET,
@@ -739,6 +823,63 @@ class ProviderOnboardingService:
                 "credential scope %r does not cover the required scope %r (least "
                 "authority: no scope implies another)"
                 % (credential.scope, required_scope),
+            )
+
+    def _authorize_peer_acceptance(
+        self,
+        projection: ApplicationProjection,
+        command: OnboardingCommandRecord,
+        auth: Optional[CommandAuth],
+    ) -> None:
+        """Authorize one federation-acceptance command as the PEER
+        domain's operator (raises OnboardingError fail closed).
+
+        The secret-dependent half of peer authorization (DEC-0096
+        W057-R1-P0-002): the accepting principal must present key
+        material whose fingerprint matches the RELATIONSHIP's peer
+        domain's registered ``identity_public_key`` -- the WORK-015
+        domain-id-deriving identity material, constant-time compared.
+        When no relationship/peer domain can be resolved, NO key proof
+        can be valid (there is no peer authority to prove possession
+        against), so the failure stays on the auth-dependent reason
+        and the secret-free fold trusts it as journaled. The actor-to-
+        peer-domain binding (and the proposer-self-acceptance
+        prohibition) is deterministic and re-derived by the fold
+        inside the acceptance handler; only this proof-of-possession
+        check is auth-layer. The material itself is never stored or
+        journaled.
+        """
+        relationship = self._federation_store.get_relationship(
+            projection.application.relationship_id
+        )
+        peer_domain = (
+            self._federation_store.get_domain(relationship.peer_domain_id)
+            if relationship is not None
+            else None
+        )
+        if relationship is None or peer_domain is None:
+            raise OnboardingError(
+                OnboardingReason.PEER_KEY_PROOF_INVALID,
+                "no peer-domain authority is resolvable for acceptance (no "
+                "relationship %r or peer domain not registered); no peer key "
+                "proof can be valid (fail closed)"
+                % (projection.application.relationship_id,),
+            )
+        if auth is None or not auth.key_material:
+            raise OnboardingError(
+                OnboardingReason.PEER_KEY_PROOF_INVALID,
+                "federation acceptance requires the PEER operator key proof (the "
+                "proposing application's operator identity, scoped credentials, "
+                "and key proof are all the WRONG authority for acceptance; the "
+                "proposer cannot self-accept)",
+            )
+        fingerprint = peer_key_proof_fingerprint(auth.key_material)
+        if not hmac.compare_digest(fingerprint, peer_domain.identity_public_key):
+            raise OnboardingError(
+                OnboardingReason.PEER_KEY_PROOF_INVALID,
+                "peer operator key proof does not match the peer domain's "
+                "registered identity material (fail closed; the material itself "
+                "is never echoed)",
             )
 
     # ------------------------------------------------------------------
@@ -1269,62 +1410,67 @@ class ProviderOnboardingService:
         if not ok:
             return False, code, detail, ""
         document = payload.get("certification")
-        # The certification record is the adapters authority's tamper-evident
-        # ARTIFACT, consumed here as validated DATA (the federation package
-        # never imports the adapter boundary): required members, verdict
-        # vocabulary, operator binding by canonical-string equality, and the
-        # content-derived id shape. The battery proves the record itself
-        # round-trips through the adapters authority's own fail-closed
-        # construction on both the certified and adversarial paths.
+        # DEC-0096 W057-R1-P0-001: certification admission CONSUMES the adapters
+        # authority's tamper-evident artifact through the injected admission
+        # verifier (composition-root seam; the federation package never imports
+        # the adapter boundary). The verifier RECOMPUTES the content-derived
+        # certification identity (a forged id or any mutated content fails),
+        # enforces the authority's own admission requirements (certified
+        # verdict, declared attestation, non-empty evidence), and evaluates the
+        # validity window at the journaled command instant. This check is
+        # deterministic and runs in BOTH execute and fold mode -- the fold
+        # re-verifies every journaled certification, so a certification mutated
+        # in the journal is tamper, not state. A caller-supplied mapping that
+        # merely claims "verdict: certified" is NEVER admitted (the round-1
+        # shape-check bypass is closed).
         if not isinstance(document, Mapping):
             return (
                 False,
-                OnboardingReason.INVALID_INPUT,
+                OnboardingReason.CERTIFICATION_INVALID,
                 "adapter certification must be a mapping (the adapters authority's "
                 "public record document)",
                 "",
             )
-        _reject_secret_material(dict(document), "certification document")
-        for member in (
-            "certification_id",
-            "adapter_id",
-            "access_technology_id",
-            "descriptor_digest",
-            "provider_node_id",
-            "verdict",
-            "reason_code",
-            "detail",
-            "certified_at",
-            "valid_from",
-            "valid_until",
-        ):
-            if member not in document:
+        try:
+            (
+                authority_ok,
+                authority_code,
+                authority_detail,
+                verified_document,
+            ) = self._certification_verifier(dict(document), command.effective_at)
+        except Exception as error:  # a defective verifier never admits anything
+            return (
+                False,
+                OnboardingReason.CERTIFICATION_INVALID,
+                "the adapters certification admission verifier failed closed: "
+                "%s" % (type(error).__name__,),
+                "",
+            )
+        if not authority_ok or not isinstance(verified_document, Mapping):
+            # journal detail is capped at 256 characters: the stable
+            # authority CODE carries the machine-readable verdict, the
+            # authority detail is carried truncated (never silent)
+            authority_text = authority_detail or ""
+            if len(authority_text) > 140:
+                authority_text = authority_text[:137] + "..."
+            if authority_code == _CERTIFICATION_NOT_CERTIFIED_CODE:
                 return (
                     False,
-                    OnboardingReason.INVALID_INPUT,
-                    "adapter certification member %r is required" % (member,),
+                    OnboardingReason.ADAPTER_REJECTED,
+                    "adapter declaration NOT certified by the adapters authority: %s "
+                    "(journaled for audit; fail closed)" % (authority_text,),
                     "",
                 )
-        verdict = document.get("verdict")
-        if verdict not in ("certified", "rejected"):
             return (
                 False,
-                OnboardingReason.INVALID_INPUT,
-                "adapter certification verdict %r is unknown" % (verdict,),
+                OnboardingReason.CERTIFICATION_INVALID,
+                "certification admission refused (%s): %s -- forged or tampered "
+                "documents never enter the onboarding state" % (authority_code, authority_text),
                 "",
             )
-        certification_id = document.get("certification_id", "")
-        if not isinstance(certification_id, str) or not certification_id.startswith(
-            "sha256:"
-        ):
-            return (
-                False,
-                OnboardingReason.INVALID_INPUT,
-                "adapter certification id must be a sha256: content-derived "
-                "reference",
-                "",
-            )
-        provider_node_id = document.get("provider_node_id", "")
+        verified = dict(verified_document)
+        certification_id = verified.get("certification_id", "")
+        provider_node_id = verified.get("provider_node_id", "")
         if provider_node_id != projection.application.operator_node_id:
             return (
                 False,
@@ -1332,22 +1478,12 @@ class ProviderOnboardingService:
                 "adapter declaration binds operator %s but the application "
                 "operator is %s (a provider certifies only its own declarations)"
                 % (
-                    _short_id(certification.provider_node_id, 40),
+                    _short_id(provider_node_id, 40),
                     _short_id(projection.application.operator_node_id, 40),
                 ),
                 "",
             )
-        if verdict != "certified":
-            return (
-                False,
-                OnboardingReason.ADAPTER_REJECTED,
-                "adapter declaration was NOT certified: %s -- the rejection is "
-                "recorded tamper-evidently for audit (certification without "
-                "attestation or evidence fails closed)"
-                % (document.get("reason_code", ""),),
-                "",
-            )
-        projection.certifications[certification_id] = dict(document)
+        projection.certifications[certification_id] = verified
         if projection.application.lifecycle_state == OnboardingState.CREDENTIALS_ISSUED:
             ok, code, detail = self._advance(
                 projection, OnboardingState.ADAPTERS_CERTIFIED
@@ -1357,9 +1493,10 @@ class ProviderOnboardingService:
         return (
             True,
             OnboardingReason.ADAPTER_CERTIFIED,
-            "adapter declaration certified (evidence is a claim about a "
-            "declaration, never topology truth; provider implementations stay "
-            "behind the WORK-016 boundary)",
+            "adapter declaration certified through the adapters authority's "
+            "verified admission (identity recomputed; attestation and evidence "
+            "enforced; validity evaluated at the command instant; evidence is "
+            "a claim about a declaration, never topology truth)",
             "",
         )
 
@@ -1990,6 +2127,47 @@ class ProviderOnboardingService:
                 % (projection.application.relationship_id,),
                 "",
             )
+        # DEC-0096 W057-R1-P0-002: deterministic peer-domain authorization,
+        # enforced in BOTH execute and fold mode (the fold re-derives it, so a
+        # journal-forged acceptance with a non-peer actor is tamper, not
+        # state). The accepting principal MUST be the relationship's peer
+        # domain's registered operator, and MUST NOT be the proposing
+        # application's operator -- the proposer can never self-accept. (The
+        # proof-of-possession half -- the peer operator key proof against the
+        # peer domain's registered identity material -- is execute-time auth
+        # and is trusted-as-journaled by the secret-free fold.)
+        peer_domain = self._federation_store.get_domain(relationship.peer_domain_id)
+        if peer_domain is None:
+            return (
+                False,
+                OnboardingReason.PEER_NOT_AUTHORIZED,
+                "peer domain %r is not registered; acceptance has no authorizing "
+                "peer authority (fail closed)" % (relationship.peer_domain_id,),
+                "",
+            )
+        if command.actor != peer_domain.operator_node_id:
+            return (
+                False,
+                OnboardingReason.PEER_NOT_AUTHORIZED,
+                "accepting principal %s is not the peer domain's registered "
+                "operator %s (acceptance is authorized by the PEER domain; "
+                "wrong-peer operators fail closed)"
+                % (
+                    _short_id(command.actor, 40),
+                    _short_id(peer_domain.operator_node_id, 40),
+                ),
+                "",
+            )
+        if command.actor == projection.application.operator_node_id:
+            return (
+                False,
+                OnboardingReason.PEER_NOT_AUTHORIZED,
+                "the proposing application's operator %s cannot accept its own "
+                "federation proposal (proposer self-acceptance is forbidden; "
+                "acceptance requires the peer domain's independent authority)"
+                % (_short_id(command.actor, 40),),
+                "",
+            )
         for scope in scopes:
             if scope not in relationship.declared_scopes:
                 return (
@@ -2518,15 +2696,19 @@ class ProviderOnboardingService:
         effective_at: str,
         auth: CommandAuth,
     ) -> OnboardingCommandOutcome:
-        """Record one adapter certification.
+        """Record one adapter certification (authority-verified).
 
         ``certification`` is the adapters authority's tamper-evident
         record (an object exposing ``to_dict()``, e.g. the
         ``adapters.certification.AdapterCertification`` built by
         ``certify_adapter_descriptor``) or its public document mapping.
-        The record is CONSUMED as validated data here -- the federation
-        package never imports the adapter boundary (the caller-side
-        construction is the adapters authority's own surface)."""
+        The document is VERIFIED at admission through the
+        composition-root-injected adapters-authority admission verifier
+        (recomputed content-derived identity, attestation/evidence
+        requirements, validity window at the command instant) -- the
+        federation package never imports the adapter boundary, and a
+        caller-supplied mapping that merely claims ``verdict:
+        certified`` is never admitted (DEC-0096 W057-R1-P0-001)."""
         if hasattr(certification, "to_dict") and not isinstance(certification, Mapping):
             document = certification.to_dict()
         elif isinstance(certification, Mapping):
@@ -2746,14 +2928,28 @@ class ProviderOnboardingService:
         self,
         *,
         application_id: str,
+        peer_key_material: bytes,
         scopes: Tuple[str, ...] = (),
         command_key: str,
         actor: str,
         issued_at: str,
         effective_at: str,
         policy_decision: Optional[PolicyDecision] = None,
-        auth: CommandAuth,
     ) -> OnboardingCommandOutcome:
+        """Accept one federation proposal AS THE PEER DOMAIN'S OPERATOR.
+
+        DEC-0096 W057-R1-P0-002: ``actor`` must be the RELATIONSHIP's
+        peer domain's registered operator (the WORK-015 authority's
+        own operator binding) and ``peer_key_material`` is the peer
+        operator's key proof, presented at execute time only (never
+        stored or journaled; its fingerprint is constant-time compared
+        against the peer domain's registered ``identity_public_key``).
+        The proposing application's operator, scoped credentials, and
+        key proof are the WRONG authority for acceptance -- proposer
+        self-acceptance and wrong-peer acceptance fail closed, and the
+        deterministic half of this authorization is re-derived by the
+        recovery fold (a journal-forged acceptance is tamper).
+        """
         payload = {"scopes": list(scopes)}
         if policy_decision is not None:
             payload["policy_decision"] = policy_decision_document(policy_decision)
@@ -2765,7 +2961,7 @@ class ProviderOnboardingService:
             issued_at=issued_at,
             effective_at=effective_at,
             payload=payload,
-            auth=auth,
+            auth=CommandAuth(key_material=peer_key_material),
         )
 
     def activate_membership(
