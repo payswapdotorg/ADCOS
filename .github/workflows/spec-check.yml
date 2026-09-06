@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      head_sha:
+        description: "Exact delivery head SHA to execute the W056/W054 acceptance batteries at (default: the W056 round-4 delivery head under Architect review)"
+        required: false
+        default: "35ec48a1a207b755da7deb2e7b45c00eba0578ac"
 
 jobs:
   specification-consistency:
@@ -250,3 +256,62 @@ jobs:
 
       - name: Run platform capability registry/evaluation/history tests
         run: python3 tools/platformcaps_selftest.py
+
+  # W056/W054 acceptance-battery execution vehicle (DEC-0092, established
+  # per Architect review 5558422610): checks out the EXACT delivery head
+  # requested via the dispatch input (default: the W056 round-4 delivery
+  # head 35ec48a) with full history and independently executes, on
+  # GitHub's runners, the full WORK-056 developer battery (expected PASS
+  # 56/56), the full WORK-054 composition battery (expected PASS 55/55),
+  # and the DEC-0091 determinism proof (byte-identical repeat runs and
+  # PYTHONHASHSEED 0/1/7919).  The exact executed SHA is recorded in the
+  # job's own logs, so the run record is self-contained.  This job never
+  # edits, retries, or masks the specification-consistency job above and
+  # never claims battery results for any head other than the exact SHA it
+  # checked out.  It is dispatch-only (and runs automatically on
+  # pull_request events of the W056 delivery branch) so it cannot produce
+  # battery failures inherited from governance-only trees, where the W046
+  # developerapi import defect is still unrepaired by design.
+  w056-w054-acceptance-batteries:
+    name: W056/W054 acceptance batteries (exact head)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.ref == 'work-056-developer-platform-hardening')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact delivery head (full history)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.head_sha || github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Record the exact execution head
+        run: |
+          echo "W056/W054 acceptance batteries - DEC-0092 exact-head execution vehicle"
+          echo "EXACT HEAD: $(git rev-parse HEAD)"
+          git log --oneline -1
+
+      - name: Run the full W056 developer battery (expect PASS 56/56)
+        run: |
+          python3 tools/developerapi_selftest.py > /tmp/developerapi.run1.txt 2>&1
+          tail -3 /tmp/developerapi.run1.txt
+
+      - name: Run the full W054 composition battery (expect PASS 55/55)
+        run: |
+          python3 tools/composition_selftest.py > /tmp/composition.run1.txt 2>&1
+          tail -3 /tmp/composition.run1.txt
+
+      - name: Determinism proof (byte-identical repeat runs + PYTHONHASHSEED 0/1/7919)
+        run: |
+          set -e
+          for battery in developerapi composition; do
+            python3 tools/${battery}_selftest.py > /tmp/${battery}.run2.txt 2>&1
+            cmp /tmp/${battery}.run1.txt /tmp/${battery}.run2.txt
+            for seed in 0 1 7919; do
+              PYTHONHASHSEED=${seed} python3 tools/${battery}_selftest.py > /tmp/${battery}.seed${seed}.txt 2>&1
+              cmp /tmp/${battery}.run1.txt /tmp/${battery}.seed${seed}.txt
+            done
+            echo "DETERMINISM PROVEN (${battery}): byte-identical across the repeat run and PYTHONHASHSEED=0/1/7919"
+          done
+          echo "DEC-0091 determinism requirement independently executed at exact head $(git rev-parse HEAD)"

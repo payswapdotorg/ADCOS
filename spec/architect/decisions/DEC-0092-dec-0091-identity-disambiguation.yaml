@@ -1,0 +1,74 @@
+# DEC-0092 — DEC-0091 decision-record identity disambiguation and
+# governance-state reconciliation.
+# Durable governance decision. Does not change frozen Architecture Version 1.0
+# or Protocol Version 1.0 semantics, does not create a new Work Item, does not
+# alter the WORK-056-CORE-001 authorized scope, and does not accept or reject
+# any W056 delivery. Enacts exactly the reconciliation required by Architect
+# review 5558422610 (PR #17 at 35ec48a1a207b755da7deb2e7b45c00eba0578ac,
+# ACCEPTANCE WITHHELD — DO NOT MERGE).
+decision_id: DEC-0092
+date: "2026-09-06"
+type: "governance-state-reconciliation"
+status: accepted
+owner: "Architect"
+
+subject: "Resolve the DEC-0091 decision-record identity collision in spec/architect/decisions/, reconcile the stale governance-state pins, and establish the exact-head independent battery-execution vehicle required by review 5558422610"
+
+facts:
+  architect_review: "5558422610 (ACCEPTANCE WITHHELD — DO NOT MERGE, 2026-09-06, on PR #17 at 35ec48a1a207b755da7deb2e7b45c00eba0578ac)"
+  delivery_under_review: "35ec48a1a207b755da7deb2e7b45c00eba0578ac (open, unmerged; the review verified its Git-level scope as substantially correct and withheld acceptance only on the governance gates reconciled here)"
+  identity_collision:
+    - "spec/architect/decisions/DEC-0091-w056-residual-oracle-amendment.yaml — 5270 bytes; base_mainline e0b8e0f39a7adc885e0a8da9180ad06db9bd14a8 (the DEC-0090 mainline); enacts exactly the amendment prescribed by review 5124685782; carried to the mainline through the PR #19 lineage (head 901cda3a7066677be394cd4b212259636e368e3e, closed-not-merged with its content landed directly on the mainline)."
+    - "spec/architect/decisions/DEC-0091-w056-w054-oracle-scope-amendment.yaml — 4680 bytes; governing_mainline f24a6c847924a59de2c3d61c931e6706923d7d00 (a stale mid-landing tip, not the DEC-0090 mainline); created by main commit 46fb7f1 ('governance: authorize exact duplicate W046 availability-oracle pins for W056') during the DEC-0091 landing."
+    - "Both records carry decision_id DEC-0091 and status accepted and are not byte-identical, so the DEC-0091 identity is ambiguous in the authoritative namespace. tools/spec_check.py reports this directly: 'DEC-0091-w056-w054-oracle-scope-amendment.yaml: duplicate decision_id DEC-0091'."
+  stale_state_pins:
+    - "spec/architect/execution-state.yaml repository.main_sha was moved from the WORK-056-CORE-001 authorization anchor 7ae438d46041b228164cc8880be37dc21f972b6f to the mid-landing tip 698f3b96e387d3720f9db0a9c5a7076f9376ef04 by the DEC-0091 landing commits while its wording still calls the field the current governance mainline tip (review 5558422610: 'not a literal current-main reference despite its wording'). This also introduced the ARCH-03 stale-authorization and ARCH-05 ledger/state-mismatch findings; the pre-landing mainline e0b8e0f reported 12/16 blocking checks passing with neither finding."
+    - "spec/architect/roadmap.yaml pins actual_main_sha and last_reconciled_snapshot_sha at 7ae438d46041b228164cc8880be37dc21f972b6f despite the later governance commits advancing the mainline to e3682732ccb2c2416def38d53f40ff0bffdec59a."
+    - "spec/architect/LLM-ARCHITECT-HANDOFF.md carries the stale mainline tip f24a6c847924a59de2c3d61c931e6706923d7d00, the stale worker head 0581f7cba05972dd47961de9c7ae821c7153e595, and a read-first reference to the duplicate record."
+  missing_execution_proof: "Review 5558422610 requires the full W056 and W054 batteries to be independently executed at the corrected exact head 35ec48a with a durable record; the repository's exact-head workflow provides only the W050 platform-caps battery (green) plus the inherited specification-check failure, and the Architect's review environment has no repository checkout."
+
+reconciliation:
+  canonical_dec0091: "spec/architect/decisions/DEC-0091-w056-residual-oracle-amendment.yaml is the sole authoritative DEC-0091 record. It is the record that enacts the explicit review-5124685782 prescription, carries the correct DEC-0090 predecessor base (e0b8e0f), and states the executed delivery semantics exactly (case_03 retained byte-identical under DEC-0090; case_01 and case_24 reconciled under DEC-0091)."
+  voided_record: "spec/architect/decisions/DEC-0091-w056-w054-oracle-scope-amendment.yaml is void as a duplicate-identity governance-record defect and is removed from the live namespace. Its provenance is preserved here and in Git history (creation commit 46fb7f1; governing_mainline f24a6c8; byte-recoverable via 'git show 46fb7f1:spec/architect/decisions/DEC-0091-w056-w054-oracle-scope-amendment.yaml'). Its authorization content was coextensive with the canonical record (the same three W046 availability pins: DEC-0090's case_03 plus DEC-0091's case_01/case_24), so voiding it changes no authorization semantics; the round-4 delivery 35ec48a remains within the amended scope under the canonical record alone."
+  namespace_invariant: "Exactly one live record per decision_id in spec/architect/decisions/; any collision is fail-closed until disambiguated by a decision of record. The active authorization binding names the canonical record file explicitly (spec/architect/authorizations/WORK-056.yaml scope_amendment_record)."
+  state_reconciliation:
+    execution_state: "repository.main_sha is restored to 7ae438d46041b228164cc8880be37dc21f972b6f — the immutable authorized mainline baseline of the sole active authorization WORK-056-CORE-001 and the anchor compared by tools/spec_check.py ARCH-03/ARCH-05/ARCH-08 — with truthful semantics wording that distinguishes the authorization anchor from the actual governance mainline tip. halted_reason, next_required_decisions, the decisions block, the PR #17 in-review disposition, and the mainline_integrity block are reconciled to the review-5558422610 state (round-4 delivery 35ec48a under review; acceptance withheld, neither accepted nor rejected)."
+    roadmap: "actual_main_sha and last_reconciled_snapshot_sha advance 7ae438d -> e3682732ccb2c2416def38d53f40ff0bffdec59a (the actual current governance mainline tip this reconciliation was cut from). Pin reconciliation only: the frozen roadmap semantics, sequencing, and the WORK-056 authorization_baseline 7ae438d are unchanged."
+    handoff: "spec/architect/LLM-ARCHITECT-HANDOFF.md is reconciled to the round-4 delivery state (mainline tip, worker head 35ec48a, disposition 5558422610, the DEC-0091 canonical record, this reconciliation, and the read-first list)."
+  execution_vehicle: "One additive dispatch-only CI job in .github/workflows/spec-check.yml ('W056/W054 acceptance batteries (exact head)') checks out the exact requested delivery head (default 35ec48a1a207b755da7deb2e7b45c00eba0578ac) with full history and independently executes on GitHub's runners the full W056 developer battery (expected PASS 56/56), the full W054 composition battery (expected PASS 55/55), and the DEC-0091 determinism proof (byte-identical repeat runs and PYTHONHASHSEED 0/1/7919). The job never edits, retries, or masks the specification-consistency job and records the exact executed SHA in its own logs. It also runs automatically on pull_request events of the W056 delivery branch so every future delivery head receives the same durable exact-head proof."
+  reconciled_files:
+    - "spec/architect/decisions/DEC-0092-dec-0091-identity-disambiguation.yaml (this record)"
+    - "spec/architect/decisions/DEC-0091-w056-w054-oracle-scope-amendment.yaml (removed)"
+    - "spec/architect/execution-state.yaml"
+    - "spec/architect/roadmap.yaml"
+    - "spec/architect/authorizations/WORK-056.yaml"
+    - "spec/architect/LLM-ARCHITECT-HANDOFF.md"
+    - ".github/workflows/spec-check.yml"
+
+non_changes:
+  - "no change to the WORK-056-CORE-001 authorized implementation scope (the 7-file delivery footprint, the frozen surfaces, and the DEC-0090 + canonical DEC-0091 test-oracle authority stand exactly as reviewed)"
+  - "no change to PR #17's head 35ec48a1a207b755da7deb2e7b45c00eba0578ac (no new commits, no rebase, no force)"
+  - "no acceptance or rejection of the W056 delivery — that decision remains the Architect's alone, after this reconciliation is on the mainline and the exact-head battery execution is established"
+  - "no change to frozen Architecture/Protocol semantics, the frozen roadmap sequencing, R5 (active) or R6 (not activated) states, the W040 physical-evidence disposition, or the W048 accepted-not-restored boundary"
+  - "no fabrication of the historical inherited specification-check failures (the missing historical decision records referenced by the ledger, the EVID-002..EVID-006 visibility notes, the DEC-0080 reference-resolution notes, and the sibling-style decision-record schema notes remain disclosed and unmasked exactly as on the pre-landing mainline e0b8e0f)"
+
+architecture_constraints:
+  architecture_version: "1.0"
+  protocol_version: "1.0"
+  frozen_semantics_unchanged: true
+  new_work_item_created: false
+  exactly_one_active_implementation_authorization: true
+  active_authorization_remains: WORK-056-CORE-001
+  sole_architect_review_merge_authority: true
+  software_never_promotes_to_physical: true
+
+rationale: "Review 5558422610 withholds acceptance on exactly two gates: the DEC-0091 decision identity is ambiguous in the authoritative namespace, and the required independent battery execution is not yet established. The fail-closed remedy is a narrow governance reconciliation: keep exactly one DEC-0091 record (the one that traces to the explicit review-5124685782 prescription and matches the audited round-4 delivery semantics), void the duplicate whose own provenance is defective, restore the state pins to the authorization-anchor / actual-tip model the frozen checker enforces, and add a dispatch-only exact-head battery job so the required execution exists as a durable GitHub-side record the Architect can audit, re-run, and certify. No authorization semantics, delivery head, or frozen surface changes; the historical inherited failure set stays honestly disclosed."
+
+governance_requirements:
+  - "This reconciliation must be present on the authoritative governance mainline before the Architect acceptance decision on the W056 round-4 delivery 35ec48a1a207b755da7deb2e7b45c00eba0578ac."
+  - "The exact-head acceptance-battery job must be dispatched at 35ec48a (its default input); the durable GitHub Actions run record — executed by GitHub infrastructure, independent of worker-local claims, with the exact SHA recorded in its own logs — is the execution proof required by review 5558422610. The Architect may re-dispatch or rerun it at will and may additionally execute both batteries from a local checkout."
+  - "PR #17 must remain at 35ec48a until the acceptance decision (no new commits, no rebase, no force)."
+  - "DEC-0091 expires only with the first Architect acceptance or rejection of the W056 delivery; review 5558422610 withheld acceptance without rejecting the delivery, so the amendment remains live for the 35ec48a delivery."
+  - "After acceptance: the guarded merge, the R5 close, and the R6 activation proceed through a new explicit governance transition, unchanged."
+
+result: "The DEC-0091 identity is unambiguous (one canonical record; the duplicate voided with provenance preserved), the governance-state pins are reconciled (the authorization anchor restored in execution-state; the actual mainline tip recorded in roadmap), and the exact-head battery-execution vehicle is established for the Architect's acceptance decision on 35ec48a. WORK-056 remains active and unaccepted; PR #17 remains open and unmerged; R5 remains active; R6 remains unactivated."
