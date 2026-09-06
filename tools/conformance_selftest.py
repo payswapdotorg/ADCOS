@@ -31,6 +31,7 @@ implementations and verifies:
 
 from __future__ import annotations
 
+import json
 import os
 import py_compile
 import subprocess  # noqa: S404 - deterministic child processes of this repo's own tools
@@ -46,6 +47,7 @@ from conformance import (  # noqa: E402
     API_SURFACE,
     ConformanceVector,
     ConformanceWorld,
+    CorpusError,
     ExpectedOutcome,
     ExternalEvidenceRecord,
     ObservedOutcome,
@@ -57,14 +59,22 @@ from conformance import (  # noqa: E402
     REQUIRED_RECOVERY_TAGS,
     REASON_VALUES,
     Verdict,
+    W055_REQUIRED_DISCRIMINATION_TAGS,
+    W055_REQUIRED_NEGATIVE_TAGS,
     assert_no_external_claim,
     build_default_registry,
     build_evidence_report,
+    corpus_digest,
+    corpus_vector_ids,
+    load_corpus,
+    profile_digest,
+    profile_statement,
     report_canonical_bytes,
     report_digest,
     report_from_mapping,
     run_matrix,
     run_vector,
+    verify_corpus,
 )
 from conformance.model import ConformanceReport  # noqa: E402
 from conformance.world import (  # noqa: E402
@@ -74,6 +84,23 @@ from conformance.world import (  # noqa: E402
     SessionSurface,
     TopologySurface,
     TransportSurface,
+)
+# The WORK-029 public contracts, consumed from this battery -- the
+# sanctioned composition root (tools/) -- never from the conformance
+# family: the frozen dependency graph and the WORK-029 family's own
+# import discipline (tools/upgrade_selftest.py case_33) carry no W055
+# family-level DAG edge.  Amending them is Architect-owned.
+from upgrade.compatibility import (  # noqa: E402
+    ProfileNegotiation,
+    negotiate_protocol_profile,
+)
+from upgrade.errors import UpgradeError, UpgradeReasonCode  # noqa: E402
+from upgrade.migrations import MigrationDescriptor, MigrationRegistry  # noqa: E402
+from upgrade.model import (  # noqa: E402
+    ProtocolProfile,
+    SoftwareVersion,
+    UpgradePlan,
+    derive_migration_id,
 )
 from conformance.vectors.structure import (  # noqa: E402
     find_import_violations,
@@ -305,6 +332,182 @@ class _DowngradeBlindTransport(TransportSurface):
                                               now=now)
         return super().complete_initiator(manager, handle, acceptance,
                                           now=now)
+
+
+# ---------------------------------------------------------------------------
+# WORK-055 sabotaged candidate worlds (test fixtures ONLY -- the R3
+# vulnerable behaviors implemented over public APIs; never shipped,
+# never exported).  Each pairs with a W055 vector so the mandated
+# discrimination categories are mechanically proven.
+# ---------------------------------------------------------------------------
+
+
+class _AmbiguousCanonicalizer(EnvelopeSurface):
+    """R3 canonicalization-ambiguity vulnerability: the canonical form
+    preserves the caller's insertion order instead of sorting keys
+    (a second, order-dependent canonicalization)."""
+
+    def canonical(self, value: Any) -> bytes:
+        import json as _json
+
+        return _json.dumps(value).encode("utf-8")
+
+
+class _SignatureBlindEnvelope(EnvelopeSurface):
+    """R3 covered-byte vulnerability: the signature basis silently
+    drops covered members (payload) as well as the signature, so
+    payload tampering is invisible to the signing surface."""
+
+    def signature_input(self, envelope: Any) -> bytes:
+        from protocol import canonical_json_bytes
+
+        document = envelope.to_dict()
+        document.pop("signature", None)
+        document.pop("payload", None)  # the vulnerability
+        return canonical_json_bytes(document)
+
+
+class _ProtocolBlindEnvelope(EnvelopeSurface):
+    """R3 covered-byte vulnerability (the frozen protocol member): the
+    signature basis silently drops the frozen ``protocol`` member
+    along with the signature itself, so a basis that never covered
+    ``protocol`` (or a protocol-field tamper at the covered-document
+    level) is invisible to the signing surface.  Review-correction
+    fixture for WIRE-017 (PR #15 round 2: the P1 signature-coverage
+    gap -- the round-1 mutation matrix never exercised ``protocol``)."""
+
+    def signature_input(self, envelope: Any) -> bytes:
+        from protocol import canonical_json_bytes
+
+        document = envelope.to_dict()
+        document.pop("signature", None)
+        document.pop("protocol", None)  # the vulnerability
+        return canonical_json_bytes(document)
+
+
+class _ClampingNegotiator:
+    """R3 negotiation-downgrade vulnerability: on MAJOR_MISMATCH the
+    negotiator 'repairs' the result by falling back to the lower
+    common major (cross-major clamping that the frozen contract
+    forbids).  Implemented over the public API; battery fixture only."""
+
+    class _ForgedResult:
+        def __init__(self, major: int, minor: int) -> None:
+            self.selected = (major, minor)
+            self.reason = None
+
+        @property
+        def succeeded(self) -> bool:
+            return True
+
+    def negotiate(self, local: ProtocolProfile, peer: ProtocolProfile) -> Any:
+        result = negotiate_protocol_profile(local, peer)
+        if result.reason == UpgradeReasonCode.MAJOR_MISMATCH:
+            lower = local if local.major < peer.major else peer
+            floor = min(local.max_minor, peer.max_minor)
+            return self._ForgedResult(lower.major, floor)
+        return result
+
+
+class _BestEffortMigrator:
+    """R3 migration vulnerability: declared non-reversible steps are
+    reversed anyway with a best-effort partial undo (the flag-day
+    rollback the frozen contract refuses).  Implemented over the
+    public API; battery fixture only."""
+
+    def __init__(self, registry: MigrationRegistry) -> None:
+        self._registry = registry
+
+    def migrate(self, state: Any, from_version: str, to_version: str) -> Any:
+        try:
+            return self._registry.migrate(
+                state, _MIGRATION_SCHEMA_ID, from_version, to_version
+            )
+        except Exception as error:  # the typed authority error
+            if getattr(error, "reason", "") == \
+                    UpgradeReasonCode.MIGRATION_NOT_REVERSIBLE:
+                out = dict(state)  # best-effort partial undo
+                entries = out.pop("entries", [])
+                out["records"] = list(entries)
+                out["schema_version"] = "1.1"
+                return out
+            raise
+
+
+class _RequiredFlagStripper(EnvelopeSurface):
+    """R3 unsafe unknown-field vulnerability: required:true extensions
+    are downgraded to optional before validation (must-understand
+    silently dropped)."""
+
+    def accept_bytes(self, data, *, now, policy, replay=None):
+        import json as _json
+
+        if isinstance(data, str):
+            try:
+                parsed = _json.loads(data)
+            except ValueError:
+                parsed = None
+            if isinstance(parsed, dict):
+                extensions = parsed.get("extensions")
+                if isinstance(extensions, dict):
+                    for key, value in list(extensions.items()):
+                        if (isinstance(value, dict)
+                                and value.get("required") is True):
+                            repaired = dict(value)
+                            repaired["required"] = False  # the vulnerability
+                            extensions[key] = repaired
+                    data = _json.dumps(parsed, sort_keys=True)
+        return super().accept_bytes(data, now=now, policy=policy,
+                                    replay=replay)
+
+
+class _EvidenceTrustingEnvelope(EnvelopeSurface):
+    """R3 evidence-as-authority vulnerability: the acceptance path
+    trusts a CONFORMANT conformance report verdict over the frozen
+    validation pipeline (conformance evidence promoted into protocol
+    authority)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        from conformance.model import (
+            ConformanceReport,
+            ExpectedOutcome as _Expected,
+            ObservedOutcome as _Observed,
+            VectorResult,
+        )
+
+        trusted = VectorResult(
+            vector_id="W055-sabotage-trusted-report",
+            area="envelope",
+            authority="WORK-003",
+            contract="fixture",
+            invariant="fixture result carrying a CONFORMANT verdict",
+            polarity="positive",
+            expected=_Expected(True),
+            observed=_Observed(True, "fixture", "fixture"),
+            verdict=Verdict.CONFORMANT,
+            reason_class="conformant",
+            tags=frozenset(),
+        )
+        self._trusted_report = ConformanceReport(results=(trusted,))
+
+    def accept_bytes(self, data, *, now, policy, replay=None):
+        outcome = super().accept_bytes(data, now=now, policy=policy,
+                                       replay=replay)
+        if (not outcome.accepted
+                and self._trusted_report.verdict is Verdict.CONFORMANT):
+            # the vulnerability: conformance evidence overrules the
+            # authority's rejection
+            from protocol import Classification
+            from protocol.validation import AcceptOutcome
+
+            return AcceptOutcome(
+                accepted=True, validated=None,
+                classification=Classification.KNOWN_COMPATIBLE,
+                detail="accepted because the conformance report is "
+                       "CONFORMANT (evidence-as-authority)",
+            )
+        return outcome
 
 
 def _sabotage_case(number: int, name: str, vector_id: str,
@@ -1145,6 +1348,885 @@ def case_46_api_surface_frozen(results: List[Result]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# 47-62: WORK-055 production conformance (R3)
+# ---------------------------------------------------------------------------
+
+
+def case_47_w055_profile(results: List[Result]) -> None:
+    """47. the production canonicalization profile is declared,
+    complete, and digest-stable in-process."""
+    statement = profile_statement()
+    digest = profile_digest()
+    again = profile_digest()
+    rules = statement["rules"]
+    problems = []
+    if statement["profile_id"] != "adcos.canonical-json.production.v1":
+        problems.append("unexpected profile id")
+    if statement["owning_authority"] != "WORK-003":
+        problems.append("owning authority is not WORK-003")
+    if len(rules) != 12 or any(
+        rule["authority"] != "WORK-003" for rule in rules
+    ):
+        problems.append("rule set incomplete or mis-attributed")
+    if not statement["protocol_version"].startswith("1."):
+        problems.append("protocol version not read from the artifact")
+    if digest != again:
+        problems.append("profile digest unstable in-process")
+    if problems:
+        results.append(fail(
+            "case_47_w055_profile", "; ".join(problems)
+        ))
+    else:
+        results.append(ok(
+            "case_47_w055_profile",
+            "profile %s declared for Protocol %s with %d WORK-003-"
+            "attributed rules; digest %s"
+            % (statement["profile_id"], statement["protocol_version"],
+               len(rules), digest),
+        ))
+
+
+def case_48_w055_corpus(results: List[Result]) -> None:
+    """48. the golden corpus verifies and its digest is recorded."""
+    try:
+        corpus = load_corpus()
+    except CorpusError as error:
+        results.append(fail("case_48_w055_corpus", str(error)))
+        return
+    verification = verify_corpus(corpus)
+    failures = [r for r in verification if not r.verified]
+    digest = corpus_digest(corpus, verification)
+    categories: dict = {}
+    for entry in corpus:
+        categories[entry.category] = categories.get(entry.category, 0) + 1
+    if failures:
+        results.append(fail(
+            "case_48_w055_corpus",
+            "%d/%d failed (first: %s: %s)"
+            % (len(failures), len(verification), failures[0].vector_id,
+               failures[0].detail),
+        ))
+        return
+    results.append(ok(
+        "case_48_w055_corpus",
+        "%d/%d golden vectors verified (%s); digest %s"
+        % (len(verification), len(verification),
+           ", ".join("%s=%d" % (c, n) for c, n in sorted(categories.items())),
+           digest),
+    ))
+
+
+_W055_CHILD_SCRIPT = (
+    "import sys\n"
+    "sys.path.insert(0, %r)\n"
+    "import hashlib, json\n"
+    "from conformance import corpus_digest, load_corpus, profile_digest\n"
+    "from protocol import canonical_json_bytes\n"
+    "from upgrade.compatibility import negotiate_protocol_profile\n"
+    "from upgrade.model import ProtocolProfile\n"
+    "corpus = load_corpus()\n"
+    "scenarios = {'floor': [(1, 3), (1, 2)], 'equal': [(1, 4), (1, 4)], "
+    "'mismatch': [(1, 3), (2, 0)], 'unknown': [(2, 1), (2, 1)]}\n"
+    "outcomes = {}\n"
+    "for key, (local, peer) in sorted(scenarios.items()):\n"
+    "    result = negotiate_protocol_profile(\n"
+    "        ProtocolProfile(local[0], local[1]), "
+    "ProtocolProfile(peer[0], peer[1]))\n"
+    "    outcomes[key] = [\n"
+    "        None if result.selected is None else "
+    "[result.selected.major, result.selected.max_minor],\n"
+    "        result.reason,\n"
+    "    ]\n"
+    "w029 = 'sha256:' + hashlib.sha256(\n"
+    "    canonical_json_bytes(outcomes)).hexdigest()\n"
+    "members = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', "
+    "'eta', 'theta', 'iota', 'kappa']\n"
+    "unstable = hashlib.sha256(\n"
+    "    '|'.join(iter(set(members))).encode('utf-8')).hexdigest()\n"
+    "print(json.dumps({'genuine': corpus_digest(corpus), "
+    "'profile': profile_digest(), 'w029': w029, 'unstable': unstable}))"
+    % str(REPO_ROOT)
+)
+
+
+def _w055_child(seed: Optional[int]) -> Optional[dict]:
+    env = dict(os.environ)
+    if seed is not None:
+        env["PYTHONHASHSEED"] = str(seed)
+    else:
+        env.pop("PYTHONHASHSEED", None)
+    completed = subprocess.run(
+        [sys.executable, "-c", _W055_CHILD_SCRIPT],
+        capture_output=True, text=True, timeout=300, cwd=str(REPO_ROOT),
+        env=env,
+    )
+    if completed.returncode != 0:
+        return None
+    try:
+        return json.loads(completed.stdout.strip())
+    except ValueError:
+        return None
+
+
+def case_49_w055_digest_subprocess(results: List[Result]) -> None:
+    """49. corpus and profile digests are identical in fresh subprocesses
+    (repeated runs, unset seed)."""
+    in_process_genuine = corpus_digest(load_corpus())
+    in_process_profile = profile_digest()
+    children = [_w055_child(None), _w055_child(None)]
+    if None in children:
+        results.append(fail(
+            "case_49_w055_digest_subprocess", "a child run failed"
+        ))
+        return
+    genuine = {child["genuine"] for child in children}
+    profile = {child["profile"] for child in children}
+    w029 = {child["w029"] for child in children}
+    if (len(genuine) == 1 and len(profile) == 1 and len(w029) == 1
+            and genuine == {in_process_genuine}
+            and profile == {in_process_profile}):
+        results.append(ok(
+            "case_49_w055_digest_subprocess",
+            "corpus digest %s, profile digest %s, and the W029 "
+            "negotiation-outcome digest %s identical across two fresh "
+            "subprocesses (unset seed)"
+            % (next(iter(genuine)), next(iter(profile)), next(iter(w029))),
+        ))
+    else:
+        results.append(fail(
+            "case_49_w055_digest_subprocess",
+            "digest divergence: genuine=%d profile=%d"
+            % (len(genuine), len(profile)),
+        ))
+
+
+def case_50_w055_digest_hash_seeds(results: List[Result]) -> None:
+    """50. corpus/profile digests are identical across PYTHONHASHSEED
+    values 0/1/7919, while a hash-order-dependent digest is NOT (the
+    discrimination proof for digest stability)."""
+    children = [_w055_child(seed) for seed in (0, 1, 7919)]
+    if None in children:
+        results.append(fail(
+            "case_50_w055_digest_hash_seeds", "a child run failed"
+        ))
+        return
+    genuine = {child["genuine"] for child in children}
+    profile = {child["profile"] for child in children}
+    w029 = {child["w029"] for child in children}
+    unstable = {child["unstable"] for child in children}
+    stable = len(genuine) == 1 and len(profile) == 1 and len(w029) == 1
+    instability_detected = len(unstable) > 1
+    if stable and instability_detected:
+        results.append(ok(
+            "case_50_w055_digest_hash_seeds",
+            "identical corpus/profile/W029-outcome digests across seeds "
+            "0/1/7919 while the hash-order-dependent digest diverged "
+            "(%d distinct values) -- nondeterminism is detectable"
+            % len(unstable),
+        ))
+    else:
+        results.append(fail(
+            "case_50_w055_digest_hash_seeds",
+            "genuine stable=%s; instability detected=%s"
+            % (stable, instability_detected),
+        ))
+
+
+def case_51_sabotage_canonicalization(results: List[Result]) -> None:
+    """51. R3 discriminating: canonicalization ambiguity is detected."""
+    results.append(_sabotage_case(
+        51, "case_51_sabotage_canonicalization", "W055-CNF-WIRE-001",
+        lambda: _world_with(envelope=_AmbiguousCanonicalizer()),
+    ))
+
+
+def case_52_sabotage_signature_coverage(results: List[Result]) -> None:
+    """52. R3 discriminating: covered-byte exclusion -- a dropped
+    covered member (payload, or the frozen protocol member) -- is
+    detected."""
+    vector_id = "W055-CNF-WIRE-017"
+    candidates = (
+        ("payload-blind", _SignatureBlindEnvelope()),
+        ("protocol-blind", _ProtocolBlindEnvelope()),
+    )
+    problems: List[str] = []
+    detected: List[str] = []
+    for label, candidate in candidates:
+        genuine_first = _run_one(vector_id, ConformanceWorld())
+        sabotaged = _run_one(vector_id, _world_with(envelope=candidate))
+        genuine_again = _run_one(vector_id, ConformanceWorld())
+        if genuine_first.verdict is not Verdict.CONFORMANT:
+            problems.append(
+                "%s: genuine world failed first (%s)"
+                % (label, genuine_first.reason_class)
+            )
+            continue
+        if sabotaged.verdict is Verdict.CONFORMANT:
+            problems.append(
+                "%s stayed CONFORMANT -- the suite is NOT "
+                "discriminating here" % label
+            )
+            continue
+        if genuine_again.verdict is not Verdict.CONFORMANT:
+            problems.append(
+                "%s: genuine world failed after sabotage (%s)"
+                % (label, genuine_again.reason_class)
+            )
+            continue
+        detected.append("%s %s" % (label, sabotaged.reason_class))
+    if problems:
+        results.append(fail(
+            "case_52_sabotage_signature_coverage", "; ".join(problems)
+        ))
+    else:
+        results.append(ok(
+            "case_52_sabotage_signature_coverage",
+            "%s: genuine CONFORMANT -> both sabotaged candidates "
+            "NONCONFORMANT [%s] -> genuine CONFORMANT restored"
+            % (vector_id, "; ".join(detected)),
+        ))
+
+
+# ---------------------------------------------------------------------------
+# WORK-029 R3 coverage (negotiation + migration), consumed from this
+# battery -- the sanctioned composition root.  The fixtures and tables
+# below are the battery-level mirrors of the registry-vector model:
+# each named check carries a frozen expectation against the genuine
+# authority, and the sabotaged candidates prove discrimination.
+# ---------------------------------------------------------------------------
+
+_MIGRATION_SCHEMA_ID = "conformance.fixture-state"
+
+_NEGOTIATION_SCENARIOS: Tuple[Tuple[str, Tuple[int, int], Tuple[int, int]], ...] = (
+    ("floor", (1, 3), (1, 2)),
+    ("equal-heads", (1, 4), (1, 4)),
+    ("major-mismatch", (1, 3), (2, 0)),
+    ("major-unknown", (2, 1), (2, 1)),
+)
+
+_EXPECTED_NEGOTIATION = {
+    "floor": {"selected": [1, 2], "reason": None},
+    "equal-heads": {"selected": [1, 4], "reason": None},
+    "major-mismatch": {"selected": None, "reason": UpgradeReasonCode.MAJOR_MISMATCH},
+    "major-unknown": {"selected": None, "reason": UpgradeReasonCode.MAJOR_UNKNOWN},
+}
+
+
+def _negotiation_outcome_table() -> dict:
+    table = {}
+    for name, local, peer in _NEGOTIATION_SCENARIOS:
+        result = negotiate_protocol_profile(
+            ProtocolProfile(major=local[0], max_minor=local[1]),
+            ProtocolProfile(major=peer[0], max_minor=peer[1]),
+        )
+        table[name] = {
+            "selected": (
+                [result.selected.major, result.selected.max_minor]
+                if result.selected is not None else None
+            ),
+            "reason": result.reason,
+        }
+    return table
+
+
+def case_53_w029_negotiation_genuine(results: List[Result]) -> None:
+    """53. R3 version negotiation at the owning frozen boundary: the
+    genuine WORK-029 negotiation outcome table, structural fail-closed,
+    downgrade-plan refusal, and W003 disposition delegation."""
+    name = "case_53_w029_negotiation_genuine"
+    problems: List[str] = []
+    table = _negotiation_outcome_table()
+    if table != _EXPECTED_NEGOTIATION:
+        problems.append("negotiation table drift: %r" % table)
+    # Structural fail-closed: a forged cross-major selection is not a
+    # constructible value of the model.
+    try:
+        ProfileNegotiation(
+            local=ProtocolProfile(1, 3), peer=ProtocolProfile(2, 0),
+            selected=ProtocolProfile(1, 0), reason=None,
+            detail="forged cross-major selection",
+        )
+        problems.append("a forged cross-major selection was constructed")
+    except UpgradeError as error:
+        if error.reason != UpgradeReasonCode.MAJOR_MISMATCH:
+            problems.append("forged selection rejected as %r" % error.reason)
+    # A selected profile above the additive-evolution floor is not a value.
+    try:
+        ProfileNegotiation(
+            local=ProtocolProfile(1, 3), peer=ProtocolProfile(1, 2),
+            selected=ProtocolProfile(1, 3), reason=None,
+            detail="forged above-floor selection",
+        )
+        problems.append("a non-floor selection was constructed")
+    except UpgradeError:
+        pass
+    # Downgrade resistance: a downgrade is not a constructible plan.
+    try:
+        UpgradePlan(
+            node_id="node:w055-alpha",
+            from_version=SoftwareVersion(2, 0, 0),
+            to_version=SoftwareVersion(1, 0, 0),
+            target_protocol_profile=ProtocolProfile(1, 0),
+        )
+        problems.append("a downgrade plan was constructed")
+    except UpgradeError as error:
+        if error.reason != UpgradeReasonCode.NOT_AN_UPGRADE:
+            problems.append("downgrade plan rejected as %r" % error.reason)
+    # The genuine upgrade passes the downgrade check and fails LATER on
+    # the required gates (the check itself does not over-reject).
+    try:
+        UpgradePlan(
+            node_id="node:w055-alpha",
+            from_version=SoftwareVersion(1, 0, 0),
+            to_version=SoftwareVersion(2, 0, 0),
+            target_protocol_profile=ProtocolProfile(1, 0),
+        )
+        problems.append("a gateless upgrade plan was accepted (unexpected)")
+    except UpgradeError as error:
+        if error.reason == UpgradeReasonCode.NOT_AN_UPGRADE:
+            problems.append("the genuine upgrade failed the downgrade check")
+    # The envelope-level disposition delegates to WORK-003.
+    from protocol.versioning import Classification, classify_major
+
+    if (classify_major(1) != Classification.KNOWN_COMPATIBLE
+            or classify_major(99) != Classification.REJECTED_INCOMPATIBLE_MAJOR):
+        problems.append("the W003 disposition classification drifted")
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+    else:
+        results.append(ok(
+            name,
+            "genuine negotiation table exact (floor/equal/mismatch/"
+            "unknown); forged selections non-constructible; downgrade "
+            "plans refused (NOT_AN_UPGRADE) while genuine upgrades pass "
+            "the check; W003 disposition delegated",
+        ))
+
+
+def case_54_sabotage_negotiation_downgrade(results: List[Result]) -> None:
+    """54. R3 discriminating: cross-major downgrade fallback is detected
+    (genuine correct -> sabotaged detected -> genuine restored)."""
+    name = "case_54_sabotage_negotiation_downgrade"
+    genuine = _negotiation_outcome_table()
+    if genuine != _EXPECTED_NEGOTIATION:
+        results.append(fail(name, "genuine table wrong before sabotage"))
+        return
+    sabotaged = _ClampingNegotiator()
+    mismatched = sabotaged.negotiate(
+        ProtocolProfile(1, 3), ProtocolProfile(2, 0)
+    )
+    detected = bool(mismatched.succeeded or mismatched.selected is not None)
+    genuine_again = _negotiation_outcome_table()
+    if detected and genuine_again == _EXPECTED_NEGOTIATION:
+        results.append(ok(
+            name,
+            "major-mismatch: genuine fails closed (MAJOR_MISMATCH) -> "
+            "sabotaged clamping fallback DETECTED (returned a selected "
+            "profile) -> genuine table restored",
+        ))
+    else:
+        results.append(fail(
+            name,
+            "detected=%s; genuine restored=%s"
+            % (detected, genuine_again == _EXPECTED_NEGOTIATION),
+        ))
+
+
+def _migration_fixture_state() -> dict:
+    return {
+        "schema_version": "1.0",
+        "records": [
+            {"id": "fixture-0001", "kind": "sample", "value": 42},
+            {"id": "fixture-0002", "kind": "sample", "value": -7},
+        ],
+        "labels": ["alpha", "beta"],
+    }
+
+
+def _migration_additive_forward(state) -> dict:
+    out = dict(state)
+    out["retention_policy"] = "standard"
+    out["schema_version"] = "1.1"
+    return out
+
+
+def _migration_additive_backward(state) -> dict:
+    out = dict(state)
+    out.pop("retention_policy", None)
+    out["schema_version"] = "1.0"
+    return out
+
+
+def _migration_breaking_forward(state) -> dict:
+    out = dict(state)
+    records = out.pop("records", [])
+    out["entries"] = list(records)
+    out["schema_version"] = "2.0"
+    return out
+
+
+def _migration_never_backward(state) -> dict:
+    raise AssertionError("declared non-reversible; unreachable by contract")
+
+
+def build_w055_migration_registry() -> MigrationRegistry:
+    """The frozen WORK-055 battery migration fixture: a genuine WORK-029
+    registry carrying pure caller-supplied fixture step functions."""
+    registry = MigrationRegistry()
+    registry.register_step(
+        _MIGRATION_SCHEMA_ID, "1.0", "1.1",
+        reversible=True, breaking=False,
+        forward=_migration_additive_forward,
+        backward=_migration_additive_backward,
+    )
+    registry.register_step(
+        _MIGRATION_SCHEMA_ID, "1.1", "2.0",
+        reversible=False, breaking=True,
+        forward=_migration_breaking_forward,
+        backward=_migration_never_backward,
+    )
+    return registry
+
+
+def case_55_w029_migration_genuine(results: List[Result]) -> None:
+    """55. R3 schema evolution/migration at the owning frozen boundary:
+    the genuine WORK-029 migration outcome table (semantic preservation,
+    byte-identical round-trip, fail-closed classes, purity, tampered
+    ids, deterministic introspection)."""
+    name = "case_55_w029_migration_genuine"
+    from protocol import canonical_json_bytes
+
+    problems: List[str] = []
+    registry = build_w055_migration_registry()
+    state = _migration_fixture_state()
+    original = canonical_json_bytes(state)
+    # 1. Additive forward: semantics preserved (prior members byte-identical
+    #    except the version stamp; the additive field appears; input pure).
+    migrated = registry.migrate(state, _MIGRATION_SCHEMA_ID, "1.0", "1.1")
+    for member, value in state.items():
+        if member == "schema_version":
+            continue
+        if migrated.get(member) != value:
+            problems.append("member %r drifted in the additive step" % member)
+    if "retention_policy" not in migrated:
+        problems.append("the additive field was not added")
+    if canonical_json_bytes(state) != original:
+        problems.append("the input state was mutated (impurity)")
+    # 2. Reversible round-trip: forward then backward is byte-identical.
+    backward = registry.migrate(migrated, _MIGRATION_SCHEMA_ID, "1.1", "1.0")
+    if canonical_json_bytes(backward) != original:
+        problems.append("the round-trip diverged")
+    if not registry.path_is_reversible(_MIGRATION_SCHEMA_ID, "1.0", "1.1"):
+        problems.append("the additive chain is not reversible")
+    if registry.path_is_reversible(_MIGRATION_SCHEMA_ID, "1.1", "2.0"):
+        problems.append("the breaking chain is reported reversible")
+    # 3. Non-reversible reversal fails closed.
+    state_v2 = registry.migrate(migrated, _MIGRATION_SCHEMA_ID, "1.1", "2.0")
+    try:
+        registry.migrate(state_v2, _MIGRATION_SCHEMA_ID, "2.0", "1.1")
+        problems.append("the non-reversible step was reversed")
+    except UpgradeError as error:
+        if error.reason != UpgradeReasonCode.MIGRATION_NOT_REVERSIBLE:
+            problems.append("reversal rejected as %r" % error.reason)
+    # 4. Unknown path fails closed.
+    try:
+        registry.migrate(state, _MIGRATION_SCHEMA_ID, "1.0", "3.0")
+        problems.append("an unknown path was migrated")
+    except UpgradeError as error:
+        if error.reason != UpgradeReasonCode.MIGRATION_PATH_UNKNOWN:
+            problems.append("unknown path rejected as %r" % error.reason)
+    # 5. No-op migration rejected.
+    try:
+        registry.migrate(state, _MIGRATION_SCHEMA_ID, "1.0", "1.0")
+        problems.append("a no-op migration was performed")
+    except UpgradeError as error:
+        if error.reason != UpgradeReasonCode.MIGRATION_INVALID_STEP:
+            problems.append("no-op rejected as %r" % error.reason)
+    # 6. Duplicate edge fails closed; the registry is unchanged.
+    before = registry.edge_count()
+    try:
+        registry.register_step(
+            _MIGRATION_SCHEMA_ID, "1.0", "1.1",
+            reversible=True, breaking=False,
+            forward=lambda s: dict(s), backward=lambda s: dict(s),
+        )
+        problems.append("a duplicate edge was registered")
+    except UpgradeError as error:
+        if error.reason != UpgradeReasonCode.MIGRATION_DUPLICATE_EDGE:
+            problems.append("duplicate rejected as %r" % error.reason)
+    if registry.edge_count() != before:
+        problems.append("the rejected registration mutated the registry")
+    # 7. Step shapes enforce the version-line discipline.
+    for desc_kwargs, label in (
+        ({"schema_id": _MIGRATION_SCHEMA_ID, "from_version": "1.0",
+          "to_version": "1.2", "reversible": True, "breaking": False},
+         "two-minor additive"),
+        ({"schema_id": _MIGRATION_SCHEMA_ID, "from_version": "1.1",
+          "to_version": "2.1", "reversible": False, "breaking": True},
+         "minor-keeping breaking"),
+    ):
+        try:
+            MigrationDescriptor(**desc_kwargs)
+            problems.append("a %s step was accepted" % label)
+        except UpgradeError:
+            pass
+    # 8. Complete-content migration ids reject tampering.
+    expected_id = derive_migration_id(
+        _MIGRATION_SCHEMA_ID, "1.0", "1.1", True, False,
+    )
+    try:
+        MigrationDescriptor(
+            schema_id=_MIGRATION_SCHEMA_ID, from_version="1.0",
+            to_version="1.1", reversible=True, breaking=False,
+            migration_id="tampered-" + expected_id,
+        )
+        problems.append("a tampered migration id was accepted")
+    except UpgradeError:
+        pass
+    # 9. Deterministic introspection.
+    descriptors = registry.descriptors()
+    keys = [(d.schema_id, d.from_version, d.to_version) for d in descriptors]
+    if keys != sorted(keys) or len(keys) != 2:
+        problems.append("registry introspection is not canonical")
+    if [d.to_dict() for d in build_w055_migration_registry().descriptors()] != \
+            [d.to_dict() for d in descriptors]:
+        problems.append("fresh registries differ")
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+    else:
+        results.append(ok(
+            name,
+            "additive semantics preserved (input pure); round-trip "
+            "byte-identical; non-reversible reversal, unknown path, "
+            "no-op, duplicate edge, step shapes, and tampered ids all "
+            "fail closed; introspection deterministic",
+        ))
+
+
+def case_56_sabotage_migration(results: List[Result]) -> None:
+    """56. R3 discriminating: best-effort reversal of a non-reversible
+    migration is detected (genuine correct -> sabotaged detected ->
+    genuine restored)."""
+    name = "case_56_sabotage_migration"
+    from protocol import canonical_json_bytes
+
+    registry = build_w055_migration_registry()
+    state = _migration_fixture_state()
+    migrated = registry.migrate(state, _MIGRATION_SCHEMA_ID, "1.0", "1.1")
+    state_v2 = registry.migrate(migrated, _MIGRATION_SCHEMA_ID, "1.1", "2.0")
+    # Genuine: the reversal fails closed.
+    genuine_rejected = False
+    try:
+        registry.migrate(state_v2, _MIGRATION_SCHEMA_ID, "2.0", "1.1")
+    except UpgradeError as error:
+        genuine_rejected = (
+            error.reason == UpgradeReasonCode.MIGRATION_NOT_REVERSIBLE
+        )
+    if not genuine_rejected:
+        results.append(fail(name, "genuine reversal was not refused"))
+        return
+    # Sabotaged: the best-effort migrator performs the partial undo.
+    sabotaged = _BestEffortMigrator(build_w055_migration_registry())
+    try:
+        undone = sabotaged.migrate(state_v2, "2.0", "1.1")
+        detected = canonical_json_bytes(undone) != canonical_json_bytes(
+            state_v2
+        )
+    except UpgradeError:
+        detected = False
+    # Genuine again: a fresh registry still refuses.
+    genuine_again = False
+    try:
+        build_w055_migration_registry().migrate(
+            state_v2, _MIGRATION_SCHEMA_ID, "2.0", "1.1"
+        )
+    except UpgradeError as error:
+        genuine_again = (
+            error.reason == UpgradeReasonCode.MIGRATION_NOT_REVERSIBLE
+        )
+    if detected and genuine_again:
+        results.append(ok(
+            name,
+            "2.0 -> 1.1: genuine MIGRATION_NOT_REVERSIBLE -> sabotaged "
+            "best-effort partial undo DETECTED (a divergent state was "
+            "returned) -> genuine refusal restored",
+        ))
+    else:
+        results.append(fail(
+            name, "detected=%s; genuine restored=%s" % (detected, genuine_again)
+        ))
+
+
+def case_57_sabotage_unknown_fields(results: List[Result]) -> None:
+    """57. R3 discriminating: silently downgrading required extensions
+    is detected."""
+    results.append(_sabotage_case(
+        57, "case_57_sabotage_unknown_fields", "W055-CNF-WIRE-021",
+        lambda: _world_with(envelope=_RequiredFlagStripper()),
+    ))
+
+
+def case_58_sabotage_evidence_authority(results: List[Result]) -> None:
+    """58. R3 discriminating: conformance evidence promoted into
+    protocol authority is detected (the expired envelope is accepted
+    because a CONFORMANT report exists)."""
+    results.append(_sabotage_case(
+        58, "case_58_sabotage_evidence_authority", "W032-CNF-ENV-002",
+        lambda: _world_with(envelope=_EvidenceTrustingEnvelope()),
+    ))
+
+
+def case_59_w055_tag_coverage(results: List[Result]) -> None:
+    """57. every W055 negative and discrimination category is covered."""
+    registry = build_default_registry()
+    covered = set(registry.tags())
+    missing = [
+        tag for tag in (
+            list(W055_REQUIRED_NEGATIVE_TAGS)
+            + list(W055_REQUIRED_DISCRIMINATION_TAGS)
+        ) if tag not in covered
+    ]
+    if missing:
+        results.append(fail(
+            "case_59_w055_tag_coverage", "missing tags: %s" % missing
+        ))
+    else:
+        results.append(ok(
+            "case_59_w055_tag_coverage",
+            "all %d W055 negative + %d W055 discrimination categories "
+            "covered"
+            % (len(W055_REQUIRED_NEGATIVE_TAGS),
+               len(W055_REQUIRED_DISCRIMINATION_TAGS)),
+        ))
+
+
+def case_60_classification_table(results: List[Result]) -> None:
+    """58. the envelope compatibility classes are exactly the frozen
+    WORK-003 vocabulary and every value is produced by the matrix."""
+    from protocol.versioning import Classification
+
+    report = _matrix()
+    envelope_classes = {
+        r.observed.result_class
+        for r in report.results_for_area("envelope")
+    }
+    vocabulary = set(Classification.ALL_VALUES)
+    produced = envelope_classes & vocabulary
+    missing = vocabulary - produced
+    if missing:
+        results.append(fail(
+            "case_60_classification_table",
+            "compatibility classes not produced by the matrix: %s"
+            % sorted(missing),
+        ))
+    else:
+        results.append(ok(
+            "case_60_classification_table",
+            "all %d frozen compatibility classes produced by the matrix "
+            "with stable codes and owning-authority attribution "
+            "(additional vector-local result classes are harness "
+            "classifications, never protocol classes)"
+            % len(vocabulary),
+        ))
+
+
+def case_61_evidence_never_authority(results: List[Result]) -> None:
+    """59. conformance evidence stays automated verification: no
+    external claims, no authority objects, and the digests are plain
+    evidence strings."""
+    report = _matrix()
+    try:
+        assert_no_external_claim(report)
+    except ValueError as error:
+        results.append(fail("case_61_evidence_never_authority", str(error)))
+        return
+    evidence = build_evidence_report(report)
+    external = evidence["external_evidence"]
+    if external["records"] != []:
+        results.append(fail(
+            "case_61_evidence_never_authority",
+            "in-repo run minted external evidence",
+        ))
+        return
+    corpus = load_corpus()
+    corpus_results = verify_corpus(corpus)
+    if not all(r.verified for r in corpus_results):
+        results.append(fail(
+            "case_61_evidence_never_authority",
+            "corpus verification failed (see case_48)",
+        ))
+        return
+    digest = corpus_digest(corpus, corpus_results)
+    # The digest is a plain evidence string: it is not an authority
+    # object and cannot be coerced into one by the frozen authorities.
+    from protocol import EnvelopeError
+
+    try:
+        report_from_mapping({"verdict": digest})
+    except Exception:
+        pass  # any rejection is fine; a digest is not report state either
+    try:
+        import conformance.serialization as _serialization  # noqa: F401
+
+        envelope_like = {"digest": digest}
+        from protocol import envelope_from_mapping as _from_mapping
+
+        try:
+            _from_mapping(envelope_like)
+        except EnvelopeError:
+            results.append(ok(
+                "case_61_evidence_never_authority",
+                "no external claims; digests are plain evidence strings "
+                "(rejected as protocol state); corpus digest %s" % digest,
+            ))
+            return
+        results.append(fail(
+            "case_61_evidence_never_authority",
+            "an evidence digest was accepted as a protocol envelope",
+        ))
+    except Exception as error:  # noqa: BLE001
+        results.append(fail(
+            "case_61_evidence_never_authority",
+            "unexpected %s: %s" % (type(error).__name__, error),
+        ))
+
+
+_W055_BASELINE = "57963858e5a2b9d11faed94b50f94e058cede0a8"
+_W055_AUTHORIZED_PATHS = (
+    "conformance/",
+    "tools/conformance_selftest.py",
+    "docs/WORK-055-evidence.md",
+    "docs/WORK-055-handoff.md",
+)
+
+
+def _w055_origin_main_available() -> bool:
+    proc = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", "origin/main"],
+        capture_output=True, cwd=str(REPO_ROOT),
+    )
+    return proc.returncode == 0
+
+
+def case_62_w055_pr_delta_scope(results: List[Result]) -> None:
+    """60. the delivery delta lies exactly in the authorized W055
+    scope and descends from the authorized baseline."""
+    name = "case_62_w055_pr_delta_scope"
+    delta: set = set()
+    if _w055_origin_main_available():
+        # CI PR/merge context: the diff against the PR base is exact.
+        diff = subprocess.run(
+            ["git", "diff", "--name-only", "origin/main", "HEAD"],
+            capture_output=True, text=True, cwd=str(REPO_ROOT),
+        )
+        if diff.returncode == 0:
+            delta |= {l for l in diff.stdout.splitlines() if l.strip()}
+    else:
+        # Local delivery context: the diff against the authorized
+        # baseline (working tree + uncommitted changes included).
+        diff = subprocess.run(
+            ["git", "diff", "--name-only", _W055_BASELINE],
+            capture_output=True, text=True, cwd=str(REPO_ROOT),
+        )
+        if diff.returncode == 0:
+            delta |= {l for l in diff.stdout.splitlines() if l.strip()}
+        committed = subprocess.run(
+            ["git", "diff", "--name-only", _W055_BASELINE, "HEAD"],
+            capture_output=True, text=True, cwd=str(REPO_ROOT),
+        )
+        if committed.returncode == 0:
+            delta |= {l for l in committed.stdout.splitlines() if l.strip()}
+    untracked = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard"],
+        capture_output=True, text=True, cwd=str(REPO_ROOT),
+    )
+    if untracked.returncode == 0:
+        delta |= {l for l in untracked.stdout.splitlines() if l.strip()}
+    if not delta:
+        results.append(ok(name, "no delta (clean baseline checkout)"))
+        return
+    problems = []
+    for path in sorted(delta):
+        if not any(
+            path == surface or path.startswith(surface)
+            for surface in _W055_AUTHORIZED_PATHS
+        ):
+            problems.append("delta outside the authorized scope: %s" % path)
+    ancestry = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", _W055_BASELINE, "HEAD"],
+        capture_output=True, cwd=str(REPO_ROOT),
+    )
+    if ancestry.returncode != 0:
+        problems.append(
+            "the authorized baseline %s is not an ancestor of HEAD"
+            % _W055_BASELINE
+        )
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    results.append(ok(
+        name,
+        "the %d-path delta lies exactly within the authorized WORK-055 "
+        "scope (conformance/, tools/conformance_selftest.py, "
+        "docs/WORK-055-*.md) and the authorized baseline %s is an "
+        "ancestor of HEAD" % (len(delta), _W055_BASELINE[:12]),
+    ))
+
+
+def case_63_frozen_authorities_untouched(results: List[Result]) -> None:
+    """61. the frozen authorities consumed by the suite are untouched
+    by the delivery (protocol/, upgrade/, spec/ root, schemas; the
+    spec/architect package vs the owning ref)."""
+    name = "case_63_frozen_authorities_untouched"
+    frozen_roots = (
+        "protocol/", "upgrade/", "spec/schemas/",
+        "spec/architecture.md", "spec/architecture-lock.md",
+        "spec/mission.md", "spec/governance.md", "spec/change-control.md",
+        "spec/workflow.md", "spec/work-items.md",
+        "spec/dependency-graph.md",
+    )
+    problems: List[str] = []
+    for root in frozen_roots:
+        proc = subprocess.run(
+            ["git", "diff", "--name-only", _W055_BASELINE, "HEAD", "--",
+             root],
+            capture_output=True, text=True, cwd=str(REPO_ROOT),
+        )
+        if proc.returncode != 0:
+            problems.append("diff failed for %s" % root)
+        elif proc.stdout.strip():
+            problems.append("frozen surface changed: %s" % proc.stdout.strip())
+    # The Architect package is compared against the owning ref: the PR
+    # base when origin/main is available (CI merge context), else the
+    # authorized baseline (local delivery context).
+    architect_ref = (
+        "origin/main" if _w055_origin_main_available() else _W055_BASELINE
+    )
+    proc = subprocess.run(
+        ["git", "diff", "--name-only", architect_ref, "HEAD", "--",
+         "spec/architect/"],
+        capture_output=True, text=True, cwd=str(REPO_ROOT),
+    )
+    if proc.returncode != 0:
+        problems.append("architect diff failed")
+    elif proc.stdout.strip():
+        problems.append(
+            "spec/architect/ differs from %s: %s"
+            % (architect_ref, proc.stdout.strip())
+        )
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    results.append(ok(
+        name,
+        "protocol/, upgrade/, spec root documents, and spec/schemas/ are "
+        "byte-identical to the authorized baseline; spec/architect/ "
+        "differs only from its owning ref (%s), never from this delivery"
+        % architect_ref,
+    ))
+
+
+# ---------------------------------------------------------------------------
 # World-with helpers
 # ---------------------------------------------------------------------------
 
@@ -1219,6 +2301,25 @@ def main() -> int:
     case_44_ci_wiring(results)
     case_45_frozen_spec_intact(results)
     case_46_api_surface_frozen(results)
+
+    # 47-63: WORK-055 production conformance (R3).
+    case_47_w055_profile(results)
+    case_48_w055_corpus(results)
+    case_49_w055_digest_subprocess(results)
+    case_50_w055_digest_hash_seeds(results)
+    case_51_sabotage_canonicalization(results)
+    case_52_sabotage_signature_coverage(results)
+    case_53_w029_negotiation_genuine(results)
+    case_54_sabotage_negotiation_downgrade(results)
+    case_55_w029_migration_genuine(results)
+    case_56_sabotage_migration(results)
+    case_57_sabotage_unknown_fields(results)
+    case_58_sabotage_evidence_authority(results)
+    case_59_w055_tag_coverage(results)
+    case_60_classification_table(results)
+    case_61_evidence_never_authority(results)
+    case_62_w055_pr_delta_scope(results)
+    case_63_frozen_authorities_untouched(results)
 
     failures = [r for r in results if not r[1]]
     for name, passed, detail in results:

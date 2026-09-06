@@ -46,6 +46,8 @@ __all__ = [
     "REQUIRED_NEGATIVE_TAGS",
     "REQUIRED_RECOVERY_TAGS",
     "REQUIRED_DISCRIMINATION_TAGS",
+    "W055_REQUIRED_NEGATIVE_TAGS",
+    "W055_REQUIRED_DISCRIMINATION_TAGS",
     "KNOWN_TAGS",
     "REASON_VALUES",
 ]
@@ -178,15 +180,42 @@ REQUIRED_DISCRIMINATION_TAGS: Tuple[str, ...] = (
     "discriminating:forbidden-dependency",
 )
 
+#: WORK-055 production-conformance negative categories (R3) covered by
+#: FAMILY-LEVEL (registry) vectors.  The remaining R3 categories --
+#: negotiation downgrade and migration incompatibility -- are covered
+#: from tools/conformance_selftest.py (the sanctioned composition root
+#: for the WORK-029 surfaces), not by registry tags.
+W055_REQUIRED_NEGATIVE_TAGS: Tuple[str, ...] = (
+    "negative:signature-tampering",
+    "negative:digest-instability",
+    "negative:evidence-as-authority",
+    "negative:canonicalization-rejection",
+)
+
+#: WORK-055 production-conformance discrimination categories (R3)
+#: proven by FAMILY-LEVEL (registry) vector pairing; the negotiation
+#: and migration discrimination proofs live in the battery.
+W055_REQUIRED_DISCRIMINATION_TAGS: Tuple[str, ...] = (
+    "discriminating:canonicalization",
+    "discriminating:signature-coverage",
+    "discriminating:digest-stability",
+    "discriminating:evidence-separation",
+    "discriminating:unknown-fields",
+)
+
 #: The complete frozen tag vocabulary (coverage tags are asserted against
-#: this set at registration time).
+#: this set at registration time).  WORK-055 extended the vocabulary
+#: additively (the W055_* tags); every WORK-032 tag is unchanged.
 KNOWN_TAGS: FrozenSet[str] = frozenset(
     set(REQUIRED_NEGATIVE_TAGS)
     | set(REQUIRED_RECOVERY_TAGS)
     | set(REQUIRED_DISCRIMINATION_TAGS)
+    | set(W055_REQUIRED_NEGATIVE_TAGS)
+    | set(W055_REQUIRED_DISCRIMINATION_TAGS)
     | {
         "positive:core-behavior",
         "positive:determinism",
+        "positive:production-conformance",
         "matrix:multipath-binding",
         "matrix:envelope-interop",
         "diagnostics:secret-free",

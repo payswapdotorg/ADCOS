@@ -1,0 +1,25 @@
+{
+  "authority": "WORK-003",
+  "category": "signature-input",
+  "contract": "protocol/signature.py (signature_input_bytes)",
+  "description": "Signature-input basis of the minimal envelope (signature member excluded).",
+  "expected": {
+    "signature_input_json": "{\"evidence\":[],\"expires_at\":\"2030-01-01T01:00:00Z\",\"extensions\":{},\"issued_at\":\"2030-01-01T00:00:00Z\",\"message_id\":\"msg-w055-0001\",\"message_type\":\"capability.advertise\",\"payload\":{},\"protocol\":\"adcos\",\"sender\":\"node:w055-alpha\",\"version\":1}"
+  },
+  "input": {
+    "evidence": [],
+    "expires_at": "2030-01-01T01:00:00Z",
+    "extensions": {},
+    "issued_at": "2030-01-01T00:00:00Z",
+    "message_id": "msg-w055-0001",
+    "message_type": "capability.advertise",
+    "payload": {},
+    "protocol": "adcos",
+    "sender": "node:w055-alpha",
+    "signature": "opaque-signature-material",
+    "version": 1
+  },
+  "invariant": "the covered-byte basis excludes exactly the signature member",
+  "outcome_class": "known_compatible",
+  "vector_id": "W055-GLD-SIG-0001"
+}
