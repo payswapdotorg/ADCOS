@@ -8,6 +8,7 @@ Work Item: `WORK-056` — authorization `WORK-056-CORE-001` — decision
 - Authoritative mainline incorporated by the round-2 delivery: `e0b8e0f39a7adc885e0a8da9180ad06db9bd14a8` (PR #18, DEC-0090)
 - Authorized branch: `work-056-developer-platform-hardening`
 - Round-2 delivery: the round-1 commit `4ac8107811546e14f9a29a50139000e1a0231752`, then a plain merge of the DEC-0090 mainline, then the round-2 correction commit directly on top (no rebase of published history, no force; the exact head SHA is recorded in the PR body, the PR head, and the worker worklog — the battery's scope/ancestry case verifies the lineage mechanically on every run, so the claim does not depend on this document).
+- Round-3 correction: one plain commit directly on top of the round-2 head `e5af68b58ad78435e2220a181bdb51e4f7529855` (the review-5124542587 disposition; no rebase, no force). The exact new head SHA is recorded in the PR head and the worker delivery comment.
 
 Everything in this record is reproducible from a fresh checkout
 of the delivery head with a single command per section (Python
@@ -15,7 +16,157 @@ of the delivery head with a single command per section (Python
 
 ---
 
+# ROUND 3 — the exact-scope correction (review 5124542587)
+
+The round-2 delivery (head `e5af68b58ad78435e2220a181bdb51e4f7529855`)
+received **CHANGES REQUIRED** (formal review 5124542587, with two
+inline findings). The independent 1.x compatibility blocker was
+adjudicated **corrected** (route restored, 11-member contract
+restored, discrimination coverage accepted). The remaining blocker
+is an authorization violation: DEC-0090 authorizes **case_03 only**
+in `tools/composition_selftest.py` and explicitly prohibits changes
+elsewhere in that file; the round-2 delivery had additionally
+changed `case_01`, `case_24`, the module docstring, and the
+`_FORBIDDEN_IMPORT_ROOTS` comment. The acceptance rule is
+exact-path/exact-change governance, not semantic-intent governance
+("additional pin sites of the same oracle" does not expand the
+issued authorization). Round 3 corrects exactly that.
+
+## R3.1 The correction (byte-exact)
+
+The round-3 commit restores `tools/composition_selftest.py` to the
+**pre-delivery bytes** — the file state at the branch root
+`4852a016fce61cecec8078084da1d9bbe81d2681`, byte-identical on the
+authoritative main `e0b8e0f39a7adc885e0a8da9180ad06db9bd14a8` (no
+W056 round touched that file before round 2) — with exactly ONE
+exception: the `case_03_w046_defect_disclosed` function carries the
+DEC-0090-authorized reconciliation, byte-identical to the round-2
+delivery's case_03 (the two hunks the review adjudicated as
+authorized: `AuthorityAvailability.AVAILABLE` + the
+"imports cleanly" repaired-state detail, plus the repaired-state ok
+wording). Everything else in the file — module docstring,
+`_FORBIDDEN_IMPORT_ROOTS` comment, `case_01`, `case_24`, all other
+cases — is reverted to the pre-delivery bytes verbatim.
+
+The 1.x compatibility implementation is **retained byte-identical**:
+the correction commit does not touch `developerapi/`,
+`tools/developerapi_selftest.py`, or any production or battery file
+other than `tools/composition_selftest.py`.
+
+Reproducible proofs (all from a fresh checkout of the round-3 head;
+`<pre>` = `4852a016fce61cecec8078084da1d9bbe81d2681`,
+`<r2>` = `e5af68b58ad78435e2220a181bdb51e4f7529855`):
+
+```
+git diff <pre> HEAD -- tools/composition_selftest.py
+  -> exactly the two authorized hunks, both inside
+     case_03_w046_defect_disclosed (26 changed lines, no other site)
+
+git diff <r2> HEAD -- tools/composition_selftest.py
+  -> exactly the reverts of the four unauthorized round-2 edits
+     (module docstring, _FORBIDDEN_IMPORT_ROOTS comment, case_01,
+     case_24); the case_03 hunks are absent (byte-identical)
+
+git diff <r2> HEAD --stat
+  -> tools/composition_selftest.py, docs/WORK-056-evidence.md,
+     docs/WORK-056-handoff.md only (the worker evidence/handoff
+     records themselves); developerapi/ and
+     tools/developerapi_selftest.py byte-identical to round 2
+```
+
+## R3.2 Fresh verification at the round-3 head (honest)
+
+| Battery | Round-3 result at the exact head | Classification |
+|---|---|---|
+| `tools/developerapi_selftest.py` | **PASS 56/56** (45 re-bound W046 cases + 11 discrimination; case 27 and case 46 pin the restored 1.x contract) | the W056 acceptance battery — retained green |
+| determinism (full repeat run + `PYTHONHASHSEED=0/1/7919`) | byte-identical outputs, all `Result: PASS (56/56 cases passed)` | deterministic evidence |
+| `tools/composition_selftest.py` (the delivered run) | **FAIL — fail-fast abort at case_01**: `WORK-046 is not classified DEFECT`; `Result: FAIL (1/1 cases failed)` (byte-identical across repeat runs and `PYTHONHASHSEED=0/7919`) | the honest result of applying the case_03-only amendment exactly |
+| `tools/composition_selftest.py` (per-case isolated execution) | **53/55**: exactly `case_01` and `case_24` red; `case_03` green (the authorized reconciliation); every other case green | documents the residual red precisely |
+| commercial / usage / allocation selftests | 38/38, 49/49, 60/60 — unchanged | accepted sibling batteries remain green |
+| `spec_check.py` | 12/16 blocking + 2 advisory (ARCH-08 SKIP) — byte-identical to the branch root, to round 2, and to main | inherited governance-state failure, no new failure |
+| conformance selftest | 2/63 (cases 62/63) — the same two cases as at the branch root and current main | inherited, no new failure |
+
+**The honest statement of the residual red.** The pre-delivery
+`case_01` and `case_24` pin the W046 `DEFECT (defect-inherited)`
+classification the accepted W054 battery recorded at its own
+delivery. The underlying probe (`composition/authority.py::_w46_defect`,
+dynamic `import developerapi`) now honestly reports `AVAILABLE`
+because the W056 repair — the exact work this authorization mandates
+— fixed the inherited import defect. Applied exactly as issued
+(case_03 only), the amendment therefore leaves the battery red at
+its two other W046-DEFECT pin sites: case_01 first (the battery is
+fail-fast by design) and case_24 behind it. The per-case isolated
+execution above (an out-of-tree harness importing the delivered
+module and invoking each case function independently; the delivered
+bytes are not modified) demonstrates the red is confined to exactly
+those two reverted pins — 53 green, case_03 green, nothing else.
+
+This is the exact state the issued authorization produces, reported
+without alteration. The worker does NOT broaden the amendment by
+inference — that was round-2's defect, adjudicated in review
+5124542587. The two remaining stale pins, and the two file-level
+comment/docstring sites that still describe the W046 DEFECT
+classification as current fact, are **Architect-owned oracle
+surface** outside the worker's issued scope. Disposition requested
+(the worker cannot self-issue it): either a further narrow amendment
+naming those exact sites, or an explicit acceptance of the residual
+red as documented. No claim of "55/55" is made at the round-3 head.
+
+## R3.3 Scope and ancestry (round 3)
+
+- The cumulative implementation delta measured against the
+  authoritative main `e0b8e0f39a7adc885e0a8da9180ad06db9bd14a8` is
+  confined to the amended authorized scope: `developerapi/errors.py`,
+  `developerapi/gateway.py`, `developerapi/schema.py`,
+  `tools/developerapi_selftest.py`,
+  `tools/composition_selftest.py` (the DEC-0090 case_03-only
+  delta: 26 changed lines, all inside the case_03 function), and the
+  worker's own evidence/handoff records.
+- `spec/architect/` is untouched by the implementation branch: the
+  delta from main under `spec/` is empty (0 files); the DEC-0090
+  record and the amended `WORK-056.yaml` arrive ONLY through the
+  Architect-merged mainline incorporated by the plain merge.
+- The delivery remains within `WORK-056-CORE-001` + the exact
+  DEC-0090 exception; no frozen Architecture 1.0 / Protocol 1.0
+  semantics change; no W048 restoration; no W040 touch; the
+  battery's scope/ancestry case (case 41) verifies the
+  7ae438d / 4852a016 / e0b8e0f lineage mechanically on every run.
+- No rebase of published history and no force: one plain commit on
+  top of `e5af68b58ad78435e2220a181bdb51e4f7529855` on the
+  authorized branch `work-056-developer-platform-hardening`; PR #17
+  remains open and unmerged.
+
+## R3.4 Honest boundaries (round 3)
+
+- All W056 evidence remains SOFTWARE; W040's PHYSICAL obligations
+  (EVID-007/EVID-008) remain open; software never promotes to
+  physical.
+- The W054 composition battery is honestly reported **red at the
+  round-3 head** (fail-fast case_01; per-case 53/55) — the residual
+  is the two reverted pre-delivery pins, disclosed and classified,
+  awaiting Architect disposition. No attempt is made to green them
+  from the implementation branch.
+- The value-level adaptation boundaries of §R2.1 (retired `ceiling`
+  rounding, narrowed exponent range, the conflict classification's
+  boundary-local reason) remain disclosed and unchanged.
+- No CI success is claimed for the specification-consistency job
+  (the inherited signature); the W050 exact-head battery is the
+  CI-verified ancestry leg and runs green at the pushed head.
+- `WAITING_FOR_ARCHITECT` at the round-3 head; not self-accepted,
+  not self-merged; the guarded merge remains Architect-only.
+
+---
+
 # ROUND 2 — the Architect disposition correction
+
+> **Superseded by ROUND 3 where ROUND 3 says so.** The review
+> 5124542587 disposition adjudicated R2.2's three-site application
+> and R2.3's composition-battery row as an exact-scope violation:
+> the round-2 "PASS 55/55" was obtained using unauthorized changes
+> to the accepted W054 battery (case_01 and case_24 plus two
+> file-level comment sites). The authoritative round-3 result is the
+> honest one recorded in §R3.2. The round-2 record is retained
+> below as the historical record of that delivery.
 
 The round-1 delivery (head `4ac8107`) received **CHANGES
 REQUIRED** with two findings. This section records the round-2
