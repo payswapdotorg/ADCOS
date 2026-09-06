@@ -27,7 +27,6 @@ dependencies:
   - WORK-052
   - WORK-053
   - WORK-055
-  - WORK-056
 authority_inputs:
   - "Frozen Architecture Version 1.0 contracts"
   - "Frozen Protocol Version 1.0 contracts and schemas"
@@ -61,14 +60,19 @@ scope:
   - "tools/"
   - "docs/WORK-057-evidence.md"
   - "docs/WORK-057-handoff.md"
+out_of_scope:
+  - "Modifying spec/architect/ from the implementation PR."
+  - "Changing frozen protocol schemas or wire semantics."
+  - "Creating a new identity, session, NetworkPath, routing, transport, payment, usage, allocation, or policy authority."
+  - "Importing provider-specific SDKs or implementation types into core domains."
+  - "Restoring WORK-048."
+  - "Closing or altering WORK-040 physical-evidence obligations."
+  - "Custody of regulated funds or creation of a KYC/KYB authority."
+  - "Introducing vendor authority or vendor-specific semantics into the protocol core."
 scope_constraints:
-  - "Do not modify spec/architect/."
-  - "Do not modify frozen protocol schemas or wire semantics."
-  - "Do not create a new identity/session/routing/transport/payment/usage/allocation/policy authority."
-  - "Provider-specific SDKs/types remain behind adapters and are never imported into the core domain."
   - "WORK-048 remains accepted-not-restored and cannot be restored under this authorization."
   - "WORK-040 physical evidence remains independent and cannot be closed by this Work Item."
-  - "No live regulated-funds custody, KYC/KYB authority, or vendor authority is introduced."
+  - "Provider-specific SDKs/types remain behind adapters and are never imported into the core domain."
 acceptance_criteria:
   - "An independently operated provider/domain can be registered deterministically with explicit operator/domain identity binding."
   - "Federation membership is scoped, explicitly accepted, revocable, non-transitive, and auditable."
