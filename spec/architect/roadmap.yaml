@@ -38,8 +38,8 @@ governance_rules:
   post_snapshot_work_items_use_gate_specific_governance_layer: true
 
 current_state:
-  actual_main_sha: 16c066ff4766d362f0edfcb790524b2c0ef44cae
-  last_reconciled_snapshot_sha: 16c066ff4766d362f0edfcb790524b2c0ef44cae
+  actual_main_sha: 6961f55b1ec07d8a9ee7ce20502ab4a228175ef7
+  last_reconciled_snapshot_sha: 6961f55b1ec07d8a9ee7ce20502ab4a228175ef7
   program_state: R6_PROVIDER_ONBOARDING_AND_FEDERATION_ACTIVE
   execution_mode: implementing
   active_work_item: WORK-057
@@ -87,7 +87,7 @@ accepted_history:
     - id: WORK-049
       status: accepted-merged
       reviewed_sha: b8cc17ef21f6c38266152552590dc73f80c056ce
-      merge_sha: 89ad6ff3d168c59256c3e805539eb9ca22f6b3bc
+      merge_sha: 89ad6ff3d168c59256e3c805539eb9ca22f6b3bc
       current_mainline: present-restored
     - id: WORK-050
       status: accepted-merged
