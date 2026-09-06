@@ -391,17 +391,23 @@ def case_01_authority_availability(results: List[Result]) -> None:
         probe for probe in AUTHORITY_PROBES
         if probe.availability == AuthorityAvailability.ABSENT
     ]
-    defect = [
-        probe for probe in AUTHORITY_PROBES
-        if probe.availability == AuthorityAvailability.DEFECT
-    ]
     problems: List[str] = []
     if len(available) < 13:
         problems.append("only %d available authorities" % len(available))
     if not absent or all(p.work_item != "WORK-048" for p in absent):
         problems.append("WORK-048 is not classified ABSENT")
-    if not defect or all(p.work_item != "WORK-046" for p in defect):
-        problems.append("WORK-046 is not classified DEFECT")
+    # the W046 availability oracle, reconciled by DEC-0090: the
+    # boundary repaired by WORK-056 imports cleanly (the same
+    # single oracle pinned in case_03 and case_24)
+    w046 = [
+        probe for probe in AUTHORITY_PROBES
+        if probe.work_item == "WORK-046"
+    ]
+    if not w046 or w046[0].availability != AuthorityAvailability.AVAILABLE:
+        problems.append(
+            "WORK-046 is not classified AVAILABLE (DEC-0090 "
+            "reconciliation)"
+        )
     if problems:
         results.append(fail(name, "; ".join(problems)))
         return
@@ -409,7 +415,7 @@ def case_01_authority_availability(results: List[Result]) -> None:
         ok(
             name,
             "%d available, WORK-048 absent-fail-closed, WORK-046 "
-            "defect-inherited (recorded, disclosed)" % len(available),
+            "repaired-available (DEC-0090 reconciled)" % len(available),
         )
     )
 
@@ -484,12 +490,19 @@ def case_03_w046_defect_disclosed(results: List[Result]) -> None:
         return
     probe = probes[0]
     problems: List[str] = []
-    if probe.availability != AuthorityAvailability.DEFECT:
+    # DEC-0090 reconciliation (the W054 WORK-046 availability
+    # oracle): the historical inherited import defect was
+    # repaired by WORK-056 within developerapi/ (re-bound to the
+    # current accepted W052/W053 public surfaces), so the
+    # boundary now imports cleanly and is AVAILABLE -- the
+    # repaired-state classification, replacing the obsolete
+    # import-broken/no-repair expectation
+    if probe.availability != AuthorityAvailability.AVAILABLE:
         problems.append("availability %r" % probe.availability)
-    if "UsageLedgerError" not in probe.detail:
-        problems.append("the defect detail lacks the stale symbol")
-    if "never repaired" not in probe.detail:
-        problems.append("the defect detail lacks the no-repair disclosure")
+    if "imports cleanly" not in probe.detail:
+        problems.append(
+            "the availability detail lacks the repaired-state wording"
+        )
     # the composition family must not import developerapi statically
     source = "\n".join(
         path.read_text(encoding="utf-8") for path in _FAMILY_FILES
@@ -502,10 +515,11 @@ def case_03_w046_defect_disclosed(results: List[Result]) -> None:
     results.append(
         ok(
             name,
-            "the restored W046 artifacts fail to import (stale "
-            "usage.errors.UsageLedgerError cross-import); classified "
-            "defect-inherited, disclosed, never repaired or bypassed; "
-            "composition never statically imports it",
+            "the W046 boundary imports cleanly on the WORK-056-repaired "
+            "mainline (the historical usage.errors.UsageLedgerError "
+            "cross-import defect repaired within developerapi/); the "
+            "availability oracle reconciled per DEC-0090; composition "
+            "never statically imports it",
         )
     )
 
@@ -1586,10 +1600,11 @@ def case_24_neg_webhook_not_source_of_truth(results: List[Result]) -> None:
         except UsageError as error:
             if error.reason != expected:
                 problems.append("usage kind reason %r != %r" % (error.reason, expected))
-    # the W046 boundary itself is the disclosed inherited defect
+    # the W046 boundary is repaired and available (the same
+    # single availability oracle, DEC-0090 reconciled)
     probes = [p for p in AUTHORITY_PROBES if p.work_item == "WORK-046"]
-    if probes and probes[0].availability != AuthorityAvailability.DEFECT:
-        problems.append("W046 is not disclosed as defective")
+    if probes and probes[0].availability != AuthorityAvailability.AVAILABLE:
+        problems.append("W046 is not reconciled as available")
     if problems:
         results.append(fail(name, "; ".join(problems)))
         return
@@ -1600,8 +1615,9 @@ def case_24_neg_webhook_not_source_of_truth(results: List[Result]) -> None:
             "only through the explicit exactly-once apply command); "
             "redelivery is an idempotent no-op; payment/provider "
             "observations are refused by the W052 kind table; the W046 "
-            "webhook boundary is the disclosed inherited defect (never "
-            "bypassed)",
+            "webhook boundary is repaired and available (DEC-0090 "
+            "reconciled) and its observations still never bypass the "
+            "fold",
         )
     )
 
@@ -2793,64 +2809,81 @@ def case_50_frozen_spec_intact(results: List[Result]) -> None:
     )
 
 
+#: The fixed ends of the historical W054 delta this case proves
+#: (DEC-0093): the authorized W054 baseline and the accepted W054
+#: delivery. The proof is immutable — it never diffs the live
+#: worktree against a moving ref, so a later authorized Work Item
+#: cannot be misclassified as a W054 scope violation.
+_W054_AUTHORIZED_BASELINE = "461d1482180222f4b63f780d6d9ea1d54c49d643"
+_W054_ACCEPTED_DELIVERY = "93ad4130f8308832e432ce3e83988f5a6a9b32e3"
+
+
 def case_51_pr_delta_scope(results: List[Result]) -> None:
     name = "case_51_pr_delta_authorized_scope"
-    if not _origin_main_available():
+    # Immutable historical W054 scope/provenance proof (DEC-0093): the
+    # delta between the fixed W054 authorized baseline and the fixed
+    # accepted W054 delivery — not the current worktree against
+    # origin/main — must lie exactly within the authorized W054
+    # surfaces, must contain no spec/ delta, and the accepted W054
+    # delivery must remain on the tested HEAD lineage.
+    diff = subprocess.run(
+        [
+            "git", "diff", "--name-only",
+            _W054_AUTHORIZED_BASELINE, _W054_ACCEPTED_DELIVERY,
+        ],
+        capture_output=True, text=True, cwd=str(REPO_ROOT),
+    )
+    if diff.returncode != 0:
         results.append(
-            ok(
-                name,
-                "skipped (no origin/main ref; the CI provenance step "
-                "enforces the authorized scope)",
-            )
+            fail(name, "cannot compute the historical W054 delta")
         )
         return
-    delta: set = set()
-    diff = subprocess.run(
-        ["git", "diff", "--name-only", "origin/main"],
-        capture_output=True, text=True, cwd=str(REPO_ROOT),
-    )
-    if diff.returncode == 0:
-        delta |= {line for line in diff.stdout.splitlines() if line.strip()}
-    untracked = subprocess.run(
-        ["git", "ls-files", "--others", "--exclude-standard"],
-        capture_output=True, text=True, cwd=str(REPO_ROOT),
-    )
-    if untracked.returncode == 0:
-        delta |= {line for line in untracked.stdout.splitlines() if line.strip()}
+    delta: set = {
+        line for line in diff.stdout.splitlines() if line.strip()
+    }
     if not delta:
-        results.append(ok(name, "no delta (clean main)"))
+        results.append(ok(name, "no historical W054 delta"))
         return
     problems: List[str] = []
     for path in sorted(delta):
         if path.startswith("spec/"):
-            problems.append("delta touches frozen spec/: %s" % path)
+            problems.append(
+                "historical W054 delta touches frozen spec/: %s" % path
+            )
             continue
         if not any(
             path == surface or path.startswith(surface)
             for surface in _AUTHORIZED_PATHS
         ):
-            problems.append("delta outside the authorized scope: %s" % path)
-    # the authorized baseline is an ancestor of the delivery head
+            problems.append(
+                "historical W054 delta outside the authorized scope: %s"
+                % path
+            )
+    # the accepted W054 delivery is an ancestor of the tested HEAD
     ancestry = subprocess.run(
         [
             "git", "merge-base", "--is-ancestor",
-            "461d1482180222f4b63f780d6d9ea1d54c49d643", "HEAD",
+            _W054_ACCEPTED_DELIVERY, "HEAD",
         ],
         capture_output=True, cwd=str(REPO_ROOT),
     )
     if ancestry.returncode != 0:
-        problems.append("the authorized baseline is not an ancestor of HEAD")
+        problems.append(
+            "the accepted W054 delivery is not an ancestor of HEAD"
+        )
     if problems:
         results.append(fail(name, "; ".join(problems)))
         return
     results.append(
         ok(
             name,
-            "the %d-file delta lies exactly within the authorized "
-            "WORK-054 scope (composition/, tools/composition_selftest.py, "
-            "docs/WORK-054-*.md) and the authorized baseline "
-            "461d1482180222f4b63f780d6d9ea1d54c49d643 is an ancestor of "
-            "HEAD" % len(delta),
+            "the %d-file historical W054 delta between the authorized "
+            "baseline 461d1482180222f4b63f780d6d9ea1d54c49d643 and the "
+            "accepted delivery 93ad4130f8308832e432ce3e83988f5a6a9b32e3 "
+            "lies exactly within the authorized WORK-054 scope "
+            "(composition/, tools/composition_selftest.py, "
+            "docs/WORK-054-*.md), contains no spec/ delta, and the "
+            "accepted delivery remains an ancestor of HEAD" % len(delta),
         )
     )
 

@@ -111,12 +111,16 @@ REASON_HTTP_STATUS = {
 
 #: The frozen canonical-reason -> HTTP status table: the mapping
 #: for reasons surfaced from the canonical subsystems the W046
-#: boundary adapts (WORK-051 commercial core, WORK-052 usage
-#: ledger, WORK-053 economic allocation).  Unknown canonical
-#: reasons (future subsystem vocabularies) map to 400 and are
-#: non-retryable -- the boundary never guesses.
+#: boundary adapts.  WORK-056 re-binds this table to the three
+#: CURRENT accepted frozen vocabularies (the W052/W053 review
+#: corrections renamed and extended the usage/allocation reason
+#: sets after the W046-era names this table carried); every
+#: reason below is carried UNCHANGED through the boundary (the
+#: classification is transport DATA, never a rewrite).  Unknown
+#: canonical reasons (future subsystem vocabularies) map to 400
+#: and are non-retryable -- the boundary never guesses.
 CANONICAL_REASON_HTTP_STATUS = {
-    # WORK-051 CommercialCore (commercial/errors.py)
+    # WORK-051 CommercialCore (commercial/errors.py, current)
     "invalid-input": 400,
     "command-invalid": 400,
     "command-duplicate": 200,
@@ -137,16 +141,41 @@ CANONICAL_REASON_HTTP_STATUS = {
     "journal-corrupt": 500,
     "store-failed": 500,
     "instant-invalid": 400,
-    # WORK-052 UsageLedger (usage/errors.py)
-    "account-unknown": 404,
-    "finality-invalid": 422,
-    "compensation-rejected": 422,
-    # WORK-053 EconomicAllocation (allocation/errors.py)
+    # WORK-052 UsageLedger (usage/errors.py, current post-
+    # review-corrections vocabulary)
+    "evidence-unknown": 404,
+    "evidence-mismatch": 422,
+    "transaction-not-delivering": 422,
+    "observation-rejected": 422,
+    "quantity-exceeded": 422,
+    "window-invalid": 400,
+    "provider-not-delivery": 422,
+    "reservation-not-usage": 422,
+    "observation-class-invalid": 400,
+    "usage-sealed": 422,
+    "final-immutable": 422,
+    "compensation-requires-final": 422,
+    "compensation-exceeded": 422,
+    "dispute-already-open": 422,
+    # WORK-053 EconomicAllocation (allocation/errors.py,
+    # current post-review-corrections vocabulary)
+    "policy-invalid": 400,
     "policy-unknown": 404,
-    "policy-conflict": 409,
-    "allocation-unknown": 404,
+    "policy-not-effective": 422,
+    "split-out-of-bounds": 400,
+    "distribution-invalid": 400,
+    "usage-unknown": 404,
+    "usage-mismatch": 422,
     "usage-not-final": 422,
-    "allocation-conflict": 409,
+    "payment-not-usage": 422,
+    "settlement-not-usage": 422,
+    "reference-mismatch": 422,
+    "payment-not-settlement": 422,
+    "settlement-not-payment": 422,
+    "allocation-unknown": 404,
+    "allocation-already-exists": 409,
+    "settlement-immutable": 422,
+    "compensation-requires-settled": 422,
 }
 
 #: The frozen retryability classification: which boundary

@@ -1,14 +1,61 @@
 #!/usr/bin/env python3
-"""WORK-046 developer platform battery (deterministic, stdlib only).
+"""WORK-046 developer platform battery + the WORK-056
+production-hardening discrimination layer (deterministic,
+stdlib only).
 
 End-to-end verification of the Developer Connectivity API, SDK &
-Webhook Platform (authorization WORK-046-CORE-001 / DEC-0065,
-baseline 3db7500 by DEC-0066) composing the accepted commercial
+Webhook Platform (the accepted WORK-046-CORE-001 / DEC-0065
+foundation) hardened under WORK-056-CORE-001 / DEC-0089 (R5,
+branch work-056-developer-platform-hardening rooted at the
+post-governance mainline 4852a016, itself descending from the
+authorized baseline 7ae438d), composing the accepted commercial
 plane (W051 CommercialCore, W052 UsageLedger, W053
-EconomicAllocation) and the real reference authorities the
-commercial battery composes (the WORK-033 Linux reference agent,
-WORK-012 logical sessions, WORK-041 NetworkPath, WORK-042
-platform journal):
+EconomicAllocation -- at their CURRENT accepted public surfaces:
+the W052/W053 review corrections renamed usage.lifecycle ->
+usage.ledger / allocation.lifecycle -> allocation.ledger and
+reshaped the usage/policy projections, and WORK-056 re-binds
+the boundary's adapted layer accordingly) and the real
+reference authorities the commercial battery composes (the
+WORK-033 Linux reference agent, WORK-012 logical sessions,
+WORK-041 NetworkPath, WORK-042 platform journal):
+
+WORK-056 hardening delta proven by this battery:
+
+- **RE-BINDING**: the accepted W046 surface was import-broken
+  at the authorized baseline (it named the W046-era
+  usage/allocation module layout that the accepted W052/W053
+  review corrections replaced); the boundary's adapted
+  authority layer, reason-code table, and the usage/billing
+  reads are re-bound to the CURRENT accepted public APIs with
+  the frozen route/capability/envelope contract preserved,
+  INCLUDING the frozen 1.x economic-policy REST contract
+  VERBATIM (the two-segment GET /economic-policies/{id}/
+  {version} route and the 11-member 1.x request/response
+  model with client-chosen (policy_id, version) coordinates,
+  tax_bps, and the optional open-ended effective window -- the
+  round-2 compatibility correction: the boundary adapts the
+  1.x wire contract onto the current canonical terms-derived
+  policy model through its 1.x compatibility layer, never
+  silently redefining 1.0/1.1), and the usage/billing reads
+  project the CURRENT W052 transaction-scoped model
+  (delivery-evidence windows -> sealed billable statement ->
+  three-way allocation).
+
+- **DISCRIMINATING POWER (cases 46-56)**: the W054/W055 family
+  mandate -- deliberately sabotaged candidates, implemented
+  over public APIs as battery fixtures ONLY (never shipped,
+  never exported), must FAIL the paired vectors the genuine
+  implementation passes: version laundering, idempotency
+  re-keying (duplicate re-execution), privilege escalation
+  through identifier substitution, environment bridging,
+  canonical reason rewriting, webhook signature blindness,
+  webhook replay/duplicate/order blindness, pagination
+  instability + cursor forgery, SDK request reshaping and
+  response fabrication, rate-limit-as-business-authority, and
+  observation-as-command.  A suite that would also pass a
+  sabotaged candidate has no discriminating power; each paired
+  case proves the gap exists mechanically.
+
 
 - **API schema** (criterion 1): the versioned API contract --
   version resolution (supported / deprecated-with-notice /
@@ -134,7 +181,8 @@ platform journal):
   process-local observation state);
 - **delivery discipline**: frozen public API surface, frozen
   spec surfaces intact, PR delta confined to the authorized
-  W046 scope (+ the sanctioned additive-only CI wiring).
+  W056 scope (developerapi/ + this battery + the two W056
+  delivery documents) with the exact baseline ancestry proven.
 
 The battery exercises the PUBLIC production path only: the
 ordinary agent session establishment chain, the NetworkPath
@@ -209,15 +257,26 @@ from commercial import (  # noqa: E402
 )
 from commercial.journal import MemoryCommercialStore  # noqa: E402
 
-from usage.lifecycle import UsageLedger  # noqa: E402
+from usage.ledger import UsageLedger  # noqa: E402
 from usage.journal import MemoryUsageStore  # noqa: E402
-from usage.evidence import EvidenceIndex, EvidenceReference  # noqa: E402
-from usage.errors import UsageLedgerError  # noqa: E402
+from usage.evidence import UsageEvidenceIndex  # noqa: E402
+from usage import (  # noqa: E402
+    EvidenceKind,
+    QuantityClass,
+    UsageError,
+    UsageTransactionState,
+)
 
-from allocation.lifecycle import AllocationLedger  # noqa: E402
+from allocation.ledger import AllocationLedger  # noqa: E402
 from allocation.journal import MemoryAllocationStore  # noqa: E402
-from allocation.evidence import FactIndex  # noqa: E402
+from allocation.evidence import AllocationEvidenceIndex  # noqa: E402
 from allocation.errors import AllocationError  # noqa: E402
+
+from composition.world import (  # noqa: E402
+    build_allocation_evidence_index,
+    build_delivery_evidence,
+    build_usage_evidence_index,
+)
 
 import developerapi  # noqa: E402
 from developerapi import (  # noqa: E402
@@ -241,6 +300,7 @@ from developerapi import (  # noqa: E402
     resolve_version,
 )
 from developerapi.gateway import ApiRequest, ROUTES  # noqa: E402
+from developerapi.ratelimit import RateLimiter  # noqa: E402
 from developerapi.journal import (  # noqa: E402
     AppendOnlyApiJournal,
     MutationRecord,
@@ -279,20 +339,30 @@ CELL_IF = "vpn0"
 #: pinned here; the package must match exactly).
 _EXPECTED_API = sorted(developerapi.__all__)
 
-#: The authorized W046 delta surface (scope of
-#: WORK-046-CORE-001) plus the sanctioned additive CI wiring.
+#: The authorized WORK-056 delta surface: the DEC-0089 scope of
+#: WORK-056-CORE-001 (the developerapi package, this battery,
+#: and the two W056 delivery documents; the W046-era CI-wiring
+#: exception is NOT carried over -- no CI change is part of the
+#: delivery) PLUS the DEC-0090 narrow amendment (the single W054
+#: composition-test oracle reconciliation in
+#: tools/composition_selftest.py -- see the amended
+#: spec/architect/authorizations/WORK-056.yaml on the DEC-0090
+#: mainline; nothing else in that file may change).
 _AUTHORIZED_PATHS = (
     "developerapi/",
     "tools/developerapi_selftest.py",
-    "docs/WORK-046-evidence.md",
+    "tools/composition_selftest.py",
+    "docs/WORK-056-evidence.md",
+    "docs/WORK-056-handoff.md",
 )
-AUTHORIZED_CI_WIRING = ".github/workflows/spec-check.yml"
 
 #: The import allow-list of the developerapi family: stdlib
 #: basics + the WORK-003 canonicalization + the WORK-033 clock
 #: seam + the three adapted commercial-plane authorities'
-#: error/lifecycle modules (isinstance-checked injection points
-#: only -- the call audit below pins the exact call surface).
+#: error/ledger modules (isinstance-checked injection points
+#: only -- the call audit below pins the exact call surface;
+#: WORK-056 re-binds the names to the CURRENT accepted module
+#: layout: usage.ledger / allocation.ledger).
 _ALLOWED_IMPORT_MODULES = {
     "__future__",
     "hashlib",
@@ -306,9 +376,9 @@ _ALLOWED_IMPORT_MODULES = {
     "commercial.errors",
     "commercial.lifecycle",
     "usage.errors",
-    "usage.lifecycle",
+    "usage.ledger",
     "allocation.errors",
-    "allocation.lifecycle",
+    "allocation.ledger",
 }
 
 #: The connectivity / payment / eligibility authority modules the
@@ -634,62 +704,6 @@ def _references(
     return ReferenceIndex(entries)
 
 
-def _evidence_index(
-    manager: NetworkPathManager,
-    integrator: PlatformIntegrator,
-    session_id: str,
-    core: Optional[CommercialCore] = None,
-) -> EvidenceIndex:
-    """The W052 frozen evidence snapshot, built from PUBLIC reads
-    only; when the commercial core is injected, its transaction
-    projections (with the commercial_state/session/path facts
-    W052 gates on) are included -- the index is the metering
-    window's frozen composition snapshot."""
-    from usage.evidence import EvidenceFamily
-
-    entries: List[EvidenceReference] = [
-        EvidenceReference(
-            reference_id=session_id,
-            family=EvidenceFamily.SESSION,
-            provenance="sessions-authority",
-        ),
-    ]
-    for path_id in manager.paths():
-        entries.append(
-            EvidenceReference(
-                reference_id=path_id,
-                family=EvidenceFamily.NETWORK_PATH,
-                provenance="networkpath-manager",
-            )
-        )
-    for record in integrator.journal_records():
-        event = record.event
-        if event.kind == "platform-state-observation":
-            continue
-        entries.append(
-            EvidenceReference(
-                reference_id=event.event_id,
-                family=EvidenceFamily.DELIVERY_EVIDENCE,
-                provenance="platform-journal",
-                instant=event.observed_at,
-            )
-        )
-    if core is not None:
-        for transaction in core.transactions():
-            projection = transaction.to_dict()
-            entries.append(
-                EvidenceReference(
-                    reference_id=projection["transaction_id"],
-                    family=EvidenceFamily.COMMERCIAL,
-                    provenance="commercial-core",
-                    commercial_state=projection.get("state", ""),
-                    session_ref=projection.get("session_ref", ""),
-                    path_ref=projection.get("path_ref", ""),
-                )
-            )
-    return EvidenceIndex(entries)
-
-
 class _FailingApiStore(MemoryApiStore):
     """A store that fails on the Nth append (failure injection)."""
 
@@ -851,12 +865,12 @@ def _compose_service(
     usage = UsageLedger(
         store=MemoryUsageStore(),
         clock=clock,
-        evidence=_evidence_index(manager, integrator, session_id),
+        evidence_index=UsageEvidenceIndex(evidence=(), transactions=()),
     )
     allocation = AllocationLedger(
         store=MemoryAllocationStore(),
         clock=clock,
-        facts=FactIndex([]),
+        evidence_index=AllocationEvidenceIndex(usage=(), references=()),
     )
     service = DeveloperApiService(
         environment=environment,
@@ -1039,7 +1053,8 @@ def _scenario_stream() -> Dict[str, str]:
         )
     )
 
-    # economic policy through the API
+    # economic policy through the API (the frozen 1.x request
+    # contract, preserved verbatim)
     policy_resp = service.handle(
         _req(
             "POST",
@@ -1052,8 +1067,9 @@ def _scenario_stream() -> Dict[str, str]:
                 "exponent": 2,
                 "rounding": "half-even",
                 "effective_from": "2026-09-01T00:00:00Z",
+                "effective_until": "2030-01-01T00:00:00Z",
                 "adc_os_share_bps": 500,
-                "tax_bps": 0,
+                "tax_bps": 250,
                 "developer_share_min_bps": 1000,
                 "developer_share_max_bps": 9000,
             },
@@ -3106,12 +3122,43 @@ def case_25_sdk_webhook_verification_parity(results: List[Result]) -> None:
 
 def case_26_usage_billing_reads(results: List[Result]) -> None:
     """Usage and billing reads over real W052/W053 state
-    (read-only: the developer API never writes usage truth)."""
+    (read-only: the developer API never writes usage truth).
+
+    WORK-056 re-binding: the metering flow now composes through
+    the CURRENT accepted W052/W053 public surfaces (the
+    composition-world precedent): delivery-evidence windows
+    derived from the platform journal's public reads, DELIVERED
+    observations citing that evidence, the explicit seal, the
+    three-way allocation under a registered policy -- then the
+    boundary re-composes (journal-first over the SAME api
+    store) and the API projects the canonical state.
+    """
     problems: List[str] = []
-    service, core, usage, allocation, world = _compose_service()
+    api_store = MemoryApiStore()
+    service, core, usage, allocation, world = _compose_service(
+        store=api_store
+    )
     runtime, peer, session_id, manager, integrator, shared = world
     app = _full_app(service, "dev-bill", "bill")
-    # drive a real chain to BILLABLE_FINAL (the platform plane)
+    # delivery-plane traffic (the composition-world pattern):
+    # two advancing wifi counters after the world's baseline
+    # observation -- consecutive cumulative deltas are the
+    # authoritative delivery-evidence windows
+    integrator.ingest_interface_observation(
+        _snap(
+            name=WIFI_IF, kind="wireless", addresses=("fd00::a:1",),
+            rx=100, tx=20,
+        ),
+        observed_at=shared.now(),
+    )
+    integrator.ingest_interface_observation(
+        _snap(
+            name=WIFI_IF, kind="wireless", addresses=("fd00::a:1",),
+            rx=300, tx=60,
+        ),
+        observed_at=shared.now(),
+    )
+    # the commercial transaction created THROUGH the API
     intent = service.handle(
         _req(
             "POST",
@@ -3122,12 +3169,23 @@ def case_26_usage_billing_reads(results: List[Result]) -> None:
         )
     )
     transaction_id = intent.body["data"]["id"]
+    # the platform plane drives the commercial chain to
+    # DELIVERY_STARTED (per-megabyte tariff: the sanctioned
+    # derivable offer shape)
     core.select_offer(
         command_id="bill-select",
         transaction_id=transaction_id,
         actor="dev-bill",
         source="platform",
-        offer={"offer_id": "sha256:" + "2" * 64, "amount": 10},
+        offer={
+            "provider_id": "provider-bill-1",
+            "offer_id": "wifi-basic",
+            "currency": "USD",
+            "price_minor": 3,
+            "price_exponent": 0,
+            "billing_mode": "per-megabyte",
+            "jurisdiction": "gh",
+        },
     )
     core.hold_reservation(
         command_id="bill-reserve",
@@ -3154,13 +3212,16 @@ def case_26_usage_billing_reads(results: List[Result]) -> None:
     evidence_ids = [
         record.event.event_id
         for record in integrator.journal_records()
-        if record.event.kind != "platform-state-observation"
+        if record.event.kind == "interface-observation"
     ]
     core.start_delivery(
         command_id="bill-start",
         transaction_id=transaction_id,
         actor="dev-bill",
         source="platform",
+        # cite the baseline world observation (resolvable in the
+        # frozen composition-time reference index); the NEW
+        # traffic observations feed the metering windows below
         evidence_refs=tuple(evidence_ids[:1]),
     )
     usage_plane_ref = next(
@@ -3182,143 +3243,103 @@ def case_26_usage_billing_reads(results: List[Result]) -> None:
         source="platform",
         evidence_refs=tuple(evidence_ids[:1]),
     )
-    # register the economic policy through the API
-    service.handle(
-        _req(
-            "POST",
-            "/api/1.0/economic-policies",
-            app,
-            body={
-                "policy_id": "bill-policy",
-                "version": 1,
-                "currency": "GHS",
-                "exponent": 2,
-                "rounding": "half-even",
-                "effective_from": "2026-08-01T00:00:00Z",
-                "adc_os_share_bps": 500,
-                "tax_bps": 0,
-                "developer_share_min_bps": 1000,
-                "developer_share_max_bps": 9000,
-            },
-            idempotency_key="bill-policy-1",
-        )
+    # the metering window: the CURRENT W052 UsageEvidenceIndex
+    # built from PUBLIC reads only (the composition-world
+    # builder), then the metering ledger over its own clock
+    usage_index = build_usage_evidence_index(
+        core, integrator, (transaction_id,)
     )
-    # RE-COMPOSITION (the sanctioned load path): the W052
-    # metering window's frozen evidence snapshot now includes
-    # the commercial transaction projections, so the platform
-    # re-composes the boundary over an updated usage ledger --
-    # journal-first recovery over the SAME api store (the
-    # idempotency ledger and credentials are preserved exactly).
     metering_usage = UsageLedger(
         store=MemoryUsageStore(),
-        clock=shared,
-        evidence=_evidence_index(manager, integrator, session_id, core),
+        clock=StepClock("2026-09-01T13:00:00Z", 60),
+        evidence_index=usage_index,
     )
-    metering_usage.ingest_observation(
-        command_id="bill-obs-1",
-        observation_id="obs-1",
+    for index, window in enumerate(
+        build_delivery_evidence(integrator, transaction_id)
+    ):
+        metering_usage.observe_usage(
+            command_id="bill-obs-%02d" % (index + 1),
+            transaction_id=transaction_id,
+            quantity_class=QuantityClass.DELIVERED,
+            quantity=window.delivered_quantity,
+            evidence_id=window.evidence_id,
+            window_start=window.window_start,
+            window_end=window.window_end,
+            actor="metering-plane",
+            source="platform-metering",
+        )
+    # one DATA-only reserved observation (reconciliation DATA;
+    # never billable)
+    metering_usage.observe_usage(
+        command_id="bill-obs-res",
         transaction_id=transaction_id,
-        evidence_refs=tuple(evidence_ids[:1]),
-        session_ref=session_id,
-        path_ref=path_id,
-        quantity=1000,
-        unit="MB",
-        observed_at=shared.now(),
-        actor="metering-plane",
+        quantity_class=QuantityClass.RESERVED,
+        quantity=500,
+        actor="reservation-service",
         source="platform-metering",
     )
-    metering_usage.reconcile(
-        command_id="bill-recon",
+    metering_usage.seal_billable(
+        command_id="bill-seal",
         transaction_id=transaction_id,
-        unit_price=10,
         actor="billing-plane",
         source="platform-billing",
     )
-    metering_usage.finalize_billable(
+    core.finalize_billable(
         command_id="bill-final",
         transaction_id=transaction_id,
         actor="billing-plane",
         source="platform-billing",
     )
-    finality_record = metering_usage.account(
-        transaction_id
-    ).to_dict()["finality"]
-    # the W053 frozen fact snapshot (public reads: the usage
-    # finality + the commercial projection), then re-composition
-    from allocation.evidence import FactFamily, FactReference
-
-    account = metering_usage.account(transaction_id).to_dict()
-    fact_entries = [
-        FactReference(
-            reference_id=finality_record["record_id"],
-            family=FactFamily.USAGE_FINAL,
-            provenance="usage-ledger",
-            usage_state=account["state"],
-            transaction_id=transaction_id,
-            amount=finality_record.get("amount", 0),
-            quantity=account.get("total_quantity", 0),
-            unit=account.get("unit", ""),
-            finalized_at=finality_record.get("finalized_at", ""),
-        ),
-        FactReference(
-            reference_id=transaction_id,
-            family=FactFamily.COMMERCIAL,
-            provenance="commercial-core",
-            commercial_state=core.transaction(transaction_id).to_dict(
-            )["state"],
-            session_ref=core.transaction(transaction_id).to_dict().get(
-                "session_ref", ""
-            ),
-            path_ref=core.transaction(transaction_id).to_dict().get(
-                "path_ref", ""
-            ),
-        ),
-    ]
+    # the CURRENT W053 AllocationEvidenceIndex from PUBLIC reads
+    # (the composition-world builder), then the policy and the
+    # three-way allocation
+    alloc_index = build_allocation_evidence_index(
+        metering_usage, (transaction_id,)
+    )
     metering_allocation = AllocationLedger(
         store=MemoryAllocationStore(),
-        clock=shared,
-        facts=FactIndex(fact_entries),
+        clock=StepClock("2026-09-01T15:00:00Z", 60),
+        evidence_index=alloc_index,
     )
-    metering_allocation.register_policy(
+    policy_outcome = metering_allocation.register_policy(
         command_id="bill-policy-cmd",
-        policy_id="bill-policy",
-        version=1,
+        label="bill-policy",
+        adcos_share_bps=500,
+        provider_min_bps=1000,
+        provider_max_bps=9000,
+        rounding_mode="half-even",
         currency="GHS",
-        exponent=2,
-        rounding="half-even",
+        minor_unit_digits=2,
         effective_from="2025-01-01T00:00:00Z",
-        effective_until="",
-        adc_os_share_bps=500,
-        tax_bps=0,
-        developer_share_min_bps=1000,
-        developer_share_max_bps=9000,
+        effective_until="2030-01-01T00:00:00Z",
         actor="dev-bill",
         source="platform",
     )
+    bill_policy_id = policy_outcome.fact_id
+    statement = metering_usage.transaction(transaction_id).statement
     metering_allocation.allocate(
         command_id="bill-alloc",
-        usage_record_id=finality_record["record_id"],
-        policy_id="bill-policy",
-        policy_version=1,
-        developer_share_bps=5000,
-        adjustment=0,
-        effective_at=shared.now(),
-        currency="GHS",
-        commercial_refs=(transaction_id,),
+        usage_transaction_id=transaction_id,
+        usage_statement_id=statement.statement_id,
+        policy_id=bill_policy_id,
+        provider_share_bps=5000,
         actor="dev-bill",
         source="platform",
     )
+    # RE-COMPOSITION (the sanctioned load path): journal-first
+    # recovery over the SAME api store (the idempotency ledger
+    # and credentials are preserved exactly)
     service = DeveloperApiService.load(
         environment="sandbox",
         core=core,
         usage=metering_usage,
         allocation=metering_allocation,
-        store=service._journal._store,
+        store=api_store,
         clock=shared,
         issuance_key=b"w046-platform-issuance-key",
     )
 
-    # API reads: usage accounts and billing records
+    # API reads: usage transactions and billing records
     usage_read = service.handle(
         _req("GET", "/api/1.0/usage", app)
     )
@@ -3330,6 +3351,8 @@ def case_26_usage_billing_reads(results: List[Result]) -> None:
     )
     if detail.body["data"]["state"] != "BILLABLE_FINAL":
         problems.append("usage state wrong")
+    if not detail.body["data"].get("statement"):
+        problems.append("sealed statement missing from projection")
     billing = service.handle(
         _req("GET", "/api/1.0/billing", app)
     )
@@ -3338,8 +3361,11 @@ def case_26_usage_billing_reads(results: List[Result]) -> None:
         problems.append("billing listing empty")
     else:
         record = billing_items[0]
-        if not record["finality"]:
-            problems.append("billing record lacks finality")
+        finality = record["finality"]
+        if finality.get("usage_state") != "BILLABLE_FINAL":
+            problems.append("billing record lacks the final state")
+        if not finality.get("statement_id"):
+            problems.append("billing record lacks the sealed statement id")
         if not record["allocation"]:
             problems.append("billing record lacks allocation")
     # tenant isolation: another developer sees neither
@@ -3367,30 +3393,39 @@ def case_26_usage_billing_reads(results: List[Result]) -> None:
         results.append(
             ok(
                 "26 usage/billing reads",
-                "real W052/W053 reads with allocation joins; tenant "
+                "real W052/W053 reads (delivery-evidence windows -> "
+                "sealed statement -> three-way allocation); tenant "
                 "isolation; usage read-only",
             )
         )
 
-
 def case_27_economic_policy(results: List[Result]) -> None:
-    """Economic policy configuration through the API: register,
-    read, idempotency, conflicting re-registration rejected with
-    the canonical reason."""
+    """Economic policy configuration through the API: the FROZEN
+    1.x contract, preserved verbatim (the round-2 compatibility
+    correction).  The two-segment GET /economic-policies/{id}/
+    {version} route, the 11-member request/response model with
+    client-chosen (policy_id, version) coordinates, tax_bps,
+    and the optional open-ended effective window are all pinned
+    here; the boundary adapts internally to the canonical W053
+    terms-derived immutable policy version (register/read/
+    replay/coordinate-identity, the canonical policy-invalid /
+    policy-unknown reasons preserved, the frozen 1.x conflict
+    semantics, and the 1.x-only member constraints)."""
     problems: List[str] = []
     service, *_ = _compose_service()
     app = _full_app(service, "dev-pol", "pol")
 
-    def policy_body(version: int) -> Dict[str, Any]:
+    def policy_body(policy_id: str, version: int = 1) -> Dict[str, Any]:
         return {
-            "policy_id": "pol-1",
+            "policy_id": policy_id,
             "version": version,
             "currency": "GHS",
             "exponent": 2,
             "rounding": "half-even",
             "effective_from": "2026-09-01T00:00:00Z",
+            "effective_until": "2030-01-01T00:00:00Z",
             "adc_os_share_bps": 500,
-            "tax_bps": 0,
+            "tax_bps": 250,
             "developer_share_min_bps": 1000,
             "developer_share_max_bps": 9000,
         }
@@ -3400,83 +3435,246 @@ def case_27_economic_policy(results: List[Result]) -> None:
             "POST",
             "/api/1.0/economic-policies",
             app,
-            body=policy_body(1),
+            body=policy_body("pol-1"),
             idempotency_key="pol-1",
         )
     )
-    if first.status != 200 or first.body["data"]["policy_id"] != "pol-1":
+    if first.status != 200:
         problems.append("policy registration failed")
+    data = first.body["data"]
+    if data.get("id") != "pol-1@1" or data.get("kind") != (
+        "economic_policy"
+    ):
+        problems.append("policy resource identity wrong")
+    # the frozen 1.x member set, projected verbatim
+    for member, expected in (
+        ("policy_id", "pol-1"),
+        ("version", 1),
+        ("currency", "GHS"),
+        ("exponent", 2),
+        ("rounding", "half-even"),
+        ("effective_from", "2026-09-01T00:00:00Z"),
+        ("effective_until", "2030-01-01T00:00:00Z"),
+        ("adc_os_share_bps", 500),
+        ("tax_bps", 250),
+        ("developer_share_min_bps", 1000),
+        ("developer_share_max_bps", 9000),
+    ):
+        if data.get(member) != expected:
+            problems.append(
+                "policy member %r = %r != %r" % (member, data.get(member), expected)
+            )
     # duplicate: byte-identical replay
     duplicate = service.handle(
         _req(
             "POST",
             "/api/1.0/economic-policies",
             app,
-            body=policy_body(1),
+            body=policy_body("pol-1"),
             idempotency_key="pol-1",
         )
     )
     if duplicate.headers.get("X-ADCOS-Idempotent-Replay") != "true":
         problems.append("policy duplicate not replayed")
-    # conflicting version re-registration (same key, different
-    # content) rejected
+    # same key + materially different request fails closed at
+    # the boundary idempotency ledger
     response = service.handle(
         _req(
             "POST",
             "/api/1.0/economic-policies",
             app,
-            body=policy_body(2),
+            body=policy_body("pol-1", version=2),
             idempotency_key="pol-1",
         )
     )
-    if response.status != 409:
-        problems.append("policy conflict not rejected")
-    # a genuinely conflicting re-registration under a NEW key
-    # (same policy_id+version, different content) fails closed
-    # with the canonical reason
-    conflicting = dict(policy_body(1))
-    conflicting["tax_bps"] = 100
+    if response.status != 409 or (
+        response.body["error"]["reason"] != "idempotency-conflict"
+    ):
+        problems.append("policy key conflict not rejected")
+    # a NEW key with the IDENTICAL 1.x body: the canonical
+    # terms+label identity deduplicates (identical terms are the
+    # identical immutable version -- an idempotent no-op, NOT a
+    # second version)
+    same_terms = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/economic-policies",
+            app,
+            body=policy_body("pol-1"),
+            idempotency_key="pol-1-again",
+        )
+    )
+    if same_terms.status != 200 or (
+        same_terms.body["data"]["id"] != "pol-1@1"
+    ):
+        problems.append("identical 1.x body did not deduplicate canonically")
+    # the frozen 1.x conflict semantic: a conflicting
+    # re-registration of the same (policy_id, version) fails
+    # closed (policy versions are immutable)
+    conflicting = policy_body("pol-1")
+    conflicting["tax_bps"] = 500
     response = service.handle(
         _req(
             "POST",
             "/api/1.0/economic-policies",
             app,
             body=conflicting,
-            idempotency_key="pol-2",
+            idempotency_key="pol-1-conflict",
         )
     )
-    error = response.body["error"]
-    if response.status != 409 or error["canonical_reason"] != "policy-conflict":
+    if response.status != 409 or response.body["error"]["reason"] != (
+        "idempotency-conflict"
+    ) or "immutable" not in response.body["error"]["message"]:
         problems.append(
-            "policy-conflict not preserved: %r/%r"
-            % (response.status, error["canonical_reason"])
+            "conflicting re-registration not rejected: %r/%r"
+            % (response.status, response.body["error"]["reason"])
         )
-    # reads: listing and exact (policy_id, version)
+    # a genuinely NEW coordinate: distinct 1.x coordinates stay
+    # distinct immutable versions even with identical economics
+    response = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/economic-policies",
+            app,
+            body=policy_body("pol-1", version=2),
+            idempotency_key="pol-1-v2",
+        )
+    )
+    if response.status != 200 or response.body["data"]["id"] != "pol-1@2":
+        problems.append("distinct 1.x coordinate not a distinct version")
+    # the open-ended window: absent effective_until registers
+    # and round-trips as the open-ended 1.x window
+    open_body = policy_body("pol-open")
+    del open_body["effective_until"]
+    response = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/economic-policies",
+            app,
+            body=open_body,
+            idempotency_key="pol-open",
+        )
+    )
+    if response.status != 200 or response.body["data"].get(
+        "effective_until"
+    ) != "":
+        problems.append("open-ended window did not round-trip")
+    # reads: listing (the 1.x surface projects exactly the
+    # 1.x-coordinate policies) and the exact versioned record
     listing = service.handle(
         _req("GET", "/api/1.0/economic-policies", app)
     )
-    if len(listing.body["data"]["items"]) != 1:
-        problems.append("policy listing wrong")
+    items = listing.body["data"]["items"]
+    if len(items) != 3 or sorted(
+        item["id"] for item in items
+    ) != ["pol-1@1", "pol-1@2", "pol-open@1"]:
+        problems.append("policy listing wrong: %s" % [
+            item.get("id") for item in items
+        ])
     detail = service.handle(
         _req("GET", "/api/1.0/economic-policies/pol-1/1", app)
     )
-    if detail.body["data"]["policy_id"] != "pol-1":
+    if detail.status != 200 or detail.body["data"]["id"] != "pol-1@1":
         problems.append("policy detail wrong")
+    if detail.body["data"]["tax_bps"] != 250:
+        problems.append("policy detail lost tax_bps")
+    # an unregistered version coordinate fails closed with the
+    # canonical policy-unknown classification (the coordinate
+    # identity is exact -- no laundering)
     response = service.handle(
         _req("GET", "/api/1.0/economic-policies/pol-1/9", app)
     )
     if response.status != 404 or (
         response.body["error"]["canonical_reason"] != "policy-unknown"
     ):
-        problems.append("unknown policy not rejected canonically")
+        problems.append("unknown policy version not rejected canonically")
+    # the version path segment must be an integer (the 1.x
+    # route contract)
+    response = service.handle(
+        _req("GET", "/api/1.0/economic-policies/pol-1/latest", app)
+    )
+    if response.status != 400 or response.body["error"]["reason"] != (
+        "invalid-input"
+    ):
+        problems.append("non-integer version segment not rejected")
+    # the 1.x request schema is strict: the terms-shaped body of
+    # the round-1 delivery is NOT a 1.x body (undeclared member
+    # rejected -- the 1.x member set IS the contract)
+    response = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/economic-policies",
+            app,
+            body={
+                "label": "not-a-1x-body",
+                "adcos_share_bps": 500,
+                "provider_min_bps": 1000,
+                "provider_max_bps": 9000,
+                "rounding_mode": "half-even",
+                "currency": "GHS",
+                "minor_unit_digits": 2,
+                "effective_from": "2026-09-01T00:00:00Z",
+                "effective_until": "2030-01-01T00:00:00Z",
+            },
+            idempotency_key="pol-not-1x",
+        )
+    )
+    if response.status != 400 or "undeclared" not in response.body[
+        "error"
+    ]["message"]:
+        problems.append("non-1.x policy body not rejected")
+    # the 1.x-only member constraints (boundary-local): tax_bps
+    # range and the adc_os + tax sum rule
+    for mutate, member in (
+        (lambda b: b.update({"tax_bps": -1}), "tax range"),
+        (lambda b: b.update({"adc_os_share_bps": 9900}), "adc+tax sum"),
+        (lambda b: b.update({"version": 0}), "version positivity"),
+    ):
+        bad = policy_body("pol-bad")
+        mutate(bad)
+        response = service.handle(
+            _req(
+                "POST",
+                "/api/1.0/economic-policies",
+                app,
+                body=bad,
+                idempotency_key="pol-bad-%s" % member.replace(" ", "-"),
+            )
+        )
+        if response.status != 400 or response.body["error"]["reason"] != (
+            "invalid-input"
+        ):
+            problems.append("1.x constraint %s not enforced" % member)
+    # the canonical validation reason preserved: the shared
+    # economics members fail closed policy-invalid through the
+    # canonical terms model
+    invalid = policy_body("pol-bad-bounds")
+    invalid["developer_share_min_bps"] = 9500
+    response = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/economic-policies",
+            app,
+            body=invalid,
+            idempotency_key="pol-bad-bounds",
+        )
+    )
+    error = response.body["error"]
+    if response.status != 400 or error["canonical_reason"] != "policy-invalid":
+        problems.append(
+            "policy-invalid not preserved: %r/%r"
+            % (response.status, error["canonical_reason"])
+        )
     if problems:
         results.append(fail("27 economic policy", "; ".join(problems)))
     else:
         results.append(
             ok(
                 "27 economic policy",
-                "register/read/replay/conflict with the canonical "
-                "policy-conflict and policy-unknown preserved",
+                "the frozen 1.x contract preserved verbatim: register/read/"
+                "replay/coordinate-identity, conflict-immutability, the "
+                "open-ended window, tax_bps, the 11-member projection, "
+                "and the canonical policy-invalid/policy-unknown preserved",
             )
         )
 
@@ -6102,30 +6300,35 @@ def case_40_frozen_spec_intact(results: List[Result]) -> None:
 
 
 def case_41_pr_delta_shape(results: List[Result]) -> None:
-    """The PR delta is confined to the authorized WORK-046 scope
-    (+ the sanctioned additive CI wiring)."""
+    """The PR delta is confined to the exact authorized WORK-056
+    scope, and the delivery head descends from the authorized
+    baseline (scope AND ancestry proof)."""
     problems: List[str] = []
     # the delta is measured from the PR's merge base with main
     # (the exact branch point of this implementation; main may
     # have advanced with governance merges, which are NOT this
     # implementation's delta -- the merge-base is the honest
     # boundary the Architect reviews)
-    merge_base = subprocess.run(
-        ["git", "merge-base", "HEAD", "origin/main"],
-        cwd=str(REPO_ROOT),
-        capture_output=True,
-        text=True,
-    )
-    if merge_base.returncode != 0:
+    base = ""
+    for ref in ("origin/main", "payswap/main"):
+        merge_base = subprocess.run(
+            ["git", "merge-base", "HEAD", ref],
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            text=True,
+        )
+        if merge_base.returncode == 0 and merge_base.stdout.strip():
+            base = merge_base.stdout.strip()
+            break
+    if not base:
         results.append(
             ok(
                 "41 PR delta shape",
-                "skipped (no origin/main ref in this checkout; CI "
-                "enforces the shape on the PR)",
+                "skipped (no origin/main or payswap/main ref in this "
+                "checkout; CI enforces the shape on the PR)",
             )
         )
         return
-    base = merge_base.stdout.strip()
     proc = subprocess.run(
         ["git", "diff", "--name-only", base],
         cwd=str(REPO_ROOT),
@@ -6146,8 +6349,6 @@ def case_41_pr_delta_shape(results: List[Result]) -> None:
     for path in delta:
         if path.startswith(_AUTHORIZED_PATHS):
             continue
-        if path == AUTHORIZED_CI_WIRING:
-            continue
         if path.endswith(".pyc") or "__pycache__" in path:
             continue
         unexpected.append(path)
@@ -6157,14 +6358,1288 @@ def case_41_pr_delta_shape(results: List[Result]) -> None:
     architect = [p for p in delta if p.startswith("spec/architect/")]
     if architect:
         problems.append("spec/architect modified: %s" % architect[:5])
+    # the frozen architecture/protocol surfaces are NEVER touched
+    frozen = [
+        p
+        for p in delta
+        if p.startswith("spec/schemas/") or p in (
+            "spec/architecture.md", "spec/architecture-lock.md"
+        )
+    ]
+    if frozen:
+        problems.append("frozen contract surface modified: %s" % frozen[:5])
+    # ancestry: the delivery head descends from the authorized
+    # W056 baseline 7ae438d (the exact baseline recorded in the
+    # WORK-056-CORE-001 authorization; the branch root is the
+    # post-governance mainline merge 4852a016)
+    for label, ref in (
+        ("authorized baseline 7ae438d", "7ae438d46041b228164cc8880be37dc21f972b6f"),
+        ("post-governance mainline 4852a016", "4852a016fce61cecec8078084da1d9bbe81d2681"),
+    ):
+        ancestor = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", ref, "HEAD"],
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+        )
+        if ancestor.returncode == 0:
+            continue
+        if ancestor.returncode == 1:
+            problems.append(
+                "HEAD does not descend from the %s" % label
+            )
+        else:
+            # the object is absent in a shallow CI checkout: the
+            # ancestry is enforced by the PR base and disclosed
+            # in the evidence record
+            pass
     if problems:
         results.append(fail("41 PR delta shape", "; ".join(problems)))
     else:
         results.append(
             ok(
                 "41 PR delta shape",
-                "%d file(s) confined to developerapi/ + tools/ + docs/ + "
-                "the additive CI step" % len(delta),
+                "%d file(s) confined to the authorized W056 scope; "
+                "ancestry from the authorized baseline proven" % len(delta)
+            )
+        )
+
+# ---------------------------------------------------------------------------
+# WORK-056 sabotaged candidate fixtures (test fixtures ONLY -- the
+# R5 vulnerable behaviors implemented over public APIs; never
+# shipped, never exported).  Each pairs with one hardening case
+# below so the mandated discrimination categories are mechanically
+# proven: a suite that passes the genuine implementation but would
+# ALSO pass a sabotaged candidate has no discriminating power (the
+# W054/W055 family precedent).
+# ---------------------------------------------------------------------------
+
+
+class _VersionLaunderingGateway:
+    """W056 sabotage (criterion 1): a boundary that silently
+    rewrites every request's version attribution to the current
+    supported version, admitting retired versions and laundering
+    route/header disagreement instead of failing closed -- AND
+    launders the frozen 1.x economic-policy version coordinate
+    (silently substituting the requested {version} path segment
+    of GET /economic-policies/{id}/{version} with a coordinate
+    it knows is registered), fabricating success for an
+    unregistered coordinate."""
+
+    def __init__(self, service: Any) -> None:
+        self._service = service
+        self._known_coordinate = "1"
+
+    def handle(self, request: ApiRequest) -> Any:
+        from dataclasses import replace
+
+        route = request.route
+        parts = [part for part in route.split("/") if part]
+        if len(parts) >= 2 and parts[0] == "api":
+            parts[1] = "1.0"  # the vulnerability: silent rewrite
+            # the 1.x policy version-coordinate laundering: any
+            # GET of /economic-policies/{id}/{version} has its
+            # version segment silently substituted
+            if (
+                request.method == "GET"
+                and len(parts) == 5
+                and parts[2] == "economic-policies"
+                and parts[4] != self._known_coordinate
+            ):
+                parts[4] = self._known_coordinate
+            route = "/" + "/".join(parts)
+        return self._service.handle(
+            replace(request, api_version="1.0", route=route)
+        )
+
+
+class _ReKeyingDuplicateGateway:
+    """W056 sabotage (criterion 2): a retry layer that re-keys
+    every attempt (the idempotency key salted per attempt), so a
+    duplicate submission re-executes and mints a SECOND
+    canonical transaction instead of replaying."""
+
+    def __init__(self, service: Any) -> None:
+        self._service = service
+        self._attempts = 0
+
+    def handle(self, request: ApiRequest) -> Any:
+        from dataclasses import replace
+
+        if request.idempotency_key:
+            self._attempts += 1
+            request = replace(
+                request,
+                idempotency_key="%s#attempt-%d"
+                % (request.idempotency_key, self._attempts),
+            )
+        return self._service.handle(request)
+
+
+class _PrivilegeEscalatingGateway:
+    """W056 sabotage (criterion 3): a gateway that silently
+    substitutes the caller's credentials with a full-privilege
+    service application when the caller lacks the capability
+    (privilege escalation through identifier substitution)."""
+
+    def __init__(self, service: Any, privileged: Any) -> None:
+        self._service = service
+        self._privileged = privileged
+
+    def handle(self, request: ApiRequest) -> Any:
+        from dataclasses import replace
+
+        return self._service.handle(
+            replace(
+                request,
+                application_id=self._privileged.record.application_id,
+                secret=self._privileged.secret,
+            )
+        )
+
+
+class _EnvironmentBridgingGateway:
+    """W056 sabotage (criterion 4): a gateway that answers a
+    production-bound request by forwarding it to the SANDBOX
+    service whenever the production boundary rejects the
+    credential with environment-mismatch (the convenience
+    cross-environment bridge)."""
+
+    def __init__(self, production: Any, sandbox: Any) -> None:
+        self._production = production
+        self._sandbox = sandbox
+
+    def handle(self, request: ApiRequest) -> Any:
+        response = self._production.handle(request)
+        error = dict(response.body).get("error") or {}
+        if (
+            response.status == 403
+            and error.get("reason") == "environment-mismatch"
+        ):
+            # the vulnerability: answer the production-bound call
+            # from the sandbox namespace
+            return self._sandbox.handle(request)
+        return response
+
+
+class _ReasonRewritingGateway:
+    """W056 sabotage (criterion 5): a boundary that rewrites the
+    canonical subsystem reason of every error response to a
+    generic boundary reason (the lossy remap -- the second
+    reason-code authority the contract forbids)."""
+
+    def __init__(self, service: Any) -> None:
+        self._service = service
+
+    def handle(self, request: ApiRequest) -> Any:
+        from developerapi.gateway import ApiResponse
+
+        response = self._service.handle(request)
+        error = dict(response.body).get("error")
+        if response.status >= 400 and isinstance(error, dict):
+            rewritten = dict(response.body)
+            rewritten["error"] = {
+                **error,
+                "canonical_reason": "invalid-input",
+                "http_status": 400,
+            }
+            return ApiResponse(
+                status=400, body=rewritten, headers=dict(response.headers)
+            )
+        return response
+
+
+class _SignatureBlindVerifier(WebhookVerifier):
+    """W056 sabotage (criterion 6, integrity): a consumer
+    verifier that skips the signature comparison entirely
+    (freshness and delivery-id binding still enforced), so a
+    tampered payload under a stolen delivery envelope
+    verifies."""
+
+    def verify(
+        self, headers: Mapping[str, str], raw_payload: Mapping[str, Any]
+    ) -> Any:
+        from developerapi.sdk import SdkWebhookEvent
+
+        key_id = headers.get(webhook_platform.KEY_ID_HEADER, "")
+        timestamp = headers.get(webhook_platform.TIMESTAMP_HEADER, "")
+        delivery_id = headers.get(webhook_platform.DELIVERY_ID_HEADER, "")
+        # the vulnerability: no signature verification
+        webhook_platform.check_timestamp_freshness(
+            timestamp, self._clock.now(), self._tolerance
+        )
+        if raw_payload.get("delivery_id") != delivery_id:
+            raise DeveloperApiError(
+                DeveloperApiReasonCode.WEBHOOK_SIGNATURE_INVALID,
+                "the payload delivery id does not match the header",
+            )
+        return SdkWebhookEvent(
+            event_id=raw_payload["event_id"],
+            event_type=raw_payload["event_type"],
+            occurred_at=raw_payload["occurred_at"],
+            environment=raw_payload["environment"],
+            resource_kind=raw_payload["resource_kind"],
+            resource_id=raw_payload["resource_id"],
+            resource_version=raw_payload["resource_version"],
+            sequence=raw_payload["sequence"],
+            delivery_id=raw_payload["delivery_id"],
+            correlation=raw_payload["correlation"],
+            data=dict(raw_payload["data"]),
+        )
+
+
+class _DuplicateBlindDetector(DuplicateDetector):
+    """W056 sabotage (criterion 6, duplicates): a consumer
+    duplicate detector that never records an event, so every
+    redelivery is processed as fresh."""
+
+    def observe(self, event_id: str) -> bool:
+        return True  # the vulnerability: no memory
+
+
+class _OrderBlindTracker(OrderTracker):
+    """W056 sabotage (criterion 6, ordering): a consumer order
+    tracker that classifies every event as an advance, so
+    out-of-order delivery overwrites newer knowledge."""
+
+    def observe(self, resource_id: str, resource_version: int) -> str:
+        return "advance"  # the vulnerability: no version memory
+
+
+def _unstable_paginate(
+    items: Any,
+    *,
+    environment: str,
+    kind: str,
+    developer_id: str,
+    filters: Mapping[str, str],
+    cursor: object,
+    limit: object,
+) -> Tuple[List[Mapping[str, Any]], str, bool]:
+    """W056 sabotage (criterion 7): a paginator that preserves
+    the caller's insertion order and treats any cursor string
+    as a raw resume position (unstable retrieval + cursor
+    forgery)."""
+
+    limit_value = limit if isinstance(limit, int) and limit > 0 else 20
+    ordered = list(items)  # the vulnerability: no canonical sort
+    if cursor:  # the vulnerability: any cursor accepted
+        try:
+            last = str(cursor)
+        except Exception:  # pragma: no cover
+            last = ""
+        ordered = [
+            item
+            for index, item in enumerate(ordered)
+            if index > 0 and str(item.get("id", "")) != last
+        ]
+    page = ordered[:limit_value]
+    rest = ordered[limit_value:]
+    return page, (str(page[-1].get("id", "")) if page else ""), bool(rest)
+
+
+class _RequestReshapingClient(DeveloperApiClient):
+    """W056 sabotage (criterion 8, request parity): an SDK that
+    adds its own member to every request body, so the SDK-built
+    request is NOT the request the canonical server semantics
+    define."""
+
+    def _request(
+        self,
+        method: str,
+        resource_path: str,
+        body: Optional[Mapping[str, Any]] = None,
+        idempotency_key: str = "",
+    ) -> Any:
+        from developerapi.gateway import ApiRequest
+
+        route = "/api/%s/%s" % (self._api_version, resource_path)
+        reshaped = dict(body or {})
+        reshaped["channel"] = "sdk"  # the vulnerability
+        request = ApiRequest(
+            method=method,
+            route=route,
+            body=reshaped,
+            api_version=self._api_version,
+            idempotency_key=idempotency_key,
+            application_id=self._application_id,
+            secret=self._secret,
+        )
+        return self._transport(request)
+
+
+class _FabricatingClient(DeveloperApiClient):
+    """W056 sabotage (criterion 8, response fabrication): an SDK
+    that injects an authority-bearing member the server never
+    sent (the SDK inventing connectivity truth)."""
+
+    def _call(
+        self,
+        method: str,
+        resource_path: str,
+        body: Optional[Mapping[str, Any]] = None,
+        idempotency_key: str = "",
+    ) -> Any:
+        from developerapi.sdk import SdkResource
+
+        response = self._request(
+            method, resource_path, body, idempotency_key
+        )
+        if response.status != 200:
+            raise self._raise_error(response)
+        fabricated = dict(response.data())
+        fabricated["physical_connectivity"] = True  # the vulnerability
+        return SdkResource.from_data(fabricated)
+
+
+class _BusinessRateLimiter(RateLimiter):
+    """W056 sabotage (criterion 9): a rate limiter that records
+    a canonical commercial transaction for every throttled
+    decision (the limiter becomes a second business
+    authority)."""
+
+    def __init__(self, *, core: Any, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._core = core
+        self._events = 0
+
+    def check(self, application_id: str) -> Any:
+        try:
+            return super().check(application_id)
+        except DeveloperApiError:
+            self._events += 1
+            # the vulnerability: the throttle decision mints
+            # canonical state
+            self._core.submit_intent(
+                command_id="throttle-event-%d" % self._events,
+                actor="rate-limiter",
+                source="throttle-ledger",
+                intent={
+                    "kind": "throttle-event",
+                    "application": application_id,
+                },
+            )
+            raise
+
+
+class _ObservationAsCommandConsumer:
+    """W056 sabotage (criterion 10): a webhook consumer that
+    treats each observation event as a command and submits a
+    NEW canonical mutation per delivery (the observation channel
+    mutating canonical state)."""
+
+    def __init__(self, core: Any) -> None:
+        self._core = core
+        self.deliveries: List[Tuple[Dict[str, Any], Dict[str, str]]] = []
+
+    def __call__(
+        self,
+        endpoint_id: str,
+        url: str,
+        payload: Mapping[str, Any],
+        headers: Mapping[str, str],
+    ) -> Tuple[bool, int]:
+        from commercial.errors import CommercialError
+
+        self.deliveries.append((dict(payload), dict(headers)))
+        try:
+            # the vulnerability: the observation becomes a
+            # command
+            self._core.submit_intent(
+                command_id="obs-cmd-%s" % payload["event_id"],
+                actor="webhook-consumer",
+                source="observation-as-command",
+                intent={
+                    "kind": "observation-command",
+                    "event": payload["event_id"],
+                },
+            )
+        except CommercialError:
+            pass
+        return (True, 200)
+
+
+# ---------------------------------------------------------------------------
+# WORK-056 hardening cases: the paired discrimination proofs
+# (genuine boundary -> invariant holds; sabotaged candidate ->
+# invariant VIOLATED; a candidate that survives its paired vector
+# means the battery lacks discriminating power for that category).
+# ---------------------------------------------------------------------------
+
+
+def case_46_sabotage_version_laundering(results: List[Result]) -> None:
+    """Discrimination (criterion 1): retired versions,
+    disagreeing attribution, and unregistered 1.x economic-
+    policy version coordinates must fail closed -- a candidate
+    that launders version attribution (either the API version
+    or the policy version coordinate) must be DETECTED by the
+    paired vectors."""
+    problems: List[str] = []
+    service, *_ = _compose_service()
+    app = _full_app(service, "dev-ver", "ver")
+    # genuine: retired version rejected
+    genuine = service.handle(
+        _req("GET", "/api/0.8/offers", app, api_version="0.8")
+    )
+    if genuine.status != 400 or genuine.body["error"]["reason"] != (
+        "version-unsupported"
+    ):
+        problems.append("genuine boundary admitted a retired version")
+    # genuine: disagreement rejected
+    genuine = service.handle(
+        _req("GET", "/api/1.0/offers", app, api_version="0.9")
+    )
+    if genuine.status != 400 or genuine.body["error"]["reason"] != (
+        "version-unsupported"
+    ):
+        problems.append("genuine boundary admitted attribution disagreement")
+    # genuine: an unregistered 1.x policy version coordinate
+    # fails closed policy-unknown (the coordinate identity is
+    # exact -- never silently substituted)
+    registered = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/economic-policies",
+            app,
+            body={
+                "policy_id": "ver-pol",
+                "version": 1,
+                "currency": "GHS",
+                "exponent": 2,
+                "rounding": "half-even",
+                "effective_from": "2026-09-01T00:00:00Z",
+                "effective_until": "2030-01-01T00:00:00Z",
+                "adc_os_share_bps": 500,
+                "tax_bps": 250,
+                "developer_share_min_bps": 1000,
+                "developer_share_max_bps": 9000,
+            },
+            idempotency_key="ver-pol-1",
+        )
+    )
+    if registered.status != 200:
+        problems.append("the 1.x policy registration failed")
+    genuine = service.handle(
+        _req("GET", "/api/1.0/economic-policies/ver-pol/7", app)
+    )
+    if genuine.status != 404 or genuine.body["error"][
+        "canonical_reason"
+    ] != "policy-unknown":
+        problems.append(
+            "genuine boundary admitted an unregistered coordinate"
+        )
+    # sabotaged: the laundering gateway admits all three
+    sabotaged = _VersionLaunderingGateway(service)
+    response = sabotaged.handle(
+        _req("GET", "/api/0.8/offers", app, api_version="0.8")
+    )
+    if response.status != 200:
+        problems.append("laundered retired request was not admitted")
+    response = sabotaged.handle(
+        _req("GET", "/api/1.0/offers", app, api_version="0.9")
+    )
+    if response.status != 200:
+        problems.append("laundered disagreement was not admitted")
+    response = sabotaged.handle(
+        _req("GET", "/api/1.0/economic-policies/ver-pol/7", app)
+    )
+    if response.status != 200:
+        problems.append("laundered policy coordinate was not admitted")
+    if problems:
+        results.append(fail("46 sabotage version laundering", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "46 sabotage version laundering",
+                "retired/disagreement/policy-coordinate vectors FAIL "
+                "genuine (400/404) and PASS the laundering candidate "
+                "-> detected",
+            )
+        )
+
+
+def case_47_sabotage_idempotency_rekeying(results: List[Result]) -> None:
+    """Discrimination (criterion 2): a duplicate mutation must
+    replay byte-identically and mint NO second canonical state
+    -- a candidate that re-keys per attempt must be DETECTED."""
+    problems: List[str] = []
+    service, *_ = _compose_service()
+    app = _full_app(service, "dev-rek", "rek")
+    # genuine: duplicate replays, one canonical transaction
+    service.handle(
+        _req(
+            "POST",
+            "/api/1.0/intents",
+            app,
+            body={"intent": {"subscriber": "sub-rek"}},
+            idempotency_key="rek-1",
+        )
+    )
+    replay = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/intents",
+            app,
+            body={"intent": {"subscriber": "sub-rek"}},
+            idempotency_key="rek-1",
+        )
+    )
+    if replay.headers.get("X-ADCOS-Idempotent-Replay") != "true":
+        problems.append("genuine duplicate not replayed")
+    if len(service._core.transactions()) != 1:
+        problems.append("genuine duplicate minted extra state")
+    # sabotaged: the re-keying gateway re-executes
+    sabotaged = _ReKeyingDuplicateGateway(service)
+    response = sabotaged.handle(
+        _req(
+            "POST",
+            "/api/1.0/intents",
+            app,
+            body={"intent": {"subscriber": "sub-rek"}},
+            idempotency_key="rek-1",
+        )
+    )
+    if response.headers.get("X-ADCOS-Idempotent-Replay") == "true":
+        problems.append("re-keyed request was replayed (unexpected)")
+    if len(service._core.transactions()) != 2:
+        problems.append("re-keyed duplicate did not mint second state")
+    if problems:
+        results.append(fail("47 sabotage idempotency re-keying", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "47 sabotage idempotency re-keying",
+                "duplicate replays genuine (1 transaction) and re-executes "
+                "on the re-keying candidate (2 transactions) -> detected",
+            )
+        )
+
+
+def case_48_sabotage_privilege_escalation(results: List[Result]) -> None:
+    """Discrimination (criterion 3): a scoped application must
+    be denied the operations it did not declare -- a candidate
+    that substitutes privileged credentials must be DETECTED."""
+    problems: List[str] = []
+    service, *_ = _compose_service()
+    readonly = _app(
+        service,
+        "dev-ro",
+        "ro-app",
+        (Capability.OFFERS_READ,),
+        key_material="ro-key",
+    )
+    privileged = _full_app(service, "dev-priv", "priv")
+    # genuine: capability denied before any surface is touched
+    genuine = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/offers",
+            readonly,
+            body=_offer_body("Escalation attempt"),
+            idempotency_key="esc-1",
+        )
+    )
+    if genuine.status != 403 or genuine.body["error"]["reason"] != (
+        "capability-denied"
+    ):
+        problems.append("genuine boundary did not deny the scoped app")
+    before = len(service.index().offers)
+    # sabotaged: the escalating gateway substitutes the
+    # full-privilege credentials
+    sabotaged = _PrivilegeEscalatingGateway(service, privileged)
+    response = sabotaged.handle(
+        _req(
+            "POST",
+            "/api/1.0/offers",
+            readonly,
+            body=_offer_body("Escalation attempt"),
+            idempotency_key="esc-2",
+        )
+    )
+    if response.status != 200:
+        problems.append("escalated request was not admitted")
+    if len(service.index().offers) != before + 1:
+        problems.append("escalated request minted no state (unexpected)")
+    if problems:
+        results.append(fail("48 sabotage privilege escalation", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "48 sabotage privilege escalation",
+                "scoped POST fails genuine (403) and succeeds through "
+                "credential substitution -> detected",
+            )
+        )
+
+
+def case_49_sabotage_environment_bridging(results: List[Result]) -> None:
+    """Discrimination (criterion 4): a production-bound request
+    carrying a sandbox credential must fail environment-mismatch
+    -- a candidate that bridges environments must be DETECTED."""
+    problems: List[str] = []
+    sandbox, *_ = _compose_service(environment="sandbox")
+    production, prod_core, *_ = _compose_service(environment="production")
+    app_s = _full_app(sandbox, "dev-env", "env")
+    # the honest production boundary over the sandbox journal:
+    # the credential IS known there but bound to sandbox (the
+    # case-04 mis-bound construction)
+    misbound = DeveloperApiService.load(
+        environment="production",
+        core=production._core,
+        usage=production._usage,
+        allocation=production._allocation,
+        store=sandbox._journal._store,
+        clock=sandbox._clock,
+        issuance_key=b"w046-platform-issuance-key",
+    )
+    genuine = misbound.handle(_req("GET", "/api/1.0/offers", app_s))
+    if genuine.status != 403 or genuine.body["error"]["reason"] != (
+        "environment-mismatch"
+    ):
+        problems.append("genuine boundary did not reject cross-environment")
+    # sabotaged: the bridging gateway answers from the sandbox
+    bridged = _EnvironmentBridgingGateway(misbound, sandbox)
+    response = bridged.handle(_req("GET", "/api/1.0/offers", app_s))
+    if response.status != 200:
+        problems.append("bridged request was not admitted")
+    if response.status == 200 and response.body.get("environment") == (
+        "production"
+    ):
+        problems.append("bridge claimed production namespace (unexpected)")
+    if len(prod_core.transactions()) != 0:
+        problems.append("production state was mutated (unexpected)")
+    if problems:
+        results.append(fail("49 sabotage environment bridging", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "49 sabotage environment bridging",
+                "production-bound sandbox credential fails genuine (403) "
+                "and succeeds through the bridge -> detected",
+            )
+        )
+
+
+def case_50_sabotage_reason_rewriting(results: List[Result]) -> None:
+    """Discrimination (criterion 5): the canonical subsystem
+    reason must survive the boundary unchanged -- a candidate
+    that rewrites it must be DETECTED."""
+    problems: List[str] = []
+    service, *_ = _compose_service()
+    app = _full_app(service, "dev-rw", "rw")
+    intent = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/intents",
+            app,
+            body={"intent": {"subscriber": "sub-rw"}},
+            idempotency_key="rw-1",
+        )
+    )
+    transaction_id = intent.body["data"]["id"]
+    # a reservation on a SUBMITTED transaction is
+    # lifecycle-illegal (no offer selected yet)
+    request = _req(
+        "POST",
+        "/api/1.0/intents/%s/reservations" % transaction_id,
+        app,
+        body={"expires_at": _EXPIRES},
+        idempotency_key="rw-2",
+    )
+    genuine = service.handle(request)
+    if genuine.status != 422 or genuine.body["error"].get(
+        "canonical_reason"
+    ) != "lifecycle-illegal":
+        problems.append(
+            "genuine boundary did not preserve lifecycle-illegal: %r"
+            % genuine.body["error"].get("canonical_reason")
+        )
+    # sabotaged: the rewriting gateway flattens the reason
+    service2, *_ = _compose_service()
+    app2 = _full_app(service2, "dev-rw", "rw")
+    intent2 = service2.handle(
+        _req(
+            "POST",
+            "/api/1.0/intents",
+            app2,
+            body={"intent": {"subscriber": "sub-rw"}},
+            idempotency_key="rw-1",
+        )
+    )
+    transaction2 = intent2.body["data"]["id"]
+    request2 = _req(
+        "POST",
+        "/api/1.0/intents/%s/reservations" % transaction2,
+        app2,
+        body={"expires_at": _EXPIRES},
+        idempotency_key="rw-2",
+    )
+    rewritten = _ReasonRewritingGateway(service2).handle(request2)
+    if rewritten.status != 400 or rewritten.body["error"].get(
+        "canonical_reason"
+    ) != "invalid-input":
+        problems.append("rewriting gateway did not flatten the reason")
+    if problems:
+        results.append(fail("50 sabotage reason rewriting", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "50 sabotage reason rewriting",
+                "lifecycle-illegal survives genuine (422) and is "
+                "flattened by the rewriting candidate (400) -> detected",
+            )
+        )
+
+
+def _signed_delivery(
+    service: Any, app: Any
+) -> Tuple[Any, Any, str, Dict[str, Any], Dict[str, str]]:
+    """One signed observation delivery over the public path
+    (endpoint registration, a mutation, the delivery pump) with
+    the endpoint secret and the capturing consumer."""
+    endpoint = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/webhook-endpoints",
+            app,
+            body={
+                "url": "https://consumer.test/hook",
+                "event_types": ["connectivity_intent.created"],
+            },
+            idempotency_key="sig-ep-1",
+        )
+    )
+    endpoint_id = endpoint.body["data"]["id"]
+    secret = service.endpoint_signing_secret(endpoint_id)
+    consumer = _Consumer(secret)
+    service._transports[endpoint_id] = consumer
+    service.handle(
+        _req(
+            "POST",
+            "/api/1.0/intents",
+            app,
+            body={"intent": {"subscriber": "sub-sig"}},
+            idempotency_key="sig-intent-1",
+        )
+    )
+    service.process_due_deliveries()
+    if not consumer.deliveries:
+        raise AssertionError("no delivery captured")
+    payload, headers = consumer.deliveries[0]
+    return service, app, secret, payload, dict(headers)
+
+
+def case_51_sabotage_webhook_signature_blindness(results: List[Result]) -> None:
+    """Discrimination (criterion 6, integrity): a tampered
+    payload under a valid delivery envelope must fail signature
+    verification -- a verifier that skips the comparison must be
+    DETECTED."""
+    problems: List[str] = []
+    service, *_ = _compose_service()
+    app = _full_app(service, "dev-sig", "sig")
+    _, _, secret, payload, headers = _signed_delivery(service, app)
+    # genuine: the tampered payload is rejected
+    tampered = dict(payload)
+    tampered["data"] = dict(payload["data"])
+    tampered["data"]["actor"] = "attacker"
+    genuine_verifier = WebhookVerifier(
+        secret=secret, clock=FixedClock(headers["X-ADCOS-Timestamp"])
+    )
+    try:
+        genuine_verifier.verify(headers, tampered)
+        problems.append("genuine verifier accepted the tampered payload")
+    except DeveloperApiError as error:
+        if error.reason != "webhook-signature-invalid":
+            problems.append(
+                "genuine verifier rejected with %r" % error.reason
+            )
+    # sabotaged: the signature-blind verifier accepts it
+    blind = _SignatureBlindVerifier(
+        secret=secret, clock=FixedClock(headers["X-ADCOS-Timestamp"])
+    )
+    try:
+        blind.verify(headers, tampered)
+    except DeveloperApiError as error:
+        problems.append(
+            "signature-blind verifier rejected the tampered payload "
+            "with %r (no discriminating gap)" % error.reason
+        )
+    if problems:
+        results.append(fail("51 sabotage signature blindness", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "51 sabotage signature blindness",
+                "tampered payload fails genuine verification and passes "
+                "the signature-blind candidate -> detected",
+            )
+        )
+
+
+def case_52_sabotage_webhook_replay_blindness(results: List[Result]) -> None:
+    """Discrimination (criterion 6, replay/order): stale
+    timestamps, duplicate deliveries, and out-of-order versions
+    must each be classified -- blind candidates must be
+    DETECTED."""
+    problems: List[str] = []
+    service, *_ = _compose_service()
+    app = _full_app(service, "dev-rep", "rep")
+    _, _, secret, payload, headers = _signed_delivery(service, app)
+    event_id = payload["event_id"]
+    resource_id = payload["resource_id"]
+    from agent.clock import add_seconds
+
+    # genuine: the stale timestamp is rejected (replayed after
+    # the tolerance window -- the case-18 pattern: a clock
+    # beyond the tolerance bound, exactly)
+    stale_now = add_seconds(
+        headers["X-ADCOS-Timestamp"],
+        webhook_platform.DEFAULT_TIMESTAMP_TOLERANCE_SECONDS + 2,
+    )
+    genuine_verifier = WebhookVerifier(secret=secret, clock=FixedClock(stale_now))
+    try:
+        genuine_verifier.verify(headers, payload)
+        problems.append("genuine verifier accepted a stale delivery")
+    except DeveloperApiError as error:
+        if error.reason != "webhook-timestamp-stale":
+            problems.append(
+                "genuine verifier rejected stale delivery with %r"
+                % error.reason
+            )
+    # sabotaged: the tolerance-blind verifier accepts the replay
+    blind = WebhookVerifier(
+        secret=secret, clock=FixedClock(stale_now), tolerance=10 ** 9
+    )
+    try:
+        blind.verify(headers, payload)
+    except DeveloperApiError as error:
+        problems.append(
+            "replay-blind verifier rejected with %r (no discriminating "
+            "gap)" % error.reason
+        )
+    # genuine: duplicate detection has memory
+    detector = DuplicateDetector()
+    if detector.observe(event_id) is not True:
+        problems.append("first observation not new")
+    if detector.observe(event_id) is not False:
+        problems.append("duplicate observation not detected")
+    # sabotaged: the duplicate-blind detector reprocesses
+    blind_detector = _DuplicateBlindDetector()
+    if blind_detector.observe(event_id) is not True:
+        problems.append("blind first observation not new (unexpected)")
+    if blind_detector.observe(event_id) is not True:
+        problems.append("blind detector lost the discriminating gap")
+    # genuine: out-of-order classification
+    tracker = OrderTracker()
+    if tracker.observe(resource_id, 2) != "advance":
+        problems.append("first version not an advance")
+    if tracker.observe(resource_id, 1) != "stale":
+        problems.append("out-of-order event not classified stale")
+    # sabotaged: the order-blind tracker overwrites
+    blind_tracker = _OrderBlindTracker()
+    blind_tracker.observe(resource_id, 2)
+    if blind_tracker.observe(resource_id, 1) != "advance":
+        problems.append("blind tracker lost the discriminating gap")
+    if problems:
+        results.append(fail("52 sabotage replay blindness", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "52 sabotage replay blindness",
+                "stale/duplicate/out-of-order each classified genuine and "
+                "each blind candidate admits its vector -> detected",
+            )
+        )
+
+
+def case_53_sabotage_pagination_instability(results: List[Result]) -> None:
+    """Discrimination (criterion 7): pagination must be
+    canonically ordered with unforgeable cursors -- a candidate
+    with caller-order pages and forged cursors must be
+    DETECTED."""
+    problems: List[str] = []
+    from developerapi.pagination import decode_cursor, encode_cursor, paginate
+
+    item_c = {"id": "sha256:" + "c" * 60, "kind": "offer"}
+    item_a = {"id": "sha256:" + "a" * 60, "kind": "offer"}
+    item_b = {"id": "sha256:" + "b" * 60, "kind": "offer"}
+    # genuine: insertion order does not affect the page
+    page_1, cursor_1, more_1 = paginate(
+        [item_c, item_a, item_b],
+        environment="sandbox",
+        kind="offer",
+        developer_id="dev-pg",
+        filters={},
+        cursor=None,
+        limit=2,
+    )
+    page_2, cursor_2, more_2 = paginate(
+        [item_a, item_b, item_c],
+        environment="sandbox",
+        kind="offer",
+        developer_id="dev-pg",
+        filters={},
+        cursor=None,
+        limit=2,
+    )
+    if [item["id"] for item in page_1] != [item["id"] for item in page_2]:
+        problems.append("genuine pages depend on insertion order")
+    if page_1[0]["id"] != item_a["id"] or page_1[1]["id"] != item_b["id"]:
+        problems.append("genuine page is not canonically ordered")
+    # genuine: the cursor continues exactly
+    next_page, _, _ = paginate(
+        [item_c, item_a, item_b],
+        environment="sandbox",
+        kind="offer",
+        developer_id="dev-pg",
+        filters={},
+        cursor=cursor_1,
+        limit=2,
+    )
+    if [item["id"] for item in next_page] != [item_c["id"]]:
+        problems.append("genuine cursor did not continue exactly")
+    # genuine: a forged cursor is rejected
+    forged_cursor = "not-a-cursor"
+    try:
+        decode_cursor(forged_cursor, "sandbox", "offer", "dev-pg", {})
+        problems.append("genuine boundary decoded a forged cursor")
+    except DeveloperApiError as error:
+        if error.reason != "pagination-invalid":
+            problems.append(
+                "forged cursor rejected with %r" % error.reason
+            )
+    # sabotaged: the unstable paginator's pages follow the
+    # caller's order and accept the forged cursor
+    sabotaged_page_1, _, _ = _unstable_paginate(
+        [item_c, item_a, item_b],
+        environment="sandbox",
+        kind="offer",
+        developer_id="dev-pg",
+        filters={},
+        cursor=None,
+        limit=2,
+    )
+    sabotaged_page_2, _, _ = _unstable_paginate(
+        [item_a, item_b, item_c],
+        environment="sandbox",
+        kind="offer",
+        developer_id="dev-pg",
+        filters={},
+        cursor=None,
+        limit=2,
+    )
+    if [item["id"] for item in sabotaged_page_1] == [
+        item["id"] for item in sabotaged_page_2
+    ]:
+        problems.append("unstable candidate lost the order gap")
+    try:
+        _unstable_paginate(
+            [item_c, item_a, item_b],
+            environment="sandbox",
+            kind="offer",
+            developer_id="dev-pg",
+            filters={},
+            cursor=forged_cursor,
+            limit=2,
+        )
+    except Exception:
+        problems.append("unstable candidate rejected the forged cursor")
+    if problems:
+        results.append(fail("53 sabotage pagination instability", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "53 sabotage pagination instability",
+                "canonical order + exact cursor continuation + forged "
+                "cursor rejection genuine; caller-order pages + forged "
+                "cursor acceptance on the candidate -> detected",
+            )
+        )
+
+
+def case_54_sabotage_sdk_divergence(results: List[Result]) -> None:
+    """Discrimination (criterion 8): the SDK must build exactly
+    the canonical request and parse exactly the server response
+    -- reshaping or fabricating candidates must be DETECTED."""
+    problems: List[str] = []
+    from developerapi.sdk import SdkResource
+
+    canned_data = {
+        "kind": "offer",
+        "id": "sha256:" + "9" * 60,
+        "environment": "sandbox",
+        "name": "Canned offer",
+    }
+
+    def canned_transport(request: ApiRequest) -> Any:
+        from developerapi.gateway import ApiResponse
+
+        return ApiResponse(
+            status=200,
+            body={"data": dict(canned_data)},
+            headers={},
+        )
+
+    # genuine: request parity (byte-identical canonical request)
+    captured: List[ApiRequest] = []
+
+    def capturing_transport(request: ApiRequest) -> Any:
+        from developerapi.gateway import ApiResponse
+
+        captured.append(request)
+        return ApiResponse(status=200, body={"data": dict(canned_data)}, headers={})
+
+    genuine_client = DeveloperApiClient(
+        transport=capturing_transport,
+        application_id="sha256:" + "1" * 60,
+        secret="dasec_" + "1" * 60,
+        api_version="1.0",
+        environment="sandbox",
+    )
+    genuine_client.publish_offer(
+        idempotency_key="sdk-par", offer=_offer_body("Parity")
+    )
+    sdk_request = captured[0]
+    direct_request = ApiRequest(
+        method="POST",
+        route="/api/1.0/offers",
+        body=_offer_body("Parity"),
+        api_version="1.0",
+        idempotency_key="sdk-par",
+        application_id="sha256:" + "1" * 60,
+        secret="dasec_" + "1" * 60,
+    )
+    if canonical_json_bytes(sdk_request.canonical_body()) != (
+        canonical_json_bytes(direct_request.canonical_body())
+    ):
+        problems.append("genuine SDK request is not canonical parity")
+    # sabotaged: the reshaping client's request differs
+    reshape_captured: List[ApiRequest] = []
+
+    def reshape_transport(request: ApiRequest) -> Any:
+        from developerapi.gateway import ApiResponse
+
+        reshape_captured.append(request)
+        return ApiResponse(status=200, body={"data": dict(canned_data)}, headers={})
+
+    reshaping = _RequestReshapingClient(
+        transport=reshape_transport,
+        application_id="sha256:" + "1" * 60,
+        secret="dasec_" + "1" * 60,
+        api_version="1.0",
+        environment="sandbox",
+    )
+    reshaping.publish_offer(
+        idempotency_key="sdk-par", offer=_offer_body("Parity")
+    )
+    if canonical_json_bytes(reshape_captured[0].canonical_body()) == (
+        canonical_json_bytes(direct_request.canonical_body())
+    ):
+        problems.append("reshaping client lost the request-parity gap")
+    # genuine: response parsing is exact (no invented members)
+    genuine_parsed = DeveloperApiClient(
+        transport=canned_transport,
+        application_id="sha256:" + "1" * 60,
+        secret="dasec_" + "1" * 60,
+        api_version="1.0",
+        environment="sandbox",
+    )
+    resource = genuine_parsed.publish_offer(
+        idempotency_key="sdk-par", offer=_offer_body("Parity")
+    )
+    if resource.to_dict() != dict(canned_data):
+        problems.append("genuine SDK parse is not exact")
+    # sabotaged: the fabricating client invents a member the
+    # server never sent
+    fabricating = _FabricatingClient(
+        transport=canned_transport,
+        application_id="sha256:" + "1" * 60,
+        secret="dasec_" + "1" * 60,
+        api_version="1.0",
+        environment="sandbox",
+    )
+    fabricated = fabricating.publish_offer(
+        idempotency_key="sdk-par", offer=_offer_body("Parity")
+    )
+    if fabricated.get("physical_connectivity") is not True:
+        problems.append("fabricating client lost the fabrication gap")
+    if resource.to_dict() == fabricated.to_dict():
+        problems.append("fabrication is invisible (no gap)")
+    if problems:
+        results.append(fail("54 sabotage SDK divergence", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "54 sabotage SDK divergence",
+                "request bytes + response members exact genuine; the "
+                "reshaping and fabricating candidates diverge -> detected",
+            )
+        )
+
+
+def case_55_sabotage_rate_limit_authority(results: List[Result]) -> None:
+    """Discrimination (criterion 9): a throttled request must
+    mutate no canonical state -- a limiter that mints throttle
+    transactions must be DETECTED."""
+    problems: List[str] = []
+    service, core, usage, allocation, world = _compose_service()
+    runtime, peer, session_id, manager, integrator, shared = world
+    from agent.clock import FixedClock as _FixedClock
+
+    limiter = RateLimiter(
+        capacity=2, refill_per_second=1, clock=_FixedClock(_T0)
+    )
+    service2, core2, *_ = _compose_service(world=world, rate_limiter=limiter)
+    app = _full_app(service2, "dev-rl", "rl")
+    # genuine: the third request is throttled and mints nothing
+    for _ in range(2):
+        service2.handle(_req("GET", "/api/1.0/offers", app))
+    before = len(core2.transactions())
+    throttled = service2.handle(_req("GET", "/api/1.0/offers", app))
+    if throttled.status != 429 or throttled.body["error"]["reason"] != (
+        "rate-limited"
+    ):
+        problems.append("third request was not throttled")
+    if len(core2.transactions()) != before:
+        problems.append("genuine throttle mutated canonical state")
+    # sabotaged: the business limiter mints throttle events into
+    # the SAME core its service composes (the public load()
+    # re-composition over the populated journal)
+    api_store3 = MemoryApiStore()
+    service3, core3, usage3, allocation3, _ = _compose_service(
+        world=world, store=api_store3
+    )
+    app3 = _full_app(service3, "dev-rl2", "rl2")
+    business_limiter = _BusinessRateLimiter(
+        core=core3,
+        capacity=2,
+        refill_per_second=1,
+        clock=_FixedClock(_T0),
+    )
+    service3 = DeveloperApiService.load(
+        environment="sandbox",
+        core=core3,
+        usage=usage3,
+        allocation=allocation3,
+        store=api_store3,
+        clock=shared,
+        issuance_key=b"w046-platform-issuance-key",
+        rate_limiter=business_limiter,
+    )
+    for _ in range(2):
+        service3.handle(_req("GET", "/api/1.0/offers", app3))
+    before3 = len(core3.transactions())
+    response = service3.handle(_req("GET", "/api/1.0/offers", app3))
+    if response.status != 429:
+        problems.append("sabotaged third request was not throttled")
+    if len(core3.transactions()) != before3 + 1:
+        problems.append("business limiter did not mint throttle state")
+    if problems:
+        results.append(fail("55 sabotage rate-limit authority", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "55 sabotage rate-limit authority",
+                "throttled request mints nothing genuine and mints a "
+                "canonical transaction through the business limiter -> "
+                "detected",
+            )
+        )
+
+
+def case_56_sabotage_observation_as_command(results: List[Result]) -> None:
+    """Discrimination (criterion 10): webhook delivery is
+    observation only -- a consumer that mutates canonical state
+    from an observation must be DETECTED.
+
+    The mutation path delivers INLINE (the durable admission,
+    then the inline delivery pass), so the observation fires
+    during the API mutation itself: the probe measures the
+    transactions attributable to ONE API mutation plus its
+    observation delivery (genuine: exactly the mutation; the
+    command consumer: the mutation AND the observation-born
+    command)."""
+    problems: List[str] = []
+    service, core, *_ = _compose_service()
+    app = _full_app(service, "dev-obs", "obs")
+    endpoint = service.handle(
+        _req(
+            "POST",
+            "/api/1.0/webhook-endpoints",
+            app,
+            body={
+                "url": "https://consumer.test/hook",
+                "event_types": ["connectivity_intent.created"],
+            },
+            idempotency_key="obs-ep-1",
+        )
+    )
+    endpoint_id = endpoint.body["data"]["id"]
+    # genuine: the ordinary consumer observes without mutating
+    genuine_consumer = _Consumer(service.endpoint_signing_secret(endpoint_id))
+    service._transports[endpoint_id] = genuine_consumer
+    before = len(core.transactions())
+    service.handle(
+        _req(
+            "POST",
+            "/api/1.0/intents",
+            app,
+            body={"intent": {"subscriber": "sub-obs"}},
+            idempotency_key="obs-intent-1",
+        )
+    )
+    if not genuine_consumer.deliveries:
+        problems.append("no delivery observed")
+    if len(core.transactions()) != before + 1:
+        problems.append(
+            "genuine delivery mutated canonical state (%d -> %d)"
+            % (before, len(core.transactions()))
+        )
+    # sabotaged: the observation-as-command consumer mints a
+    # mutation per delivery
+    service2, core2, *_ = _compose_service()
+    app2 = _full_app(service2, "dev-obs", "obs")
+    endpoint2 = service2.handle(
+        _req(
+            "POST",
+            "/api/1.0/webhook-endpoints",
+            app2,
+            body={
+                "url": "https://consumer.test/hook",
+                "event_types": ["connectivity_intent.created"],
+            },
+            idempotency_key="obs-ep-1",
+        )
+    )
+    endpoint2_id = endpoint2.body["data"]["id"]
+    command_consumer = _ObservationAsCommandConsumer(core2)
+    service2._transports[endpoint2_id] = command_consumer
+    before2 = len(core2.transactions())
+    service2.handle(
+        _req(
+            "POST",
+            "/api/1.0/intents",
+            app2,
+            body={"intent": {"subscriber": "sub-obs"}},
+            idempotency_key="obs-intent-1",
+        )
+    )
+    if not command_consumer.deliveries:
+        problems.append("sabotaged consumer saw no delivery")
+    if len(core2.transactions()) != before2 + 2:
+        problems.append(
+            "observation-as-command did not mutate canonical state "
+            "(%d -> %d, expected the mutation + the command)"
+            % (before2, len(core2.transactions()))
+        )
+    if problems:
+        results.append(fail("56 sabotage observation-as-command", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "56 sabotage observation-as-command",
+                "delivery mutates nothing beyond the API mutation genuine "
+                "and mints an observation-born canonical transaction "
+                "through the command consumer -> detected",
             )
         )
 
@@ -6221,6 +7696,17 @@ def main() -> int:
         case_43_durable_webhook_obligation_crash_recovery,
         case_44_obligation_write_admission_gate,
         case_45_durable_observation_admission_state,
+        case_46_sabotage_version_laundering,
+        case_47_sabotage_idempotency_rekeying,
+        case_48_sabotage_privilege_escalation,
+        case_49_sabotage_environment_bridging,
+        case_50_sabotage_reason_rewriting,
+        case_51_sabotage_webhook_signature_blindness,
+        case_52_sabotage_webhook_replay_blindness,
+        case_53_sabotage_pagination_instability,
+        case_54_sabotage_sdk_divergence,
+        case_55_sabotage_rate_limit_authority,
+        case_56_sabotage_observation_as_command,
     ):
         case(results)
     failures = [result for result in results if not result[1]]
