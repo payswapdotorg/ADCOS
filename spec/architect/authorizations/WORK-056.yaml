@@ -1,0 +1,79 @@
+# ADCOS Work Item authorization record — WORK-056 active implementation.
+# Issued by DEC-0089 after WORK-055/R3 acceptance.
+work_item: WORK-056
+status: active
+authorized: true
+type: implementation
+authorization_id: "WORK-056-CORE-001"
+authorization_decision: DEC-0089
+superseded_by: null
+supersession_decision: null
+baseline_sha: 7801549c0ed50082a4fa7c20c71e50dc7bde87f9
+review_basis: "DEC-0089 accepts WORK-055/R3 and activates R5. WORK-056 is the sole active implementation authorization and is cut from the post-W055 accepted mainline 7801549c0ed50082a4fa7c20c71e50dc7bde87f9."
+dependencies:
+  - WORK-044
+  - WORK-045
+  - WORK-046
+  - WORK-047
+  - WORK-050
+  - WORK-051
+  - WORK-052
+  - WORK-053
+  - WORK-054
+  - WORK-055
+authority_inputs:
+  - "Frozen Architecture Version 1.0 contracts"
+  - "Frozen Protocol Version 1.0 contracts and schemas"
+  - "WORK-046 Developer Connectivity API, SDK and Webhook Platform"
+  - "WORK-051 CommercialCore"
+  - "WORK-052 UsageLedger"
+  - "WORK-053 EconomicAllocation"
+  - "WORK-044 Payment Provider boundary"
+  - "WORK-045 Eligibility policy"
+  - "WORK-055 Protocol Production Conformance"
+  - "Existing identity/session/NetworkPath/routing/transport authorities through public interfaces only"
+authority_outputs:
+  - "Production-hardening evidence for the developer-facing API/SDK/webhook boundary only"
+scope:
+  - "developerapi/"
+  - "tools/developerapi_selftest.py"
+  - "docs/WORK-056-evidence.md"
+  - "docs/WORK-056-handoff.md"
+out_of_scope_preserved:
+  - "frozen architecture or protocol semantics"
+  - "new identity/session/NetworkPath/routing/transport authority"
+  - "W048 restoration"
+  - "W040 physical validation or evidence disposition"
+  - "provider onboarding/federation expansion"
+  - "payment custody or regulated funds movement"
+  - "full marketplace UI"
+  - "new economic authority"
+  - "CI governance changes outside this authorization"
+  - "modifying spec/architect/ from the implementation PR"
+acceptance_criteria:
+  - "External applications can use the existing developer boundary without adopting an ADCOS UI."
+  - "API mutations are idempotent and deterministic under retries, duplicates, and replay conditions."
+  - "Application credentials enforce explicit least-authority scopes and cannot cross environment or resource boundaries."
+  - "Sandbox and production namespaces are isolated and cannot be confused by identifier substitution."
+  - "Canonical server reason codes and failure classifications survive the developer boundary without lossy reinterpretation."
+  - "Signed webhook delivery is integrity-protected and deterministic under replay, duplicate, and out-of-order delivery."
+  - "SDK behavior is contract-equivalent to the canonical server semantics and does not create hidden business authority."
+  - "Pagination/retrieval behavior is stable where exposed and cannot fabricate state."
+  - "Rate limiting/resource protection cannot become a second business authority."
+  - "API/webhook observations never become canonical connectivity or commercial state."
+  - "Existing accepted batteries remain green; no frozen authority is modified."
+  - "All changes remain within the exact authorized scope and ancestry."
+acceptance_gate:
+  status: "Architect adversarial review required after implementation"
+  required_evidence:
+    - "deterministic developer API conformance battery"
+    - "idempotency, retry, duplicate and replay evidence"
+    - "credential scope and privilege-boundary negatives"
+    - "sandbox/production isolation evidence"
+    - "signed webhook integrity and ordering evidence"
+    - "canonical reason-code equivalence evidence"
+    - "SDK/server contract equivalence evidence"
+    - "structural import/private-access/shadow-authority audits"
+    - "PYTHONHASHSEED and repeat-run determinism"
+    - "scope and ancestry proof from baseline 7801549c"
+    - "explicit proof that no frozen semantic or wire-schema change occurred"
