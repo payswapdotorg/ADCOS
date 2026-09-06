@@ -12,7 +12,7 @@ scope_amendment_decision: DEC-0091
 superseded_by: null
 supersession_decision: null
 baseline_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
-review_basis: "DEC-0089 accepts WORK-055/R3 and activates R5. WORK-056 is the sole active implementation authorization and is cut from the actual current mainline tip 7ae438d46041b228164cc8880be37dc21f972b6f; the W056 implementation ancestry remains governed by that baseline. DEC-0090 narrowly amended the authorized scope to permit the W046 availability-oracle reconciliation required because WORK-056 repairs the previously recorded W046 import defect. After the 0581f7c delivery was rejected because the literal DEC-0090 scope left two duplicate pins stale and the accepted W054 battery at 53/55, DEC-0091 precisely extends the same single factual reconciliation to the three existing assertion sites without authorizing any new semantic coverage or production behavior."
+review_basis: "DEC-0089 accepts WORK-055/R3 and activates R5. WORK-056 is the sole active implementation authorization and is governed by the authorized baseline 7ae438d46041b228164cc8880be37dc21f972b6f. DEC-0090 narrowly amended the authorized scope to permit the W046 availability-oracle reconciliation required because WORK-056 repairs the previously recorded W046 import defect. After the 0581f7c delivery was rejected because the literal DEC-0090 scope left two duplicate pins stale and the accepted W054 battery at 53/55, DEC-0091 precisely extends the same single factual reconciliation to the three existing assertion sites without authorizing any new semantic coverage or production behavior."
 dependencies:
   - WORK-044
   - WORK-045
