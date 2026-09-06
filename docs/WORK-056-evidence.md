@@ -1,8 +1,10 @@
-# WORK-056 — Developer Connectivity Platform Production Hardening (R5) — Evidence Record
+# WORK-056 — Developer Connectivity Platform Production Hardening (R6) — Evidence Record
 
 Work Item: `WORK-056` — authorization `WORK-056-CORE-001` — decision
 `DEC-0089` (scope amended by `DEC-0090`, then precisely extended by
-`DEC-0091` for the same W046 availability-oracle pins).
+`DEC-0091` for the same W046 availability-oracle pins, and by
+`DEC-0093` for the inherited W054 case_51 cross-era scope-oracle
+correction).
 
 - Authorized baseline (ancestor of the delivery): `7ae438d46041b228164cc8880be37dc21f972b6f`
 - Branch root (the post-governance mainline the Architect cut): `4852a016fce61cecec8078084da1d9bbe81d2681` (the PR #16 guarded merge)
@@ -13,10 +15,200 @@ Work Item: `WORK-056` — authorization `WORK-056-CORE-001` — decision
 - Round-3 correction: one plain commit directly on top of the round-2 head `e5af68b58ad78435e2220a181bdb51e4f7529855` (the review-5124542587 disposition; no rebase, no force). The exact new head SHA is recorded in the PR head and the worker delivery comment.
 - Round-4 correction: the Architect governance commits `3243cb9`/`2240b7f` on top of the rejected round-3 head `0581f7cba05972dd47961de9c7ae821c7153e595`, then a plain merge of the DEC-0091 mainline `e368273` (no rebase, no force), then the round-4 oracle-reconciliation commit directly on top (the review-5124685782 / DEC-0091 disposition). The exact new head SHA is recorded in the PR head and the worker delivery comment.
 - Round-5 re-delivery (disposition `5558735269`): the governance mainline advanced past the round-4 delivery through DEC-0091 duplicate-record cleanup and execution-state reconciliation (`e368273..e82a8ee`, 10 governance-only commits, 3 files, no implementation surface), so the round-4 head could not be accepted as-is. Round 5 merges the reconciled current main `e82a8ee15d7fe286081e0d8e2bae11c89aedfa45` into the branch as an ordinary merge with the round-4 implementation preserved byte-exact, adds only this evidence/handoff record update, and re-runs the complete verification at the new exact head.
+- Round-6 delivery (disposition `5559193250`): the round-5 verdict adjudicated the W054 battery's `case_51_pr_delta_authorized_scope` as an obsolete cross-era scope oracle (it diffs the entire current worktree against `origin/main` under the historical W054 `_AUTHORIZED_PATHS`, so the later authorized WORK-056 delta is falsely classified as a W054 violation) — a governance defect, not a W056 production defect. **DEC-0093** (landed on the governance mainline `e82a8ee..ccdc70b`, 3 commits, 3 files, together with the `WORK-056-CORE-001` amendment-chain update `DEC-0090 → DEC-0091 → DEC-0093` and the execution-state reconciliation) now authorizes exactly one correction. Round 6 merges the DEC-0093 governance mainline `ccdc70bf6c623b6dd63a70dde9b787e79e28abf3` into the branch as an ordinary merge, applies the single narrow `case_51` historical-oracle correction as one plain commit on `tools/composition_selftest.py` only, adds this evidence/handoff record update, and re-runs the complete verification at the new exact head — in BOTH environments.
 
 Everything in this record is reproducible from a fresh checkout
 of the delivery head with a single command per section (Python
 3, standard library only, no network, no wall clock).
+
+---
+
+# ROUND 6 — the DEC-0093 case_51 historical-oracle delivery (disposition 5559193250)
+
+The round-5 delivery (head `cda6c969155864dd410d66e8687026e34b217aef`)
+received the Round-5 verdict: the W056 implementation is **technically
+viable** and the W056 battery is **56/56**, but the W054 battery is
+55/55 only in the worker environment — on a CI full-history checkout
+it fails at `case_51_pr_delta_authorized_scope`, because that
+inherited W054-era oracle diffs the **entire current worktree** against
+`origin/main` while applying the historical W054 `_AUTHORIZED_PATHS`,
+so any later authorized Work Item legitimately changing the repository
+is falsely classified as a W054 scope violation. The verdict required a
+narrow governance amendment rather than a worker-side fix, and that
+amendment now exists and is authoritative: **DEC-0093**
+(`spec/architect/decisions/DEC-0093-w056-w054-scope-oracle-reconciliation.yaml`,
+landed on the governance mainline `e82a8ee..ccdc70b`, 3 commits,
+exactly 3 files: the DEC-0093 record, the `WORK-056.yaml` amendment-chain
+authorization update — the chain is now `DEC-0090 → DEC-0091 →
+DEC-0093` — and the `execution-state.yaml` reconciliation). Round 6
+executes exactly the authorized delivery (Architect disposition, PR #17
+comment `5559193250`): incorporate the DEC-0093 governance mainline
+with an ordinary merge, apply **only** the DEC-0093 `case_51`
+correction, re-run the complete verification at the new exact head in
+**both environments**, and return to `WAITING_FOR_ARCHITECT`.
+
+## R6.1 The delivery (ordinary merge + the one authorized correction)
+
+The chain after the round-5 head `cda6c96`, in the order the
+disposition prescribes (`cda6c96` → merge current governance mainline →
+one narrow `case_51` correction → exact-head evidence):
+
+1. **The DEC-0093 governance mainline is incorporated with an ordinary
+   merge** — merge commit `029d3aaa42670ede9a2d8518a6fb39f8b02292d3`
+   (the `ort` strategy, no rebase, no force; parents `cda6c96` +
+   `ccdc70bf6c623b6dd63a70dde9b787e79e28abf3`). The merge brings in
+   exactly the three governance-only files of `e82a8ee..ccdc70b` and
+   resolves trivially. After the merge: `git diff ccdc70b HEAD --
+   spec/` is **empty** — the branch's `spec/` surface is
+   byte-identical to current main, including the DEC-0093 record
+   itself; `bd9e9fa` (the execution-state authorization anchor) and
+   `ccdc70b` (the tip) are literally ancestors of the head.
+2. **The one narrow correction** — plain commit
+   `6796f24b689cfb2932b178b751cf4ee379bb5b7b`, exactly one file:
+   `tools/composition_selftest.py`, +47/−30, the function
+   `case_51_pr_delta_scope` and its associated local constants only
+   (the hunk context confirms `case_50`'s logic is untouched —
+   byte-identical context lines). Per DEC-0093's `allowed_change`,
+   the live current-PR `origin/main` worktree comparison is replaced
+   with the immutable historical W054 scope/provenance proof:
+   - the delta `git diff --name-only 461d148… 93ad413…` — the fixed
+     W054 authorized baseline
+     `461d1482180222f4b63f780d6d9ea1d54c49d643` to the fixed accepted
+     W054 delivery `93ad4130f8308832e432ce3e83988f5a6a9b32e3`, both
+     recorded as associated local constants
+     (`_W054_AUTHORIZED_BASELINE` / `_W054_ACCEPTED_DELIVERY`) — must
+     lie exactly within `_AUTHORIZED_PATHS` (the tuple preserved
+     byte-identically, never widened);
+   - any historical `spec/` delta remains a failure;
+   - the accepted W054 delivery `93ad413…` must be an ancestor of the
+     tested HEAD — replacing the baseline-only ancestry check with a
+     strictly stronger proof (`93ad413` descends from `461d148`;
+     the baseline identity is preserved as the fixed diff base);
+   - the `origin/main` dependency and its environment-conditional
+     skip path are gone — the oracle is now **evergreen and
+     environment-independent**. No current-PR delta check, no
+     future-Work-Item allowlist, no live authorization logic, and no
+     governance dependency was introduced (the DEC-0093
+     `prohibited_changes` list honored in full).
+   The corrected oracle passes with a 9-file historical delta
+   (composition ×6, `tools/composition_selftest.py`, the two
+   WORK-054 docs) — all inside the authorized tuple, no `spec/`.
+
+Then this evidence/handoff record update (one plain docs-only commit
+on top; **no implementation bytes change after the correction
+commit**). The push to the authorized branch is a fast-forward.
+
+## R6.2 Fresh verification at the round-6 head (honest, both environments)
+
+| Battery | Round-6 result at the exact head | Classification |
+|---|---|---|
+| `tools/developerapi_selftest.py` (W056) | **PASS 56/56** — including case 41 (the 7-file authorized delta + baseline ancestry proof) and case 27/46 (the restored 1.x contract) | the W056 acceptance battery — green |
+| `tools/composition_selftest.py` (W054) | **PASS 55/55** — the full fail-fast chain green end-to-end, including the corrected `case_51` on its real (non-skip) path in BOTH environments | the W054 acceptance battery — **genuinely green and CI-valid** |
+| W054 in the CI condition | **PASS 55/55** in a fresh full-history checkout with `origin/main` present and pinned to current main `ccdc70b` — `case_50` on its real byte-identity path (green), `case_51` **byte-identical to the worker-environment line** | the decisive round-6 property: the environment divergence is eliminated |
+| determinism (both batteries) | two consecutive full runs + `PYTHONHASHSEED=0/1/7919` — all outputs **byte-identical** (`cmp`) in both environments; the W056 battery byte-identical across environments; the W054 battery differs across environments only in `case_50`'s designed origin/main-conditional text (untouched by DEC-0093's authorization) | deterministic evidence |
+| commercial / usage / allocation selftests | 38/38, 49/49, 60/60 — unchanged | accepted sibling batteries remain green |
+| `spec_check.py` | FAIL 10/16 blocking + 2 advisory + 1 SKIP — **byte-identical** to the same run at current main `ccdc70b` itself (isolated detached worktree) | the inherited mainline signature; no new failure |
+| conformance selftest | 2/63 — exactly `case_62_w055_pr_delta_scope` and `case_63_frozen_authorities_untouched` red, the **same failing case set** as at current main `ccdc70b` itself | inherited mainline signature; the case-62 file list differs only in the expected per-tree delta enumeration (the 7 authorized files) |
+
+## R6.3 Scope and ancestry (round 6)
+
+- The cumulative implementation delta measured against the current
+  authoritative governance mainline `ccdc70b` is confined to the
+  amended authorized scope — the **same seven files** as rounds 4/5:
+  `developerapi/errors.py`, `developerapi/gateway.py`,
+  `developerapi/schema.py`, `tools/developerapi_selftest.py`,
+  `tools/composition_selftest.py` (the three DEC-0091 W046
+  availability-oracle pins + exactly the DEC-0093 case_51 correction —
+  the only two changes the amendment chain authorizes), and the
+  worker's own evidence/handoff records — 7 files, nothing else.
+- `spec/architect/` is **byte-identical to current main** on the
+  delivery branch (`git diff ccdc70b HEAD -- spec/` is empty): the
+  DEC-0093 governance arrives ONLY through the plain merge of the
+  Architect-merged mainline. The correction commit touches no file
+  outside `tools/composition_selftest.py`; the record commit touches
+  no file outside the two worker evidence/handoff docs.
+- Frozen surfaces unchanged from the authorized baseline `7ae438d`:
+  `spec/architecture.md`, `spec/architecture-lock.md`,
+  `spec/schemas/protocol.json`, `spec/mission.md`, `spec/work-items.md`,
+  `spec/dependency-graph.md` all byte-identical; `composition/` (the
+  composition authority) unchanged vs both the baseline and current
+  main; no W048 restoration; no W040 touch.
+- Ancestry: `7ae438d` (authorized baseline), `4852a016` (branch
+  root), `e0b8e0f` (DEC-0090 mainline), `0581f7c` (the rejected
+  round-3 head — **preserved, not rewritten**), `2240b7f`,
+  `e368273` (the DEC-0091 governance mainline), `35ec48a` (the
+  round-4 head — **preserved**), `e82a8ee` (the round-5 governance
+  base), `cda6c96` (the round-5 head — **preserved**), `f69a7c6`,
+  `bd9e9fa`, `ccdc70b` (the DEC-0093 governance mainline), and the
+  fixed W054 ends `461d148` / `93ad413` are all ancestors of the
+  round-6 head; the push is a fast-forward. The W056 battery's case
+  41 verifies scope + ancestry mechanically on every run, and the
+  corrected W054 case_51 verifies the W054 lineage mechanically on
+  every run.
+- No rebase of published history and no force: the governance commits
+  and the merge arrive as-is; the round-6 correction and record are
+  plain commits on top; PR #17 remains open and unmerged.
+
+## R6.4 Disposition-requirement disclosure (5559193250)
+
+The disposition's requirements, each mapped to its proof:
+
+1. *Merge the latest governance mainline containing DEC-0093 into the
+   existing PR #17 lineage as a plain child (no rebase, no force)* —
+   §R6.1 (merge commit `029d3aa`, parents `cda6c96` + `ccdc70b`;
+   fast-forward push; `ccdc70b` and `bd9e9fa` both ancestors).
+2. *Modify only `tools/composition_selftest.py`, function
+   `case_51_pr_delta_scope`* — §R6.1 (one plain commit, one file,
+   +47/−30; the hunk context shows `case_50`'s logic untouched).
+3. *Replace only the live-current-PR `origin/main` scope comparison
+   with the immutable historical baseline-to-accepted-delivery scope
+   proof (fixed `461d148`, fixed `93ad413`, preserve
+   `_AUTHORIZED_PATHS`, reject any historical `spec/` delta, require
+   the accepted delivery on the tested HEAD lineage)* — §R6.1 (each
+   element of the proof; the invariant list reproduced element by
+   element).
+4. *No generic future-Work-Item allowlist, current-PR authorization
+   logic, governance dependency, or weakening of W054 provenance* —
+   §R6.1 (the proof uses no moving ref, no worktree state, and no
+   untracked enumeration; the ancestry check is strictly stronger).
+5. *W056 56/56, W054 55/55 at the exact head, byte-identical
+   repeat/PYTHONHASHSEED determinism* — §R6.2 (both batteries, both
+   environments, all seeds, `cmp`-verified).
+6. *No new specification-consistency failures beyond the
+   already-reconciled mainline signature* — §R6.2 (`spec_check` and
+   conformance both measured at `ccdc70b` in isolated detached
+   worktrees and byte-diffed against the branch run; the failing
+   case sets are identical).
+7. *Return to `WAITING_FOR_ARCHITECT` at the new exact head* — the
+   handoff status and the PR #17 worker delivery comment.
+
+## R6.5 Honest boundaries (round 6)
+
+- `case_50` remains origin/main-conditional by its accepted design:
+  DEC-0093 authorizes only the case_51 correction, so case_50's
+  worker-environment skip path is preserved as-is. It is green on
+  both paths at the round-6 head (the real byte-identity check in CI
+  passes because the merge made `spec/` byte-identical to current
+  main). The only cross-environment difference in the W054 battery
+  output is this one designed `case_50` line.
+- The conformance battery's `case_62_w055_pr_delta_scope` is the
+  same *class* of cross-era scope oracle in the W055 family (it
+  flags the authorized W056 files and the post-W055 governance files
+  alike). It fails identically at the mainline itself — the
+  inherited signature — and is **outside** the DEC-0093 authorization
+  (`tools/conformance_selftest.py` may not be touched; "any change
+  outside `tools/composition_selftest.py`" is prohibited). It is
+  disclosed here for the Architect's future consideration, not
+  pre-empted.
+- No CI success is claimed for the round-6 head at report time; the
+  pushed-head check-runs and any dispatched exact-head battery run
+  are reported honestly in the PR comment.
+- W048 remains accepted-not-restored; W040 remains independently
+  in-review (EVID-007/EVID-008 open, physical); R4 stays parallel;
+  R6 is not activated.
+- No frozen Architecture 1.0 or Protocol 1.0 semantic or wire-schema
+  change is part of this delivery; the worker does not self-accept
+  and does not merge.
 
 ---
 

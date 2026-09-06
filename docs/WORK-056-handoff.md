@@ -2,11 +2,11 @@
 
 ## Status
 
-**ROUND-5 DELIVERED — WAITING FOR ARCHITECT**
+**ROUND-6 DELIVERED — WAITING FOR ARCHITECT**
 
 Work Item: `WORK-056` — Developer Connectivity Platform Production Hardening  
-Authorization: `WORK-056-CORE-001` (scope amended by `DEC-0090`, then precisely extended by `DEC-0091`)  
-Decision: `DEC-0089` / amendments `DEC-0090`, `DEC-0091`  
+Authorization: `WORK-056-CORE-001` (scope amended by `DEC-0090`, then precisely extended by `DEC-0091`, then by `DEC-0093`)  
+Decision: `DEC-0089` / amendments `DEC-0090`, `DEC-0091`, `DEC-0093` (chain recorded in `WORK-056.yaml`)  
 Authorized baseline: `7ae438d46041b228164cc8880be37dc21f972b6f`  
 Implementation branch: `work-056-developer-platform-hardening` (rooted at the
 post-governance mainline `4852a016fce61cecec8078084da1d9bbe81d2681`, the PR #16
@@ -25,9 +25,82 @@ execution-state reconciliation `e368273..e82a8ee`, disposition `5558735269`);
 the round-5 delivery merges the reconciled current governance main
 `e82a8ee15d7fe286081e0d8e2bae11c89aedfa45` as an ordinary merge with the
 round-4 implementation preserved byte-exact and adds one plain record commit
-on top — no rebase, no force)
+on top — no rebase, no force; that round-5 head `cda6c96` was adjudicated by
+the Round-5 verdict: technically viable, but the W054 battery's inherited
+`case_51` cross-era scope oracle fails on a CI checkout — a governance defect
+formalized as **DEC-0093** on the governance mainline `ccdc70b`; the round-6
+delivery merges that mainline as an ordinary merge, applies the single narrow
+DEC-0093 `case_51` historical-oracle correction on
+`tools/composition_selftest.py` only, and adds the record commit on top —
+no rebase, no force)
+
+## Round-6 delivery record (disposition 5559193250)
+
+The round-5 delivery received the Round-5 verdict (PR #17 comment
+`5559193250` carrying DEC-0093 as authoritative): the W056 implementation
+is **technically viable** and its battery **56/56**, but the W054 battery is
+55/55 only in the worker environment — the inherited W054-era
+`case_51_pr_delta_authorized_scope` diffs the entire current worktree
+against `origin/main` under the historical W054 `_AUTHORIZED_PATHS`, so the
+later authorized WORK-056 delta is falsely classified as a W054 violation:
+a stale scope oracle, not a W056 production defect. DEC-0093
+(`spec/architect/decisions/DEC-0093-w056-w054-scope-oracle-reconciliation.yaml`,
+landed `e82a8ee..ccdc70b` with the WORK-056 amendment-chain update
+`DEC-0090 → DEC-0091 → DEC-0093` and the execution-state reconciliation)
+authorizes exactly one correction. The round-6 delivery executes it exactly:
+
+1. **the DEC-0093 governance mainline is incorporated with an ordinary
+   merge** — a plain `ort` merge of `ccdc70b` (parents `cda6c96` +
+   `ccdc70b`; no rebase, no force; the push is a fast-forward); after the
+   merge the branch's `spec/` surface is byte-identical to current main
+   (`git diff ccdc70b HEAD -- spec/` is empty), including the DEC-0093
+   record itself;
+2. **exactly the authorized `case_51` correction** — one plain commit on
+   `tools/composition_selftest.py` only (the function
+   `case_51_pr_delta_scope` and its associated local constants): the live
+   current-PR `origin/main` worktree comparison is replaced with the
+   immutable historical W054 proof — the fixed baseline
+   `461d1482180222f4b63f780d6d9ea1d54c49d643` to the fixed accepted
+   delivery `93ad4130f8308832e432ce3e83988f5a6a9b32e3`, `_AUTHORIZED_PATHS`
+   preserved byte-identically, historical `spec/` rejection retained, the
+   accepted delivery required on the tested HEAD lineage; no allowlist, no
+   live authorization logic, no governance dependency; the oracle is now
+   evergreen and environment-independent (its output is byte-identical in
+   the worker sandbox and on a CI full-history checkout);
+3. **the genuine result is re-proven at the new exact head in BOTH
+   environments** — W056 developerapi battery **56/56**; W054 composition
+   battery **55/55** including in the CI condition (a fresh full-history
+   checkout with `origin/main` present: `case_50` green on its real
+   byte-identity path, the corrected `case_51` green on its real path); both
+   batteries byte-identical across consecutive repeat runs and
+   `PYTHONHASHSEED=0/1/7919`; siblings 38/38, 49/49, 60/60; `spec_check`
+   byte-identical to current main `ccdc70b` itself (FAIL 10/16 + 2 advisory
+   + 1 SKIP, the inherited signature, isolated detached worktree);
+   conformance 2/63 with the same failing case set as the mainline — no new
+   failure (evidence record §R6.2);
+4. **scope and ancestry are re-proven against the new governance base** —
+   the cumulative delta from `ccdc70b` is the same 7 authorized files
+   (developerapi ×3, tools ×2, the worker evidence/handoff records) and
+   nothing else; the `spec/architect/` delta is zero; the frozen surfaces
+   and `composition/` are byte-identical to the authorized baseline
+   `7ae438d`; `7ae438d`, `0581f7c`, `2240b7f`, `e368273`, `35ec48a`,
+   `e82a8ee`, `cda6c96` (the round-5 head, preserved), `bd9e9fa`,
+   `ccdc70b`, and the fixed W054 ends `461d148`/`93ad413` are all
+   ancestors; the W056 battery's case 41 and the corrected W054 case_51
+   verify the lineage mechanically (evidence record §R6.1/§R6.3).
+
+The worker does not self-accept, does not merge, and does not start any
+follow-on work: the independent battery verification at the new exact head,
+the acceptance decision, the guarded merge, the R5 close, and the R6
+activation remain Architect-only actions.
 
 ## Round-5 delivery record (disposition 5558735269)
+
+> Superseded (as the delivery vehicle) by the round-6 delivery record above:
+> the round-5 head `cda6c96` was adjudicated by the Round-5 verdict — the
+> implementation technically viable, the `case_51` CI failure a stale W054
+> scope oracle formalized as DEC-0093; the round-6 delivery incorporates
+> that governance mainline and applies the authorized correction.
 
 The round-4 delivery received **ROUND 4 NOT ACCEPTED / NEW EXACT DELIVERY
 REQUIRED** (Architect disposition `5558735269`): the round-4 implementation
