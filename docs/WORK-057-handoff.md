@@ -1,7 +1,11 @@
 # WORK-057 — Provider Onboarding & Federation Handoff
 
 ## Status
-ACTIVE — authorized by DEC-0095 / WORK-057-CORE-001.
+DELIVERED — WAITING_FOR_ARCHITECT. Round 1 implementation delivered on
+`work-057-provider-onboarding-federation` (branch point: main `12ae8f7`) under
+`WORK-057-CORE-001` (DEC-0095); the battery is PASS 73/73 with full determinism
+proofs; the evidence manifest is `docs/WORK-057-evidence.md`. The adversarial
+review, acceptance decision, and any guarded merge are Architect-only.
 
 ## Mission
 Make independently operated connectivity infrastructure consumable through ADCOS without requiring the infrastructure operator to surrender infrastructure authority and without coupling applications to any specific provider or access technology.
