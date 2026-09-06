@@ -23,13 +23,13 @@ hard_dependencies:
   - WORK-052
   - WORK-053
   - WORK-055
-  - WORK-056
 
 forbidden_dependencies:
   - WORK-048
 
 rules:
-  - "Every hard dependency must be Architect-accepted before WORK-057 acceptance."
+  - "Every listed hard dependency must be Architect-accepted before WORK-057 acceptance."
+  - "R5 / WORK-056 acceptance is a gate prerequisite recorded by DEC-0095, not a hard dependency in the frozen Work Item graph."
   - "WORK-048 is accepted-not-restored and must not be restored implicitly."
   - "WORK-040 remains independent physical evidence and is not a software prerequisite."
   - "WORK-057 cannot create or replace identity, session, routing, transport, payment, usage, allocation, or policy authority."
@@ -39,6 +39,6 @@ rules:
   - "Offboarding and revocation are fail-closed and historically auditable."
 
 execution_order:
-  prerequisite: "R5 / WORK-056 accepted"
+  prerequisite: "R5 / WORK-056 accepted under DEC-0094"
   active: "WORK-057"
   successor: R7_UNIVERSAL_CONNECTIVITY_COMMERCE
