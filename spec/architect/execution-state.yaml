@@ -11,7 +11,7 @@ repository:
   canonical: "github.com/payswapdotorg/ADCOS"
   main_sha: a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19
   main_sha_semantics: "Authoritative mainline after guarded merge of the DEC-0097-accepted WORK-057 delivery. WORK-057 implementation authorization WORK-057-CORE-001 is closed by DEC-0097."
-  lifecycle_ledger_snapshot_sha: a08ce85f133dbb76cd15d30f0ce37dc21f972b6f
+  lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
 versions:
   architecture_version_reference: "1.0"
