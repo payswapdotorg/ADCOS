@@ -1,10 +1,10 @@
 # ADCOS Authoritative Execution Roadmap
-# FROZEN — roadmap version 1.3 (advanced from 1.2 by DEC-0087; DEC-0088 is a
-# lifecycle transition only — Architecture Version 1.0 and Protocol Version 1.0
-# remain unchanged)
+# FROZEN — roadmap version 1.4 (advanced from 1.3 by DEC-0095; ACR-013
+# formalizes post-snapshot gate-specific Work Item governance; Architecture
+# Version 1.0 and Protocol Version 1.0 remain unchanged)
 
 schema_version: 2
-roadmap_version: "1.3"
+roadmap_version: "1.4"
 status: FROZEN_AUTHORITATIVE
 authority: "spec/architect/roadmap.yaml"
 human_projection: "spec/architect/roadmap.md"
@@ -33,16 +33,27 @@ governance_rules:
   stale_or_conflicting_projection_fails_closed: true
   historical_records_are_never_rewritten: true
   software_never_promotes_to_physical: true
+  routine_governance_sequencing_is_architect_owned: true
+  user_prompting_is_not_a_governance_dependency: true
+  post_snapshot_work_items_use_gate_specific_governance_layer: true
 
 current_state:
-  actual_main_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
-  last_reconciled_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
-  program_state: R5_DEVELOPER_CONNECTIVITY_PLATFORM_ACTIVE
+  actual_main_sha: 16c066ff4766d362f0edfcb790524b2c0ef44cae
+  last_reconciled_snapshot_sha: 16c066ff4766d362f0edfcb790524b2c0ef44cae
+  program_state: R6_PROVIDER_ONBOARDING_AND_FEDERATION_ACTIVE
   execution_mode: implementing
-  active_work_item: WORK-056
-  active_authorization: WORK-056-CORE-001
-  next_gate: R6_AFTER_R5
-  reconciliation_note: "DEC-0089 accepts WORK-055/R3 after PR #15 merge 7801549c and activates WORK-056 as the sole R5 software authorization. R4 remains explicitly parallel after R3 with W040 independently in-review. W048 remains explicitly accepted-not-restored. Architecture Version 1.0 and Protocol Version 1.0 remain unchanged."
+  active_work_item: WORK-057
+  active_authorization: WORK-057-CORE-001
+  next_gate: R7_AFTER_R6
+  reconciliation_note: "DEC-0095 accepts ACR-013, closes the R5/W056 lifecycle, and activates WORK-057 as the sole R6 implementation authorization. The post-snapshot gate-specific execution layer is now authoritative. R4 remains independently in-review. W048 remains accepted-not-restored. Architecture Version 1.0 and Protocol Version 1.0 remain unchanged."
+
+authoritative_execution_layer:
+  model: "post-snapshot gate-specific Work Items"
+  contract_root: "spec/architect/work-items/"
+  dependency_overlay_root: "spec/architect/dependency-overlays/"
+  authorization_root: "spec/architect/authorizations/"
+  governance_basis: "ACR-013 / DEC-0095"
+  sequencing_rule: "The sole Architect autonomously advances the next unlocked gate when its contract, dependencies, evidence boundaries, and authorization predicates are satisfied."
 
 accepted_history:
   rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history. R0 restored the accepted W044-W049 implementation trees except the explicitly accepted-not-restored W048 material."
@@ -109,6 +120,12 @@ accepted_history:
       merge_sha: 7801549c0ed50082a4fa7c20c71e50dc7bde87f9
       current_mainline: present
       acceptance_decision: DEC-0089
+    - id: WORK-056
+      status: accepted-merged
+      reviewed_sha: c2b2c59fae4749b610b721b217e18cfa9b4aab25
+      merge_sha: b11cf44db922811d2518c05685aee14127243264
+      current_mainline: present
+      acceptance_decision: DEC-0094
 
 roadmap:
   - id: R0_MAINLINE_RESTORATION
@@ -173,14 +190,17 @@ roadmap:
     rule: "Physical evidence is independently collected, classified, and accepted; software batteries cannot close it. R4 is parallel with R5 after R3 and does not block R5 or R6."
 
   - id: R5_DEVELOPER_CONNECTIVITY_PLATFORM
-    status: ACTIVE
+    status: COMPLETE
     objective: "Make ADCOS consumable like Stripe: external applications request and manage connectivity through stable APIs without adopting an ADCOS user interface or knowing provider/access/path/payment implementation details."
     work_item: WORK-056
     authorization: WORK-056-CORE-001
     authorization_decision: DEC-0089
     authorization_baseline: 7ae438d46041b228164cc8880be37dc21f972b6f
-    gate_rule: "R5 starts after R3 acceptance and may execute in parallel with the independent R4/W040 track, but only WORK-056-CORE-001 may be the active implementation authorization."
-    existing_foundation: "Accepted W046 Developer API/SDK/Webhooks implementation is the base. Future work is production hardening and ecosystem exposure, not reimplementation of its authority."
+    completion_decision: DEC-0094
+    completion_pr: 21
+    completion_delivery_sha: c2b2c59fae4749b610b721b217e18cfa9b4aab25
+    completion_merge_sha: b11cf44db922811d2518c05685aee14127243264
+    gate_rule: "R5 is accepted under DEC-0094. Its successor gate R6 is independently activated under DEC-0095; R4/W040 remains parallel and independent."
     required_surface:
       - "intent creation"
       - "offer/quote discovery"
@@ -192,23 +212,22 @@ roadmap:
       - "idempotency and scoped credentials"
       - "sandbox/production isolation"
       - "developer-visible canonical reason codes"
-    work_item_scope:
-      - "versioned external API contract and compatibility classification"
-      - "idempotent mutation semantics under retries and duplicates"
-      - "scoped application credentials and capability boundaries"
-      - "sandbox/production namespace isolation"
-      - "canonical server-side reason-code propagation without reinterpretation"
-      - "signed webhook integrity, replay, duplicate, and out-of-order handling"
-      - "pagination and stable retrieval semantics where the existing API exposes collections"
-      - "SDK contract equivalence to canonical server semantics"
-      - "rate limiting/resource protection without changing business authority"
-      - "anti-authority proofs for API/webhook observations"
+    result: "Accepted developer connectivity platform production hardening."
 
   - id: R6_PROVIDER_ONBOARDING_AND_FEDERATION
-    status: AFTER_R5
+    status: ACTIVE
     objective: "Enable independently operated networks, ISPs, carriers, enterprises, satellite systems, hotspots, mesh operators, and infrastructure owners to expose capacity through ADCOS without surrendering infrastructure authority."
+    work_item: WORK-057
+    authorization: WORK-057-CORE-001
+    authorization_decision: DEC-0095
+    authorization_baseline: 16c066ff4766d362f0edfcb790524b2c0ef44cae
+    dependency_overlay: "spec/architect/dependency-overlays/R6-W057.yaml"
+    handoff: "docs/WORK-057-handoff.md"
     required: "adapter certification, capability declaration, commercial contract/profile, policy boundary, service terms, settlement configuration, observability, trust/federation onboarding"
-    dependency_rule: "R6 requires accepted R5; R4 completion is not a prerequisite for R6 unless a future durable governance decision explicitly changes this."
+    dependency_rule: "R6 requires accepted R5 and the hard dependencies recorded in its gate-specific dependency overlay; R4 completion is not a prerequisite."
+    scope_rule: "Onboarding and federation are bounded integration/orchestration concerns subordinate to the existing identity, trust, capability, resource, policy, federation, routing, session, transport, telemetry, and commercial authorities."
+    no_new_authority: true
+    no_w048_restoration: true
 
   - id: R7_UNIVERSAL_CONNECTIVITY_COMMERCE
     status: AFTER_R6
@@ -230,7 +249,7 @@ program_exit:
 
 freeze_rules:
   roadmap_changes_require: "A new durable governance decision in spec/architect/decisions/ and an updated roadmap version; no chat-only roadmap change is valid."
-  work_item_changes_require: "The frozen Work Item/ACR process specified by spec/change-control.md and spec/work-items.md."
+  work_item_changes_require: "The frozen Work Item/ACR process specified by spec/change-control.md and spec/work-items.md, or the accepted post-snapshot gate-specific execution model under ACR-013."
   current_execution_change_requires: "A repository-local decision/authorization recorded in spec/architect/."
   no_implicit_reordering: true
   no_chat_override: true

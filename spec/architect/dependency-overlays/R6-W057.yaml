@@ -1,0 +1,44 @@
+# ADCOS gate-specific dependency overlay — R6 / WORK-057
+# Governed by ACR-013 / DEC-0095. Representation only; no new runtime authority.
+version: 1
+status: accepted
+gate: R6_PROVIDER_ONBOARDING_AND_FEDERATION
+work_item: WORK-057
+architecture_version: "1.0"
+protocol_version: "1.0"
+baseline_sha: "16c066ff4766d362f0edfcb790524b2c0ef44cae"
+
+hard_dependencies:
+  - WORK-015
+  - WORK-016
+  - WORK-026
+  - WORK-029
+  - WORK-039
+  - WORK-044
+  - WORK-045
+  - WORK-046
+  - WORK-047
+  - WORK-050
+  - WORK-051
+  - WORK-052
+  - WORK-053
+  - WORK-055
+
+forbidden_dependencies:
+  - WORK-048
+
+rules:
+  - "Every listed hard dependency must be Architect-accepted before WORK-057 acceptance."
+  - "R5 / WORK-056 acceptance is a gate prerequisite recorded by DEC-0095, not a hard dependency in the frozen Work Item graph."
+  - "WORK-048 is accepted-not-restored and must not be restored implicitly."
+  - "WORK-040 remains independent physical evidence and is not a software prerequisite."
+  - "WORK-057 cannot create or replace identity, session, routing, transport, payment, usage, allocation, or policy authority."
+  - "Provider-specific implementations remain behind adapter/provider boundaries."
+  - "Federation membership is scoped, explicit, revocable, and non-transitive."
+  - "Capability/resource evidence retains provenance, validity, and source."
+  - "Offboarding and revocation are fail-closed and historically auditable."
+
+execution_order:
+  prerequisite: "R5 / WORK-056 accepted under DEC-0094"
+  active: "WORK-057"
+  successor: R7_UNIVERSAL_CONNECTIVITY_COMMERCE
