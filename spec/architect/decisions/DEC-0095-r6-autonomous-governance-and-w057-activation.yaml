@@ -1,0 +1,54 @@
+# DEC-0095 — R6 autonomous governance transition and WORK-057 activation
+# Durable decision by the sole Architect.
+decision_id: DEC-0095
+date: "2026-09-06"
+type: governance
+status: accepted
+owner: "Architect"
+
+subject: "Accept ACR-013, formalize autonomous post-snapshot governance, and activate WORK-057 for R6"
+
+facts:
+  predecessor_gate: R5_DEVELOPER_CONNECTIVITY_PLATFORM
+  predecessor_work_item: WORK-056
+  predecessor_acceptance: DEC-0094
+  predecessor_merge_sha: b11cf44db922811d2518c05685aee14127243264
+  current_governed_main_sha: 16c066ff4766d362f0edfcb790524b2c0ef44cae
+  acr_accepted: ACR-013
+  superseded_registration_interpretation: ACR-012
+  next_gate: R6_PROVIDER_ONBOARDING_AND_FEDERATION
+  active_work_item: WORK-057
+  active_authorization: WORK-057-CORE-001
+
+adjudication:
+  result: "ACCEPT"
+  rationale: "ACR-013 formalizes the post-snapshot gate-specific execution pattern already used by W054-W056 and removes user prompting as a routine governance dependency. R6 remains constrained by the frozen architecture, one-active-authorization invariant, explicit dependency/evidence boundaries, and provider/access authority separation. WORK-057 is sufficiently specified to execute against the existing accepted authorities without introducing a new core authority."
+
+r6_activation:
+  status: "ACTIVE"
+  work_item: WORK-057
+  authorization: WORK-057-CORE-001
+  baseline_sha: 16c066ff4766d362f0edfcb790524b2c0ef44cae
+  dependency_overlay: spec/architect/dependency-overlays/R6-W057.yaml
+  contract: spec/architect/work-items/WORK-057.md
+  successor_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE
+
+constraints:
+  - "Architecture Version 1.0 unchanged."
+  - "Protocol Version 1.0 unchanged."
+  - "Exactly one implementation authorization is active: WORK-057-CORE-001."
+  - "WORK-048 remains accepted-not-restored and receives no authority from this decision."
+  - "WORK-040 remains independent, physical, in-review, and unaccepted."
+  - "Provider implementations remain behind adapter/provider boundaries."
+  - "No vendor becomes a connectivity, identity, routing, session, transport, payment, usage, allocation, or policy authority."
+  - "No implementation PR may modify spec/architect/."
+  - "No physical evidence may be manufactured from software or simulation."
+
+acceptance_basis:
+  - "R5/W056 was accepted under DEC-0094."
+  - "R6 is the frozen roadmap successor gate."
+  - "ACR-013 contains the required governance-change analysis and preserves Architecture Version 1.0 / Protocol Version 1.0."
+  - "R6/W057 hard dependencies are enumerated in the accepted dependency overlay."
+  - "WORK-057's lifecycle and acceptance contract is durable in the repository."
+
+next_action: "Execute WORK-057 only under WORK-057-CORE-001, then return to the sole Architect for adversarial review and acceptance before any successor authorization is issued."
