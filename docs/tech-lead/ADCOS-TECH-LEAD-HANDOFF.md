@@ -5,6 +5,13 @@
 Turn ADCOS into the programmable connectivity exchange and orchestration layer
 for heterogeneous connectivity.
 
+## Single-agent mode
+
+A single autonomous LLM MAY act as both **Architect and Tech Lead**. In this mode
+it inherits the same repository-local authorization, ACR, worker, evidence,
+review, acceptance and merge constraints as separate roles. It must not use role
+combination as a reason to bypass a governance gate.
+
 ## Implementation-target rule
 
 **Architecture 1.1 is the target architecture for all new ADCOS design and implementation.**
