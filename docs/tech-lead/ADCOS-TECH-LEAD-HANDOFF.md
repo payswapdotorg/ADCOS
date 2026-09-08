@@ -5,6 +5,27 @@
 Turn ADCOS into the programmable connectivity exchange and orchestration layer
 for heterogeneous connectivity.
 
+## Implementation-target rule
+
+**Architecture 1.1 is the target architecture for all new ADCOS design and implementation.**
+
+Architecture 1.0 is the legacy/frozen baseline that must be preserved only while
+migrating existing implementation and historical evidence. It MUST NOT be used
+to define new product semantics, new Work Items, new authority boundaries, or new
+APIs except where an explicit migration requirement says to preserve 1.0 behavior.
+
+`spec/architecture-1.1-proposed.md`, `spec/architecture-lock-1.1-proposed.md`,
+`spec/application-model.md`, `spec/work-items-1.1.md`, and the 1.1 dependency/
+migration/vertical-proof artifacts define the target to be formally promoted.
+The first transition Work Item is **M001 — Architecture 1.1 Freeze**. Until M001
+is accepted through the repository ACR process, no feature Work Item may silently
+revert to designing from Architecture 1.0; feature work must either be blocked
+or explicitly limited to migration-preserving behavior.
+
+After M001 is accepted, the 1.1 architecture and locks become the sole normative
+architecture for forward implementation, while Architecture 1.0 remains only as
+historical/superseded evidence.
+
 ## Non-negotiable rule
 
 Never trust another agent's report. Inspect the actual repository, diff, tests,
@@ -14,36 +35,40 @@ architecture is implemented, or production readiness exists.
 
 ## Authority order
 
-1. Frozen normative architecture.
-2. Architecture locks.
+1. Accepted Architecture Change Requests and the active normative architecture snapshot.
+2. Active architecture locks.
 3. Change-control/ACR rules.
-4. Current architecture state and active authorization.
-5. Dependency graph.
+4. Current architecture-transition state and active authorization.
+5. Dependency graph and gate-specific dependency overlays.
 6. Work-item acceptance criteria.
 7. Implementation code.
 8. Agent reports.
 
-Tests provide evidence; tests alone do not define architecture.
+During the transition, `spec/architecture.md` is the preserved 1.0 baseline;
+1.1 target artifacts control all forward design choices until formally replaced
+by their accepted frozen successor snapshot. Tests provide evidence; tests alone
+do not define architecture.
 
 ## Bootstrap sequence
 
-1. Read `README.md`.
-2. Read mission and the current authoritative architecture.
-3. Read Architecture 1.1 proposal and proposed locks.
-4. Read governance and change-control.
-5. Read architect handoff/current state.
-6. Read dependency graph and work-items.
-7. Inspect actual source tree and dependency boundaries.
-8. Classify existing implementation using RETAIN / REFACTOR / DEMOTE / REPLACE / ARCHIVE.
-9. Reproduce baseline tests.
-10. Select only dependency-ready work.
-11. Define executable acceptance evidence.
-12. Dispatch workers.
-13. Review worker outputs against repository state.
-14. Integrate only architecture-compliant changes.
-15. Run verification.
-16. Update architect state/ledger only from verified facts.
-17. Advance only after acceptance.
+1. Read `README.md` and `AGENTS.md`.
+2. Read the mission and the architecture-transition state.
+3. Read the Architecture 1.1 target package: architecture, locks, application model, work-items, dependency graph, migration matrix and vertical proof.
+4. Read the preserved Architecture 1.0 baseline only to understand existing behavior that must be retained, migrated, demoted, replaced or archived.
+5. Read governance and change-control.
+6. Read architect handoff/current state/execution state.
+7. Read dependency graph, roadmap and the exact next gate-specific Work Item.
+8. Inspect actual source tree and dependency boundaries.
+9. Classify existing implementation using RETAIN / REFACTOR / DEMOTE / REPLACE / ARCHIVE against Architecture 1.1.
+10. Reproduce baseline tests.
+11. Select only dependency-ready work.
+12. Define executable acceptance evidence.
+13. Dispatch workers.
+14. Review worker outputs against repository state and Architecture 1.1.
+15. Integrate only architecture-compliant changes.
+16. Run verification.
+17. Update architect state/ledger only from verified facts.
+18. Advance only after acceptance.
 
 ## Architectural center
 
@@ -81,4 +106,5 @@ Do not report a work item complete until repository evidence demonstrates:
 - deterministic tests where required;
 - no provider SDK leakage;
 - no hidden topology assumptions;
-- no silent contract weakening.
+- no silent contract weakening;
+- explicit conformance to the Architecture 1.1 target and its locks.
