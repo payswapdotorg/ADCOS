@@ -7,18 +7,30 @@ This document defines precedence. Repository artifacts outrank chat and external
 ## Precedence
 
 1. `spec/mission.md` — permanent mission authority.
-2. `spec/architecture.md` — current frozen architecture semantics.
-3. `spec/architecture-lock.md` — architecture locks.
+2. Accepted architecture/lock snapshot produced by the Architecture Change Request process.
+3. During the Architecture 1.1 transition: the accepted transition decision plus the `spec/architecture-1.1-proposed.md` / lock package as the mandatory forward design target; `spec/architecture.md` / `spec/architecture-lock.md` remain the preserved 1.0 baseline.
 4. accepted ACRs and their frozen successor snapshots.
-5. `spec/dependency-graph.md` — dependency semantics and hard/advisory edges.
-6. `spec/work-items.md` — Work Item contract registry.
+5. `spec/dependency-graph.md` plus accepted 1.1 successor/dependency snapshots when promoted.
+6. `spec/work-items.md` plus accepted 1.1 successor Work Item contracts when promoted.
 7. `spec/architect/roadmap.yaml` — canonical, frozen execution/program roadmap.
 8. accepted durable decisions in `spec/architect/decisions/` and the lifecycle history in `spec/architect/execution-ledger.yaml`.
 9. `spec/architect/execution-state.yaml` and `current-state.md` — current-state projections; they must agree with the higher authorities and actual main.
-10. `spec/architect/authorizations/` — implementation permission only. An authorization cannot change the roadmap, architecture, Work Item contract, or dependency graph.
+10. `spec/architect/authorizations/` — implementation permission only. An authorization cannot change architecture, roadmap, Work Item contract, or dependency semantics.
 11. implementation evidence and CI results.
 12. narrative documentation, issues, PR prose, handoffs, and worklogs.
 13. **Chat history has zero authority at every level.**
+
+## Forward-implementation rule
+
+Architecture 1.1 is the mandatory forward target for new ADCOS behavior.
+Architecture 1.0 is retained as a migration/compatibility baseline and historical
+evidence. A Tech Lead or worker MUST NOT design new APIs, domain models,
+authority boundaries, or capabilities from 1.0 semantics.
+
+M001 — Architecture 1.1 Freeze is the controlled promotion gate. Before M001 is
+accepted, only explicitly authorized transition/migration work may modify code.
+After M001 acceptance, the accepted 1.1 snapshot and locks become the sole
+normative architecture for forward implementation.
 
 ## Roadmap rule
 
@@ -40,4 +52,4 @@ Accepted historical delivery facts remain true even if a later mainline regresse
 
 ## Fresh-session rule
 
-A new Architect, Tech Lead, worker, or implementation agent must be able to clone `main` and determine mission, architecture, roadmap, current execution state, accepted history, evidence state, next action, and whether implementation is authorized without access to any prior conversation.
+A new Architect, Tech Lead, worker, or implementation agent must be able to clone `main` and determine the 1.1 forward target, preserved 1.0 baseline, mission, roadmap, current execution state, accepted history, evidence state, next action, and whether implementation is authorized without access to any prior conversation.
