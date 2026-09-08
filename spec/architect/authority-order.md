@@ -24,11 +24,11 @@ This document defines precedence. Repository artifacts outrank chat and external
 
 `spec/architect/roadmap.yaml` is the sole roadmap authority. `roadmap.md` is its human projection. No other document may create a competing implementation order, milestone, priority, status, or dependency interpretation.
 
-The roadmap is frozen at Version 1.0. Any change requires a new durable governance decision and a new roadmap version. A chat proposal cannot change it.
+The current roadmap is **Version 1.5**. Any roadmap change requires a new durable governance decision and a new roadmap version. A chat proposal cannot change it.
 
 ## Current-state rule
 
-Actual `main` is always checked first. If actual main differs from the persisted execution snapshot or roadmap state cannot be reconciled with the durable decision/ledger record, implementation fails closed. The Architect must persist the reconciliation before any implementation resumes.
+Actual `main` is always checked first. If actual main differs from the persisted execution snapshot, the Architect must reconcile the snapshot against the newer main before implementation resumes. The repository is not allowed to remain internally contradictory after reconciliation.
 
 ## Permission rule
 
@@ -40,4 +40,4 @@ Accepted historical delivery facts remain true even if a later mainline regresse
 
 ## Fresh-session rule
 
-A new Architect or implementation agent must be able to clone `main` and determine mission, architecture, roadmap, current execution state, accepted history, evidence state, and next action without access to any prior conversation.
+A new Architect, Tech Lead, worker, or implementation agent must be able to clone `main` and determine mission, architecture, roadmap, current execution state, accepted history, evidence state, next action, and whether implementation is authorized without access to any prior conversation.
