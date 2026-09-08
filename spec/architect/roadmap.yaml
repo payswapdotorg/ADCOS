@@ -1,7 +1,9 @@
 # ADCOS Authoritative Execution Roadmap
 # FROZEN — roadmap version 1.5 (advanced from 1.4 by DEC-0097;
-# WORK-057 accepted and R6 completed; Architecture Version 1.0 and
-# Protocol Version 1.0 remain unchanged)
+# WORK-057 accepted and R6 completed)
+# Architecture 1.0 is preserved as the legacy baseline; Architecture 1.1 is
+# the mandatory forward target and must be promoted through M001/ACR before
+# feature implementation proceeds.
 
 schema_version: 2
 roadmap_version: "1.5"
@@ -13,39 +15,51 @@ chat_dependency: prohibited
 external_memory_dependency: prohibited
 
 mission_authority: spec/mission.md
-architecture_authority: spec/architecture.md
-architecture_lock_authority: spec/architecture-lock.md
-work_item_contract_authority: spec/work-items.md
-dependency_authority: spec/dependency-graph.md
+architecture_authority: "accepted Architecture 1.1 successor snapshot after M001; until then preserved Architecture 1.0 + transition target package"
+architecture_legacy_baseline: spec/architecture.md
+architecture_lock_authority: "accepted Architecture 1.1 successor lock after M001; until then preserved spec/architecture-lock.md + transition target lock"
+forward_architecture_target: spec/architecture-1.1-proposed.md
+forward_architecture_lock_target: spec/architecture-lock-1.1-proposed.md
+work_item_contract_authority: "accepted Architecture 1.1 successor Work Item contracts after M001; until then spec/work-items.md remains historical baseline"
+dependency_authority: "accepted Architecture 1.1 successor dependency graph after M001; until then spec/dependency-graph.md remains historical baseline"
 execution_state_authority: spec/architect/execution-state.yaml
 execution_ledger_authority: spec/architect/execution-ledger.yaml
 authorization_authority: spec/architect/authorizations/
 decision_authority: spec/architect/decisions/
 
-# The roadmap remains the program authority. Architecture 1.1 is a proposal on
-# this branch/PR until an accepted ACR explicitly promotes it to authority.
 architecture_transition:
-  current_authority: "Architecture 1.0"
-  proposed_next: "spec/architecture-1.1-proposed.md"
-  promotion_requires: "accepted ACR plus new architecture/lock/work-item/dependency snapshots"
+  mode: "controlled-transition"
+  current_legacy_authority: "Architecture 1.0"
+  mandatory_forward_target: "Architecture 1.1"
+  target_package:
+    - "spec/architecture-1.1-proposed.md"
+    - "spec/architecture-lock-1.1-proposed.md"
+    - "spec/application-model.md"
+    - "spec/work-items-1.1.md"
+    - "spec/dependency-graph-1.1.md"
+    - "spec/migration/classification-matrix.md"
+    - "spec/integration/vertical-proof.md"
+  promotion_gate: "M001 — Architecture 1.1 Freeze"
+  promotion_requires: "accepted ACR plus new architecture/lock/work-item/dependency snapshots and preserved 1.0 history"
+  forward_rule: "No new feature semantics may be invented from Architecture 1.0. Before M001 only explicitly authorized transition/migration work may modify implementation. After M001, Architecture 1.1 is the sole normative architecture for forward implementation."
 
 current_state:
-  actual_main_sha: 88a73720d8ff28e95728a03e13db631ffdf9688f
-  last_reconciled_snapshot_sha: 88a73720d8ff28e95728a03e13db631ffdf9688f
+  actual_main_sha: bf3b7cebe0a22a07740bed1934a438be3c9cddc3
+  last_reconciled_snapshot_sha: bf3b7cebe0a22a07740bed1934a438be3c9cddc3
   program_state: R6_PROVIDER_ONBOARDING_AND_FEDERATION_COMPLETE
-  execution_mode: governed-transition
+  execution_mode: governed-transition-to-architecture-1.1
   active_work_item: null
   active_authorization: null
-  next_gate: R7_AFTER_R6
-  reconciliation_note: "88a73720 is the post-R6 roadmap reconciliation mainline commit. R6 is complete. R7 is the next unlocked gate but is not activated. R4 remains independently in-review. W048 remains accepted-not-restored."
+  next_gate: M001_ARCHITECTURE_1_1_FREEZE
+  reconciliation_note: "R6 is complete under DEC-0097. The repository is now at the Architecture 1.1 transition boundary. M001 is the next software governance gate; R7 follows M001. R4 remains independently in-review. W048 remains accepted-not-restored."
 
 authoritative_execution_layer:
   model: "post-snapshot gate-specific Work Items"
   contract_root: "spec/architect/work-items/"
   dependency_overlay_root: "spec/architect/dependency-overlays/"
   authorization_root: "spec/architect/authorizations/"
-  governance_basis: "ACR-013 / DEC-0095"
-  sequencing_rule: "The sole Architect autonomously advances the next unlocked gate when its contract, dependencies, evidence boundaries, and authorization predicates are satisfied."
+  governance_basis: "ACR-013 / DEC-0095 plus the Architecture 1.1 promotion gate"
+  sequencing_rule: "The sole Architect autonomously advances the next unlocked gate when its contract, dependencies, evidence boundaries, architecture transition state, and authorization predicates are satisfied."
 
 accepted_history:
   rule: "A Work Item can be accepted historically while its accepted implementation tree is absent from the current mainline; this is a repository-integrity defect, not a reason to falsify lifecycle history. R0 restored the accepted W044-W049 implementation trees except the explicitly accepted-not-restored W048 material."
@@ -132,13 +146,11 @@ roadmap:
     required_output: "One verified mainline containing the accepted W044-W050/W051-W053 implementation set and their durable acceptance/governance records."
     implementation_authorization: none
     gate: "Architect verifies exact file set, accepted-head provenance, tree equivalence of recovered packages, no unauthorized semantic delta, and complete repository-local evidence."
-
   - id: R1_GOVERNANCE_RECONCILIATION
     status: COMPLETE
     objective: "Reconcile roadmap, current-state, execution-state, execution-ledger, decisions, authorizations, and evidence projections to the restored mainline."
     constraints: "Preserve every prior decision and reconciliation; never rewrite historical records."
     implementation_authorization: none
-
   - id: R2_SYSTEM_COMPOSITION_CONFORMANCE
     status: COMPLETE
     objective: "Prove the complete commercial/connectivity composition without introducing a second authority."
@@ -148,7 +160,6 @@ roadmap:
     completion_delivery_sha: 93ad4130f8308832e432ce3e83988f5a6a9b32e3
     completion_merge_sha: 57963858e5a2b9d11faed94b50f94e058cede0a8
     result: "Accepted R2 conformance evidence; strict production composition remains blocked at missing W048 authority."
-
   - id: R3_PROTOCOL_PRODUCTION_CONFORMANCE
     status: COMPLETE
     objective: "Complete the production conformance layer required before declaring wire compatibility."
@@ -156,18 +167,15 @@ roadmap:
     completion_decision: DEC-0089
     completion_delivery_sha: 0fc86aac57332ca8b8043bf5ee20bb3240d70fe8
     completion_merge_sha: 7801549c0ed50082a4fa7c20c71e50dc7bde87f9
-
   - id: R4_PHYSICAL_CONNECTIVITY_VALIDATION
     status: PARALLEL_AFTER_R3
     objective: "Complete W040 and related open physical-evidence obligations on real hardware/network environments."
     rule: "Physical evidence is independently collected, classified, and accepted; software batteries cannot close this track."
-
   - id: R5_DEVELOPER_CONNECTIVITY_PLATFORM
     status: COMPLETE
     work_item: WORK-056
     completion_decision: DEC-0094
     completion_merge_sha: b11cf44db922811d2518c05685aee14127243264
-
   - id: R6_PROVIDER_ONBOARDING_AND_FEDERATION
     status: COMPLETE
     work_item: WORK-057
@@ -175,20 +183,24 @@ roadmap:
     completion_merge_sha: a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19
     dependency_overlay: "spec/architect/dependency-overlays/R6-W057.yaml"
     handoff: "docs/WORK-057-handoff.md"
-
+  - id: M001_ARCHITECTURE_1_1_FREEZE
+    status: NEXT
+    objective: "Formally adopt Architecture 1.1 as the forward normative architecture and freeze its locks, successor Work Item contracts, dependency graph, migration classifications and vertical-proof boundaries while preserving Architecture 1.0 history."
+    work_item: "M001"
+    target_package: "spec/work-items-1.1.md"
+    authorization_rule: "M001 requires its own repository-local implementation authorization; until it is accepted, no feature work may be implemented from 1.0 semantics."
   - id: R7_UNIVERSAL_CONNECTIVITY_COMMERCE
-    status: AFTER_R6
-    objective: "Normalize heterogeneous connectivity resources into programmable offers selected by intent, policy, evidence, availability, geography, quality, and price."
-    activation_rule: "R7 is unlocked but not activated. Create a gate-specific Work Item contract, dependency overlay, evidence obligations, and repository-local implementation authorization before implementation."
-    architectural_direction: "The target Architecture 1.1 proposal makes ConnectivityContract the canonical durable object and permits authorized applications to purchase or sponsor connectivity for users/devices, while preserving Architecture 1.0 authority until formal ACR acceptance."
-
+    status: AFTER_M001
+    objective: "Normalize heterogeneous connectivity resources into programmable offers selected by intent, policy, evidence, availability, geography, quality, and price under the accepted Architecture 1.1 contract model."
+    prerequisite: M001_ARCHITECTURE_1_1_FREEZE
+    activation_rule: "After M001 acceptance, create the gate-specific R7 Work Item contract, dependency overlay, evidence obligations, and repository-local implementation authorization before implementation."
+    architectural_direction: "R7 MUST be designed and implemented from accepted Architecture 1.1, with ConnectivityContract as canonical authority. Architecture 1.0 is not a forward design source."
   - id: R8_RESILIENCE_MOBILITY_AND_SCALE
     status: AFTER_R7
-    objective: "Harden failover, multipath, mobility, local-first operation, offline/reconnect, reconciliation, disaster recovery, key rotation/revocation, upgrades, federation scale, and operational resilience."
-
+    objective: "Harden failover, multipath, mobility, local-first operation, offline/reconnect, reconciliation, disaster recovery, key rotation/revocation, upgrades, federation scale, and operational resilience under the 1.1 architecture."
   - id: R9_FUTURE_ACCESS_TECHNOLOGY
     status: AFTER_R8
-    objective: "Add or replace access technologies through the adapter boundary without altering the connectivity protocol core."
+    objective: "Add or replace access technologies through the adapter boundary without altering the connectivity contract core."
     examples: "5G, Wi-Fi, Ethernet/fiber, satellite, mesh/IAB, enterprise WAN, future IMT/6G"
 
 program_exit:
@@ -199,5 +211,6 @@ freeze_rules:
   roadmap_changes_require: "A new durable governance decision in spec/architect/decisions/ and an updated roadmap version; no chat-only roadmap change is valid."
   work_item_changes_require: "The frozen Work Item/ACR process or the accepted post-snapshot gate-specific execution model under ACR-013."
   current_execution_change_requires: "A repository-local decision/authorization recorded in spec/architect/."
+  architecture_forward_rule: "All new ADCOS capability design must trace to Architecture 1.1 target locks; 1.0 is migration/history only."
   no_implicit_reordering: true
   no_chat_override: true
