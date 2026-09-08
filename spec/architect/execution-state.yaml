@@ -5,13 +5,13 @@
 
 schema_version: 1
 package: "persistent-architect"
-last_updated: "2026-09-06"
+last_updated: "2026-09-08"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19
-  main_sha_semantics: "Authoritative mainline after guarded merge of the DEC-0097-accepted WORK-057 delivery. WORK-057 implementation authorization WORK-057-CORE-001 is closed by DEC-0097."
-  lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
+  main_sha: 88a73720d8ff28e95728a03e13db631ffdf9688f
+  main_sha_semantics: "Actual authoritative mainline after the post-R6 governance reconciliation commit. The DEC-0097-accepted WORK-057 delivery remains merged at a08ce85f; 88a7372 is the subsequent governance projection reconciliation commit."
+  lifecycle_ledger_snapshot_sha: a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19
 
 versions:
   architecture_version_reference: "1.0"
@@ -30,17 +30,18 @@ execution:
     - "R7 requires its own gate-specific Work Item authorization; it is not activated by DEC-0097."
     - "R4/W040 remains independently in-review and unaccepted; EVID-007 and EVID-008 remain open, physical, and W040-owned."
     - "W048 remains accepted-not-restored and cannot be restored implicitly."
-    - "Any frozen protocol semantic change remains blocked pending the ACR/change-control process."
+    - "Any Architecture or protocol semantic change requires the ACR/change-control process."
 
 reconciliation:
   r0_status: "R0 complete under accepted PR #8."
   r1_status: "R1 complete under DEC-0084."
   r2_status: "R2 complete under DEC-0088; WORK-054 accepted and merged as PR #13, merge 57963858e5a2b9d11faed94b50f94e058cede0a8."
   r3_status: "R3 complete under DEC-0089; WORK-055 accepted and merged as PR #15, merge 7801549c0ed50082a4fa7c20c71e50dc7bde87f9."
-  r5_status: "R5 complete under DEC-0094; WORK-056 accepted at c2b2c59fae4749b610b721b217e18cfa9b4aab25 and merged as b11cf44db922811d2518c05685aee14127243264."
+  r5_status: "R5 complete under DEC-0094; WORK-056 accepted and merged as b11cf44db922811d2518c05685aee14127243264."
   r4_status: "R4 remains parallel-after-R3 with W040 independently in-review and unaccepted."
   r6_status: "R6 complete under DEC-0097; WORK-057 accepted at 58eced2f7864bd8d6e9cac658574d8c7b0b48965 and merged as a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19."
   authorization_state: "No implementation authorization is active after closure of WORK-057-CORE-001 under DEC-0097."
+  mainline_reconciliation: "Commit 88a73720d8ff28e95728a03e13db631ffdf9688f reconciles the human roadmap projection after R6 acceptance; execution state now records that actual main SHA."
 
 decisions:
   latest_work_item_acceptance: DEC-0097
