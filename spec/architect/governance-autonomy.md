@@ -13,16 +13,33 @@ mode it remains bound by exactly the same repository-local authority, ACR,
 authorization, evidence, review and historical-integrity rules. Combining roles
 removes a human coordination dependency; it does not remove governance gates.
 
+## Forward architecture target
+
+The autonomous loop is now a **migration-to-Architecture-1.1 program**.
+Architecture 1.0 is the preserved legacy baseline. It is read to classify and
+migrate existing implementation, not to define new behavior.
+
+For all new work, the Architect and Tech Lead MUST reason from the Architecture
+1.1 target package, its locks, application model, work items, dependency graph,
+migration classification and vertical-proof requirements. No new capability may
+be justified solely by a 1.0 semantic that is absent from 1.1.
+
+**M001 — Architecture 1.1 Freeze** is the first transition Work Item. It is the
+only legitimate basis for promoting the 1.1 proposal into accepted successor
+architecture/lock/work-item/dependency snapshots. After M001 acceptance, 1.1 is
+the sole normative architecture for forward implementation and 1.0 is historical
+superseded evidence.
+
 ## Rule
 
-The Architect is responsible for advancing the repository through the frozen
-roadmap without requiring user prompting for routine governance actions. The
-conversation has zero authority and is not a prerequisite for any transition.
+The Architect is responsible for advancing the repository through the roadmap
+without requiring user prompting for routine governance actions. The conversation
+has zero authority and is not a prerequisite for any transition.
 
 For every unlocked roadmap gate, the Architect MUST autonomously:
 
 1. reconstruct authority from the repository and actual GitHub mainline;
-2. determine the next Work Item from the authoritative roadmap and accepted history;
+2. determine the next transition or feature Work Item from the authoritative roadmap and accepted history;
 3. perform any required ACR/change-control reconciliation;
 4. produce the exact Work Item contract, dependency overlay, evidence obligations and scope;
 5. issue exactly one repository-local implementation authorization when the contract is internally consistent;
@@ -53,8 +70,9 @@ execution units under `spec/architect/work-items/`, provided that:
 - no frozen architecture or protocol semantic is changed implicitly;
 - historical records are never rewritten.
 
-This formalizes the execution pattern already used by later roadmap gates and is
-a governance representation rule, not a new protocol authority.
+For the 1.1 transition, the successor Work Item package under `spec/work-items-1.1.md`
+and related artifacts is the forward planning basis. It does not itself grant
+implementation permission.
 
 ## Tech Lead worker hierarchy
 
@@ -72,10 +90,12 @@ current authorization before the next authorization can become active.
 
 ## Architecture-transition rule
 
-A proposed successor architecture is not current authority merely because its
-files exist. Architecture promotion requires the normal ACR/change-control
-process, new frozen architecture/lock snapshots, updated dependency/work-item
-semantics, preserved historical 1.0 artifacts, and a durable acceptance record.
+A proposed successor architecture is not automatically normative merely because
+its files exist. Promotion requires the normal ACR/change-control process, new
+frozen architecture/lock snapshots, updated dependency/work-item semantics,
+preserved historical 1.0 artifacts, and a durable acceptance record. Until that
+promotion is complete, only explicitly authorized transition/migration work may
+change implementation code.
 
 ## Stripe-of-connectivity objective
 
