@@ -9,6 +9,22 @@ A future agent MUST reconstruct truth from the repository and live GitHub state.
 Conversation memory, prompts, PR prose, and external planning notes have zero
 authority.
 
+## Single-agent mode
+
+For a fully autonomous engagement, one LLM instance MAY hold both roles:
+
+```text
+Single LLM
+├── Persistent Architect authority
+└── Tech Lead implementation orchestration
+    ├── up to 3 workers
+    └── up to 3 subagents per worker
+```
+
+Combining the roles does not weaken any authority boundary. The agent must still
+persist ACRs, decisions, authorizations, evidence, acceptance and reconciliation
+records in the repository and must never treat its own narrative as authority.
+
 ## Current authoritative checkpoint
 
 - Repository: `github.com/payswapdotorg/ADCOS`
@@ -26,11 +42,11 @@ authority.
 - Active implementation authorization: none
 - W048: accepted-not-restored; never recreate, mock, or substitute it implicitly
 
-## Immediate role split
+## Role split
 
 ### Persistent Architect
 
-The Architect owns architecture authority, ACRs, Work Item contracts, dependency
+Owns architecture authority, ACRs, Work Item contracts, dependency
 interpretation, repository-local authorizations, acceptance, merge authority,
 and durable lifecycle reconciliation.
 
@@ -39,15 +55,13 @@ is not a governance dependency.
 
 ### Tech Lead
 
-The Tech Lead is the implementation orchestrator. The Tech Lead reads the same
-repository authority package, selects the currently authorized Work Item, plans
-its implementation, dispatches workers, integrates changes, and verifies
-worker claims.
+Owns implementation orchestration. It reads the same repository authority
+package, selects the currently authorized Work Item, plans implementation,
+dispatches workers, integrates changes, and verifies worker claims.
 
-The Tech Lead MUST NOT invent implementation permission. No authorization means
-no implementation. If the next gate is unlocked but not activated, the Tech Lead
-waits for the repository's Architect governance transition rather than using
-chat as approval.
+When the LLM is operating in single-agent mode, it performs both roles. It must
+complete the required governance transition itself by writing the repository
+records before beginning the next implementation gate.
 
 ## Mandatory bootstrap
 
@@ -60,8 +74,9 @@ chat as approval.
 7. Read `spec/architect/authority-order.md` and `governance-autonomy.md`.
 8. Inspect `spec/architect/authorizations/` and gate-specific Work Items/overlays.
 9. Verify the live `main` SHA before selecting work.
-10. Inspect the actual source tree and recent Git history.
-11. Only then select or implement the exact authorized Work Item.
+10. Run `python3 tools/spec_check.py` and the fresh-session governance checker when available.
+11. Inspect the actual source tree and recent Git history.
+12. Only then select or create the next repository-local Work Item/authorization under the applicable governance rules.
 
 ## Architecture 1.1 direction
 
@@ -175,10 +190,10 @@ endpoints.
 
 ## Acceptance boundary
 
-The project is not finished merely because software tests pass. A complete
-acceptance must establish both architectural invariants and the evidence
-required by the current Work Item. Physical validation remains separate from
-software evidence.
+The project is not finished merely because software tests pass. Complete
+acceptance must establish architectural invariants and the evidence required
+by the current Work Item. Physical validation remains separate from software
+evidence.
 
 ## Fresh-session guarantee
 
