@@ -1,27 +1,29 @@
 # ADCOS Current State
 
-**READY — R6 Provider Onboarding & Federation complete; no active implementation authorization.**
+**READY FOR CONTROLLED ARCHITECTURE TRANSITION — R6 complete; 1.1 is the mandatory forward implementation target; no active implementation authorization.**
 
 ## Repository
 
 - Repository: `github.com/payswapdotorg/ADCOS`
-- Actual `main` tip: `88a73720d8ff28e95728a03e13db631ffdf9688f`
+- Reconciled software mainline: `88a73720d8ff28e95728a03e13db631ffdf9688f`
 - R6 implementation delivery: `58eced2f7864bd8d6e9cac658574d8c7b0b48965`, accepted under `DEC-0097`, merged as PR #23 at `a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19`
-- Post-merge human-roadmap reconciliation: `88a73720d8ff28e95728a03e13db631ffdf9688f`
-- Architecture: `1.0` frozen
-- Protocol: `1.0` frozen
+- Post-merge roadmap reconciliation: `88a73720d8ff28e95728a03e13db631ffdf9688f`
+- Legacy architecture baseline: Architecture `1.0` frozen and retained for migration/history
+- Forward implementation target: Architecture `1.1` proposal package
+- Protocol baseline: `1.0` frozen unless/until a successor is separately accepted
 - Roadmap: `1.5` frozen / authoritative
 
 ## Program authority
 
-`spec/architect/roadmap.yaml` is the sole canonical program roadmap. R0, R1, R2, R3, R5 and R6 are complete. R4 remains an independent physical-validation track under W040. R7 is the next unlocked software gate and is not activated.
+`spec/architect/roadmap.yaml` is the sole canonical program roadmap. R0, R1, R2, R3, R5 and R6 are complete. R4 remains an independent physical-validation track under W040. The next forward software activity is the Architecture 1.1 transition gate M001; R7 remains the business-program gate that follows that transition.
 
 ## Execution authority
 
 - `active_work_item: null`
 - `active_authorization: null`
 - Exactly one implementation authorization may be active; currently zero are active.
-- The next software implementation requires a fresh gate-specific Work Item, explicit dependency overlay, repository-local authorization, and sole-Architect acceptance under the post-snapshot governance model established by ACR-013 / DEC-0095.
+- Before any feature implementation, the sole Architect must authorize M001 — Architecture 1.1 Freeze through the repository ACR/change-control process.
+- After M001 acceptance, subsequent feature Work Items MUST be derived from the 1.1 work-item/dependency package and MUST NOT revert to 1.0 semantics.
 
 ## Historical accepted state
 
@@ -31,16 +33,41 @@ W044–W047 and W049 were restored under R0 with acceptance provenance preserved
 
 R6 Provider Onboarding & Federation is complete. WORK-057 was corrected and accepted under DEC-0097. The implementation established bounded provider onboarding/federation while preserving existing identity, trust, capability, resource, policy, federation, routing, session, transport, telemetry and commercial authorities.
 
+## Architecture 1.1 transition
+
+The Architecture 1.1 package is the forward design target:
+
+- `spec/architecture-1.1-proposed.md`
+- `spec/architecture-lock-1.1-proposed.md`
+- `spec/application-model.md`
+- `spec/work-items-1.1.md`
+- `spec/dependency-graph-1.1.md`
+- `spec/migration/classification-matrix.md`
+- `spec/integration/vertical-proof.md`
+
+The target architecture makes `ConnectivityContract` the canonical durable object,
+uses provider sovereignty and adapter isolation, separates evidence types,
+enforces closed-loop assurance, and permits authorized applications to purchase
+or sponsor connectivity for bounded beneficiaries.
+
+**Critical routing rule:** Architecture 1.0 remains a preserved historical/frozen
+baseline, not the design source for new capabilities. During the transition,
+agents use 1.0 only to understand and safely migrate existing implementation.
+All new semantics and forward Work Items must trace to 1.1. M001 is the formal
+promotion gate. After M001 is accepted, the 1.1 successor architecture/locks
+become normative and 1.0 is historical evidence only.
+
 ## Next gate
 
-R7 — Universal Connectivity Commerce — is unlocked but not activated. Its goal is to normalize heterogeneous connectivity resources into programmable offers selected by intent, policy, evidence, availability, geography, quality and price. R7 must be represented by a gate-specific Work Item and dependency overlay before implementation authorization is issued.
+M001 — Architecture 1.1 Freeze — is the immediate transition gate. It must produce
+the accepted Architecture 1.1/lock snapshots, updated dependency/work-item
+contracts, migration classifications, and durable acceptance evidence.
 
-## Application-platform direction
-
-The repository also contains the Architecture 1.1 proposal package in the current branch/PR history. That proposal is **not** the current frozen authority until formally accepted through the ACR process. It defines the intended evolution toward an application-facing connectivity exchange with `ConnectivityContract` as the canonical durable object and application-funded/sponsored connectivity as a supported use case.
-
-Until such an ACR is accepted, implementation agents MUST follow Architecture 1.0. They MUST NOT silently treat `spec/architecture-1.1-proposed.md` as authoritative.
+R7 — Universal Connectivity Commerce — follows the transition and must be
+implemented from the accepted 1.1 architecture. Its goal is to normalize
+heterogeneous connectivity resources into programmable offers selected by intent,
+policy, evidence, availability, geography, quality and price.
 
 ## Source of truth
 
-This file is a current-state projection only. Lifecycle history is governed by `spec/architect/execution-ledger.yaml`; permission by `spec/architect/authorizations/`; architecture by `spec/architecture.md`; program order by `spec/architect/roadmap.yaml`. No conversation context is required or authoritative.
+This file is a current-state projection only. Lifecycle history is governed by `spec/architect/execution-ledger.yaml`; architecture-transition authority by accepted ACRs and the 1.1 target package during promotion; program order by `spec/architect/roadmap.yaml`; permission by `spec/architect/authorizations/`. No conversation context is required or authoritative.
