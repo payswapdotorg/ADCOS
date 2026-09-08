@@ -9,25 +9,35 @@ last_updated: "2026-09-08"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: 88a73720d8ff28e95728a03e13db631ffdf9688f
-  main_sha_semantics: "Actual authoritative mainline after the post-R6 governance reconciliation commit. The DEC-0097-accepted WORK-057 delivery remains merged at a08ce85f; 88a7372 is the subsequent governance projection reconciliation commit."
+  main_sha: bf3b7cebe0a22a07740bed1934a438be3c9cddc3
+  main_sha_semantics: "Actual mainline at the time this transition branch was reconciled; the post-R6 governance reconciliation remains the semantic checkpoint, followed only by compensating cleanup commits before this PR."
   lifecycle_ledger_snapshot_sha: a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19
 
 versions:
   architecture_version_reference: "1.0"
-  architecture_version_authority: "spec/architecture.md"
+  architecture_version_authority: "preserved legacy baseline: spec/architecture.md"
+  forward_architecture_target: "1.1"
+  forward_architecture_target_files:
+    - "spec/architecture-1.1-proposed.md"
+    - "spec/architecture-lock-1.1-proposed.md"
+    - "spec/application-model.md"
+    - "spec/work-items-1.1.md"
+    - "spec/dependency-graph-1.1.md"
+    - "spec/migration/classification-matrix.md"
+    - "spec/integration/vertical-proof.md"
   protocol_version_reference: "1.0"
   protocol_version_authority: "spec/schemas/protocol.json"
 
 execution:
-  mode: governed-transition
+  mode: governed-transition-to-architecture-1.1
   active_work_item: null
   active_authorization: null
   review_state: ACCEPTED_MERGED
   reviewed_delivery_sha: 58eced2f7864bd8d6e9cac658574d8c7b0b48965
   halted_reason: null
   next_required_decisions:
-    - "R7 requires its own gate-specific Work Item authorization; it is not activated by DEC-0097."
+    - "M001 — Architecture 1.1 Freeze must be created and authorized as the immediate transition Work Item before feature implementation proceeds."
+    - "R7 follows M001 and MUST be implemented from the accepted Architecture 1.1 successor package, not from Architecture 1.0."
     - "R4/W040 remains independently in-review and unaccepted; EVID-007 and EVID-008 remain open, physical, and W040-owned."
     - "W048 remains accepted-not-restored and cannot be restored implicitly."
     - "Any Architecture or protocol semantic change requires the ACR/change-control process."
@@ -41,7 +51,8 @@ reconciliation:
   r4_status: "R4 remains parallel-after-R3 with W040 independently in-review and unaccepted."
   r6_status: "R6 complete under DEC-0097; WORK-057 accepted at 58eced2f7864bd8d6e9cac658574d8c7b0b48965 and merged as a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19."
   authorization_state: "No implementation authorization is active after closure of WORK-057-CORE-001 under DEC-0097."
-  mainline_reconciliation: "Commit 88a73720d8ff28e95728a03e13db631ffdf9688f reconciles the human roadmap projection after R6 acceptance; execution state now records that actual main SHA."
+  mainline_reconciliation: "The post-R6 governance checkpoint was 88a73720d8ff28e95728a03e13db631ffdf9688f. Current main also contains later compensating cleanup commits; the next fresh-session run must reconcile against the actual merged main SHA before implementation."
+  architecture_transition: "All forward implementation is governed toward Architecture 1.1. Architecture 1.0 remains historical/migration baseline until M001 promotes the 1.1 successor snapshots."
 
 decisions:
   latest_work_item_acceptance: DEC-0097
