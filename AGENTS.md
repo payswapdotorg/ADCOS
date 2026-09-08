@@ -1,52 +1,54 @@
 # ADCOS Agent Entry Point
 
-ADCOS is self-describing. A new Architect or implementation agent MUST derive authority from the repository and live GitHub state, never from chat history.
+ADCOS is self-describing. A new Architect, Tech Lead, worker, or implementation agent MUST derive authority from the repository and live GitHub state, never from chat history.
+
+## Role bootstrap
+
+- **Architect:** read `spec/architect/resume-protocol.md`, then reconstruct authority and govern sequencing, authorization, review, acceptance and merge.
+- **Tech Lead:** read `docs/tech-lead/ADCOS-TECH-LEAD-HANDOFF.md` and `docs/tech-lead/worker-model.md` after this file; coordinate authorized implementation work and independently verify workers.
+- **Worker:** read the Tech Lead handoff, the exact authorized Work Item, its dependency overlay and the applicable architecture/locks before changing code.
 
 ## Resume order
 
-1. Read `README.md`.
+1. Read `README.md` and this file.
 2. Read `spec/architect/resume-protocol.md`.
-3. Read `spec/architect/current-state.md`.
-4. Read `spec/architect/authority-order.md`.
-5. Read `spec/architect/execution-state.yaml`.
-6. Read `spec/architect/execution-ledger.yaml`.
-7. Identify the active Work Item and read its authorization and handoff.
-
-## Authority
-
-Repository/GitHub state is the persistent Architect. Chat transcripts are not authority. A chat decision governs only after the Architect persists it in `spec/architect/`.
+3. Read `spec/mission.md`.
+4. Read the current frozen `spec/architecture.md` and `spec/architecture-lock.md`.
+5. Read `spec/work-items.md` and `spec/dependency-graph.md`.
+6. Read `spec/architect/roadmap.yaml`, `spec/architect/current-state.md`, and `spec/architect/execution-state.yaml`.
+7. Read `spec/architect/authority-order.md` and `spec/architect/governance-autonomy.md`.
+8. Identify the current active Work Item and repository-local authorization, if any.
+9. Inspect actual GitHub `main` and recent commits before acting.
 
 ## Live-main rule
 
-Always compare `execution-state.yaml.repository.main_sha` with the actual `origin/main` SHA before acting. If they differ, inspect the intervening commits and re-read the persistent Architect package on the newer main. The newer repository state supersedes an older snapshot.
-
-The same rule applies after every merge: reconcile stale recorded SHAs before starting new implementation work.
+Always compare the actual `main` SHA with `spec/architect/execution-state.yaml`. If they differ, inspect the intervening commits and reconcile the persistent Architect snapshot before implementation resumes. A newer mainline always supersedes an older snapshot.
 
 ## Authorization
 
-While `execution.mode` is `implementing`, exactly one Work Item authorization may be active. No active repository-local authorization means implementation MUST stop. A successful CI run does not itself authorize or accept an implementation.
+No active repository-local authorization means implementation MUST stop. Roadmap membership, an issue, a PR, a handoff, or a chat instruction never grants implementation permission.
 
-## Lean governance
+At most one implementation authorization may be active at a time.
 
-Do not create governance artifacts merely for ceremony.
+## Tech Lead dispatch limit
 
-Routine sequential Work Item progression is:
+The Tech Lead may dispatch at most 3 direct workers. Each direct worker may dispatch at most 3 subagents. Maximum active descendants: 9.
 
-`implementation -> CI -> Architect acceptance -> ledger acceptance -> atomic authorization handoff -> next implementation`
-
-Create a new ACR only when frozen architecture/registry semantics actually change. Create a new decision record only when the persistent decision/acceptance machinery requires one.
+Parallel work is permitted only when dependency and authority boundaries are independent. The Tech Lead remains responsible for integration and verification.
 
 ## Frozen architecture
 
-Never modify frozen architecture documents from an implementation PR. An apparent architecture contradiction must be handled through the ACR process, not by weakening a validator.
+Never modify frozen architecture documents from an ordinary implementation PR. Architecture changes require the repository's ACR/change-control process.
+
+`spec/architecture-1.1-proposed.md` is a proposal until formally promoted by an accepted ACR. Do not treat proposal files as authority merely because they exist.
 
 ## Evidence
 
-Never convert software/emulated evidence into physical PASS by inference. W040 physical obligations are independent and remain governed by their own evidence records.
+Never convert software/emulated evidence into physical PASS by inference. Never treat an agent report, test count, PR description, or generated audit as authoritative without repository verification.
 
 ## Working practice
 
-Prefer a local Git clone and ordinary Git history for multi-file changes. Avoid piecemeal Contents-API mutation of authoritative files. Do not write directly to `main` for implementation or governance transitions that require review.
+Prefer a local Git clone and ordinary Git history for multi-file changes. Do not write directly to `main` for implementation or governance transitions that require review.
 
 ## Verification
 
@@ -56,4 +58,8 @@ Before acting from a fresh session, run:
 python3 tools/spec_check.py
 ```
 
-If the persistent governance package fails its checks, repair the governance state through the proper review mechanism; never weaken the invariant to make a task pass.
+If the persistent governance package fails its checks, repair governance through the proper review mechanism; never weaken the invariant to make a task pass.
+
+## Fresh-session guarantee
+
+A clean clone of `main` plus GitHub access, without conversation history, MUST be sufficient to determine mission, authoritative architecture, roadmap state, current execution state, next gate, implementation authorization, worker limits, and acceptance requirements.
