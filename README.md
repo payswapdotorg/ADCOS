@@ -8,38 +8,65 @@ It is not a new radio PHY and does not assume ordinary smartphones can become 5G
 
 ## Authoritative specification
 
-- `spec/architecture.md` — frozen protocol architecture
-- `spec/architecture-lock.md` — non-negotiable invariants
-- `spec/work-items.md` — implementation backlog
+- `spec/architecture.md` — current frozen protocol architecture
+- `spec/architecture-lock.md` — current non-negotiable invariants
+- `spec/work-items.md` — current implementation backlog
 - `spec/dependency-graph.md` — dependency-ordered implementation graph
+- `spec/architect/roadmap.yaml` — sole canonical program roadmap
+- `spec/architect/resume-protocol.md` — deterministic fresh-session recovery
+- `spec/architect/LLM-ARCHITECT-HANDOFF.md` — persistent Architect/Tech Lead handoff
+- `docs/tech-lead/ADCOS-TECH-LEAD-HANDOFF.md` — Tech Lead entry point
+- `docs/tech-lead/worker-model.md` — 3 direct workers × 3 subagents
 
-The architecture is deliberately modeled after a strict architect → implementer → PR → review → correction → acceptance workflow.
+The repository is designed to be sufficient to implement ADCOS without access
+to conversation history.
 
 ## Implementation rule
 
 **Architecture first. Code second.**
 
-Z.ai is the implementation agent. The Architect is the authority over architecture and acceptance. A successful CI run does not make an architecture-violating implementation acceptable.
+The persistent Architect is the authority over architecture, governance,
+authorization, acceptance and merge. The Tech Lead orchestrates authorized
+implementation work. A successful CI run does not make an architecture-violating
+implementation acceptable.
+
+For autonomous engagements, a single LLM may act as both Architect and Tech
+Lead while retaining every repository-local authority, evidence and change-control
+constraint.
 
 ## Specification governance
 
-WORK-001 established the governance layer around the frozen specification:
+The frozen documents change only through the ACR process. A normal implementation
+PR is never allowed to silently become an architecture change.
 
-- `spec/governance.md` — document registry, naming conventions, versioning policy (architecture / protocol / schema / implementation versions are distinct lines), terminology ownership, machine-readable schema locations
-- `spec/change-control.md` — Architecture Change Request (ACR) process; ACR records live in `spec/acr/`
-- `spec/workflow.md` — Work Item / PR review rules and the Architect acceptance gate
-- `spec/schemas/` — canonical location for future machine-readable schemas and registries (content begins with WORK-002)
+The persistent Architect package records current state, authority precedence,
+execution state, lifecycle ledger, evidence obligations, decisions,
+authorizations, review protocols and resume rules. **No repository-local active
+authorization means implementation must stop.**
 
-The frozen documents change only through the ACR process. A normal implementation PR is never allowed to silently become an architecture change.
+## Current program direction
 
-## Persistent Architect
+R6 Provider Onboarding & Federation is complete. R7 Universal Connectivity
+Commerce is the next unlocked software gate. R8 hardens resilience, mobility and
+scale; R9 adds future access technologies strictly through the adapter boundary.
 
-The repository itself is the persistent Architect: `spec/architect/` holds the canonical current-state snapshot (`current-state.md`), the authority precedence chain (`authority-order.md`), the machine-readable execution state, execution ledger, and evidence-obligation registry, the durable decision records (`decisions/`), the repository-local Work Item authorizations (`authorizations/`), and the review and resume protocols. A brand-new Architect or implementation agent resumes from `spec/architect/resume-protocol.md` alone — chat history is never authority. **No repository-local authorization means implementation must stop** (enforced by CI; see `tools/README.md`).
+The proposed Architecture 1.1 package is present as a deliberate successor
+proposal. It makes `ConnectivityContract` the canonical durable object and
+permits authorized applications to purchase or sponsor connectivity for their
+users/devices. It is not current architecture authority until formally promoted
+by the repository's ACR/change-control process.
 
-Run the deterministic specification consistency checks (offline, zero dependencies):
+## Verification
+
+Run the specification and fresh-session checks from the repository root:
 
 ```bash
 python3 tools/spec_check.py
+python3 tools/fresh_session_check.py
 ```
 
-CI runs the same checks on every push and pull request.
+The fresh-session checker verifies that the Tech Lead handoff, single-agent mode,
+3x3 worker limit and current governance checkpoint are present and that the
+persisted execution snapshot matches `origin/main` when that ref is available.
+
+CI runs the specification consistency checks on every push and pull request.
