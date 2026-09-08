@@ -4,10 +4,6 @@
 This is an offline checker. It validates repository-local handoff mechanics;
 it does not grant implementation authority and it never replaces the normal
 Architect/ACR acceptance process.
-
-Usage:
-    python3 tools/fresh_session_check.py
-    python3 tools/fresh_session_check.py --actual-main-sha <sha>
 """
 
 from __future__ import annotations
@@ -42,6 +38,13 @@ def main() -> int:
         "spec/mission.md",
         "spec/architecture.md",
         "spec/architecture-lock.md",
+        "spec/architecture-1.1-proposed.md",
+        "spec/architecture-lock-1.1-proposed.md",
+        "spec/application-model.md",
+        "spec/work-items-1.1.md",
+        "spec/dependency-graph-1.1.md",
+        "spec/migration/classification-matrix.md",
+        "spec/integration/vertical-proof.md",
         "spec/work-items.md",
         "spec/dependency-graph.md",
         "spec/architect/resume-protocol.md",
@@ -67,30 +70,35 @@ def main() -> int:
     resume = read("spec/architect/resume-protocol.md")
 
     required_markers = [
-        (agents, "Tech Lead", "AGENTS.md must define the Tech Lead role"),
+        (agents, "Architecture 1.1 is the forward implementation target", "AGENTS.md must bind forward implementation to Architecture 1.1"),
         (handoff, "Single-agent mode", "Tech Lead handoff must support single-agent execution"),
+        (handoff, "Architecture 1.1 is the target architecture", "Tech Lead handoff must bind implementation to 1.1"),
         (handoff, "up to 3 workers", "Tech Lead handoff must record direct-worker limit"),
         (worker_model, "Maximum active descendants: 9", "worker model must record 3x3 descendant limit"),
         (resume, "Fresh-session guarantee", "resume protocol must define fresh-session sufficiency"),
-        (resume, "R7 Universal Connectivity Commerce", "resume protocol must identify the current next gate"),
+        (resume, "M001 — Architecture 1.1 Freeze", "resume protocol must identify the 1.1 transition gate"),
+        (roadmap, "mandatory_forward_target: \"Architecture 1.1\"", "roadmap must declare 1.1 as mandatory forward target"),
+        (roadmap, "next_gate: M001_ARCHITECTURE_1_1_FREEZE", "roadmap must put the 1.1 promotion gate before R7"),
     ]
     for text, marker, message in required_markers:
         if marker not in text:
             failures.append(message)
 
-    for marker in ["R6 Provider Onboarding & Federation", "R7", "no active implementation authorization"]:
+    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "no active implementation authorization", "Architecture 1.0 remains a preserved historical/frozen baseline"]:
         if marker.lower() not in current.lower():
-            failures.append(f"current-state.md missing current checkpoint marker: {marker}")
-    for marker in ["roadmap_version: \"1.5\"", "program_state: R6_PROVIDER_ONBOARDING_AND_FEDERATION_COMPLETE", "active_work_item: null", "active_authorization: null", "next_gate: R7_AFTER_R6"]:
+            failures.append(f"current-state.md missing transition checkpoint marker: {marker}")
+
+    for marker in ["roadmap_version: \"1.5\"", "program_state: R6_PROVIDER_ONBOARDING_AND_FEDERATION_COMPLETE", "active_work_item: null", "active_authorization: null", "next_gate: M001_ARCHITECTURE_1_1_FREEZE"]:
         if marker not in roadmap:
             failures.append(f"roadmap.yaml missing current authoritative marker: {marker}")
-    for marker in ["active_work_item: null", "active_authorization: null", "R6 complete under DEC-0097", "R7 requires its own gate-specific Work Item authorization"]:
+
+    for marker in ["active_work_item: null", "active_authorization: null", "governed-transition-to-architecture-1.1", "R7 follows M001"]:
         if marker not in execution:
-            failures.append(f"execution-state.yaml missing current marker: {marker}")
+            failures.append(f"execution-state.yaml missing 1.1 transition marker: {marker}")
 
     proposal = ROOT / "spec/architecture-1.1-proposed.md"
-    if proposal.exists() and "NOT current architecture authority" not in current:
-        failures.append("current-state.md must explicitly distinguish Architecture 1.1 proposal from current frozen authority")
+    if proposal.exists() and "mandatory forward target" not in agents.lower():
+        failures.append("agent bootstrap must identify Architecture 1.1 as the mandatory forward target")
 
     auth_root = ROOT / "spec/architect" / "authorizations"
     active = 0
@@ -125,7 +133,7 @@ def main() -> int:
         return 1
 
     print("fresh-session check: PASS")
-    print("repository contains the Tech Lead bootstrap, 3x3 worker rules, current roadmap checkpoint, and governance authority chain")
+    print("repository contains the 1.1 forward-target routing, Tech Lead bootstrap, 3x3 worker rules, current roadmap checkpoint, and governance authority chain")
     if actual:
         print(f"origin/main verified against execution-state snapshot: {actual}")
     else:
