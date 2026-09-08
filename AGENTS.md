@@ -5,20 +5,38 @@ ADCOS is self-describing. A new Architect, Tech Lead, worker, or implementation 
 ## Role bootstrap
 
 - **Architect:** read `spec/architect/resume-protocol.md`, then reconstruct authority and govern sequencing, authorization, review, acceptance and merge.
-- **Tech Lead:** read `docs/tech-lead/ADCOS-TECH-LEAD-HANDOFF.md` and `docs/tech-lead/worker-model.md` after this file; coordinate authorized implementation work and independently verify workers.
-- **Worker:** read the Tech Lead handoff, the exact authorized Work Item, its dependency overlay and the applicable architecture/locks before changing code.
+- **Tech Lead:** read `docs/tech-lead/ADCOS-TECH-LEAD-HANDOFF.md` and `docs/tech-lead/worker-model.md` after this file; coordinate authorized implementation work against the **Architecture 1.1 target**, not the legacy 1.0 model.
+- **Worker:** read the Tech Lead handoff, the exact authorized Work Item, its dependency overlay and the applicable Architecture 1.1 target/locks before changing code.
 
 ## Resume order
 
 1. Read `README.md` and this file.
 2. Read `spec/architect/resume-protocol.md`.
 3. Read `spec/mission.md`.
-4. Read the current frozen `spec/architecture.md` and `spec/architecture-lock.md`.
-5. Read `spec/work-items.md` and `spec/dependency-graph.md`.
-6. Read `spec/architect/roadmap.yaml`, `spec/architect/current-state.md`, and `spec/architect/execution-state.yaml`.
-7. Read `spec/architect/authority-order.md` and `spec/architect/governance-autonomy.md`.
-8. Identify the current active Work Item and repository-local authorization, if any.
-9. Inspect actual GitHub `main` and recent commits before acting.
+4. Read the Architecture 1.1 target package and transition state.
+5. Read the preserved Architecture 1.0 baseline only for migration/compatibility context.
+6. Read `spec/work-items.md` and `spec/dependency-graph.md` for historical constraints, then the 1.1 work/dependency artifacts for forward implementation.
+7. Read `spec/architect/roadmap.yaml`, `spec/architect/current-state.md`, and `spec/architect/execution-state.yaml`.
+8. Read `spec/architect/authority-order.md` and `spec/architect/governance-autonomy.md`.
+9. Identify the current active Work Item and repository-local authorization, if any.
+10. Inspect actual GitHub `main` and recent commits before acting.
+
+## Implementation-target rule
+
+Architecture 1.1 is the forward implementation target. Architecture 1.0 is a
+preserved legacy baseline only.
+
+New APIs, domain models, authority boundaries, Work Items, migrations and
+acceptance criteria MUST trace to Architecture 1.1 locks and target artifacts.
+No agent may use Architecture 1.0 to invent new behavior merely because 1.0 is
+currently present in the repository.
+
+M001 — Architecture 1.1 Freeze is the controlled promotion gate. Until M001 is
+accepted through the ACR process, feature work must not begin against a 1.0
+design. Only explicitly authorized transition/migration work may proceed.
+
+After M001 acceptance, Architecture 1.1 is the sole normative architecture for
+forward implementation. Architecture 1.0 remains historical/superseded evidence.
 
 ## Live-main rule
 
@@ -38,9 +56,9 @@ Parallel work is permitted only when dependency and authority boundaries are ind
 
 ## Frozen architecture
 
-Never modify frozen architecture documents from an ordinary implementation PR. Architecture changes require the repository's ACR/change-control process.
+The historical `spec/architecture.md` and `spec/architecture-lock.md` MUST NOT be silently rewritten by an ordinary implementation PR. Architecture 1.1 promotion requires the repository's ACR/change-control process.
 
-`spec/architecture-1.1-proposed.md` is a proposal until formally promoted by an accepted ACR. Do not treat proposal files as authority merely because they exist.
+The existence of `spec/architecture-1.1-proposed.md` is not by itself an authorization, but it IS the required target for all forward design during the transition.
 
 ## Evidence
 
@@ -56,10 +74,11 @@ Before acting from a fresh session, run:
 
 ```bash
 python3 tools/spec_check.py
+python3 tools/fresh_session_check.py
 ```
 
 If the persistent governance package fails its checks, repair governance through the proper review mechanism; never weaken the invariant to make a task pass.
 
 ## Fresh-session guarantee
 
-A clean clone of `main` plus GitHub access, without conversation history, MUST be sufficient to determine mission, authoritative architecture, roadmap state, current execution state, next gate, implementation authorization, worker limits, and acceptance requirements.
+A clean clone of `main` plus GitHub access, without conversation history, MUST be sufficient to determine mission, the Architecture 1.1 forward target, the preserved 1.0 baseline, roadmap state, current execution state, next gate, implementation authorization, worker limits, and acceptance requirements.
