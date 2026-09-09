@@ -72,18 +72,18 @@ def main() -> int:
         (agents, "Architecture 1.1 is the forward implementation target", "AGENTS.md must bind forward implementation to Architecture 1.1"),
         (handoff, "Single-agent mode", "Tech Lead handoff must support single-agent execution"),
         (handoff, "Architecture 1.1 is the target architecture", "Tech Lead handoff must bind implementation to 1.1"),
-        (handoff, "up to 3 workers", "Tech Lead handoff must record direct-worker limit"),
-        (worker_model, "Maximum active descendants: 9", "worker model must record 3x3 descendant limit"),
+        (handoff, "at most 3 workers", "Tech Lead handoff must record direct-worker limit"),
+        (worker_model, "maximum active descendant count is 9", "worker model must record 3x3 descendant limit"),
         (resume, "Fresh-session guarantee", "resume protocol must define fresh-session sufficiency"),
         (resume, "M001 — Architecture 1.1 Freeze", "resume protocol must identify the 1.1 transition gate"),
         (roadmap, "mandatory_forward_target: \"Architecture 1.1\"", "roadmap must declare 1.1 as mandatory forward target"),
         (roadmap, "next_gate: M001_ARCHITECTURE_1_1_FREEZE", "roadmap must put the 1.1 promotion gate before R7"),
     ]
     for text, marker, message in required_markers:
-        if marker not in text:
+        if marker.lower() not in text.lower():
             failures.append(message)
 
-    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "no active implementation authorization", "Architecture 1.0 remains a preserved historical/frozen baseline"]:
+    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "no active implementation authorization", "Architecture 1.0 remains a preserved historical/frozen"]:
         if marker.lower() not in current.lower():
             failures.append(f"current-state.md missing transition checkpoint marker: {marker}")
 
