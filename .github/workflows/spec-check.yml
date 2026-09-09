@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # Current blocking validator. It understands the post-snapshot
       # Architect governance model and Architecture 1.1 transition package.
@@ -26,8 +28,11 @@ jobs:
         run: python3 tools/spec_check.py
         continue-on-error: true
 
+      - name: Reconcile live main before fresh-session check
+        run: git fetch --no-tags origin main
+
       - name: Run fresh-session handoff checks
-        run: python3 tools/fresh_session_check.py --actual-main-sha bf3b7cebe0a22a07740bed1934a438be3c9cddc3
+        run: python3 tools/fresh_session_check.py --actual-main-sha "$(git rev-parse origin/main)"
 
       - name: Run experience/learning registry integrity checks
         run: python3 tools/experience_check.py
@@ -208,7 +213,6 @@ jobs:
       - name: Verify execution-authorization provenance (PR context)
         if: github.event_name == 'pull_request'
         run: |
-          git fetch --no-tags origin main
           python3 tools/spec_check.py --provenance
 
   # WORK-050 exact-head evidence remains an independent job so a legacy
