@@ -1,5 +1,7 @@
 # ADCOS Architecture 1.0 -> 1.1 Classification Matrix
 
+**Status:** FROZEN — accepted via ACR-014; binding classification for existing implementation under Architecture 1.1
+
 | Existing concept/area | Classification | Target authority |
 |---|---|---|
 | Identity / Trust | RETAIN + REFACTOR | ADCOS identity/authority |

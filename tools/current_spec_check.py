@@ -12,6 +12,7 @@ Standard library only; no network access.
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -36,6 +37,11 @@ REQUIRED_FILES = [
     "spec/migration/classification-matrix.md",
     "spec/integration/vertical-proof.md",
     "spec/research/standards-and-use-cases.md",
+    "spec/history/README.md",
+    "spec/history/architecture-1.0.md",
+    "spec/history/architecture-lock-1.0.md",
+    "spec/history/work-items-1.0.md",
+    "spec/history/dependency-graph-1.0.md",
     "spec/architect/LLM-ARCHITECT-HANDOFF.md",
     "spec/architect/resume-protocol.md",
     "spec/architect/current-state.md",
@@ -197,8 +203,17 @@ def main() -> int:
                         fail(errors, "M001 authorization must have authorized true while M001 is active")
                     base = re.search(r"^baseline_sha:\s*([0-9a-f]{40})\s*$", auth_text, re.MULTILINE)
                     main_sha = repository.get("main_sha") if isinstance(repository, dict) else None
-                    if base and main_sha and base.group(1) != main_sha:
-                        fail(errors, "M001 authorization baseline does not match the reconciled main snapshot")
+                    if base and main_sha:
+                        # the authorization baseline must be the recorded main
+                        # snapshot or one of its ancestors (governance commits
+                        # may intervene between activation and delivery)
+                        if base.group(1) != main_sha:
+                            anc = subprocess.run(
+                                ["git", "merge-base", "--is-ancestor", base.group(1), main_sha],
+                                cwd=ROOT, capture_output=True,
+                            )
+                            if anc.returncode != 0:
+                                fail(errors, "M001 authorization baseline is neither the reconciled main snapshot nor its ancestor")
             else:
                 fail(errors, f"execution-state.yaml execution.mode must be awaiting-architect-decisions or implementing, got {mode!r}")
             if "M001 — Architecture 1.1 Freeze" not in "\n".join(str(x) for x in execution.get("next_required_decisions", [])):
@@ -225,6 +240,52 @@ def main() -> int:
         acr_text = (acr_dir / "ACR-014-architecture-1.1-freeze.md").read_text(encoding="utf-8")
         if "DEC-0098" not in acr_text:
             fail(errors, "ACR-014 must record the DEC-0098 Architect approval")
+        if not re.search(r"^## Status\nACCEPTED", acr_text, re.MULTILINE):
+            fail(errors, "ACR-014 must be ACCEPTED after the M001 delivery")
+
+    # post-freeze invariants: Architecture 1.1 is the canonical normative snapshot
+    arch_text = text("spec/architecture.md")
+    for marker in ("Architecture Version 1.1", "FROZEN", "ACR-014", "ConnectivityContract"):
+        if marker not in arch_text:
+            fail(errors, f"spec/architecture.md missing the Architecture 1.1 freeze marker: {marker}")
+    lock_text = text("spec/architecture-lock.md")
+    for marker in ("LOCK-101", "LOCK-120", "Architecture Version 1.1"):
+        if marker not in lock_text:
+            fail(errors, f"spec/architecture-lock.md missing the 1.1 lock marker: {marker}")
+    wi_text = text("spec/work-items.md")
+    for wid in ("M001", "M007", "M014"):
+        if f"## {wid} " not in wi_text:
+            fail(errors, f"spec/work-items.md missing the successor registry entry: {wid}")
+    if "spec/history/work-items-1.0.md" not in wi_text:
+        fail(errors, "spec/work-items.md must point at the preserved 1.0 registry")
+
+    # verbatim archive proof: each archived 1.0 file must be byte-identical to
+    # its blob at the M001 delivery branch point recorded in the roadmap
+    branch_point = re.search(
+        r"^\s*delivery_branch_point:\s*([0-9a-f]{40})\s*$",
+        roadmap_text, re.MULTILINE,
+    )
+    if branch_point is None:
+        fail(errors, "roadmap.yaml must record the M001 delivery branch point")
+    else:
+        bp = branch_point.group(1)
+        for orig, archived in (
+            ("spec/architecture.md", "spec/history/architecture-1.0.md"),
+            ("spec/architecture-lock.md", "spec/history/architecture-lock-1.0.md"),
+            ("spec/work-items.md", "spec/history/work-items-1.0.md"),
+            ("spec/dependency-graph.md", "spec/history/dependency-graph-1.0.md"),
+        ):
+            try:
+                blob = subprocess.run(
+                    ["git", "show", f"{bp}:{orig}"], cwd=ROOT,
+                    capture_output=True, check=True,
+                ).stdout
+            except (OSError, subprocess.CalledProcessError):
+                fail(errors, f"cannot read {orig} at the delivery branch point {bp[:8]}")
+                continue
+            archived_bytes = (ROOT / archived).read_bytes()
+            if blob != archived_bytes:
+                fail(errors, f"{archived} is not byte-identical to {orig} at the branch point (verbatim archive violated)")
 
     if isinstance(ledger, dict):
         items = ledger.get("work_items")

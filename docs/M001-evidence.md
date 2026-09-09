@@ -74,10 +74,28 @@ conversation history, yields: mission, the 1.1 forward target, the preserved
 authorization, worker limits, and the M001 gate — verified by
 `tools/fresh_session_check.py`.
 
-## 6. Delivery (pending)
+## 6. Delivery (branch `m001-architecture-1.1-freeze`, branch point `725397ffd60e7d8f44c24c85c86037f43ff6c303`)
 
-The M001 delivery PR (governance-classified) will promote the 1.1 successor
-snapshots, archive the 1.0 snapshot under `spec/history/`, flip ACR-014 to
-ACCEPTED, and synchronize the checkers. Its verification matrix will be
-appended here at delivery time, with the exact head SHA, before Architect
-acceptance (DEC-0100).
+The delivery promotes the Architecture 1.1 successor snapshots:
+
+- `spec/architecture.md` — Architecture 1.1 FROZEN (content = the accepted
+  proposal body; header records ACR-014 and the preserved 1.0 chain)
+- `spec/architecture-lock.md` — LOCK-101..LOCK-120 FROZEN
+- `spec/work-items.md` — the M001–M014 successor registry (canonical), with
+  the W001–W057 registry preserved at `spec/history/work-items-1.0.md`
+- `spec/dependency-graph.md` — the 1.1 dependency model (canonical), with
+  the 1.0 graph preserved at `spec/history/dependency-graph-1.0.md`
+- `spec/history/` — the four 1.0 files archived **byte-verbatim** (machine
+  proof: `tools/current_spec_check.py` compares each archive against its
+  git blob at the recorded delivery branch point) plus the archive README
+  with the supersedence chain
+- ACR-014 flipped to ACCEPTED; the 1.1 package documents flipped to
+  ACCEPTED/FROZEN status headers
+- `AGENTS.md` / `README.md` — Architecture 1.1 is now the normative
+  architecture; 1.0 is archived historical evidence
+- `tools/current_spec_check.py` / `tools/fresh_session_check.py` — evolved
+  to the post-freeze invariants (Architecture 1.1 markers, verbatim-archive
+  proof, ancestor-tolerant authorization baseline)
+
+The exact delivery head SHA is recorded at review; the DEC-0100 acceptance
+closes M001 (roadmap 1.7, authorization closed, R7 next unlocked).

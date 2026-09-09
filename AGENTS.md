@@ -30,12 +30,15 @@ acceptance criteria MUST trace to Architecture 1.1 locks and target artifacts.
 No agent may use Architecture 1.0 to invent new behavior merely because 1.0 is
 currently present in the repository.
 
-M001 — Architecture 1.1 Freeze is the controlled promotion gate. Until M001 is
-accepted through the ACR process, feature work must not begin against a 1.0
-design. Only explicitly authorized transition/migration work may proceed.
+M001 — Architecture 1.1 Freeze has delivered the promotion (ACR-014): the
+canonical files `spec/architecture.md` and `spec/architecture-lock.md` now
+carry Architecture 1.1 and LOCK-101..LOCK-120 as FROZEN, and Architecture 1.0
+is preserved verbatim under `spec/history/` as superseded historical evidence.
+Until the M001 acceptance decision (DEC-0100) closes the gate, only
+explicitly authorized transition/migration work may proceed.
 
-After M001 acceptance, Architecture 1.1 is the sole normative architecture for
-forward implementation. Architecture 1.0 remains historical/superseded evidence.
+Architecture 1.1 is the sole normative architecture for forward
+implementation. Architecture 1.0 is historical/superseded evidence.
 
 ## Live-main rule
 

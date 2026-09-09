@@ -191,7 +191,10 @@ roadmap:
     work_item_contract: "spec/architect/work-items/M001.md"
     authorization: "M001-CORE-001"
     activation_decision: DEC-0098
+    scope_amendment_decision: DEC-0099
     baseline_sha: 40737a0c716eff3ad05753431c24c2717afb2a68
+    delivery_branch: "m001-architecture-1.1-freeze"
+    delivery_branch_point: 725397ffd60e7d8f44c24c85c86037f43ff6c303
     acr: ACR-014
     target_package: "spec/work-items-1.1.md"
     authorization_rule: "M001 requires its own repository-local implementation authorization; until it is accepted, no feature work may be implemented from 1.0 semantics."

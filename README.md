@@ -10,7 +10,7 @@ topology or radio/core authority.
 
 ## Authoritative specification and transition package
 
-### Forward implementation target — Architecture 1.1
+### Normative architecture — Architecture 1.1 (FROZEN via ACR-014)
 
 - `spec/architecture-1.1-proposed.md` — target architecture
 - `spec/architecture-lock-1.1-proposed.md` — target normative locks
@@ -20,12 +20,17 @@ topology or radio/core authority.
 - `spec/migration/classification-matrix.md` — 1.0 → 1.1 migration classification
 - `spec/integration/vertical-proof.md` — ShareNet/RoamLink/COMOS proof boundary
 
-### Preserved legacy baseline — Architecture 1.0
+### Preserved legacy baseline — Architecture 1.0 (superseded, archived)
 
-- `spec/architecture.md` — historical/frozen 1.0 baseline
-- `spec/architecture-lock.md` — historical/frozen 1.0 locks
-- `spec/work-items.md` — historical 1.0 implementation backlog
-- `spec/dependency-graph.md` — historical 1.0 dependency graph
+- `spec/history/architecture-1.0.md` — preserved verbatim 1.0 snapshot
+- `spec/history/architecture-lock-1.0.md` — preserved verbatim 1.0 locks
+- `spec/history/work-items-1.0.md` — preserved verbatim W001–W057 registry
+- `spec/history/dependency-graph-1.0.md` — preserved verbatim 1.0 dependency graph
+
+The canonical files `spec/architecture.md`, `spec/architecture-lock.md`,
+`spec/work-items.md` and `spec/dependency-graph.md` now carry the
+Architecture 1.1 successor content (FROZEN via ACR-014 with the M001
+delivery)
 
 Architecture 1.0 is retained for migration and historical integrity. **New ADCOS
 behavior MUST be designed from the Architecture 1.1 target and its locks; agents

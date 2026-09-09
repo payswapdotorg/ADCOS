@@ -141,26 +141,37 @@ CASES: List[dict] = [
     {
         "name": "frozen-marker-removed",
         "ops": [
+            # anchor updated for the Architecture 1.1 promotion (M001): the
+            # canonical lock file now carries its freeze status in a
+            # '## Status' section; the mutation removes the FROZEN marker.
             (
                 "replace",
                 "spec/architecture-lock.md",
-                "**FROZEN**",
-                "**DRAFT**",
+                "FROZEN — Architecture Version 1.1 locks.",
+                "DRAFT — Architecture Version 1.1 locks.",
             )
         ],
         "expect_check": "MARK-02",
     },
     {
-        "name": "execution-phase-order-violation",
+        # Retired-with-reason (M001 promotion): the legacy DEPS-03
+        # execution-phase parser targets the 1.0 '### Phase N' structure,
+        # which now lives only in the archived
+        # spec/history/dependency-graph-1.0.md. On the promoted 1.1
+        # successor graph the phase check passes vacuously, so a phase-order
+        # mutation can no longer prove detection. The slot is replaced with
+        # an equivalent detection case on the other canonical FROZEN
+        # document, preserving the MARK-02 detection proof.
+        "name": "canonical-architecture-frozen-marker-removed",
         "ops": [
             (
                 "replace",
-                "spec/dependency-graph.md",
-                "`W038 → W039 → W040`",
-                "`W038 → W039 → W040 → W001`",
+                "spec/architecture.md",
+                "FROZEN — Architecture Version 1.1.",
+                "DRAFT — Architecture Version 1.1.",
             )
         ],
-        "expect_check": "DEPS-03",
+        "expect_check": "MARK-02",
     },
 ]
 

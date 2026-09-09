@@ -1,5 +1,7 @@
 # ADCOS Vertical Integration Proof
 
+**Status:** FROZEN — accepted via ACR-014; ShareNet/RoamLink/COMOS compatibility proofs, not ownership transfers
+
 ## ShareNet
 
 1. ShareNet submits a technology-neutral connectivity intent for gateway/relay nodes.

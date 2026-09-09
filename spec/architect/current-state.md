@@ -1,27 +1,26 @@
 # ADCOS Current State
 
-**M001 ACTIVE — Architecture 1.1 Freeze is the sole active Work Item under authorization M001-CORE-001 (DEC-0098).**
+**M001 IN REVIEW — the Architecture 1.1 Freeze delivery is on branch `m001-architecture-1.1-freeze` awaiting sole-Architect acceptance (DEC-0100); Architecture 1.1 is promoted as the sole normative forward architecture by this delivery.**
 
 ## Repository
 
 - Repository: `github.com/payswapdotorg/ADCOS`
-- Reconciled software mainline: `40737a0c716eff3ad05753431c24c2717afb2a68` (PR #24 Architect-accepted merge of the Architecture 1.1 transition package)
+- Delivery branch point: `725397ffd60e7d8f44c24c85c86037f43ff6c303` (main CI green; PR #24 merge + DEC-0098 activation + guard repair + DEC-0099 battery-mirror reconciliation)
 - R6 implementation delivery: `58eced2f7864bd8d6e9cac658574d8c7b0b48965`, accepted under `DEC-0097`, merged as PR #23 at `a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19`
-- Legacy architecture baseline: Architecture `1.0` frozen and retained for migration/history
-- Forward implementation target: Architecture `1.1` proposal package (promotion in progress under M001/ACR-014)
+- Architecture: Version `1.1` FROZEN in the M001 delivery (`spec/architecture.md`); Version 1.0 preserved verbatim at `spec/history/architecture-1.0.md`
 - Protocol baseline: `1.0` frozen unless/until a successor is separately accepted
-- Roadmap: `1.6` frozen / authoritative (advanced by DEC-0098)
+- Roadmap: `1.6` frozen / authoritative (advances to 1.7 at the DEC-0100 acceptance)
 
 ## Program authority
 
-`spec/architect/roadmap.yaml` is the sole canonical program roadmap. R0, R1, R2, R3, R5 and R6 are complete. R4 remains an independent physical-validation track under W040. M001 — Architecture 1.1 Freeze — is now ACTIVE (DEC-0098). R7 remains the business-program gate that follows the M001 acceptance.
+`spec/architect/roadmap.yaml` is the sole canonical program roadmap. R0, R1, R2, R3, R5 and R6 are complete. R4 remains an independent physical-validation track under W040. M001 — Architecture 1.1 Freeze — is ACTIVE and IN REVIEW (delivery branch `m001-architecture-1.1-freeze`). R7 remains the business-program gate that follows the M001 acceptance.
 
 ## Execution authority
 
-- `active_work_item: M001`
-- `active_authorization: M001-CORE-001` (issued by `DEC-0098`, baseline `40737a0c716eff3ad05753431c24c2717afb2a68`)
+- `active_work_item: M001` (in review)
+- `active_authorization: M001-CORE-001` (issued by `DEC-0098`; scope amended by `DEC-0099`)
 - Exactly one implementation authorization is active: `M001-CORE-001`. All W-item authorizations remain closed.
-- M001 is a pure architecture/governance transition Work Item: its delivery PR must classify as governance-only (no implementation-domain files), promote the 1.1 successor snapshots, archive the 1.0 snapshot under `spec/history/`, and be accepted by the sole Architect (DEC-0099) before ACR-014 becomes ACCEPTED.
+- The M001 delivery is a pure architecture/governance transition: it promotes the 1.1 successor snapshots into the canonical files, preserves the 1.0 snapshot verbatim under `spec/history/`, flips ACR-014 to ACCEPTED, and evolves the current-governance checkers to the post-freeze invariants. Sole-Architect review of the exact delivery head and the DEC-0100 acceptance close M001.
 - After M001 acceptance, subsequent feature Work Items MUST be derived from the 1.1 work-item/dependency package and MUST NOT revert to 1.0 semantics.
 
 ## Historical accepted state
@@ -49,14 +48,13 @@ uses provider sovereignty and adapter isolation, separates evidence types,
 enforces closed-loop assurance, and permits authorized applications to purchase
 or sponsor connectivity for bounded beneficiaries.
 
-**Critical routing rule:** Architecture 1.0 remains a preserved historical/frozen
-baseline, not the design source for new capabilities. During the transition,
-agents use 1.0 only to understand and safely migrate existing implementation.
-All new semantics and forward Work Items must trace to 1.1. M001 (ACTIVE,
-ACR-014) is the formal promotion gate; until its delivery is accepted, only
-explicitly authorized transition/migration work may proceed. After M001 is
-accepted, the 1.1 successor architecture/locks become normative and 1.0 is
-historical evidence only.
+**Critical routing rule:** With the M001 delivery, Architecture 1.1
+(`spec/architecture.md`, LOCK-101..LOCK-120) is the sole normative forward
+architecture. Architecture 1.0 is preserved historical evidence at
+`spec/history/`, used only to understand and migrate existing
+implementation. All new semantics and forward Work Items must trace to 1.1.
+Until the DEC-0100 acceptance closes M001, only explicitly authorized
+transition/migration work may proceed.
 
 ## Next gate
 

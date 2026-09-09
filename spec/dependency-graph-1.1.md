@@ -1,5 +1,7 @@
 # ADCOS Architecture 1.1 Dependency Graph
 
+**Status:** ACCEPTED via ACR-014 (accepted proposal record; the canonical dependency model is `spec/dependency-graph.md`)
+
 ```text
 M001 Architecture Freeze
  |
