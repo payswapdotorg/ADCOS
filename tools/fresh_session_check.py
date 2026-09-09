@@ -61,6 +61,8 @@ def main() -> int:
         "spec/architect/execution-ledger.yaml",
         "docs/tech-lead/ADCOS-TECH-LEAD-HANDOFF.md",
         "docs/tech-lead/worker-model.md",
+        "docs/tech-lead/dispatch-state.yaml",
+        "tools/tech_lead_guard.py",
     ]
     for rel in required:
         if not (ROOT / rel).exists():
@@ -79,7 +81,7 @@ def main() -> int:
         (handoff, "Single-agent mode", "Tech Lead handoff must support single-agent execution"),
         (handoff, "Architecture 1.1 is the target architecture", "Tech Lead handoff must bind implementation to 1.1"),
         (handoff, "at most 3 workers", "Tech Lead handoff must record direct-worker limit"),
-        (worker_model, "maximum active descendant count is 9", "worker model must record 3x3 descendant limit"),
+        (worker_model, "maximum active descendants: 9", "worker model must record 3x3 descendant limit"),
         (resume, "Fresh-session guarantee", "resume protocol must define fresh-session sufficiency"),
         (resume, "M001 — Architecture 1.1 Freeze", "resume protocol must identify the 1.1 transition gate"),
         (roadmap, "mandatory_forward_target: \"Architecture 1.1\"", "roadmap must declare 1.1 as mandatory forward target"),
@@ -138,7 +140,7 @@ def main() -> int:
         return 1
 
     print("fresh-session check: PASS")
-    print("repository contains the 1.1 forward-target routing, Tech Lead bootstrap, 3x3 worker rules, current roadmap checkpoint, and governance authority chain")
+    print("repository contains the 1.1 forward-target routing, Tech Lead bootstrap, 3x3 worker rules, machine-readable dispatch state, current roadmap checkpoint, and governance authority chain")
     if actual:
         print(f"origin/main verified against execution-state snapshot: {actual}")
     else:
