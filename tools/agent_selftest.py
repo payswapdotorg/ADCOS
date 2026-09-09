@@ -1405,7 +1405,10 @@ def case_29_conformance_self_test(results: List[Result]) -> None:
     a = _agent("conformant", b"agent-battery-key-A", id_b, _SECRET_A)
     first = a.self_test()
     second = a.self_test()
-    if first["verdict"] != "conformant" or first["total"] != 136:
+    # 163 = the accepted W055 matrix (W032 136 + 27 additive vectors,
+    # conformant 163/163 per docs/WORK-055-evidence.md); synchronized by
+    # DEC-0099 after CI unmasking. The mirror was stale, not the registry.
+    if first["verdict"] != "conformant" or first["total"] != 163:
         results.append(fail(
             name, "self-test verdict %r total %r" % (first["verdict"], first["total"])
         ))
@@ -1418,7 +1421,7 @@ def case_29_conformance_self_test(results: List[Result]) -> None:
         results.append(fail(name, "self-test event missing from the log"))
         return
     results.append(ok(
-        name, "embedded W032 matrix 136/136 conformant; digest stable",
+        name, "embedded W032+W055 matrix 163/163 conformant; digest stable",
     ))
 
 

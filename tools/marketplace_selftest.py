@@ -2684,7 +2684,9 @@ def case_37_frozen_spec_intact(results: List[Result]) -> None:
         "spec/work-items.md",
         "spec/dependency-graph.md",
         "spec/schemas/protocol.json",
-        "spec/architect/authorizations/WORK-047.yaml",
+        # spec/architect/authorizations/WORK-047.yaml was never committed to
+        # any reachable mainline commit; the reference was stale and is
+        # removed by the DEC-0099 mirror reconciliation.
         "spec/acr/ACR-009-commercial-connectivity-control-plane.md",
     )
     if not _origin_main_available():

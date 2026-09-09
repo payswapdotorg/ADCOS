@@ -6,12 +6,13 @@ authorized: true
 type: implementation
 authorization_id: "M001-CORE-001"
 authorization_decision: DEC-0098
-scope_amendment_decision: null
-scope_amendment_chain: []
+scope_amendment_decision: DEC-0099
+scope_amendment_chain:
+  - DEC-0099
 superseded_by: null
 supersession_decision: null
 baseline_sha: 40737a0c716eff3ad05753431c24c2717afb2a68
-review_basis: "DEC-0098 activated M001 as the sole transition Work Item from the PR #24-merged mainline. The delivery must be governance-classified (control-plane-only), reviewed by the sole Architect, and accepted before ACR-014 becomes ACCEPTED."
+review_basis: "DEC-0098 activated M001 as the sole transition Work Item from the PR #24-merged mainline. DEC-0099 amends the scope with the battery-mirror synchronization surface. The delivery must be governance-classified (control-plane-only), reviewed by the sole Architect, and accepted before ACR-014 becomes ACCEPTED."
 dependencies: []
 authority_inputs:
   - "spec/mission.md (permanent Mission Authority)"
@@ -50,10 +51,12 @@ scope:
   - "tools/architecture_drift_guard.py"
   - "tools/spec_check.py"
   - "tools/spec_check_selftest.py"
+  - "tools/agent_selftest.py"
+  - "tools/marketplace_selftest.py"
   - ".github/workflows/spec-check.yml"
   - ".github/CODEOWNERS"
 out_of_scope:
-  - "Any implementation-domain source, schema, or battery change (the M001 delta must classify as governance-only under tools/architecture_drift_guard.py)."
+  - "Any implementation-domain source, schema, or battery change beyond the DEC-0099 battery-mirror surface (tools/agent_selftest.py, tools/marketplace_selftest.py), which executes only as the recorded direct mainline-integrity reconciliation; the M001 delivery PR itself must classify as governance-only under tools/architecture_drift_guard.py."
   - "Changing Protocol Version 1.0 or any wire/schema semantics."
   - "Rewriting or deleting any historical acceptance record, ledger entry, or archived 1.0 content."
   - "Activating R7 or any successor Work Item."

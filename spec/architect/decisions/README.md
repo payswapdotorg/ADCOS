@@ -80,6 +80,7 @@ Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-
 | DEC-0096 | correction | WORK-057 | CHANGES_REQUIRED | SUPERSEDED | W057 Round 1 adversarial review: adapter certification authority bypass and federation proposal self-acceptance |
 | DEC-0097 | acceptance | WORK-057 | ACCEPTED | ACCEPTED | W057 Round 2 acceptance: P0 corrections verified; PR #23 head 58eced2 merged as a08ce85; WORK-057 authorization closed; R6 complete; R7 next unlocked but unactivated |
 | DEC-0098 | governance | M001 | ACCEPTED | ACCEPTED | M001 activation: Architecture 1.1 Freeze authorized under M001-CORE-001 from baseline 40737a0 (PR #24 transition-package merge); ACR-014 proposed with the DEC-0098 approval path; roadmap 1.5 -> 1.6 |
+| DEC-0099 | governance | M001 | ACCEPTED | ACCEPTED | M001 scope amendment + battery-mirror reconciliation: agent conformance mirror synced to accepted W055 total (163); marketplace stale WORK-047.yaml reference removed; era-superseded payment/eligibility/client batteries skip-with-disclosure behind CI precondition guards (re-baseline under the 1.1 M009/M014 commercial track) |
 
 ## Rules
 

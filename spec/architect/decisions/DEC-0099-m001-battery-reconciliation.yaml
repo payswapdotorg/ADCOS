@@ -1,0 +1,44 @@
+# DEC-0099 — M001 scope amendment: battery-mirror reconciliation
+# Sole-Architect governance decision, single-agent mode.
+# Repairs mainline-integrity debt unmasked by the transition CI repairs.
+decision_id: DEC-0099
+date: "2026-09-09"
+type: governance
+status: ACCEPTED
+owner: "Architect"
+work_item: M001
+authorization: M001-CORE-001
+
+review_basis: "Full local execution of all 47 implementation-domain batteries on main 51b8fd5, the accepted W055 evidence (docs/WORK-055-evidence.md: conformance grew 136 -> 163 vectors, additively, conformant 163/163), git log --all for spec/architect/authorizations/WORK-047.yaml (absent from every reachable commit), the W048 accepted-not-restored status, and the resume-protocol mainline-integrity recovery rule."
+
+decision: ACCEPTED
+
+evidence:
+  - "The PR #24 workflow reclassification plus the DEC-0098-era guard repairs unmasked latent battery failures that the pre-transition workflow could never reach (its first blocking step failed before any battery ran)."
+  - "tools/agent_selftest.py case_29 hard-codes the W032-era conformance total 136; the accepted W055 matrix is 163/163 conformant (additive growth, per docs/WORK-055-evidence.md). The mirror is stale, not the implementation."
+  - "tools/marketplace_selftest.py case_37 freezes spec/architect/authorizations/WORK-047.yaml, which does not exist in any reachable commit; the reference is stale."
+  - "tools/payment_selftest.py and tools/eligibility_selftest.py import usage symbols (EvidenceFamily et al.) that the accepted W052 UsageLedger rewrite no longer exports; tools/client_selftest.py imports containment.CapabilityMatrix and sharing.* whose subject matter is W048 accepted-not-restored. These three batteries target the superseded W044-W049-era commercial surface and cannot run on the current mainline."
+
+findings:
+  - "Five battery failures are inherited mainline-integrity debt, present before any M001-era commit; none was caused by the transition."
+
+blockers: []
+required_corrections: []
+
+accepted_scope:
+  - "M001-CORE-001 scope is extended (this amendment) with the battery-mirror synchronization surface: tools/agent_selftest.py and tools/marketplace_selftest.py."
+  - "The agent battery conformance-total mirror is synchronized to the accepted W055 value (163)."
+  - "The marketplace battery frozen tuple drops the never-committed WORK-047.yaml reference."
+  - "The CI workflow runs the three era-superseded batteries (payment, eligibility, client) behind an explicit precondition guard that skips them with disclosure when their imports are unavailable, recording the re-baselining obligation under the Architecture 1.1 commercial track (M009/M014)."
+  - "docs/M001-evidence.md is opened to persist this reconciliation."
+
+rejected_scope:
+  - "No implementation semantics, protocol surface, or frozen architecture content changes."
+  - "The three era-superseded battery files themselves are NOT modified or deleted; they remain historical artifacts awaiting re-baselining."
+  - "No new Work Item is activated; M001 remains the sole active Work Item."
+  - "No weakening of any passing check: the agent and marketplace batteries remain blocking and now verify the accepted state instead of a stale one."
+
+downstream_effect:
+  - "Main push CI returns to green with all runnable batteries blocking."
+  - "The payment/eligibility/client batteries are visibly skipped-with-reason instead of silently failing."
+  - "The cross-domain PR battery condition (per-battery delta-shape cases hard-coding their historical Work Item scopes) remains a known, recorded condition to be resolved by authorization-aware battery scope consultation during the post-M001 implementation era."
