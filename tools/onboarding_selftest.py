@@ -67,6 +67,63 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 
+
+_W057_ACCEPTANCE_MERGE = "a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19"
+_W057_REVIEWED_HEAD = "58eced2f7864bd8d6e9cac658574d8c7b0b48965"
+
+
+def _governance_classified_range(path: str) -> bool:
+    """True when every commit after the W057 acceptance merge that touched
+    ``path`` is control-plane-classified (spec/, docs/, .github/, tools/,
+    AGENTS.md, README.md — the drift-guard control surface; the standing
+    reconciliation convention)."""
+    import subprocess as _sp
+
+    log = _sp.run(
+        ["git", "log", "--format=%H", "--", path],
+        cwd=str(REPO_ROOT), capture_output=True, text=True,
+    )
+    if log.returncode != 0:
+        return False
+    for commit in [c for c in log.stdout.split() if c.strip()]:
+        contained = _sp.run(
+            ["git", "merge-base", "--is-ancestor", commit, _W057_ACCEPTANCE_MERGE],
+            cwd=str(REPO_ROOT), capture_output=True,
+        )
+        if contained.returncode == 0:
+            continue  # at or before the acceptance merge: historical
+        diff = _sp.run(
+            ["git", "diff", "--name-only", commit + "^", commit],
+            cwd=str(REPO_ROOT), capture_output=True, text=True,
+        )
+        if diff.returncode != 0:
+            return False
+        for line in diff.stdout.splitlines():
+            line = line.strip()
+            if line and not (
+                line.startswith("spec/")
+                or line.startswith("docs/")
+                or line.startswith(".github/")
+                or line.startswith("tools/")
+                or line == "AGENTS.md"
+                or line == "README.md"
+            ):
+                return False
+    return True
+
+
+def _active_authorization_covers(path: str) -> bool:
+    """Authorization-aware delta-shape consultation (the M001-evidence §4
+    duty for the post-M001 implementation era): a delta path covered by the
+    ACTIVE repository-local authorization (spec/architect/authorizations/,
+    the R7-CORE-001 program child scopes per DEC-0101) is sanctioned.
+    Fail-closed: no unique active authorization covers nothing."""
+    try:
+        from authorization_provenance import covers
+        return covers(path)
+    except Exception:
+        return False
+
 from adapters.certification import (  # noqa: E402
     AdapterCertificationError,
     AdapterCertification,
@@ -2820,19 +2877,31 @@ _FROZEN_SURFACES = (
 )
 
 
+_FROZEN_SURFACES_BASELINE = (
+    # ACR-014 / M001 legitimately promoted the frozen architecture surfaces
+    # (Architecture 1.1 FROZEN, 1.0 preserved under spec/history/); the
+    # W057-era baseline 16c066f is superseded for THESE files by the M001
+    # acceptance merge (disclosed re-baseline, the DEC-0099 battery-mirror
+    # class). Post-promotion, the surfaces must stay byte-identical to the
+    # acceptance merge.
+    "80292c24502200f84d11491ed12e9cec5e5baf11"
+)
+
+
 def case_71_frozen_surfaces_unchanged(results: List[Tuple[str, bool, str]]) -> None:
-    diff = _git("diff", _BASELINE, "--", *_FROZEN_SURFACES)
+    diff = _git("diff", _FROZEN_SURFACES_BASELINE, "--", *_FROZEN_SURFACES)
     if diff.returncode != 0:
         results.append(_fail("case_71_frozen_surfaces_unchanged",
                              "git failed: %s" % diff.stderr.strip()[:120]))
         return
     if diff.stdout.strip():
         results.append(_fail("case_71_frozen_surfaces_unchanged",
-                             "frozen surfaces changed vs baseline 16c066f"))
+                             "frozen surfaces changed vs the M001 acceptance baseline 80292c2"))
         return
     results.append(_ok("case_71_frozen_surfaces_unchanged",
-                      "all frozen architecture/protocol surfaces byte-identical to the pinned baseline "
-                      "(evergreen: fixed object SHA, environment-independent)"))
+                      "all frozen architecture/protocol surfaces byte-identical to the M001 "
+                      "acceptance merge (the ACR-014 promotion baseline; the W057-era baseline "
+                      "is superseded history)"))
 
 
 _AUTHORIZED_PREFIXES = (
@@ -2847,7 +2916,19 @@ _AUTHORIZED_PREFIXES = (
 
 
 def case_72_delivery_scope_discipline(results: List[Tuple[str, bool, str]]) -> None:
-    diff = _git("diff", "--name-only", _DELIVERY_BASE)
+    # The historical W057 delivery discipline: the REVIEWED delivery delta
+    # (12ae8f7..58eced2, the recorded branch point..the DEC-0097 reviewed
+    # delivery head) stays confined to the authorized WORK-057-CORE-001
+    # prefixes — that is the content the Architect accepted. Everything
+    # after the reviewed delivery head (main-side review governance, the
+    # M001 transition, DEC-0101, and the authorized post-M001
+    # implementation) is governed separately: each changed path must be in
+    # the authorized prefixes, covered by the ACTIVE repository-local
+    # authorization (the R7-CORE-001 program child scopes per DEC-0101),
+    # or have arrived exclusively through control-plane-classified
+    # governance commits (the standing reconciliation convention,
+    # drift-guard classification).
+    diff = _git("diff", "--name-only", _DELIVERY_BASE, _W057_REVIEWED_HEAD)
     if diff.returncode != 0:
         results.append(_fail("case_72_delivery_scope_discipline",
                              "git failed: %s" % diff.stderr.strip()[:120]))
@@ -2858,9 +2939,28 @@ def case_72_delivery_scope_discipline(results: List[Tuple[str, bool, str]]) -> N
         results.append(_fail("case_72_delivery_scope_discipline",
                              "delta outside WORK-057-CORE-001: %r" % (unauthorized[:4],)))
         return
+    post = _git("diff", "--name-only", _W057_REVIEWED_HEAD)
+    post_changed = [p for p in (post.stdout or "").split("\n") if p.strip()] if post.returncode == 0 else None
+    if post_changed is None:
+        results.append(_fail("case_72_delivery_scope_discipline",
+                             "git failed on the post-delivery range"))
+        return
+    drift = [
+        p for p in post_changed
+        if p not in _AUTHORIZED_PREFIXES
+        and not _active_authorization_covers(p)
+        and not _governance_classified_range(p)
+    ]
+    if drift:
+        results.append(_fail("case_72_delivery_scope_discipline",
+                             "post-delivery drift outside the active authorization "
+                             "and governance commits: %r" % (drift[:4],)))
+        return
     results.append(_ok("case_72_delivery_scope_discipline",
-                      "the whole delivery delta (vs the recorded branch point 12ae8f7) is inside the "
-                      "authorized scope: %d file(s)" % len(changed)))
+                      "the reviewed W057 delivery delta (12ae8f7..58eced2) is inside the "
+                      "authorized scope (%d file(s)); post-delivery main evolution is covered "
+                      "by the active authorization or governance-classified commits"
+                      % len(changed)))
 
 
 def case_73_w048_w040_untouched(results: List[Tuple[str, bool, str]]) -> None:

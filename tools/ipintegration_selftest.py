@@ -1655,8 +1655,23 @@ def case_42_b3_real_ipv6_loopback_conformance(results: List[Result]) -> None:
                 conn, _ = srv.accept()
                 with conn:
                     data = conn.recv(len(payload))
-                    conn.sendall(data)
+                    # Latch the received-payload evidence BEFORE the
+                    # echo write.  The client-side assertion runs as
+                    # soon as the echoed bytes become readable (the
+                    # kernel write inside sendall), which can happen
+                    # before this thread RETURNS from sendall() and
+                    # stores the evidence -- latching after sendall()
+                    # let the check race ahead of the latch (the
+                    # intermittent CI failure: always this assertion,
+                    # both legs).  Latching at the moment the peer HAS
+                    # received the bytes is exactly what the assertion
+                    # claims, and it makes the latch strictly precede
+                    # the echo write -- the earliest moment the client
+                    # can complete its recv loop -- so the check can
+                    # never observe an unset latch (deterministic
+                    # happens-before ordering; no sleep, no retry).
                     server_state[leg] = data
+                    conn.sendall(data)
         except Exception as exc:  # pragma: no cover -- best-effort server
             server_state["error"] = str(exc)
 

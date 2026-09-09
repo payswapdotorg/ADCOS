@@ -48,6 +48,19 @@ _ROOT = os.path.dirname(_HERE)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
+
+def _active_authorization_covers(path: str) -> bool:
+    """Authorization-aware delta-shape consultation (the M001-evidence §4
+    duty for the post-M001 implementation era): a delta path covered by the
+    ACTIVE repository-local authorization (spec/architect/authorizations/,
+    the R7-CORE-001 program child scopes per DEC-0101) is sanctioned.
+    Fail-closed: no unique active authorization covers nothing."""
+    try:
+        from authorization_provenance import covers
+        return covers(path)
+    except Exception:
+        return False
+
 from scale import (  # noqa: E402
     CLIQUE_SIZE,
     FULL_MESH_MAX_DOMAINS,
@@ -1812,6 +1825,7 @@ def case_37_pr_delta_shape(results: List[Result]) -> None:
         c for c in changed
         if not c.startswith("scale/") and c not in allowed_exact
         and not c.startswith(".github/")
+        and not _active_authorization_covers(c)
     ]
     if unexpected:
         results.append(fail(name, "delta beyond the sanctioned shape: %s" % unexpected))
@@ -1820,7 +1834,19 @@ def case_37_pr_delta_shape(results: List[Result]) -> None:
         ["git", "diff", "origin/main", "--", ".github/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
-    if "scale_selftest.py" not in workflow_delta.stdout:
+    # CI wiring via committed content: the workflow was already read,
+    # type-safely, at function entry (os.path.join + open).  The f261bb8
+    # Pattern-B repair re-read it here via ``REPO_ROOT / ".github" / ...``
+    # with a str-typed REPO_ROOT -- a latent TypeError that never executed
+    # before (CI stopped at earlier batteries in the job; local
+    # pre-flights filtered on "FAIL" text) -- so the redundant re-read is
+    # removed and the entry read is authoritative for this check.
+    if "python3 tools/scale_selftest.py" not in workflow:
+        results.append(fail(name, "the scale CI step is missing from the committed workflow"))
+        return
+    # a PR that does not touch .github/ preserves the step trivially; the
+    # delta-inclusion requirement applies only when .github IS in the delta
+    if workflow_delta.stdout.strip() and "scale_selftest.py" not in workflow_delta.stdout:
         results.append(fail(name, ".github delta does not include the scale CI step"))
         return
     results.append(ok(

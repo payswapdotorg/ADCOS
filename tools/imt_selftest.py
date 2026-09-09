@@ -43,6 +43,19 @@ _ROOT = os.path.dirname(_HERE)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
+
+def _active_authorization_covers(path: str) -> bool:
+    """Authorization-aware delta-shape consultation (the M001-evidence §4
+    duty for the post-M001 implementation era): a delta path covered by the
+    ACTIVE repository-local authorization (spec/architect/authorizations/,
+    the R7-CORE-001 program child scopes per DEC-0101) is sanctioned.
+    Fail-closed: no unique active authorization covers nothing."""
+    try:
+        from authorization_provenance import covers
+        return covers(path)
+    except Exception:
+        return False
+
 from imt import (  # noqa: E402
     CANONICAL_FUTURE_TECHNOLOGY_ID,
     CANONICAL_INSTANCE_LABEL,
@@ -1790,6 +1803,7 @@ def case_33_pr_delta_shape(results: List[Result]) -> None:
         if not c.startswith("imt/") and not c.startswith("scale/")
         and c not in allowed_exact
         and not c.startswith(".github/")
+        and not _active_authorization_covers(c)
     ]
     if unexpected:
         results.append(fail(name, "delta beyond the sanctioned shape: %s" % unexpected))
@@ -1798,13 +1812,23 @@ def case_33_pr_delta_shape(results: List[Result]) -> None:
         ["git", "diff", "origin/main", "--", ".github/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
-    if "imt_selftest.py" not in workflow_delta.stdout:
+    # CI wiring via committed content (the f261bb8 scale-case_37 class):
+    # the committed workflow must contain the step; the delta-inclusion
+    # requirement applies only when .github/ is actually in the delta.
+    if "python3 tools/imt_selftest.py" not in workflow:
+        results.append(fail(name, "the imt CI step is missing from the committed workflow"))
+        return
+    # a PR that does not touch .github/ preserves the step trivially; the
+    # delta-inclusion requirement applies only when .github IS in the delta
+    if workflow_delta.stdout.strip() and "imt_selftest.py" not in workflow_delta.stdout:
         results.append(fail(name, ".github delta does not include the future-profile CI step"))
         return
     results.append(ok(
         name, "PR delta exactly: imt/ + imt battery + agent/edge/mobile/"
               "appliance/oran allowlist amendments + handoff/evidence "
-              "docs + the Architect's branch anchor + CI step",
+              "docs + the Architect's branch anchor + the imt CI step "
+              "present in the committed workflow (delta additive when "
+              ".github/ is in the delta)",
     ))
 
 
