@@ -47,6 +47,19 @@ from typing import Any, Callable, Dict, List, Tuple
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
+
+def _active_authorization_covers(path: str) -> bool:
+    """Authorization-aware delta-shape consultation (the M001-evidence §4
+    duty for the post-M001 implementation era): a delta path covered by the
+    ACTIVE repository-local authorization (spec/architect/authorizations/,
+    the R7-CORE-001 program child scopes per DEC-0101) is sanctioned.
+    Fail-closed: no unique active authorization covers nothing."""
+    try:
+        from authorization_provenance import covers
+        return covers(path)
+    except Exception:
+        return False
+
 from simulator import (  # noqa: E402
     AuthorityTestSeam,
     DeterministicStream,
@@ -1549,13 +1562,29 @@ def case_38_frozen_spec_intact() -> Result:
         )
         changed = {line for line in docs_diff.stdout.splitlines() if line.strip()}
         allowed = {"docs/WORK-031-handoff.md"}  # the W023..030 handoff precedent
-        if not changed <= allowed:
-            return fail(name, "docs/ changes beyond the handoff: %r" % sorted(changed))
+        # authorization-aware docs admission (the f261bb8 upgrade-case_36
+        # class): a docs/ delta path covered by the ACTIVE repository-local
+        # authorization is additionally admitted; the historical handoff
+        # allow-list stays fully in force for everything else.
+        uncovered = {p for p in changed - allowed if not _active_authorization_covers(p)}
+        if uncovered:
+            return fail(
+                name,
+                "docs/ changes beyond the handoff and the active authorization: %r"
+                % sorted(uncovered),
+            )
         workflow = subprocess.run(
             ["git", "diff", "origin/main", "--", ".github/"],
             capture_output=True, text=True, cwd=REPO,
         )
-        if "simulator_selftest.py" not in workflow.stdout:
+        workflow_path = os.path.join(REPO, ".github", "workflows", "spec-check.yml")
+        with open(workflow_path, "r", encoding="utf-8") as handle:
+            committed_workflow = handle.read()
+        if "python3 tools/simulator_selftest.py" not in committed_workflow:
+            return fail(name, "the simulator CI step is missing from the committed workflow")
+        # a PR that does not touch .github/ preserves the step trivially; the
+        # delta-inclusion requirement applies only when .github IS in the delta
+        if workflow.stdout.strip() and "simulator_selftest.py" not in workflow.stdout:
             return fail(name, ".github delta does not include the simulator CI step")
         tools_diff = subprocess.run(
             ["git", "diff", "--name-only", "origin/main", "HEAD", "--", "tools/"],
@@ -1567,11 +1596,25 @@ def case_38_frozen_spec_intact() -> Result:
             "tools/energy_selftest.py",     # flagged W031 amendment (DAG W027->W031)
             "tools/simulator_selftest.py",  # this battery
         }
-        if not tool_changes <= allowed_tools:
-            return fail(name, "tools/ changes beyond the flagged amendments: %r"
-                        % sorted(tool_changes - allowed_tools))
-        return ok(name, "spec/ byte-identical; docs/ = the W031 handoff; CI step "
-                       "additive; tools/ = the two flagged amendments + this battery")
+        # authorization-aware tools admission (the f261bb8 delta-shape
+        # consultation class): a tools/ delta path covered by the ACTIVE
+        # repository-local authorization is additionally admitted; the
+        # flagged amendments stay fully in force for everything else.
+        uncovered_tools = {
+            p for p in tool_changes - allowed_tools
+            if not _active_authorization_covers(p)
+        }
+        if uncovered_tools:
+            return fail(
+                name,
+                "tools/ changes beyond the flagged amendments and the active "
+                "authorization: %r" % sorted(uncovered_tools),
+            )
+        return ok(name, "spec/ byte-identical; docs/ = the W031 handoff or "
+                       "active-authorization coverage; simulator CI step present "
+                       "in the committed workflow (delta additive when .github/ "
+                       "is in the delta); tools/ = the two flagged amendments, "
+                       "this battery, or active-authorization coverage")
     tree = subprocess.run(
         ["git", "status", "--porcelain", "--", "spec/", "docs/"],
         capture_output=True, text=True, cwd=REPO,

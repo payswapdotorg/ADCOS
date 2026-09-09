@@ -47,6 +47,19 @@ from typing import Any, Dict, List, Optional, Tuple
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+
+def _active_authorization_covers(path: str) -> bool:
+    """Authorization-aware delta-shape consultation (the M001-evidence §4
+    duty for the post-M001 implementation era): a delta path covered by the
+    ACTIVE repository-local authorization (spec/architect/authorizations/,
+    the R7-CORE-001 program child scopes per DEC-0101) is sanctioned.
+    Fail-closed: no unique active authorization covers nothing."""
+    try:
+        from authorization_provenance import covers
+        return covers(path)
+    except Exception:
+        return False
+
 from identity import (  # noqa: E402
     NodeIdentity,
     ProfileSet,
@@ -1999,9 +2012,20 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
         "docs/WORK-039-evidence.md",
     }
     docs_changed = {c for c in changed if c.startswith("docs/")}
-    if not docs_changed <= allowed_docs:
+    # authorization-aware docs admission (the f261bb8 upgrade-case_36
+    # class): a docs/ delta path covered by the ACTIVE repository-local
+    # authorization is additionally admitted; the historical DAG
+    # handoff/evidence allow-list stays fully in force for everything
+    # else.
+    uncovered_docs = {
+        p for p in docs_changed - allowed_docs
+        if not _active_authorization_covers(p)
+    }
+    if uncovered_docs:
         results.append(fail(
-            name, "docs/ changes beyond the handoff: %s" % docs_changed
+            name,
+            "docs/ changes beyond the handoff and the active authorization: %s"
+            % sorted(uncovered_docs),
         ))
         return
     workflow_delta = subprocess.run(
@@ -2052,15 +2076,25 @@ def case_40_frozen_spec_and_ci_wiring(results: List[Result]) -> None:
         "tools/scale_selftest.py",
     }
     tools_changed = {c for c in changed if c.startswith("tools/")}
-    if not tools_changed <= allowed_tools:
+    # authorization-aware tools admission (the f261bb8 delta-shape
+    # consultation class): a tools/ delta path covered by the ACTIVE
+    # repository-local authorization is additionally admitted; the
+    # DAG-sanctioned amendments stay fully in force for everything else.
+    uncovered_tools = {
+        p for p in tools_changed - allowed_tools
+        if not _active_authorization_covers(p)
+    }
+    if uncovered_tools:
         results.append(fail(
-            name, "tools/ changes beyond battery + sanctioned amendments: %s"
-            % (tools_changed - allowed_tools,),
+            name,
+            "tools/ changes beyond battery + sanctioned amendments and the "
+            "active authorization: %s" % sorted(uncovered_tools),
         ))
         return
     results.append(ok(
         name,
-        "spec/ frozen; docs/tools/.github deltas exactly the sanctioned shape",
+        "spec/ frozen; docs/tools/.github deltas within the sanctioned shape "
+        "or the active authorization",
     ))
 
 

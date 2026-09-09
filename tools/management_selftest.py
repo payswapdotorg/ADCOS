@@ -128,6 +128,19 @@ from typing import Any, Callable, Dict, FrozenSet, List, Optional, Tuple
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
+
+def _active_authorization_covers(path: str) -> bool:
+    """Authorization-aware delta-shape consultation (the M001-evidence §4
+    duty for the post-M001 implementation era): a delta path covered by the
+    ACTIVE repository-local authorization (spec/architect/authorizations/,
+    the R7-CORE-001 program child scopes per DEC-0101) is sanctioned.
+    Fail-closed: no unique active authorization covers nothing."""
+    try:
+        from authorization_provenance import covers
+        return covers(path)
+    except Exception:
+        return False
+
 from federation.model import RelationshipState, Scope  # noqa: E402
 from federation.store import FederationStore  # noqa: E402
 from policy.model import (  # noqa: E402
@@ -1567,11 +1580,18 @@ def case_29_no_reverse_imports() -> Result:
     # declares WORK-030 among its frozen dependencies); the agent
     # composes the real ManagementAPI/RBAC/audit surfaces over its own
     # authorities and never re-implements management semantics.
+    # WORK-054 amendment (deliberate, mirrored on the WORK-033 class
+    # above): the system composition conformance layer is the same
+    # sanctioned DOWNSTREAM consumer of management (commit 93ad413,
+    # accepted on main); composition/world.py composes the real
+    # ManagementCapability/RoleDefinition surfaces over injected seams
+    # (the WORK-054 "existing authorities over injected seams" design)
+    # and never re-implements management semantics.
     for root, dirs, files in os.walk(REPO):
         dirs[:] = [
             d
             for d in dirs
-            if d not in ("__pycache__", ".git", "docs", "spec", "tools", "agent")
+            if d not in ("__pycache__", ".git", "docs", "spec", "tools", "agent", "composition")
         ]
         for f in files:
             if not f.endswith(".py"):
@@ -1708,17 +1728,35 @@ def case_32_frozen_spec_intact() -> Result:
         )
         changed = {line for line in docs_diff.stdout.splitlines() if line.strip()}
         allowed = {"docs/WORK-030-handoff.md"}  # the W023..029 handoff precedent
-        if not changed <= allowed:
-            return fail(name, "docs/ changes beyond the handoff: %r" % sorted(changed))
+        # authorization-aware docs admission (the f261bb8 upgrade-case_36
+        # class): a docs/ delta path covered by the ACTIVE repository-local
+        # authorization is additionally admitted; the historical handoff
+        # allow-list stays fully in force for everything else.
+        uncovered = {p for p in changed - allowed if not _active_authorization_covers(p)}
+        if uncovered:
+            return fail(
+                name,
+                "docs/ changes beyond the handoff and the active authorization: %r"
+                % sorted(uncovered),
+            )
         workflow = subprocess.run(
             ["git", "diff", "origin/main", "--", ".github/"],
             capture_output=True, text=True, cwd=REPO,
         )
-        if "management_selftest.py" not in workflow.stdout:
+        workflow_path = os.path.join(REPO, ".github", "workflows", "spec-check.yml")
+        with open(workflow_path, "r", encoding="utf-8") as handle:
+            committed_workflow = handle.read()
+        if "python3 tools/management_selftest.py" not in committed_workflow:
+            return fail(name, "the management CI step is missing from the committed workflow")
+        # a PR that does not touch .github/ preserves the step trivially; the
+        # delta-inclusion requirement applies only when .github IS in the delta
+        if workflow.stdout.strip() and "management_selftest.py" not in workflow.stdout:
             return fail(name, ".github delta does not include the management CI step")
         return ok(
             name,
-            "spec/ byte-identical to origin/main; docs/ = the W030 handoff; CI step additive",
+            "spec/ byte-identical to origin/main; docs/ = the W030 handoff or "
+            "active-authorization coverage; management CI step present in the "
+            "committed workflow (delta additive when .github/ is in the delta)",
         )
     # Degraded mode (no origin/main ref in this checkout): the working
     # tree must still be clean over spec/.

@@ -43,6 +43,19 @@ from typing import Any, List, Optional, Tuple
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+
+def _active_authorization_covers(path: str) -> bool:
+    """Authorization-aware delta-shape consultation (the M001-evidence §4
+    duty for the post-M001 implementation era): a delta path covered by the
+    ACTIVE repository-local authorization (spec/architect/authorizations/,
+    the R7-CORE-001 program child scopes per DEC-0101) is sanctioned.
+    Fail-closed: no unique active authorization covers nothing."""
+    try:
+        from authorization_provenance import covers
+        return covers(path)
+    except Exception:
+        return False
+
 from conformance import (  # noqa: E402
     API_SURFACE,
     ConformanceVector,
@@ -1295,31 +1308,62 @@ def case_45_frozen_spec_intact(results: List[Result]) -> None:
         return
     allowed_docs = {"docs/WORK-032-handoff.md"}
     docs_changed = {c for c in changed if c.startswith("docs/")}
-    if not docs_changed <= allowed_docs:
+    # authorization-aware docs admission (the f261bb8 upgrade-case_36
+    # class): a docs/ delta path covered by the ACTIVE repository-local
+    # authorization is additionally admitted; the historical handoff
+    # allow-list stays fully in force for everything else.
+    uncovered_docs = {
+        p for p in docs_changed - allowed_docs
+        if not _active_authorization_covers(p)
+    }
+    if uncovered_docs:
         results.append(fail(
-            name, "docs/ changes beyond the handoff: %s" % docs_changed
+            name,
+            "docs/ changes beyond the handoff and the active authorization: %s"
+            % sorted(uncovered_docs),
         ))
         return
     workflow_delta = subprocess.run(
         ["git", "diff", "origin/main", "--", ".github/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
-    if "conformance_selftest.py" not in workflow_delta.stdout:
+    # CI wiring via committed content (the f261bb8 scale-case_37 class):
+    # the committed workflow must contain the step; the delta-inclusion
+    # requirement applies only when .github/ is actually in the delta.
+    if "python3 tools/conformance_selftest.py" not in workflow:
+        results.append(fail(
+            name, "the conformance CI step is missing from the committed workflow"
+        ))
+        return
+    if workflow_delta.stdout.strip() and "conformance_selftest.py" not in workflow_delta.stdout:
         results.append(fail(
             name, ".github delta does not include the conformance CI step"
         ))
         return
     tools_changed = {c for c in changed if c.startswith("tools/")}
     allowed_tools = {"tools/conformance_selftest.py"}
-    if not tools_changed <= allowed_tools:
+    # authorization-aware tools admission (the f261bb8 delta-shape
+    # consultation class): a tools/ delta path covered by the ACTIVE
+    # repository-local authorization is additionally admitted; the
+    # historical battery-only scope stays fully in force for everything
+    # else.
+    uncovered_tools = {
+        p for p in tools_changed - allowed_tools
+        if not _active_authorization_covers(p)
+    }
+    if uncovered_tools:
         results.append(fail(
-            name, "tools/ changes beyond the battery: %s" % tools_changed
+            name,
+            "tools/ changes beyond the battery and the active authorization: %s"
+            % sorted(uncovered_tools),
         ))
         return
     results.append(ok(
         name,
-        "spec/ byte-identical to origin/main; docs/ = the W032 handoff; "
-        "CI step additive; tools/ = the battery only",
+        "spec/ byte-identical to origin/main; docs/ = the W032 handoff or "
+        "active-authorization coverage; conformance CI step present in the "
+        "committed workflow (delta additive when .github/ is in the delta); "
+        "tools/ = the battery or active-authorization coverage",
     ))
 
 
@@ -2158,6 +2202,13 @@ def case_62_w055_pr_delta_scope(results: List[Result]) -> None:
         return
     problems = []
     for path in sorted(delta):
+        # authorization-aware delta-shape consultation (the f261bb8
+        # 13-battery repair class): a delta path covered by the ACTIVE
+        # repository-local authorization is sanctioned; the historical
+        # W055-era scope prefixes stay fully in force for everything
+        # else; fail-closed without a unique active authorization.
+        if _active_authorization_covers(path):
+            continue
         if not any(
             path == surface or path.startswith(surface)
             for surface in _W055_AUTHORIZED_PATHS
@@ -2177,9 +2228,10 @@ def case_62_w055_pr_delta_scope(results: List[Result]) -> None:
         return
     results.append(ok(
         name,
-        "the %d-path delta lies exactly within the authorized WORK-055 "
-        "scope (conformance/, tools/conformance_selftest.py, "
-        "docs/WORK-055-*.md) and the authorized baseline %s is an "
+        "the %d-path delta lies within the authorized WORK-055 scope "
+        "(conformance/, tools/conformance_selftest.py, "
+        "docs/WORK-055-*.md) or the ACTIVE repository-local "
+        "authorization, and the authorized baseline %s is an "
         "ancestor of HEAD" % (len(delta), _W055_BASELINE[:12]),
     ))
 
