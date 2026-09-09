@@ -19,9 +19,14 @@ DEC-0101 R7 program-authorization model:
 - every implementation file covered by its declared scope (exact path or
   prefix), including the direct and program (current-child) authorization
   models;
-- the authorization baseline must equal the branch execution-state snapshot
+- the authorization baseline must equal the branch execution-state snapshot,
   or precede it through governance-only commits only (the standing
-  reconciliation convention, same range logic as fresh_session_check);
+  reconciliation convention, same range logic as fresh_session_check), or —
+  the bounded program-authorization generalization (DEC-0101, recorded by the
+  DEC-0102-era repair) — precede it through a range whose aggregate delta is
+  exclusively control-plane files or files covered by the active
+  authorization's own declared scope (authorized child deliveries plus the
+  governance transitions between them); fail closed otherwise;
 - the authorization file must be inherited byte-identically from origin/main
   (no self-authorization, no in-PR modification).
 
@@ -148,6 +153,47 @@ def _governance_only_range(persisted: str, actual: str) -> tuple[bool, Optional[
     return _range(persisted, actual)
 
 
+def _authorized_program_range(
+    persisted: str, actual: str, record: dict
+) -> tuple[bool, Optional[str]]:
+    """The bounded program-authorization baseline generalization.
+
+    True when the AGGREGATE delta of (persisted..actual] is exclusively
+    control-plane files or files covered by the active authorization's own
+    declared scope - i.e. the range contains authorized child deliveries
+    (implementation files inside the declared scope) plus the governance
+    transitions between them, and nothing else. This is the honest range
+    semantics for a program authorization whose children are progressively
+    delivered and accepted: its issuance baseline (frozen provenance, never
+    rewritten) legitimately precedes the reconciled snapshot by the exact
+    deliveries it authorized. Fail closed on any path outside both classes.
+    """
+    if not re.fullmatch(r"[0-9a-f]{40}", str(persisted)) or not re.fullmatch(
+        r"[0-9a-f]{40}", str(actual)
+    ):
+        return False, "invalid range endpoints"
+    ancestor = _git(["merge-base", "--is-ancestor", persisted, actual])
+    if ancestor is None:
+        return False, "cannot inspect the baseline range; fail closed"
+    diff = _git(["diff", "--name-only", "%s..%s" % (persisted, actual)])
+    if diff is None:
+        return False, "cannot diff the baseline range; fail closed"
+    scope = record.get("scope") or []
+    outside = [
+        p
+        for p in (line.strip() for line in diff.splitlines())
+        if p
+        and not _is_control(p)
+        and not any(p == s or p.startswith(s) for s in scope)
+    ]
+    if outside:
+        return False, (
+            "baseline range contains paths outside both the control plane and the "
+            "active authorization's declared scope: %s" % ", ".join(outside[:5])
+        )
+    return True, None
+
+
 def check() -> int:
     problems: list[str] = []
 
@@ -213,9 +259,16 @@ def check() -> int:
         elif baseline != pin:
             ok, problem = _governance_only_range(baseline, pin)
             if not ok and problem is not None:
+                # the bounded program-authorization generalization: the range
+                # may also consist of authorized child deliveries (files
+                # inside the active authorization's own declared scope) plus
+                # the governance transitions between them
+                ok, problem = _authorized_program_range(baseline, pin, record)
+            if not ok and problem is not None:
                 problems.append(
                     "%s: authorization baseline %s is not the reconciled main snapshot "
-                    "%s and does not precede it through governance-only commits (%s)"
+                    "%s and does not precede it through governance-only commits or "
+                    "scope-covered program deliveries (%s)"
                     % (auth_rel, baseline, pin, problem)
                 )
         # the active authorization must bind the execution-state work item
