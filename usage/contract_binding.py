@@ -70,12 +70,12 @@ CONTRACT_DELIVERY_ELIGIBLE_STATES: Tuple[str, ...] = (
 )
 
 #: The canonical contract states where usage metering is
-#: explicitly rejected: the pre-execution reservation phase
-#: (intent, offer selection, contract activation without
-#: execution).  ``CONTRACT_ACTIVE`` is the canonical
-#: reservation/lease state — reservation state NEVER creates
-#: usage (the frozen W052 ``RESERVATION_NOT_USAGE`` separation,
-#: re-based onto the canonical vocabulary).
+#: explicitly rejected: the pre-execution phase (intent, offer
+#: selection, contract activation without execution).
+#: ``CONTRACT_ACTIVE`` is the canonical reservation/lease state
+#: (the W051 RESERVATION_HELD counterpart — the explicit
+#: ``RESERVATION_NOT_USAGE`` fork); INTENT / OFFER_SELECTED are
+#: the generic pre-delivery phases (``TRANSACTION_NOT_DELIVERING``).
 CONTRACT_RESERVATION_PHASE_STATES: Tuple[str, ...] = (
     "INTENT",
     "OFFER_SELECTED",
@@ -133,10 +133,13 @@ class ContractCommercialSnapshot(CommercialTransactionSnapshot):
         return self.commercial_state in CONTRACT_DELIVERY_ELIGIBLE_STATES
 
     def is_reservation_phase(self) -> bool:
-        """The canonical reservation/lease phase: the contract is
-        active but execution has not begun — reservation state
-        never creates usage."""
-        return self.commercial_state in CONTRACT_RESERVATION_PHASE_STATES
+        """The canonical reservation/lease state: the contract is
+        ACTIVE but execution has not begun -- the canonical
+        counterpart of the W051 RESERVATION_HELD fork (reservation
+        state never creates usage).  INTENT / OFFER_SELECTED are
+        generic pre-delivery phases (TRANSACTION_NOT_DELIVERING),
+        exactly like their W051 counterparts."""
+        return self.commercial_state == "CONTRACT_ACTIVE"
 
     def contract_id(self) -> str:
         """The canonical contract citation (the account key)."""

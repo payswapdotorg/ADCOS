@@ -172,11 +172,35 @@ from commercial import (  # noqa: E402
     CommercialEvent,
     CommercialReasonCode,
     CommercialState,
+    CONTRACT_STATE_FLOOR_BY_ACTION,
+    CONTRACT_STATE_RANK,
+    ContractCitation,
+    ContractReferenceIndex,
     LIFECYCLE_TRANSITIONS,
     Reference,
     ReferenceFamily,
     ReferenceIndex,
+    contract_state_rank,
     transition_is_legal,
+    validate_contract_binding,
+)
+import commercial  # noqa: E402
+from commercial import MemoryCommercialStore  # noqa: E402
+from contracts import (  # noqa: E402
+    CONTRACT_STATES,
+    ActivateContract,
+    BeneficiaryScope,
+    ConnectivityPrincipal,
+    ContractStore,
+    CreateContract,
+    HardConstraint,
+    OpaqueReference,
+    Provenance,
+    RecordDelivery,
+    RecordExecutionActivation,
+    SelectOffers,
+    TerminationRules,
+    ValidityInterval,
 )
 from commercial.digest import (
     command_ledger_digest,
@@ -225,6 +249,8 @@ _EXPECTED_API = sorted([
     "ACTION_REQUIRED_STATE",
     "ACTION_TARGET_STATE",
     "AppendOnlyCommercialJournal",
+    "CONTRACT_STATE_FLOOR_BY_ACTION",
+    "CONTRACT_STATE_RANK",
     "CommercialAction",
     "CommercialCommand",
     "CommercialCore",
@@ -234,6 +260,8 @@ _EXPECTED_API = sorted([
     "CommercialState",
     "CommercialStore",
     "CommercialTransaction",
+    "ContractCitation",
+    "ContractReferenceIndex",
     "CommandOutcome",
     "CommandStatus",
     "FileCommercialStore",
@@ -255,6 +283,7 @@ _EXPECTED_API = sorted([
     "derive_transaction_id",
     "digest_of",
     "event_list_digest",
+    "contract_state_rank",
     "fold_state",
     "journal_bytes_for",
     "record_list_digest",
@@ -266,6 +295,8 @@ _EXPECTED_API = sorted([
     "transition_is_legal",
     "validate_cancel_state",
     "validate_command_against_transaction",
+    "validate_contract_binding",
+    "validate_contract_id",
     "validate_expire_due",
     "validate_family_rules",
     "validate_non_delivery_state",
@@ -318,11 +349,16 @@ _FORBIDDEN_TOKENS = (
 
 #: The sanctioned absolute-import allowlist for the commercial
 #: family (stdlib value types + the accepted seams: WORK-003
-#: canonicalization and the WORK-033 clock seam; the reference
-#: index is injected, so NO authority family is importable).
+#: canonicalization and the WORK-033 clock seam; plus, since the
+#: M009 re-bind, the canonical contracts domain -- consumed
+#: through its PUBLIC surface for the frozen state-vocabulary
+#: citation and the content-derived id grammar, never
+#: instantiated or mutated by the commercial family; every other
+#: authority family stays injected, not importable).
 _ALLOWED_IMPORT_PREFIXES = (
     "protocol.",
     "agent.clock",
+    "contracts",
 )
 _ALLOWED_IMPORT_MODULES = {
     "__future__",
@@ -333,6 +369,7 @@ _ALLOWED_IMPORT_MODULES = {
     "typing",
     "protocol",
     "agent.clock",
+    "contracts",
 }
 
 
@@ -971,6 +1008,9 @@ def case_01_frozen_vocabularies(results: List[Result]) -> None:
         "payment-not-settlement", "reference-unknown",
         "reference-family-invalid", "event-invalid", "journal-corrupt",
         "store-failed", "instant-invalid",
+        # the M009 contract-binding codes (LOCK-113; additive,
+        # disclosed -- no historical code removed)
+        "contract-unknown", "contract-state-invalid",
     ]):
         problems.append("reason vocabulary drifted")
     if sorted(ReferenceFamily.values()) != sorted([
@@ -3324,6 +3364,479 @@ def case_38_fresh_world_independence(results: List[Result]) -> None:
     ))
 
 
+
+
+# ---------------------------------------------------------------------------
+# M009 contract-binding cases (the LOCK-113 re-bind: the bound
+# commercial core cites the canonical contract at every step)
+# ---------------------------------------------------------------------------
+
+
+def _m009_contract_store(*, through: str = "settled"):
+    """Drive one REAL canonical ConnectivityContract through the
+    M002 public surface to the requested walk stage (public
+    reads only)."""
+    store = ContractStore()
+    created = store.submit(
+        CreateContract(
+            principal=ConnectivityPrincipal(
+                principal_kind="APPLICATION", principal_ref="app:m009-comm"
+            ),
+            beneficiaries=(
+                BeneficiaryScope(
+                    beneficiary_kind="DEVICE", beneficiary_ref="dev:m009-c1"
+                ),
+            ),
+            requirements=(
+                OpaqueReference(
+                    ref_kind="intent-requirements",
+                    value="intent:m009-comm-1",
+                    provenance=Provenance(issuer="arch:m009"),
+                ),
+            ),
+            hard_constraints=(
+                HardConstraint(
+                    kind="latency-bound",
+                    params={"max_ms": 150},
+                    provenance=Provenance(issuer="prov:netpro"),
+                ),
+            ),
+            validity=ValidityInterval(
+                not_before="2026-09-01T00:00:00Z",
+                not_after="2026-10-01T00:00:00Z",
+            ),
+            service_properties=(
+                OpaqueReference(
+                    ref_kind="service-property",
+                    value="prop:m009-c1",
+                    provenance=Provenance(issuer="prov:netpro"),
+                ),
+            ),
+            usage_pricing_terms=OpaqueReference(
+                ref_kind="usage-pricing-terms",
+                value="terms:m009-c1",
+                provenance=Provenance(issuer="comm:ops"),
+            ),
+            assurance_obligations=(
+                OpaqueReference(
+                    ref_kind="assurance-obligation",
+                    value="oblig:m009-c1",
+                    provenance=Provenance(issuer="assur:m005"),
+                ),
+            ),
+            execution_scope=(
+                OpaqueReference(
+                    ref_kind="execution-scope",
+                    value="scope:m009-c1",
+                    provenance=Provenance(issuer="arch:m009"),
+                ),
+            ),
+            termination=TerminationRules(
+                conditions=("principal-requested",),
+                compensation=OpaqueReference(
+                    ref_kind="compensation",
+                    value="comp:m009-c1",
+                    provenance=Provenance(issuer="comm:ops"),
+                ),
+            ),
+            provenance=Provenance(
+                issuer="arch:m009", decision_refs=("dec:m009-comm",)
+            ),
+        ),
+        recorded_at="2026-09-01T11:00:00Z",
+    )
+    cid = created.contract.contract_id
+    store.submit(
+        SelectOffers(
+            offers=(
+                OpaqueReference(
+                    ref_kind="offer",
+                    value="offer:m009-c1",
+                    provenance=Provenance(issuer="prov:netpro"),
+                ),
+            )
+        ),
+        recorded_at="2026-09-01T11:05:00Z", contract_id=cid,
+    )
+    store.submit(
+        ActivateContract(
+            activated_at="2026-09-01T11:10:00Z",
+            signature_refs=(
+                OpaqueReference(
+                    ref_kind="signature",
+                    value="sig:m009-c1",
+                    provenance=Provenance(issuer="arch:m009"),
+                ),
+            ),
+        ),
+        recorded_at="2026-09-01T11:10:00Z", contract_id=cid,
+    )
+    store.submit(
+        RecordExecutionActivation(recorded_at="2026-09-01T11:15:00Z"),
+        recorded_at="2026-09-01T11:15:00Z", contract_id=cid,
+    )
+    store.submit(
+        RecordDelivery(recorded_at="2026-09-01T11:20:00Z"),
+        recorded_at="2026-09-01T11:20:00Z", contract_id=cid,
+    )
+    # every contract-driven walk reaching past DELIVERY needs the
+    # assurance + usage-final + settlement chain; the commercial
+    # battery's golden scenario walks to SETTLED, so the default
+    # stage is settled (the caller submits the remaining commands)
+    from contracts import (
+        RecordAssurance,
+        RecordSettled,
+        RecordSettlementPending,
+        RecordUsageFinal,
+    )
+
+    store.submit(
+        RecordAssurance(
+            recorded_at="2026-09-01T11:25:00Z",
+            assurance_state="compliant",
+            evidence_refs=(
+                OpaqueReference(
+                    ref_kind="decision",
+                    value="dec:assur-m009-c1",
+                    provenance=Provenance(issuer="assur:m005"),
+                ),
+            ),
+        ),
+        recorded_at="2026-09-01T11:25:00Z", contract_id=cid,
+    )
+    store.submit(
+        RecordUsageFinal(recorded_at="2026-09-01T11:30:00Z"),
+        recorded_at="2026-09-01T11:30:00Z", contract_id=cid,
+    )
+    store.submit(
+        RecordSettlementPending(recorded_at="2026-09-01T11:35:00Z"),
+        recorded_at="2026-09-01T11:35:00Z", contract_id=cid,
+    )
+    store.submit(
+        RecordSettled(recorded_at="2026-09-01T11:40:00Z"),
+        recorded_at="2026-09-01T11:40:00Z", contract_id=cid,
+    )
+    return store, cid
+
+
+def case_39_contract_binding_gate(results: List[Result]) -> None:
+    name = "case_39_contract_binding_gate"
+    problems: List[str] = []
+    # the citation model: canonical id + canonical state, validated
+    store, cid = _m009_contract_store()
+    citation = ContractCitation(
+        contract_id=cid,
+        contract_state=store.contract(cid).state,
+        provenance="contract-store-public-read",
+    )
+    if citation.rank() != CONTRACT_STATE_RANK["SETTLED"]:
+        problems.append("settled rank")
+    # fail-closed: a non-contract id
+    problem = _expect_commercial_error(
+        name, CommercialReasonCode.INVALID_INPUT,
+        lambda: ContractCitation(
+            contract_id="tx-1", contract_state="INTENT",
+            provenance="p",
+        ),
+    )
+    if problem:
+        problems.append("a non-canonical id accepted: %s" % problem)
+    # fail-closed: a non-canonical state
+    problem = _expect_commercial_error(
+        name, CommercialReasonCode.INVALID_INPUT,
+        lambda: ContractCitation(
+            contract_id=cid, contract_state="USAGE_ACCRUING",
+            provenance="p",
+        ),
+    )
+    if problem:
+        problems.append("a W051 state accepted: %s" % problem)
+    # the floor table covers every action
+    if sorted(CONTRACT_STATE_FLOOR_BY_ACTION) != sorted(
+        CommercialAction.values()
+    ):
+        problems.append("the floor table does not cover every action")
+    # the floor gate: a contract behind the floor fails closed
+    lagging = ContractCitation(
+        contract_id=cid, contract_state="OFFER_SELECTED",
+        provenance="contract-store-public-read",
+    )
+    problem = _expect_commercial_error(
+        name, CommercialReasonCode.CONTRACT_STATE_INVALID,
+        lambda: validate_contract_binding(
+            CommercialAction.START_DELIVERY, lagging
+        ),
+    )
+    if problem:
+        problems.append("start_delivery ahead of contract: %s" % problem)
+    # a terminal contract admits no forward action
+    terminal = ContractCitation(
+        contract_id=cid, contract_state="TERMINATED",
+        provenance="contract-store-public-read",
+    )
+    problem = _expect_commercial_error(
+        name, CommercialReasonCode.CONTRACT_STATE_INVALID,
+        lambda: validate_contract_binding(
+            CommercialAction.ACCRUE_USAGE, terminal
+        ),
+    )
+    if problem:
+        problems.append("terminal contract forward action: %s" % problem)
+    # compensating actions carry no floor (citation-known only)
+    try:
+        validate_contract_binding(CommercialAction.CANCEL, citation)
+    except CommercialError as error:
+        problems.append("compensating floor: %s" % error.reason)
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    results.append(
+        ok(name, "the binding gate: canonical citations validated; the "
+                 "commercial walk never runs ahead of the contract")
+    )
+
+
+def case_40_contract_bound_core(results: List[Result]) -> None:
+    name = "case_40_contract_bound_core"
+    # the bound golden run: every step cites the contract; the
+    # contract is walked FIRST through the M002 public surface
+    store, cid = _m009_contract_store()
+    runtime, peer, session_id, manager, integrator, shared = _world()
+    references = _references(manager, integrator, session_id)
+    core = CommercialCore(
+        store=MemoryCommercialStore(),
+        clock=StepClock(_CT0, _CSTEP),
+        references=references,
+        contract_references=ContractReferenceIndex(
+            [
+                ContractCitation(
+                    contract_id=cid,
+                    contract_state=store.contract(cid).state,
+                    provenance="contract-store-public-read",
+                )
+            ]
+        ),
+    )
+    out = core.submit_intent(
+        command_id="m009-01",
+        actor="buyer-agent",
+        source="developer-api",
+        intent={
+            "buyer": "buyer-1", "want": "connectivity", "region": "gh",
+            "contract_id": cid,
+        },
+    )
+    tx = out.transaction_id
+    if core.transaction(tx).contract_id != cid:
+        results.append(fail(name, "the projection is not contract-bound"))
+        return
+    # fail-closed: submit_intent without the citation
+    problems = _expect_commercial_error(
+        name, CommercialReasonCode.CONTRACT_UNKNOWN,
+        core.submit_intent,
+        command_id="m009-02", actor="a", source="s",
+        intent={"buyer": "b-2"},
+    )
+    if problems:
+        results.append(fail(name, problems))
+        return
+    # fail-closed: a citation not resolvable in the index
+    problems = _expect_commercial_error(
+        name, CommercialReasonCode.CONTRACT_UNKNOWN,
+        core.submit_intent,
+        command_id="m009-03", actor="a", source="s",
+        intent={"buyer": "b-3", "contract_id": "sha256:" + "0" * 64},
+    )
+    if problems:
+        results.append(fail(name, problems))
+        return
+    # the full bound walk: every forward action's floor satisfied
+    # by the settled contract
+    core.select_offer(
+        command_id="m009-04", transaction_id=tx, actor="buyer-agent",
+        source="developer-api",
+        offer={"offer_id": "offer-1", "provider": "provider-1",
+               "unit": "GB", "price": "10"},
+    )
+    core.hold_reservation(
+        command_id="m009-05", transaction_id=tx, actor="platform",
+        source="reservation-service", expires_at=_DEADLINE,
+    )
+    core.authorize_session(
+        command_id="m009-06", transaction_id=tx, actor="platform",
+        source="session-service",
+        session_ref=_session_ref(references),
+    )
+    core.activate_path(
+        command_id="m009-07", transaction_id=tx, actor="platform",
+        source="path-service", path_ref=_path_ref(references),
+    )
+    delivery = sorted(_delivery_refs(references))
+    core.start_delivery(
+        command_id="m009-08", transaction_id=tx, actor="platform",
+        source="delivery-service", evidence_refs=(delivery[0],),
+    )
+    core.accrue_usage(
+        command_id="m009-09", transaction_id=tx, actor="platform",
+        source="usage-service", usage_refs=(_usage_ref(references),),
+    )
+    core.complete_delivery(
+        command_id="m009-10", transaction_id=tx, actor="platform",
+        source="delivery-service", evidence_refs=(delivery[-1],),
+    )
+    core.finalize_billable(
+        command_id="m009-11", transaction_id=tx, actor="platform",
+        source="billing-service",
+    )
+    core.initiate_settlement(
+        command_id="m009-12", transaction_id=tx, actor="platform",
+        source="settlement-service", payment_refs=(_payment_ref(),),
+    )
+    out = core.settle(
+        command_id="m009-13", transaction_id=tx, actor="platform",
+        source="settlement-service", settlement_refs=(_settlement_ref(),),
+    )
+    if out.to_state != "SETTLED":
+        results.append(fail(name, "the bound walk did not settle"))
+        return
+    if core.transaction(tx).contract_id != cid:
+        results.append(fail(name, "the binding was lost through the walk"))
+        return
+    # the journal round-trip preserves the binding (fold + replay)
+    recovered = CommercialCore.load(
+        store=FrozenBytesStore(journal_bytes_for(core.journal_records())),
+        clock=StepClock(_FRESH, _CSTEP),
+        references=references,
+        contract_references=ContractReferenceIndex(
+            [
+                ContractCitation(
+                    contract_id=cid,
+                    contract_state=store.contract(cid).state,
+                    provenance="contract-store-public-read",
+                )
+            ]
+        ),
+    )
+    if recovered.transaction(tx).contract_id != cid:
+        results.append(fail(name, "replay lost the binding"))
+        return
+    results.append(
+        ok(name, "the bound core: contract citations at every step; the "
+                 "full walk settles with the binding preserved through "
+                 "replay")
+    )
+
+
+def case_41_bound_mode_gate_semantics(results: List[Result]) -> None:
+    name = "case_41_bound_mode_gate_semantics"
+    # the floor gate through the real admission path: a contract
+    # at OFFER_SELECTED refuses hold_reservation
+    store, cid = _m009_contract_store()
+    runtime, peer, session_id, manager, integrator, shared = _world()
+    references = _references(manager, integrator, session_id)
+    core = CommercialCore(
+        store=MemoryCommercialStore(),
+        clock=StepClock(_CT0, _CSTEP),
+        references=references,
+        contract_references=ContractReferenceIndex(
+            [
+                ContractCitation(
+                    contract_id=cid,
+                    contract_state="OFFER_SELECTED",
+                    provenance="contract-store-public-read",
+                )
+            ]
+        ),
+    )
+    out = core.submit_intent(
+        command_id="m009-21",
+        actor="buyer-agent",
+        source="developer-api",
+        intent={
+            "buyer": "buyer-1", "want": "connectivity", "region": "gh",
+            "contract_id": cid,
+        },
+    )
+    tx = out.transaction_id
+    core.select_offer(
+        command_id="m009-22", transaction_id=tx, actor="buyer-agent",
+        source="developer-api",
+        offer={"offer_id": "offer-1", "provider": "provider-1",
+               "unit": "GB", "price": "10"},
+    )
+    problems = _expect_commercial_error(
+        name, CommercialReasonCode.CONTRACT_STATE_INVALID,
+        core.hold_reservation,
+        command_id="m009-23", transaction_id=tx, actor="platform",
+        source="reservation-service", expires_at=_DEADLINE,
+    )
+    if problems:
+        results.append(fail(name, problems))
+        return
+    # zero journal growth on the rejected floor (fail closed, no
+    # phantom state)
+    before = core.journal_digest()
+    try:
+        core.hold_reservation(
+            command_id="m009-24", transaction_id=tx, actor="platform",
+            source="reservation-service", expires_at=_DEADLINE,
+        )
+    except CommercialError:
+        pass
+    if core.journal_digest() != before:
+        results.append(fail(name, "the rejected floor grew the journal"))
+        return
+    # the UNBOUND legacy mode still constructs (the accepted M003
+    # marketplace composition and the M006 composition-track
+    # consumers; their own tracks own the later re-bases)
+    legacy = CommercialCore(
+        store=MemoryCommercialStore(),
+        clock=StepClock(_T0, _CSTEP),
+        references=references,
+    )
+    out = legacy.submit_intent(
+        command_id="m009-25", actor="buyer-agent", source="developer-api",
+        intent={"buyer": "legacy-1", "want": "connectivity"},
+    )
+    if legacy.transaction(out.transaction_id).contract_id != "":
+        results.append(fail(name, "the legacy mode is not unbound"))
+        return
+    # and a bound core refuses to continue an unbound transaction
+    # (the honest recovery scenario: a legacy journal -- created in
+    # the unbound mode -- loaded into a bound core; any further
+    # command on the unbound transaction fails closed)
+    legacy_journal = journal_bytes_for(legacy.journal_records())
+    recovered_bound = CommercialCore.load(
+        store=FrozenBytesStore(legacy_journal),
+        clock=StepClock(_FRESH, _CSTEP),
+        references=references,
+        contract_references=ContractReferenceIndex(
+            [
+                ContractCitation(
+                    contract_id=cid,
+                    contract_state=store.contract(cid).state,
+                    provenance="contract-store-public-read",
+                )
+            ]
+        ),
+    )
+    problems = _expect_commercial_error(
+        name, CommercialReasonCode.CONTRACT_UNKNOWN,
+        recovered_bound.authorize_session,
+        command_id="m009-26", transaction_id=out.transaction_id,
+        actor="platform", source="session-service",
+        session_ref=_session_ref(references),
+    )
+    if problems:
+        results.append(fail(name, problems))
+        return
+    results.append(
+        ok(name, "floor gate semantics: reservation refused behind the "
+                 "contract; zero phantom state; the legacy unbound mode "
+                 "stays constructible (disclosed compatibility)")
+    )
+
+
 def main() -> int:
     results: List[Result] = []
     for case in (
@@ -3365,6 +3878,9 @@ def main() -> int:
         case_36_out_of_order_events,
         case_37_delivery_immutability,
         case_38_fresh_world_independence,
+        case_39_contract_binding_gate,
+        case_40_contract_bound_core,
+        case_41_bound_mode_gate_semantics,
     ):
         case(results)
     failures = [result for result in results if not result[1]]
