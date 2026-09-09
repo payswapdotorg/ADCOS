@@ -148,6 +148,7 @@ def base_observation(
     source_type: str = SourceType.LOCAL,
     source_context: Optional[dict] = None,
     advertised_capability_references: Tuple[str, ...] = ("capability.core.multipath",),
+    offer_references: Tuple[str, ...] = (),
     observed_endpoints: Optional[Tuple[dict, ...]] = None,
 ) -> DiscoveryObservation:
     if observed_endpoints is None:
@@ -161,6 +162,7 @@ def base_observation(
         freshness_until=freshness_until,
         sequence=sequence,
         source_type=source_type,
+        offer_references=offer_references,
         source_context=source_context,
         advertised_capability_references=advertised_capability_references,
         observed_endpoints=observed_endpoints,
@@ -1449,6 +1451,184 @@ def case_temporal_and_idempotency_matrix(results: List[Tuple[str, bool, str]]) -
 
 
 # ---------------------------------------------------------------------------
+# M003 (R7-CORE-001, DEC-0101): offer discovery, not global topology —
+# the REFACTOR half of the frozen migration classification ("Discovery:
+# REFACTOR → Offer discovery, not global topology"). Disclosed battery
+# evolution per the M002 precedent: the historical cases above are
+# unchanged; the new cases cover the extended observation surface and
+# the offer-sighting projection.
+# ---------------------------------------------------------------------------
+
+
+def case_offer_references_opaque_and_signed(results: List[Tuple[str, bool, str]]) -> None:
+    """M003: observations may carry OPAQUE offer references — preserved
+    verbatim, covered by the signature input, round-tripped through the
+    canonical serialization, and ABSENT from the legacy serialized shape
+    when empty (byte-identity for every pre-M003 producer/consumer)."""
+    service, store, provider, ident_a, ref_a = make_identity()
+    ident_b, _ = make_node(b"TEST-M003-OFFER-node-B", service, provider)
+
+    # legacy observation (no offer references): the serialized shape has
+    # NO offer_references member and the bytes are the frozen legacy shape
+    legacy = signed_observation(
+        store=store, provider=provider, credential=ref_a,
+        observed_node_id=ident_b.node_id.text,
+    )
+    legacy_ok = (
+        "offer_references" not in legacy.to_dict()
+        and b"offer_references" not in observation_to_bytes(legacy)
+        and legacy.offer_references == ()
+    )
+    # offer-carrying observation: member present, signed, round-trips
+    offer_refs = ("sha256:" + "e" * 64, "sha256:" + "f" * 64)
+    with_offers = signed_observation(
+        store=store, provider=provider, credential=ref_a,
+        observed_node_id=ident_b.node_id.text,
+        offer_references=offer_refs,
+    )
+    carrier_ok = "offer_references" in with_offers.to_dict()
+    signed_ok = observation_signature_input(with_offers) != observation_signature_input(
+        signed_observation(
+            store=store, provider=provider, credential=ref_a,
+            observed_node_id=ident_b.node_id.text,
+        )
+    )
+    roundtrip = observation_from_bytes(observation_to_bytes(with_offers))
+    roundtrip_ok = roundtrip.offer_references == offer_refs
+    # opaque preservation: a well-formed-but-unregistered future offer id
+    # (whatever string shape the offers authority defines) survives verbatim
+    future_ref = "sha256:" + "0" * 64
+    future_obs = signed_observation(
+        store=store, provider=provider, credential=ref_a,
+        observed_node_id=ident_b.node_id.text,
+        offer_references=(future_ref,),
+    )
+    future_roundtrip = observation_from_bytes(observation_to_bytes(future_obs))
+    future_ok = future_roundtrip.offer_references == (future_ref,)
+    # the observation_id fingerprint covers the offer references (tamper
+    # evidence): different references -> different fingerprint
+    other = signed_observation(
+        store=store, provider=provider, credential=ref_a,
+        observed_node_id=ident_b.node_id.text,
+        offer_references=("sha256:" + "1" * 64,),
+    )
+    fingerprint_ok = other.observation_id != with_offers.observation_id
+    # malformed offer references fail closed at construction
+    try:
+        DiscoveryObservation(
+            sender_node_id=ident_a.node_id.text,
+            observed_node_id=ident_b.node_id.text,
+            issued_at=NOW_TEXT,
+            freshness_until=FRESH_UNTIL,
+            sequence=1,
+            source_type=SourceType.LOCAL,
+            source_context={},
+            advertised_capability_references=(),
+            offer_references=("",),
+            observed_endpoints=(),
+        )
+        malformed_ok = False
+    except DiscoveryError:
+        malformed_ok = True
+    ok = (
+        legacy_ok and carrier_ok and signed_ok and roundtrip_ok
+        and future_ok and fingerprint_ok and malformed_ok
+    )
+    results.append((
+        "m003-offer-references-opaque-and-signed",
+        ok,
+        "legacy bytes unchanged (no member when empty); offer references "
+        "signed, round-trip verbatim, fingerprint-bound; empty references "
+        "fail closed"
+        if ok else "FAILED: legacy=%s carrier=%s signed=%s roundtrip=%s "
+                   "future=%s fingerprint=%s malformed=%s"
+                   % (legacy_ok, carrier_ok, signed_ok, roundtrip_ok,
+                      future_ok, fingerprint_ok, malformed_ok),
+    ))
+
+
+def case_offer_sightings_projection(results: List[Tuple[str, bool, str]]) -> None:
+    """M003: the offer-discovery projection surfaces OFFER sightings
+    (provider, offer, freshness, provenance) from the merged store —
+    offers, never topology; fresh/stale distinct; provider-scoped;
+    deterministic."""
+    from discovery import active_offer_sightings, offer_sightings, sighted_offer_references
+    from discovery.offer_view import OfferViewError
+
+    service, store, provider, ident_a, ref_a = make_identity()
+    ident_b, _ = make_node(b"TEST-M003-SIGHT-provider-B", service, provider)
+    ident_c, _ = make_node(b"TEST-M003-SIGHT-provider-C", service, provider)
+
+    local = DiscoveryStore()
+    offers_b = ("sha256:" + "e" * 64,)
+    offers_c = ("sha256:" + "c" * 64, "sha256:" + "d" * 64)
+    obs_b = signed_observation(
+        store=store, provider=provider, credential=ref_a,
+        observed_node_id=ident_b.node_id.text,
+        sequence=1, offer_references=offers_b,
+    )
+    obs_c = signed_observation(
+        store=store, provider=provider, credential=ref_a,
+        observed_node_id=ident_c.node_id.text,
+        sequence=1, offer_references=offers_c,
+    )
+    for observation in (obs_b, obs_c):
+        local.merge(observation, now=FRESH_NOW)
+
+    sightings = offer_sightings(local, now=FRESH_NOW)
+    fresh_refs = [s.offer_reference for s in sightings]
+    checks = {
+        "all-sighted": sorted(fresh_refs) == sorted(list(offers_b) + list(offers_c)),
+        "fresh": all(s.sighting_freshness == "fresh" for s in sightings),
+        "provider-scoped": [
+            s.offer_reference for s in offer_sightings(local, now=FRESH_NOW, provider=ident_b.node_id.text)
+        ] == list(offers_b),
+        "active-only": [
+            s.offer_reference for s in active_offer_sightings(local, now=STALE_NOW)
+        ] == [],
+        "stale-audit": all(
+            s.sighting_freshness == "stale"
+            for s in offer_sightings(local, now=STALE_NOW)
+        ),
+        "distinct-refs": sighted_offer_references(local, now=FRESH_NOW)
+        == tuple(sorted(set(list(offers_b) + list(offers_c)))),
+        "provenance-observation": all(
+            s.observation_id in (obs_b.observation_id, obs_c.observation_id)
+            for s in sightings
+        ),
+    }
+    # determinism: repeated projections are identical
+    checks["repeat-stable"] = offer_sightings(local, now=FRESH_NOW) == sightings
+    # sorted by the data model
+    keys = [s.sort_key() for s in sightings]
+    checks["sorted"] = keys == sorted(keys)
+    # no topology material on the sighting record
+    first = sightings[0]
+    checks["topology-free"] = not (
+        {"nodes", "links", "edges", "path", "route", "next_hop"} & set(first.to_dict())
+    )
+    # wrong store type / naive instant fail closed
+    try:
+        offer_sightings("not-a-store", now=FRESH_NOW)  # type: ignore[arg-type]
+        checks["fail-closed-store"] = False
+    except OfferViewError:
+        checks["fail-closed-store"] = True
+    try:
+        offer_sightings(local, now=datetime(2030, 1, 15))  # naive
+        checks["fail-closed-naive"] = False
+    except OfferViewError:
+        checks["fail-closed-naive"] = True
+    ok = all(checks.values())
+    results.append((
+        "m003-offer-sightings-projection",
+        ok,
+        "sightings carry offers+provenance only; fresh/stale distinct; "
+        "provider-scoped; sorted, repeat-stable; wrong inputs fail closed"
+        if ok else "FAILED: %s" % [k for k, v in checks.items() if not v],
+    ))
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -1481,6 +1661,9 @@ def main() -> int:
     case_deterministic_repeat(results)
     case_envelope_roundtrip(results)
     case_temporal_and_idempotency_matrix(results)
+    # M003 (R7-CORE-001, DEC-0101): offer discovery, not global topology
+    case_offer_references_opaque_and_signed(results)
+    case_offer_sightings_projection(results)
 
     print("ADCOS discovery self-test")
     print("=" * 72)

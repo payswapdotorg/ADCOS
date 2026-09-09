@@ -346,6 +346,14 @@ _ALLOWED_IMPORT_MODULES = {
     "networkpath.errors",
     "networkpath.lifecycle",
     "payment.capabilities",
+    # M003 (R7-CORE-001, DEC-0101) — the Architecture 1.1 offer-projection
+    # bridge (``offer_bridge.py``, the "marketplace: harvest + refactor"
+    # classification): the 1.1 canonical domains are sanctioned
+    # composition TARGETS for the bridge module (offers consumes contracts
+    # as its canonical authority; the bridge consumes offers). Disclosed
+    # battery evolution per the M002 precedent — everything else unchanged.
+    "offers",
+    "contracts",
 }
 
 _FORBIDDEN_IMPORT_MODULES = {
@@ -3654,6 +3662,217 @@ def case_46_missing_proximity_is_not_best_case(results: List[Result]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# M003 (R7-CORE-001, DEC-0101): the W047 -> Architecture 1.1 offer
+# projection bridge (the marketplace harvest surface; disclosed battery
+# evolution per the M002 precedent — the historical cases above are
+# unchanged).
+# ---------------------------------------------------------------------------
+
+
+_M003_PROVIDER_NODE_ID = (
+    "adcos:node:identity.sha256-hmac-dev.v1:" + "1" * 64
+)
+_M003_ADVERTISEMENT_ID = "sha256:" + "a" * 64
+
+
+def case_47_offer_projection_bridge(results: List[Result]) -> None:
+    """M003: the projection maps a W047 listing onto the 1.1 offer record
+    faithfully — identity, terms, boundary, explicit bounded commitments,
+    provenance — deterministically, with telemetry never projected."""
+    from marketplace.offer_bridge import project_listing
+    from offers import evaluate_offer_status
+
+    listing = _listing(
+        offer_id="w047-m003-77", provider_id="provider-1",
+        interface_name="wlan0", link_kind="wifi", price_minor=1200,
+        schema_version=2,
+    )
+    offer = project_listing(
+        listing,
+        provider_node_id=_M003_PROVIDER_NODE_ID,
+        advertisement_id=_M003_ADVERTISEMENT_ID,
+        issuer="provider:netpro",
+    )
+    problems: List[str] = []
+    if offer.provider != _M003_PROVIDER_NODE_ID:
+        problems.append("provider NodeID not carried")
+    if offer.provider_offer_key != "w047-m003-77" or offer.schema_version != 2:
+        problems.append("listing identity mapping drifted")
+    if (offer.pricing.currency, offer.pricing.price_minor,
+            offer.pricing.price_exponent, offer.pricing.billing_mode) != (
+            "USD", 1200, 2, "per-megabyte"):
+        problems.append("commercial terms mapping drifted")
+    if offer.service_boundaries[0].jurisdiction != "gh":
+        problems.append("jurisdiction mapping drifted")
+    if offer.service_boundaries[0].geography_refs != (
+            listing.coverage[0].cell_id,):
+        problems.append("coverage cells did not project as opaque geography refs")
+    kinds = [commitment.kind for commitment in offer.commitments]
+    if kinds != [
+        "latency-bound-ms",
+        "throughput-floor-kbps",
+        "availability-floor-nine",
+        "capacity-floor-kbps",
+    ]:
+        problems.append("commitment mapping drifted: %s" % kinds)
+    if offer.commitments[0].params != {"max_ms": 40}:
+        problems.append("commitment params drifted")
+    # commitments are bounded: windows inside the projected validity
+    for commitment in offer.commitments:
+        if commitment.window.not_before < offer.validity.not_before or \
+                commitment.window.not_after > offer.validity.not_after:
+            problems.append("unbounded commitment window")
+            break
+    # LOCK-118: provenance carried
+    if offer.provenance is None or offer.provenance.issuer != "provider:netpro":
+        problems.append("provenance lost in projection")
+    if offer.pricing.provenance is None or offer.commitments[0].provenance is None:
+        problems.append("member provenance lost")
+    # telemetry never projects (advertisement is not observation)
+    if offer.to_dict().get("quality_observations"):
+        problems.append("telemetry projected")
+    # determinism
+    again = project_listing(
+        listing,
+        provider_node_id=_M003_PROVIDER_NODE_ID,
+        advertisement_id=_M003_ADVERTISEMENT_ID,
+        issuer="provider:netpro",
+    )
+    if again.offer_id != offer.offer_id:
+        problems.append("projection not deterministic")
+    # the projected record integrates with the 1.1 exchange
+    from offers import OfferExchange
+    from offers import build_advertisement, AdvertisementEntry
+    from contracts import Provenance, ValidityInterval
+
+    advertisement = build_advertisement(
+        provider=_M003_PROVIDER_NODE_ID,
+        entries=(AdvertisementEntry(
+            capability_id="capability.core.multipath", schema_version="1.2",
+            statement_digest="sha256:" + "a" * 64, classification="known",
+        ),),
+        validity=ValidityInterval(
+            not_before="2026-01-01T00:00:00Z", not_after="2027-01-01T00:00:00Z",
+        ),
+        provenance=Provenance(issuer="provider:netpro"),
+    )
+    exchange = OfferExchange()
+    exchange.register_advertisement(advertisement)
+    registrable = project_listing(
+        listing,
+        provider_node_id=_M003_PROVIDER_NODE_ID,
+        advertisement_id=advertisement.advertisement_id,
+        issuer="provider:netpro",
+    )
+    exchange.register_offer(registrable)
+    if len(exchange.offers(provider=_M003_PROVIDER_NODE_ID)) != 1:
+        problems.append("projected listing did not register in the exchange")
+    # record-level status integrates (the projected window is live at the
+    # 2026 fixture instants)
+    if evaluate_offer_status(registrable, "2026-06-01T00:00:00Z") != "advertised":
+        problems.append("projected offer status drifted")
+    if problems:
+        results.append(fail("case_47_offer_projection_bridge", "; ".join(problems[:4])))
+        return
+    results.append(ok(
+        "case_47_offer_projection_bridge",
+        "W047 listing -> 1.1 offer: identity/terms/commitments/boundary/provenance "
+        "mapped; bounded commitments; telemetry never projects; deterministic; "
+        "registers in the 1.1 exchange",
+    ))
+
+
+def case_48_offer_projection_fail_closed(results: List[Result]) -> None:
+    """M003: the projection fails closed on what the 1.1 model requires
+    and the legacy listing lacks (an explicit validity window), and on
+    non-listing inputs — never silently."""
+    from marketplace.offer_bridge import project_listing
+    from offers import OfferError
+
+    problems: List[str] = []
+    # a windowless listing (the legacy optional-window surface) cannot
+    # project: the 1.1 offer model requires an explicit validity interval
+    from dataclasses import replace as _dc_replace
+
+    base = _listing(
+        offer_id="w047-m003-78", provider_id="provider-1",
+        interface_name="wlan0", link_kind="wifi",
+    )
+    windowless = _dc_replace(base, valid_from="", valid_until="")
+    try:
+        project_listing(
+            windowless,
+            provider_node_id=_M003_PROVIDER_NODE_ID,
+            advertisement_id=_M003_ADVERTISEMENT_ID,
+            issuer="provider:netpro",
+        )
+        problems.append("windowless listing projected silently")
+    except OfferError as error:
+        if error.code != "offer-temporal-invalid":
+            problems.append("windowless listing: wrong code %s" % error.code)
+    # non-listing input fails closed
+    try:
+        project_listing(
+            "not-a-listing",  # type: ignore[arg-type]
+            provider_node_id=_M003_PROVIDER_NODE_ID,
+            advertisement_id=_M003_ADVERTISEMENT_ID,
+            issuer="provider:netpro",
+        )
+        problems.append("non-listing input accepted")
+    except OfferError:
+        pass
+    # missing provider NodeID / advertisement / issuer each fail closed
+    listing = _listing(
+        offer_id="w047-m003-79", provider_id="provider-1",
+        interface_name="wlan0", link_kind="wifi",
+    )
+    for label, kwargs in (
+        ("provider", {"provider_node_id": ""}),
+        ("advertisement", {"advertisement_id": ""}),
+        ("issuer", {"issuer": ""}),
+    ):
+        try:
+            full = dict(
+                provider_node_id=_M003_PROVIDER_NODE_ID,
+                advertisement_id=_M003_ADVERTISEMENT_ID,
+                issuer="provider:netpro",
+            )
+            full.update(kwargs)
+            project_listing(listing, **full)
+            problems.append("missing %s accepted" % label)
+        except OfferError:
+            pass
+    # a listing whose advertised dimensions are all zero cannot form the
+    # required explicit commitments
+    from marketplace.evidence import AdvertisedQuality as _AQ
+
+    degenerate = _listing(
+        offer_id="w047-m003-80", provider_id="provider-1",
+        interface_name="wlan0", link_kind="wifi",
+        advertised=_AQ(latency_ms=0, throughput_kbps=0, availability_percent=0, advertisement_ref="adv-0"),
+        declared_capacity_kbps=0,
+    )
+    try:
+        project_listing(
+            degenerate,
+            provider_node_id=_M003_PROVIDER_NODE_ID,
+            advertisement_id=_M003_ADVERTISEMENT_ID,
+            issuer="provider:netpro",
+        )
+        problems.append("commitment-less listing projected silently")
+    except OfferError:
+        pass
+    if problems:
+        results.append(fail("case_48_offer_projection_fail_closed", "; ".join(problems[:4])))
+        return
+    results.append(ok(
+        "case_48_offer_projection_fail_closed",
+        "windowless/commitment-less listings and missing identity/grounding/issuer "
+        "inputs all fail closed with typed offers errors — never silently",
+    ))
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 
@@ -3707,6 +3926,11 @@ def main() -> int:
         case_44_no_population_count_claims,
         case_45_unanchored_distance_limit_fails_closed,
         case_46_missing_proximity_is_not_best_case,
+        # M003 (R7-CORE-001, DEC-0101): the W047 -> 1.1 offer projection
+        # bridge cases (the marketplace harvest surface; disclosed battery
+        # evolution per the M002 precedent)
+        case_47_offer_projection_bridge,
+        case_48_offer_projection_fail_closed,
     ):
         case(results)
     failures = [result for result in results if not result[1]]

@@ -1089,6 +1089,164 @@ def case_expired_active_credential_rejected(results: List[Tuple[str, bool, str]]
 
 
 # ---------------------------------------------------------------------------
+# M003 (R7-CORE-001, DEC-0101): the provider-domain advertisement seam
+# (the RETAIN + REFACTOR half of the frozen migration classification —
+# "Capability registry: RETAIN + REFACTOR → Offer/capability exchange").
+# ---------------------------------------------------------------------------
+
+
+def case_advertisement_entry_projection(results: List[Tuple[str, bool, str]]) -> None:
+    """M003: advertisement_entry projects a verified statement into the
+    typed entry material the Architecture 1.1 offer exchange consumes:
+    capability id, schema version, provider identity, the content digest
+    over the canonical statement bytes, and the registry classification
+    carried verbatim (classification authority stays HERE)."""
+    import hashlib
+
+    from capabilities import advertisement_entry
+    from capabilities.serialization import statement_to_bytes
+
+    statement = base_statement()
+    entry = advertisement_entry(statement)
+    expected_digest = "sha256:" + hashlib.sha256(statement_to_bytes(statement)).hexdigest()
+    checks = {
+        "capability_id": entry.capability_id == "capability.core.multipath",
+        "schema_version": entry.schema_version == statement.schema_version,
+        "provider_identity": entry.provider_identity == statement.provider_identity,
+        "statement_digest": entry.statement_digest == expected_digest,
+        "classification-known": entry.classification == CapabilityIdClass.KNOWN,
+    }
+    future = advertisement_entry(
+        base_statement(capability_id=FUTURE_CAPABILITY)
+    )
+    checks["classification-future"] = future.classification == CapabilityIdClass.UNKNOWN_BUT_WELL_FORMED
+    # digest determinism: identical statements project to identical entries
+    checks["deterministic"] = advertisement_entry(base_statement()) == entry
+    # different statement content: different digest
+    checks["content-bound"] = (
+        advertisement_entry(base_statement(parameters={"max_paths": 8})).statement_digest
+        != entry.statement_digest
+    )
+    # non-statement input fails closed
+    try:
+        advertisement_entry("not-a-statement")  # type: ignore[arg-type]
+        checks["fail-closed"] = False
+    except ValueError:
+        checks["fail-closed"] = True
+    ok = all(checks.values())
+    results.append((
+        "m003-advertisement-entry-projection",
+        ok,
+        "digest = canonical-bytes sha256; classification preserved verbatim "
+        "(KNOWN and UNKNOWN_BUT_WELL_FORMED); deterministic; content-bound; "
+        "non-statements fail closed"
+        if ok else "FAILED: %s" % [k for k, v in checks.items() if not v],
+    ))
+
+
+def case_advertisement_entries_batch(results: List[Tuple[str, bool, str]]) -> None:
+    """M003: advertisement_entries projects the batch of currently-ACTIVE
+    statements at the injected instant — withdrawn/expired/not-yet-valid
+    statements never advertise; malformed temporal material fails closed."""
+    from capabilities import AdvertisementError, advertisement_entries
+
+    statement = base_statement()  # ACTIVE at NOW (2030-01-01..2030-02-01)
+    withdrawn = base_statement(
+        capability_id="capability.core.local-breakout",
+        withdrawn_at="2030-01-05T00:00:00Z",
+    )
+    expired = base_statement(
+        capability_id="capability.core.store-and-forward",
+        valid_from="2029-01-01T00:00:00Z",
+        expires_at="2029-02-01T00:00:00Z",
+    )
+    future = base_statement(
+        capability_id="capability.core.holographic-relay",
+        valid_from="2031-01-01T00:00:00Z",
+        expires_at="2031-02-01T00:00:00Z",
+    )
+    batch = advertisement_entries(
+        [statement, withdrawn, expired, future], now=NOW
+    )
+    ids = [entry.capability_id for e in batch for entry in [e]]
+    checks = {
+        "active-only": ids == ["capability.core.multipath"],
+        "sorted": ids == sorted(ids),
+        "reorder-invariant": advertisement_entries(
+            [future, expired, withdrawn, statement], now=NOW
+        ) == batch,
+        "repeat-invariant": advertisement_entries(
+            [statement, statement], now=NOW
+        ) == batch,
+    }
+    # ambiguous same-key content (two ACTIVE statements for one capability
+    # with different content): fails closed
+    conflicting = base_statement(parameters={"max_paths": 8})
+    try:
+        advertisement_entries([statement, conflicting], now=NOW)
+        checks["ambiguous-fail-closed"] = False
+    except AdvertisementError:
+        checks["ambiguous-fail-closed"] = True
+    # a naive datetime fails closed
+    try:
+        advertisement_entries([statement], now=datetime(2030, 1, 1))
+        checks["naive-now-fail-closed"] = False
+    except AdvertisementError:
+        checks["naive-now-fail-closed"] = True
+    ok = all(checks.values())
+    results.append((
+        "m003-advertisement-entries-active-only",
+        ok,
+        "ACTIVE statements only (withdrawn/expired/not-yet-valid excluded); "
+        "sorted, reorder- and repeat-invariant; ambiguous content and naive "
+        "instants fail closed"
+        if ok else "FAILED: %s" % [k for k, v in checks.items() if not v],
+    ))
+
+
+def case_advertisement_entries_deterministic(results: List[Tuple[str, bool, str]]) -> None:
+    """M003: the seam's serialized projection is deterministic and
+    PYTHONHASHSEED-stable; the entry serialization round-trips through
+    plain JSON."""
+    from capabilities import entries_to_dicts, advertisement_entries
+
+    statements = [
+        base_statement(),
+        base_statement(capability_id="capability.core.local-breakout", schema_version="2.0"),
+    ]
+    batch = advertisement_entries(statements, now=NOW)
+    dicts = entries_to_dicts(batch)
+    checks = {
+        "sorted-keys": [d["capability_id"] for d in dicts] == sorted(
+            d["capability_id"] for d in dicts
+        ),
+        "full-fields": all(
+            set(d) == {
+                "capability_id",
+                "schema_version",
+                "provider_identity",
+                "statement_digest",
+                "classification",
+            }
+            for d in dicts
+        ),
+        "repeat-stable": entries_to_dicts(advertisement_entries(statements, now=NOW)) == dicts,
+    }
+    # JSON round-trip stability (to_dict outputs are plain JSON values)
+    import json as _json
+
+    checks["json-roundtrip"] = _json.loads(_json.dumps(dicts)) == dicts
+    ok = all(checks.values())
+    results.append((
+        "m003-advertisement-entries-deterministic",
+        ok,
+        "entry serialization sorted, field-complete, repeat-stable, "
+        "JSON-round-trip stable"
+        if ok else "FAILED: %s" % [k for k, v in checks.items() if not v],
+    ))
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -1110,6 +1268,14 @@ def main() -> int:
     case_cross_node_forgery_rejected(results)
     case_expired_active_credential_rejected(results)
     case_fuzz(results)
+    # M003 (R7-CORE-001, DEC-0101): the provider-domain advertisement
+    # seam cases — the evolved tested surface of the RETAIN + REFACTOR
+    # classification ("Capability registry: RETAIN + REFACTOR →
+    # Offer/capability exchange"). Disclosed battery evolution per the
+    # M002 precedent: the historical cases above are unchanged.
+    case_advertisement_entry_projection(results)
+    case_advertisement_entries_batch(results)
+    case_advertisement_entries_deterministic(results)
 
     print("ADCOS capability self-test")
     print("=" * 72)

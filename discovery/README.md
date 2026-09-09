@@ -22,6 +22,9 @@ observed through a discovery mechanism at a particular time/context. It
 carries enough provenance and freshness metadata for WORK-007 to consume
 it WITHOUT silently promoting it to authoritative topology.
 
+**M003 refactor (Architecture 1.1, R7-CORE-001):** discovery discovers
+OFFERS, not topology — see the M003 section at the end of this README.
+
 ## Module map
 
 ```text
@@ -37,6 +40,9 @@ discovery/
   convergence.py    DiscoveryStore — deterministic merge, per-(sender,
                     observed) sequence watermarks, replay defense (no
                     global anti-replay database)
+  offer_view.py     M003: the offer-discovery projection — OfferSighting
+                    records (provider, offer, freshness, provenance)
+                    projected from the merged store; OFFERS, never topology
   transport.py      DiscoveryTransport ABC; LoopbackUdpTransport (real
                     127.0.0.0/8 socket — the deterministic-test
                     substrate); LocalInterfaceUdpTransport (configurable
@@ -122,3 +128,43 @@ destination-scope enforcement is proven with a `_SendSpy` that records
 zero `sendto()` calls for every refused destination (public, multicast,
 malformed, non-RFC-1918 172.x) — the same transport a Raspberry Pi /
 laptop / router would bind to a private LAN address in production.
+
+## M003 refactor — offer discovery, not global topology
+
+Migration classification (frozen `spec/migration/classification-matrix.md`):
+**"Discovery: REFACTOR → Offer discovery, not global topology."**
+
+- **RETAINED (untouched):** the observation model's legacy field shape
+  and semantics (the authenticated peer-observation record, freshness
+  discipline, per-(sender, observed) watermark convergence, transport
+  substrates, bootstrap assistance). Every legacy serialized record
+  stays BYTE-IDENTICAL: the new `offer_references` member is emitted in
+  the serialized shape ONLY when non-empty, and `from_mapping` accepts
+  its absence — legacy producers and consumers (topology ingest, mobile
+  runtime, envelope transport) are unaffected.
+- **REFACTORED (added):**
+  - `DiscoveryObservation.offer_references` — OPAQUE offer identities a
+    provider announced through the discovery mechanism. Preserved
+    verbatim; never resolved, classified, or composed into topology by
+    this layer (the offers authority, M003 `offers/`, owns them — the
+    same opacity discipline as `advertised_capability_references`).
+    Offer-carrying observations include the references in their
+    signature input (tamper resistance is unchanged: the observation_id
+    fingerprint and the signature cover every signed semantic member).
+  - `discovery/offer_view.py` — the offer-discovery projection:
+    `offer_sightings(store, now=...)` surfaces `OfferSighting` records
+    (provider, opaque offer reference, source provenance, issued/fresh
+    instants, sighting freshness, source observation id) from the
+    merged store at the injected instant; `active_offer_sightings`
+    returns the fresh subset (stale sightings remain queryable for
+    audit, never silently current); `sighted_offer_references` returns
+    the distinct opaque offer identities (the bridge a consumer hands
+    to the M003 offer exchange). Deterministic: sorted by the data
+    model, stable under input reordering, injected instant only.
+- **DEMOTED (explicit):** `observed_endpoints` and `source_context`
+  are provider-local execution input DATA per the matrix's "Topology →
+  DEMOTE → Provider-local execution input" classification — they were
+  never topology authority in WORK-006 and remain non-authoritative
+  DATA under 1.1. The sighting projection deliberately surfaces NONE
+  of the endpoint/context material: discovery's 1.1-facing output is
+  OFFERS (and peers), never topology.
