@@ -1087,6 +1087,25 @@ work_items:
     handoff_required: true
     lifecycle: registered
     note: "R5-gate-era registered entry appended by LEDGER-RECON-013 (DEC-0089). WORK-056 is the R5 Developer Connectivity Platform Production Hardening gate (phase 5 = the frozen-roadmap release gate; R4 remains parallel-after-R3 with W040 independently in-review — this entry records the R5 software track only). Active authorization: WORK-056-CORE-001 (DEC-0089), the sole active implementation authorization — WORK-055-CORE-001 is superseded by DEC-0089 with scope and provenance preserved; the authorization record, the work-item definition, the decision record, and the worker handoff are carried by this governance PR (the reviewed authority), NOT by the accidental unreviewed direct-main writes (the DEC-0089 proposal writes c8883e7/ac37655 and the W056 contract write 9ec7a73, each removed by the preserved Architect cleanups 74dd375/d1bd4a1/7ae438d — the transparent record stays in main history). Authorized baseline 7ae438d46041b228164cc8880be37dc21f972b6f — the actual current main tip, content-equivalent to the accepted W055 merge 7801549c after the preserved content-neutral cleanup commits (pinned by DEC-0089 and recorded in the WORK-056.yaml authorization, the execution-state/roadmap/current-state projections, and docs/WORK-056-handoff.md). Scope: developerapi/ + tools/developerapi_selftest.py + docs/WORK-056-evidence.md + docs/WORK-056-handoff.md — production-hardening of the accepted WORK-046 developer boundary only; no second commercial, connectivity, identity, session, NetworkPath, routing, transport, usage, allocation, payment, or policy authority. Registered-only entry: no delivery, PR, review, merge, or acceptance fact is claimed (branch/pr/delivery fields null); the entry stays lifecycle registered until a real WORK-056 delivery advances it through a real PR — the same representation discipline as the registered pre-delivery entries of the earlier activation eras (e.g. the WORK-052 entry while WORK-052-CORE-001 was active, per LEDGER-RECON-008/009)."
+  - work_item: WORK-057
+    title: "Provider Onboarding & Federation"
+    phase: 6
+    branch: "pectoraux:work-057-provider-onboarding-federation"
+    baseline_sha: 12ae8f7159aa7ddbc82b7e6aa6a3dc5d61ae676a
+    pr: 23
+    pr_head: 58eced2f7864bd8d6e9cac658574d8c7b0b48965
+    reviewed_sha: 58eced2f7864bd8d6e9cac658574d8c7b0b48965
+    merge_sha: a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19
+    merged_at: 2026-09-06T17:36:38Z
+    ci_run: null
+    review_rounds: 2
+    acceptance_decision: DEC-0097
+    correction_decisions:
+      - DEC-0096
+    handoff: docs/WORK-057-handoff.md
+    handoff_required: true
+    lifecycle: accepted-merged
+    note: "R6-gate acceptance projection appended by the DEC-0100-era governance repair (the current_spec_check fail-closed repair unmasked that the R6 acceptance was never appended to this ledger: the pre-repair checker's aggregation defect made the W057 projection requirement dead code). Activation provenance, preserved exactly: WORK-057-CORE-001 issued by DEC-0095 from the autonomous-governance baseline, reviewed/corrected under DEC-0096 (round 1: adapter certification authority bypass and federation proposal self-acceptance — both P0 corrections verified in round 2), accepted by DEC-0097. Delivery provenance, preserved exactly: adversarially reviewed over two rounds on one PR lineage — accepted on the exact reviewed head 58eced2f7864bd8d6e9cac658574d8c7b0b48965 (PR #23) and merged as a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19 (2026-09-06T17:36:38Z; the merge commit second parent is the exact reviewed head). R6 complete; R7 next unlocked but unactivated at the M001 transition. SOFTWARE-class evidence only; W040 physical obligations EVID-007/EVID-008 remain independent, open, and W040-owned. No work-item history rewritten: every earlier entry is byte-identical; this entry is appended, never converted."
 
 reconciliations:
   - reconciliation_id: LEDGER-RECON-013

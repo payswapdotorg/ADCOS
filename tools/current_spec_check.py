@@ -98,16 +98,23 @@ def main() -> int:
     ledger = yaml_subset_load(text("spec/architect/execution-ledger.yaml"), "spec/architect/execution-ledger.yaml")
     evidence = yaml_subset_load(text("spec/architect/evidence-obligations.yaml"), "spec/architect/evidence-obligations.yaml")
 
+    def norm(value: str) -> str:
+        # marker alignment repair: authoritative prose carries markdown
+        # emphasis; normalize exactly like fresh_session_check so the
+        # enforced markers match the authoritative wording verbatim
+        # (the pre-repair markers never matched and were dead code)
+        return re.sub(r"[*_`]+", "", value)
+
     markers = [
-        (agents, "Architecture 1.1 is the forward implementation target", "AGENTS.md is not 1.1-forward"),
-        (tl, "Architecture 1.1 is the target architecture", "Tech Lead handoff is not 1.1-forward"),
-        (tl, "up to 3 workers", "Tech Lead direct-worker limit is missing"),
-        (workers, "maximum active descendant", "worker model does not record the active descendant limit"),
-        (resume, "Fresh-session guarantee", "resume protocol lacks fresh-session guarantee"),
-        (resume, "M001 — Architecture 1.1 Freeze", "resume protocol does not route through M001"),
-        (current, "mandatory forward implementation target", "current-state does not declare 1.1 mandatory-forward"),
-        (authority, "Architecture 1.1", "authority-order does not mention the 1.1 transition target"),
-        (autonomy, "single-agent mode", "governance-autonomy does not support a combined Architect/Tech Lead"),
+        (norm(agents), "Architecture 1.1 is the mandatory forward implementation target", "AGENTS.md is not 1.1-forward"),
+        (norm(tl), "Architecture 1.1 is the target architecture", "Tech Lead handoff is not 1.1-forward"),
+        (norm(tl), "at most 3 workers", "Tech Lead direct-worker limit is missing"),
+        (norm(workers), "maximum active descendant", "worker model does not record the active descendant limit"),
+        (norm(resume), "Fresh-session guarantee", "resume protocol lacks fresh-session guarantee"),
+        (norm(resume), "M001 — Architecture 1.1 Freeze", "resume protocol does not route through M001"),
+        (norm(current), "sole normative forward architecture", "current-state does not declare 1.1 the sole normative forward architecture"),
+        (norm(authority), "Architecture 1.1", "authority-order does not mention the 1.1 transition target"),
+        (norm(autonomy), "Single-agent execution", "governance-autonomy does not support a combined Architect/Tech Lead"),
     ]
     for haystack, marker, message in markers:
         if marker.lower() not in haystack.lower():
@@ -318,6 +325,17 @@ def main() -> int:
             missing = sorted(x for x in open_ids if x not in mentioned)
             if missing:
                 fail(errors, "current-state.md hides open evidence obligations: " + ", ".join(missing))
+
+    # FAIL CLOSED: every accumulated error is terminal. The original
+    # aggregation defect (errors collected after the missing-files gate but
+    # never checked before the PASS print) made every marker, ledger,
+    # authorization, and archive invariant dead code — this gate is the
+    # repair; the checker now actually fails closed.
+    if errors:
+        for error in errors:
+            print(f"[FAIL] {error}")
+        print(f"current-spec check: FAIL ({len(errors)} issue(s))")
+        return 1
 
     print("current-spec check: PASS")
     print("Architecture 1.1 routing, M001 gate, 3x3 worker hierarchy, machine-checked dispatch state, post-snapshot Work Items, reconstructed W050 provenance, and evidence visibility are consistent")

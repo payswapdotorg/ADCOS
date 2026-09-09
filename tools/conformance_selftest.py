@@ -2099,6 +2099,17 @@ _W055_AUTHORIZED_PATHS = (
     "docs/WORK-055-handoff.md",
 )
 
+# Frozen-authority mirror (battery-mirror reconciliation, DEC-0099 class):
+# case_63 asserts the canonical frozen authorities are byte-identical to the
+# last AUTHORIZED architecture state. That state was the W054 merge
+# (_W055_BASELINE) until the M001 Architecture 1.1 Freeze legitimately
+# promoted the canonical 1.1 successor snapshots (PR #25, merged 80292c2).
+# The mirror is re-baselined to the M001 acceptance merge so post-freeze
+# deliveries fail closed on any unauthorized canonical-spec change. The
+# re-baseline is recorded as direct mainline-integrity reconciliation in the
+# M001 acceptance evidence (docs/M001-evidence.md §7).
+_FROZEN_AUTHORITY_BASELINE = "80292c24502200f84d11491ed12e9cec5e5baf11"
+
 
 def _w055_origin_main_available() -> bool:
     proc = subprocess.run(
@@ -2188,7 +2199,7 @@ def case_63_frozen_authorities_untouched(results: List[Result]) -> None:
     problems: List[str] = []
     for root in frozen_roots:
         proc = subprocess.run(
-            ["git", "diff", "--name-only", _W055_BASELINE, "HEAD", "--",
+            ["git", "diff", "--name-only", _FROZEN_AUTHORITY_BASELINE, "HEAD", "--",
              root],
             capture_output=True, text=True, cwd=str(REPO_ROOT),
         )
