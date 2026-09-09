@@ -1,8 +1,9 @@
-"""WORK-046 developer-platform append-only journal and durable
-persistence seam.
+"""M013 developer-platform append-only journal and durable
+persistence seam (the W046-era model harvested onto the
+Architecture 1.1 surface).
 
 The journal-first durable core of the developer API boundary
-(the ACR-006 / W044-atomic journal discipline):
+(the ACR-006 atomic journal discipline, retained):
 
     immutable developerapi records
         + append-only file discipline
@@ -11,16 +12,37 @@ The journal-first durable core of the developer API boundary
         = tamper-evident, deterministically replayable boundary
           history
 
-Discipline (battery-pinned, mirroring the accepted W044/W051
-journals):
+Discipline (battery-pinned):
+
+- **write-ahead mutation holds (the M013 idempotency
+  discipline)**: every API mutation appends a
+  :class:`MutationPendingRecord` BEFORE the canonical contract
+  submission (the durable per-key hold: the request digest is
+  journaled before any canonical effect exists), then the
+  canonical command runs, then the :class:`MutationRecord`
+  (the atomic request+response record, the FINALITY POINT)
+  completes the hold.  A semantically REJECTED request appends
+  a :class:`MutationAbandonedRecord` releasing the hold (the
+  W046 contract preserved: failures never consume the key).
+  The canonical command identity is byte-stable across retries
+  (request-declared instants), so the crash-window redelivery
+  of the same key with the same content meets the canonical
+  authority's own DUPLICATE discipline (never a second
+  canonical execution), and the same key with CHANGED content
+  fails closed at the pending hold (``idempotency-conflict``)
+  -- including in the crash window, which the W046-era
+  boundary could only close through the superseded
+  commercial plane's key-derived command ids.  Disclosed in
+  docs/M013-evidence.md.
 
 - **atomic mutation records**: every admitted API mutation
-  appends EXACTLY ONE journal record carrying the admitted
-  request (idempotency key + application + route + canonical
-  request digest -- the durable idempotency ledger) AND its
-  canonical response (status + canonical body bytes).  One
-  append = one atomic persist-then-ack; there is no intermediate
-  state where a mutation is admitted without its response.
+  appends EXACTLY ONE :class:`MutationRecord` carrying the
+  admitted request (idempotency key + application + route +
+  canonical request digest -- the durable idempotency ledger)
+  AND its canonical response (status + canonical body bytes).
+  One append = one atomic persist-then-ack; there is no
+  intermediate state where a mutation is admitted without its
+  response.
 
 - **durable observation-admission records**: every mutation
   whose emission is owed an observation decision appends a
@@ -56,8 +78,9 @@ journals):
 
 - **deterministic replay**: loading and folding the same journal
   bytes always reproduces the same boundary index (credentials,
-  idempotency ledger, API-owned resources, webhook delivery
-  state) -- the fold lives in :func:`fold_index` and is exactly
+  idempotency ledger + pending holds, API-owned resources,
+  webhook delivery state) -- the fold lives in
+  :func:`fold_index` and is exactly
   what the service reloads after a restart.
 
 - **duplicate detection**: the idempotency ledger is journaled
@@ -170,10 +193,10 @@ class MutationRecord:
     in one persist-then-ack append).
 
     ``resource`` carries the canonical resource mapping for
-    developerapi-OWNED resources (offers, webhook endpoints) --
+    developerapi-OWNED resources (webhook endpoints) --
     the boundary's own projection truth, rebuilt by the fold.
-    For ADAPTED resources (intents, reservations, policies) the
-    truth stays in the canonical subsystem's journal and
+    For ADAPTED resources (contracts, leases) the truth stays in
+    the canonical contracts domain's journal and
     ``resource_kind`` is empty."""
 
     sequence: int
@@ -313,6 +336,193 @@ class MutationRecord:
             resource=proto.resource,
             response_status=response_status,
             response_body=response_body,
+        )
+
+
+@dataclass(frozen=True)
+class MutationPendingRecord:
+    """The write-ahead idempotency hold of one API mutation (the
+    M013 discipline: journaled BEFORE the canonical contract
+    command runs, so the (developer, idempotency key, request
+    digest) triple is durable before any canonical effect
+    exists).
+
+    The hold makes the crash-window idempotency contract close
+    at the boundary itself: the same key with the same digest
+    completes through the canonical authority's own duplicate
+    discipline; the same key with a CHANGED digest fails closed
+    ``idempotency-conflict`` even when the prior attempt crashed
+    before any canonical submission.  The hold is completed by
+    the mutation's :class:`MutationRecord` (finality) or
+    released by its :class:`MutationAbandonedRecord` (a
+    semantically rejected request never consumes the key -- the
+    retained W046 contract)."""
+
+    sequence: int
+    record_id: str
+    idempotency_key: str = ""
+    application_id: str = ""
+    developer_id: str = ""
+    method: str = ""
+    route: str = ""
+    api_version: str = ""
+    request_id: str = ""
+    request_digest: str = ""
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.sequence, int) or isinstance(
+            self.sequence, bool
+        ) or self.sequence < 1:
+            raise DeveloperApiError(
+                DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                "sequence must be an integer >= 1",
+            )
+        for label, value in (
+            ("idempotency_key", self.idempotency_key),
+            ("application_id", self.application_id),
+            ("developer_id", self.developer_id),
+            ("method", self.method),
+            ("route", self.route),
+            ("api_version", self.api_version),
+            ("request_id", self.request_id),
+            ("request_digest", self.request_digest),
+            ("record_id", self.record_id),
+        ):
+            _require_text(value, label)
+
+    def chain_content(self) -> Dict[str, Any]:
+        return {
+            "record_kind": "mutation-pending",
+            "idempotency_key": self.idempotency_key,
+            "application_id": self.application_id,
+            "developer_id": self.developer_id,
+            "method": self.method,
+            "route": self.route,
+            "api_version": self.api_version,
+            "request_id": self.request_id,
+            "request_digest": self.request_digest,
+        }
+
+    def to_dict(self) -> Dict[str, Any]:
+        out = self.chain_content()
+        out["sequence"] = self.sequence
+        out["record_id"] = self.record_id
+        return out
+
+    @classmethod
+    def build(
+        cls,
+        *,
+        sequence: int,
+        prev_record_id: str,
+        idempotency_key: str,
+        application_id: str,
+        developer_id: str,
+        method: str,
+        route: str,
+        api_version: str,
+        request_id: str,
+        request_digest: str,
+    ) -> "MutationPendingRecord":
+        proto = cls(
+            sequence=sequence,
+            record_id="pending",
+            idempotency_key=idempotency_key,
+            application_id=application_id,
+            developer_id=developer_id,
+            method=method,
+            route=route,
+            api_version=api_version,
+            request_id=request_id,
+            request_digest=request_digest,
+        )
+        record_id = derive_record_id(
+            sequence, proto.chain_content(), prev_record_id
+        )
+        return cls(
+            sequence=sequence,
+            record_id=record_id,
+            idempotency_key=idempotency_key,
+            application_id=application_id,
+            developer_id=developer_id,
+            method=method,
+            route=route,
+            api_version=api_version,
+            request_id=request_id,
+            request_digest=request_digest,
+        )
+
+
+@dataclass(frozen=True)
+class MutationAbandonedRecord:
+    """The release of one write-ahead mutation hold (a request
+    that was held and then SEMANTICALLY REJECTED before any
+    canonical admission -- the retained W046 contract that a
+    failed request never consumes the idempotency key).
+
+    An abandonment is journaled only while the hold exists; the
+    fold fails closed on any other shape.  A crash between the
+    hold and the abandonment keeps the hold durable (the honest
+    conservative window: the same-key/same-digest retry re-runs
+    the request and re-fails or completes it; a changed-digest
+    retry conflicts)."""
+
+    sequence: int
+    record_id: str
+    idempotency_key: str = ""
+    reason: str = ""
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.sequence, int) or isinstance(
+            self.sequence, bool
+        ) or self.sequence < 1:
+            raise DeveloperApiError(
+                DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                "sequence must be an integer >= 1",
+            )
+        for label, value in (
+            ("idempotency_key", self.idempotency_key),
+            ("reason", self.reason),
+            ("record_id", self.record_id),
+        ):
+            _require_text(value, label)
+
+    def chain_content(self) -> Dict[str, Any]:
+        return {
+            "record_kind": "mutation-abandoned",
+            "idempotency_key": self.idempotency_key,
+            "reason": self.reason,
+        }
+
+    def to_dict(self) -> Dict[str, Any]:
+        out = self.chain_content()
+        out["sequence"] = self.sequence
+        out["record_id"] = self.record_id
+        return out
+
+    @classmethod
+    def build(
+        cls,
+        *,
+        sequence: int,
+        prev_record_id: str,
+        idempotency_key: str,
+        reason: str,
+    ) -> "MutationAbandonedRecord":
+        proto = cls(
+            sequence=sequence,
+            record_id="pending",
+            idempotency_key=idempotency_key,
+            reason=reason,
+        )
+        record_id = derive_record_id(
+            sequence, proto.chain_content(), prev_record_id
+        )
+        return cls(
+            sequence=sequence,
+            record_id=record_id,
+            idempotency_key=idempotency_key,
+            reason=reason,
         )
 
 
@@ -1140,6 +1350,8 @@ class WebhookAdmissionRecord:
 #: The record types the journal discriminates.
 RECORD_TYPES = (
     MutationRecord,
+    MutationPendingRecord,
+    MutationAbandonedRecord,
     CredentialRecord,
     WebhookAdmissionRecord,
     WebhookQueueRecord,
@@ -1237,6 +1449,26 @@ def _record_from_dict(data: object) -> Any:
         raise DeveloperApiError(
             DeveloperApiReasonCode.JOURNAL_CORRUPT,
             "journal record sequence must be an integer",
+        )
+    if kind == "mutation-pending":
+        return MutationPendingRecord(
+            sequence=sequence,
+            record_id=data.get("record_id", ""),
+            idempotency_key=data.get("idempotency_key", ""),
+            application_id=data.get("application_id", ""),
+            developer_id=data.get("developer_id", ""),
+            method=data.get("method", ""),
+            route=data.get("route", ""),
+            api_version=data.get("api_version", ""),
+            request_id=data.get("request_id", ""),
+            request_digest=data.get("request_digest", ""),
+        )
+    if kind == "mutation-abandoned":
+        return MutationAbandonedRecord(
+            sequence=sequence,
+            record_id=data.get("record_id", ""),
+            idempotency_key=data.get("idempotency_key", ""),
+            reason=data.get("reason", ""),
         )
     if kind == "mutation":
         resource = data.get("resource") or {}
@@ -1505,8 +1737,9 @@ class WebhookDeliveryState:
 
 class ApiIndex:
     """The deterministic fold of the developerapi journal:
-    credentials, the durable idempotency ledger, API-owned
-    resources, and the observational webhook delivery index.
+    credentials, the durable idempotency ledger (with its
+    write-ahead pending holds), API-owned resources, and the
+    observational webhook delivery index.
 
     Exactly what a restarted service reloads (byte-identical
     replay; construction IS recovery)."""
@@ -1514,7 +1747,7 @@ class ApiIndex:
     def __init__(self) -> None:
         self.credentials: Dict[str, Dict[str, Any]] = {}
         self.mutations: Dict[str, MutationRecord] = {}
-        self.offers: Dict[str, Dict[str, Any]] = {}
+        self.mutations_pending: Dict[str, MutationPendingRecord] = {}
         self.endpoints: Dict[str, Dict[str, Any]] = {}
         self.admissions: Dict[str, WebhookAdmissionRecord] = {}
         self.admissions_by_key: Dict[str, WebhookAdmissionRecord] = {}
@@ -1526,12 +1759,64 @@ class ApiIndex:
     # -- the fold ------------------------------------------------------
 
     def apply(self, record: Any) -> None:
-        if isinstance(record, MutationRecord):
+        if isinstance(record, MutationPendingRecord):
+            if record.idempotency_key in self.mutations:
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                    "pending hold for idempotency key %r recorded after "
+                    "its committed mutation" % record.idempotency_key,
+                )
+            if record.idempotency_key in self.mutations_pending:
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                    "pending hold for idempotency key %r recorded twice"
+                    % record.idempotency_key,
+                )
+            self.mutations_pending[record.idempotency_key] = record
+        elif isinstance(record, MutationAbandonedRecord):
+            if record.idempotency_key not in self.mutations_pending:
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                    "abandonment for idempotency key %r without its "
+                    "pending hold" % record.idempotency_key,
+                )
+            del self.mutations_pending[record.idempotency_key]
+        elif isinstance(record, MutationRecord):
+            pending = self.mutations_pending.pop(
+                record.idempotency_key, None
+            )
+            if pending is None:
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                    "committed mutation for idempotency key %r without "
+                    "its write-ahead pending hold (the hold precedes "
+                    "every committed mutation)" % record.idempotency_key,
+                )
+            if pending.request_digest != record.request_digest:
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                    "committed mutation for idempotency key %r carries a "
+                    "different request digest than its pending hold"
+                    % record.idempotency_key,
+                )
             self.mutations[record.idempotency_key] = record
-            if record.resource_kind == "offer":
-                self.offers[record.resource_id] = record.resource_dict()
+            if record.resource_kind == "":
+                pass  # an adapted mutation: canonical truth stays in the
+                # contract authority's journal; the boundary holds the
+                # idempotency record only
             elif record.resource_kind == "webhook_endpoint":
                 self.endpoints[record.resource_id] = record.resource_dict()
+            else:
+                # fail closed: the M013 boundary owns exactly one
+                # developerapi-owned resource family (webhook endpoints);
+                # the W046-era offer family is demoted with its routes
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                    "mutation resource_kind %r is not a developerapi-"
+                    "owned resource family (webhook_endpoint only; the "
+                    "offer family is demoted with the 1.x surface)"
+                    % record.resource_kind,
+                )
         elif isinstance(record, CredentialRecord):
             if record.action == "credential-issue":
                 if record.application_id in self.credentials:

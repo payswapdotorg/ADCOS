@@ -1,8 +1,9 @@
-"""WORK-046 SDK: the canonical-semantics client surface.
+"""M013 SDK: the canonical-semantics client surface (the
+W046-era SDK harvested onto the Architecture 1.1 surface).
 
-The SDK contract (W046 criterion 5): the SDK reproduces the
-canonical server semantics EXACTLY and contains NO hidden
-commercial authority:
+The SDK contract (retained from W046 criterion 5): the SDK
+reproduces the canonical server semantics EXACTLY and contains
+NO hidden business authority:
 
 - **Request parity**: every SDK mutation/read builds the same
   :class:`developerapi.gateway.ApiRequest` representation the
@@ -296,37 +297,28 @@ class DeveloperApiClient:
             raise self._raise_error(response)
         return SdkList.from_data(response.data())
 
-    # -- the developer operations (native ADCOS semantics) ---------------
+    # -- the developer operations (the canonical Architecture 1.1
+    # surface; the W046-era commercial-plane operations --
+    # publish_offer/list_offers/get_offer, hold_reservation,
+    # list_reservations/get_reservation, list_usage/get_usage,
+    # list_billing, register_economic_policy and the policy
+    # reads -- are demoted with the 1.x surface: those semantics
+    # belong to the M003/M009 child domains and are referenced
+    # by this API as opaque typed references only) ---------------
 
     def application(self) -> SdkResource:
         return self._call("GET", "application")
 
-    def publish_offer(
-        self, *, idempotency_key: str, offer: Mapping[str, Any]
-    ) -> SdkResource:
-        return self._call(
-            "POST", "offers", dict(offer), idempotency_key
-        )
-
-    def list_offers(
-        self,
-        *,
-        cursor: str = "",
-        limit: Optional[int] = None,
-        filters: Optional[Mapping[str, str]] = None,
-    ) -> SdkList:
-        return self._call_list(
-            "offers", _list_body(cursor, limit, filters)
-        )
-
-    def get_offer(self, offer_id: str) -> SdkResource:
-        return self._call("GET", "offers/%s" % offer_id)
-
     def create_intent(
         self, *, idempotency_key: str, intent: Mapping[str, Any]
     ) -> SdkResource:
+        """Create one connectivity intent: the technology-neutral
+        creation core of a canonical connectivity contract
+        (requirements as typed references, validity, termination
+        rules, hard constraints, beneficiaries, and the
+        referenced usage/assurance/execution semantics)."""
         return self._call(
-            "POST", "intents", {"intent": dict(intent)}, idempotency_key
+            "POST", "intents", dict(intent), idempotency_key
         )
 
     def list_intents(
@@ -346,25 +338,46 @@ class DeveloperApiClient:
     def get_intent_lifecycle(self, intent_id: str) -> SdkResource:
         return self._call("GET", "intents/%s/lifecycle" % intent_id)
 
-    def hold_reservation(
+    def accept_offers(
         self,
         *,
         idempotency_key: str,
         intent_id: str,
-        expires_at: str,
-        payment_refs: Iterable[str] = (),
+        offers: Iterable[Mapping[str, Any]],
+        recorded_at: str,
     ) -> SdkResource:
-        body: Dict[str, Any] = {"expires_at": expires_at}
-        if payment_refs:
-            body["payment_refs"] = list(payment_refs)
+        """Accept the provider offers for one intent: the offers
+        ride as opaque TYPED REFERENCES (``ref_kind: "offer"``);
+        the offer semantics stay the offers authority's."""
         return self._call(
             "POST",
-            "intents/%s/reservations" % intent_id,
-            body,
+            "intents/%s/offers" % intent_id,
+            {"offers": list(offers), "recorded_at": recorded_at},
             idempotency_key,
         )
 
-    def list_reservations(
+    def activate_contract(
+        self,
+        *,
+        idempotency_key: str,
+        intent_id: str,
+        activated_at: str,
+        signature_refs: Iterable[Mapping[str, Any]],
+    ) -> SdkResource:
+        """Activate the contract (OFFER_SELECTED ->
+        CONTRACT_ACTIVE): the declared activation instant and the
+        signature typed references."""
+        return self._call(
+            "POST",
+            "intents/%s/activation" % intent_id,
+            {
+                "activated_at": activated_at,
+                "signature_refs": list(signature_refs),
+            },
+            idempotency_key,
+        )
+
+    def list_contracts(
         self,
         *,
         cursor: str = "",
@@ -372,48 +385,118 @@ class DeveloperApiClient:
         filters: Optional[Mapping[str, str]] = None,
     ) -> SdkList:
         return self._call_list(
-            "reservations", _list_body(cursor, limit, filters)
+            "contracts", _list_body(cursor, limit, filters)
         )
 
-    def get_reservation(self, reservation_id: str) -> SdkResource:
-        return self._call("GET", "reservations/%s" % reservation_id)
+    def get_contract(self, contract_id: str) -> SdkResource:
+        return self._call("GET", "contracts/%s" % contract_id)
 
-    def list_usage(
+    def get_contract_usage(self, contract_id: str) -> SdkResource:
+        """The usage semantics of one contract: the opaque
+        usage-pricing-terms typed reference (referenced, never
+        interpreted)."""
+        return self._call("GET", "contracts/%s/usage" % contract_id)
+
+    def get_contract_assurance(self, contract_id: str) -> SdkResource:
+        """The assurance semantics of one contract: the opaque
+        assurance-obligation typed references plus the
+        contract-recorded assurance outcomes."""
+        return self._call("GET", "contracts/%s/assurance" % contract_id)
+
+    def terminate_contract(
+        self,
+        *,
+        idempotency_key: str,
+        contract_id: str,
+        condition: str,
+        reason: str,
+        recorded_at: str,
+    ) -> SdkResource:
+        """Terminate the contract deliberately under its declared
+        termination rules."""
+        return self._call(
+            "POST",
+            "contracts/%s/termination" % contract_id,
+            {
+                "condition": condition,
+                "reason": reason,
+                "recorded_at": recorded_at,
+            },
+            idempotency_key,
+        )
+
+    def grant_lease(
+        self,
+        *,
+        idempotency_key: str,
+        contract_id: str,
+        granted_at: str,
+        not_before: str,
+        not_after: str,
+    ) -> SdkResource:
+        """Grant one contract-scoped lease (the time-bounded
+        right to use the acquired connectivity UNDER the
+        contract)."""
+        return self._call(
+            "POST",
+            "contracts/%s/leases" % contract_id,
+            {
+                "granted_at": granted_at,
+                "not_before": not_before,
+                "not_after": not_after,
+            },
+            idempotency_key,
+        )
+
+    def list_leases(
         self,
         *,
         cursor: str = "",
         limit: Optional[int] = None,
         filters: Optional[Mapping[str, str]] = None,
     ) -> SdkList:
-        return self._call_list("usage", _list_body(cursor, limit, filters))
-
-    def get_usage(self, transaction_id: str) -> SdkResource:
-        return self._call("GET", "usage/%s" % transaction_id)
-
-    def list_billing(
-        self, *, cursor: str = "", limit: Optional[int] = None
-    ) -> SdkList:
-        return self._call_list("billing", _list_body(cursor, limit, None))
-
-    def register_economic_policy(
-        self, *, idempotency_key: str, policy: Mapping[str, Any]
-    ) -> SdkResource:
-        return self._call(
-            "POST", "economic-policies", dict(policy), idempotency_key
-        )
-
-    def list_economic_policies(
-        self, *, cursor: str = "", limit: Optional[int] = None
-    ) -> SdkList:
         return self._call_list(
-            "economic-policies", _list_body(cursor, limit, None)
+            "leases", _list_body(cursor, limit, filters)
         )
 
-    def get_economic_policy(
-        self, policy_id: str, version: int
+    def get_lease(self, lease_id: str) -> SdkResource:
+        return self._call("GET", "leases/%s" % lease_id)
+
+    def renew_lease(
+        self,
+        *,
+        idempotency_key: str,
+        lease_id: str,
+        granted_at: str,
+        not_before: str,
+        not_after: str,
+    ) -> SdkResource:
+        """Renew one lease: a NEW successor lease record; the
+        predecessor flips to ``renewed`` (the audit trail)."""
+        return self._call(
+            "POST",
+            "leases/%s/renewal" % lease_id,
+            {
+                "granted_at": granted_at,
+                "not_before": not_before,
+                "not_after": not_after,
+            },
+            idempotency_key,
+        )
+
+    def revoke_lease(
+        self,
+        *,
+        idempotency_key: str,
+        lease_id: str,
+        reason: str,
+        recorded_at: str,
     ) -> SdkResource:
         return self._call(
-            "GET", "economic-policies/%s/%d" % (policy_id, version)
+            "POST",
+            "leases/%s/revocation" % lease_id,
+            {"reason": reason, "recorded_at": recorded_at},
+            idempotency_key,
         )
 
     def register_webhook_endpoint(
