@@ -1834,8 +1834,13 @@ def case_37_pr_delta_shape(results: List[Result]) -> None:
         ["git", "diff", "origin/main", "--", ".github/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
-    workflow_path = REPO_ROOT / ".github" / "workflows" / "spec-check.yml"
-    workflow = workflow_path.read_text(encoding="utf-8")
+    # CI wiring via committed content: the workflow was already read,
+    # type-safely, at function entry (os.path.join + open).  The f261bb8
+    # Pattern-B repair re-read it here via ``REPO_ROOT / ".github" / ...``
+    # with a str-typed REPO_ROOT -- a latent TypeError that never executed
+    # before (CI stopped at earlier batteries in the job; local
+    # pre-flights filtered on "FAIL" text) -- so the redundant re-read is
+    # removed and the entry read is authoritative for this check.
     if "python3 tools/scale_selftest.py" not in workflow:
         results.append(fail(name, "the scale CI step is missing from the committed workflow"))
         return

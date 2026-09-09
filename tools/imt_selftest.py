@@ -1812,13 +1812,23 @@ def case_33_pr_delta_shape(results: List[Result]) -> None:
         ["git", "diff", "origin/main", "--", ".github/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
-    if "imt_selftest.py" not in workflow_delta.stdout:
+    # CI wiring via committed content (the f261bb8 scale-case_37 class):
+    # the committed workflow must contain the step; the delta-inclusion
+    # requirement applies only when .github/ is actually in the delta.
+    if "python3 tools/imt_selftest.py" not in workflow:
+        results.append(fail(name, "the imt CI step is missing from the committed workflow"))
+        return
+    # a PR that does not touch .github/ preserves the step trivially; the
+    # delta-inclusion requirement applies only when .github IS in the delta
+    if workflow_delta.stdout.strip() and "imt_selftest.py" not in workflow_delta.stdout:
         results.append(fail(name, ".github delta does not include the future-profile CI step"))
         return
     results.append(ok(
         name, "PR delta exactly: imt/ + imt battery + agent/edge/mobile/"
               "appliance/oran allowlist amendments + handoff/evidence "
-              "docs + the Architect's branch anchor + CI step",
+              "docs + the Architect's branch anchor + the imt CI step "
+              "present in the committed workflow (delta additive when "
+              ".github/ is in the delta)",
     ))
 
 
