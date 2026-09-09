@@ -20,6 +20,11 @@ def read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
+def normalize_markdown(text: str) -> str:
+    """Normalize cosmetic Markdown markers so governance checks test semantics."""
+    return re.sub(r"[*_`]+", "", text)
+
+
 def fail(message: str) -> None:
     print(f"[FAIL] {message}")
 
@@ -44,6 +49,7 @@ def main() -> int:
         "spec/dependency-graph-1.1.md",
         "spec/migration/classification-matrix.md",
         "spec/integration/vertical-proof.md",
+        "spec/research/standards-and-use-cases.md",
         "spec/work-items.md",
         "spec/dependency-graph.md",
         "spec/architect/resume-protocol.md",
@@ -60,16 +66,16 @@ def main() -> int:
         if not (ROOT / rel).exists():
             failures.append(f"missing required handoff/governance file: {rel}")
 
-    agents = read("AGENTS.md")
-    handoff = read("docs/tech-lead/ADCOS-TECH-LEAD-HANDOFF.md")
-    worker_model = read("docs/tech-lead/worker-model.md")
+    agents = normalize_markdown(read("AGENTS.md"))
+    handoff = normalize_markdown(read("docs/tech-lead/ADCOS-TECH-LEAD-HANDOFF.md"))
+    worker_model = normalize_markdown(read("docs/tech-lead/worker-model.md"))
     roadmap = read("spec/architect/roadmap.yaml")
-    current = read("spec/architect/current-state.md")
+    current = normalize_markdown(read("spec/architect/current-state.md"))
     execution = read("spec/architect/execution-state.yaml")
-    resume = read("spec/architect/resume-protocol.md")
+    resume = normalize_markdown(read("spec/architect/resume-protocol.md"))
 
     required_markers = [
-        (agents, "Architecture 1.1 is the forward implementation target", "AGENTS.md must bind forward implementation to Architecture 1.1"),
+        (agents, "Architecture 1.1 is the mandatory forward implementation target", "AGENTS.md must bind forward implementation to Architecture 1.1"),
         (handoff, "Single-agent mode", "Tech Lead handoff must support single-agent execution"),
         (handoff, "Architecture 1.1 is the target architecture", "Tech Lead handoff must bind implementation to 1.1"),
         (handoff, "at most 3 workers", "Tech Lead handoff must record direct-worker limit"),
