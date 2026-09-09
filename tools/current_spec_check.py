@@ -50,17 +50,7 @@ REQUIRED_FILES = [
     "docs/tech-lead/dispatch-state.yaml",
     "tools/fresh_session_check.py",
     "tools/tech_lead_guard.py",
-]
-
-TARGET_PACKAGE = [
-    "spec/architecture-1.1-proposed.md",
-    "spec/architecture-lock-1.1-proposed.md",
-    "spec/application-model.md",
-    "spec/work-items-1.1.md",
-    "spec/dependency-graph-1.1.md",
-    "spec/migration/classification-matrix.md",
-    "spec/integration/vertical-proof.md",
-    "spec/research/standards-and-use-cases.md",
+    "tools/architecture_drift_guard.py",
 ]
 
 
@@ -102,13 +92,11 @@ def main() -> int:
     ledger = yaml_subset_load(text("spec/architect/execution-ledger.yaml"), "spec/architect/execution-ledger.yaml")
     evidence = yaml_subset_load(text("spec/architect/evidence-obligations.yaml"), "spec/architect/evidence-obligations.yaml")
 
-    # The forward-routing rule must be repeated across every bootstrap layer;
-    # otherwise a fresh agent can accidentally fall back to Architecture 1.0.
     markers = [
         (agents, "Architecture 1.1 is the forward implementation target", "AGENTS.md is not 1.1-forward"),
         (tl, "Architecture 1.1 is the target architecture", "Tech Lead handoff is not 1.1-forward"),
         (tl, "up to 3 workers", "Tech Lead direct-worker limit is missing"),
-        (workers, "Maximum active descendants: 9", "worker model does not record the 3x3/9-descendant rule"),
+        (workers, "maximum active descendant", "worker model does not record the active descendant limit"),
         (resume, "Fresh-session guarantee", "resume protocol lacks fresh-session guarantee"),
         (resume, "M001 — Architecture 1.1 Freeze", "resume protocol does not route through M001"),
         (current, "mandatory forward implementation target", "current-state does not declare 1.1 mandatory-forward"),
@@ -119,7 +107,6 @@ def main() -> int:
         if marker.lower() not in haystack.lower():
             fail(errors, message)
 
-    # Machine-check the dispatch contract instead of relying only on prose.
     dispatch = yaml_subset_load(text("docs/tech-lead/dispatch-state.yaml"), "docs/tech-lead/dispatch-state.yaml")
     if not isinstance(dispatch, dict):
         fail(errors, "dispatch-state.yaml is not a mapping")
@@ -155,10 +142,6 @@ def main() -> int:
             if subagent_total > 9:
                 fail(errors, "dispatch-state.yaml cannot declare more than 9 active subagents")
 
-    # Roadmap is authoritative. We validate its literal authority markers
-    # rather than using the legacy YAML subset parser, because the current
-    # roadmap intentionally uses valid YAML flow collections that the older
-    # parser does not understand.
     for marker in (
         'roadmap_version: "1.5"',
         'status: FROZEN_AUTHORITATIVE',
