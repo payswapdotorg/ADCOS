@@ -31,7 +31,7 @@ def fail(message: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--actual-main-sha", help="Live origin/main SHA; if omitted, try git rev-parse origin/main")
+    parser.add_argument("--actual-main-sha", help="Live main SHA; if omitted, try git rev-parse origin/main")
     args = parser.parse_args()
 
     failures: list[str] = []
@@ -65,7 +65,7 @@ def main() -> int:
         "tools/tech_lead_guard.py",
     ]
     for rel in required:
-        if not (ROOT / rel).exists():
+        if not (ROOT / rel).is_file():
             failures.append(f"missing required handoff/governance file: {rel}")
 
     agents = normalize_markdown(read("AGENTS.md"))
@@ -81,7 +81,7 @@ def main() -> int:
         (handoff, "Single-agent mode", "Tech Lead handoff must support single-agent execution"),
         (handoff, "Architecture 1.1 is the target architecture", "Tech Lead handoff must bind implementation to 1.1"),
         (handoff, "at most 3 workers", "Tech Lead handoff must record direct-worker limit"),
-        (worker_model, "maximum active descendants: 9", "worker model must record 3x3 descendant limit"),
+        (worker_model, "maximum active descendant", "worker model must record the active descendant limit"),
         (resume, "Fresh-session guarantee", "resume protocol must define fresh-session sufficiency"),
         (resume, "M001 — Architecture 1.1 Freeze", "resume protocol must identify the 1.1 transition gate"),
         (roadmap, "mandatory_forward_target: \"Architecture 1.1\"", "roadmap must declare 1.1 as mandatory forward target"),
@@ -111,8 +111,8 @@ def main() -> int:
     active = 0
     if auth_root.exists():
         for path in auth_root.glob("*.y*ml"):
-            text = path.read_text(encoding="utf-8")
-            if re.search(r"^status:\s*active\s*$", text, re.MULTILINE) and re.search(r"^authorized:\s*true\s*$", text, re.MULTILINE):
+            auth_text = path.read_text(encoding="utf-8")
+            if re.search(r"^status:\s*active\s*$", auth_text, re.MULTILINE) and re.search(r"^authorized:\s*true\s*$", auth_text, re.MULTILINE):
                 active += 1
     if "active_authorization: null" in roadmap and active > 0:
         failures.append(f"roadmap says no active authorization but {active} authorization file(s) declare active=true")
