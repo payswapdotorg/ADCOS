@@ -5,7 +5,6 @@ This is an offline checker. It validates repository-local handoff mechanics;
 it does not grant implementation authority and it never replaces the normal
 Architect/ACR acceptance process.
 """
-
 from __future__ import annotations
 
 import argparse
@@ -92,9 +91,9 @@ def main() -> int:
         if marker not in roadmap:
             failures.append(f"roadmap.yaml missing current authoritative marker: {marker}")
 
-    for marker in ["active_work_item: null", "active_authorization: null", "governed-transition-to-architecture-1.1", "R7 follows M001"]:
+    for marker in ["active_work_item: null", "active_authorization: null", "mode: awaiting-architect-decisions", "M001 — Architecture 1.1 Freeze", "R7 follows M001"]:
         if marker not in execution:
-            failures.append(f"execution-state.yaml missing 1.1 transition marker: {marker}")
+            failures.append(f"execution-state.yaml missing current transition marker: {marker}")
 
     proposal = ROOT / "spec/architecture-1.1-proposed.md"
     if proposal.exists() and "mandatory forward target" not in agents.lower():
