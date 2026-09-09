@@ -39,7 +39,14 @@ jobs:
         run: python3 tools/spec_check.py
         continue-on-error: true
 
+      # Fresh-session reconciliation is meaningful in PR context (base main vs
+      # the PR's persisted snapshot) and for local fresh clones. On push events
+      # it is structurally unsatisfiable: a pushed commit cannot contain its
+      # own future SHA, so exact main_sha==origin/main can never hold on main.
+      # Keep the check strict where it discriminates; skip only the impossible
+      # invocation, never the PR one.
       - name: Run fresh-session handoff checks
+        if: github.event_name == 'pull_request'
         run: python3 tools/fresh_session_check.py --actual-main-sha "$(git rev-parse origin/main)"
 
       - name: Run experience/learning registry integrity checks
