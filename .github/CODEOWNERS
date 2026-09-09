@@ -1,0 +1,11 @@
+# Governance and architecture files require explicit repository-owner review.
+# This becomes enforceable when GitHub branch protection/rulesets require
+# CODEOWNERS review on protected branches.
+
+/spec/architect/ @payswapdotorg
+/spec/architecture.md @payswapdotorg
+/spec/architecture-lock.md @payswapdotorg
+/spec/architecture-1.1-proposed.md @payswapdotorg
+/spec/architecture-lock-1.1-proposed.md @payswapdotorg
+/.github/ @payswapdotorg
+/AGENTS.md @payswapdotorg

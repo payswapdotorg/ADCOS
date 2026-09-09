@@ -1,0 +1,20 @@
+# Machine-readable Tech Lead dispatch state.
+# This is repository evidence, not permission. Authorization still comes only
+# from spec/architect/authorizations/ and the Architect/ACR process.
+
+schema_version: 1
+status: IDLE
+max_direct_workers: 3
+max_subagents_per_worker: 3
+max_active_descendants: 9
+max_depth: 2
+
+active_workers: []
+
+rules:
+  - "At most 3 direct workers may be active under one Tech Lead."
+  - "Each direct worker may have at most 3 active subagents."
+  - "Maximum active descendants across the hierarchy is 9."
+  - "No worker may create a deeper level than direct worker -> subagent."
+  - "Dispatch state never grants implementation authorization."
+  - "Worker activation requires an already-active repository-local implementation authorization."

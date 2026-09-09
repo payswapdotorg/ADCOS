@@ -6,43 +6,102 @@
 
 This record operationalizes the existing sole-Architect authority model. It does not create product, protocol, identity, session, routing, transport, payment, or economic authority.
 
+## Single-agent execution
+
+A single autonomous LLM MAY hold both the Architect and Tech Lead roles. In that
+mode it remains bound by exactly the same repository-local authority, ACR,
+authorization, evidence, review and historical-integrity rules. Combining roles
+removes a human coordination dependency; it does not remove governance gates.
+
+## Forward architecture target
+
+The autonomous loop is now a **migration-to-Architecture-1.1 program**.
+Architecture 1.0 is the preserved legacy baseline. It is read to classify and
+migrate existing implementation, not to define new behavior.
+
+For all new work, the Architect and Tech Lead MUST reason from the Architecture
+1.1 target package, its locks, application model, work items, dependency graph,
+migration classification and vertical-proof requirements. No new capability may
+be justified solely by a 1.0 semantic that is absent from 1.1.
+
+**M001 — Architecture 1.1 Freeze** is the first transition Work Item. It is the
+only legitimate basis for promoting the 1.1 proposal into accepted successor
+architecture/lock/work-item/dependency snapshots. After M001 acceptance, 1.1 is
+the sole normative architecture for forward implementation and 1.0 is historical
+superseded evidence.
+
 ## Rule
 
-The Architect is responsible for advancing the repository through the frozen roadmap without requiring user prompting for routine governance actions. The conversation has zero authority and is not a prerequisite for any transition.
+The Architect is responsible for advancing the repository through the roadmap
+without requiring user prompting for routine governance actions. The conversation
+has zero authority and is not a prerequisite for any transition.
 
 For every unlocked roadmap gate, the Architect MUST autonomously:
 
-1. reconstruct authority from the repository;
-2. determine the next Work Item from the authoritative roadmap and accepted history;
+1. reconstruct authority from the repository and actual GitHub mainline;
+2. determine the next transition or feature Work Item from the authoritative roadmap and accepted history;
 3. perform any required ACR/change-control reconciliation;
-4. produce the exact Work Item contract and dependency/evidence boundaries;
+4. produce the exact Work Item contract, dependency overlay, evidence obligations and scope;
 5. issue exactly one repository-local implementation authorization when the contract is internally consistent;
-6. govern the resulting implementation PR through adversarial review, correction, verification, acceptance, and merge;
-7. reconcile execution state and immediately advance to the next legitimate gate.
+6. act as Tech Lead or coordinate the Tech Lead's workers under the documented 3x3 limit;
+7. govern the resulting implementation PR through adversarial review, correction, verification, acceptance and merge;
+8. reconcile execution state and immediately advance to the next legitimate gate.
 
 ## Fail-closed stops
 
-The Architect stops only for a real authority conflict, an unresolved architecture contradiction, missing evidence that cannot legitimately be produced by software/governance, an external physical-validation obligation, or another condition explicitly requiring information unavailable in the repository.
+The Architect stops only for a real authority conflict, an unresolved architecture
+contradiction, missing evidence that cannot legitimately be produced by
+software/governance, an external physical-validation obligation, or another
+condition explicitly requiring information unavailable in the repository.
 
-User confirmation, conversational silence, or the need to ask permission for routine sequencing are NOT governance dependencies.
+User confirmation, conversational silence, or the need to ask permission for
+routine sequencing are NOT governance dependencies.
 
 ## Post-snapshot Work Items
 
-The original `spec/work-items.md` registry is the frozen architectural baseline. Work Items introduced by later roadmap gates may be governed as gate-specific execution units under `spec/architect/work-items/`, provided that:
+The original `spec/work-items.md` registry is the frozen architectural baseline.
+Work Items introduced by later roadmap gates may be governed as gate-specific
+execution units under `spec/architect/work-items/`, provided that:
 
 - the Work Item has a durable contract;
 - its dependencies are explicitly recorded against accepted history;
-- an exact repository-local authorization exists before implementation;
+- exact repository-local authorization exists before implementation;
 - the gate-specific dependency overlay is explicit and acyclic;
 - no frozen architecture or protocol semantic is changed implicitly;
 - historical records are never rewritten.
 
-This formalizes the execution pattern already used by WORK-054, WORK-055, and WORK-056 and is a governance representation rule, not a new protocol authority.
+For the 1.1 transition, the successor Work Item package under `spec/work-items-1.1.md`
+and related artifacts is the forward planning basis. It does not itself grant
+implementation permission.
+
+## Tech Lead worker hierarchy
+
+The Tech Lead may dispatch at most three direct workers. Each direct worker may
+dispatch at most three subagents. Maximum active descendants are therefore nine.
+
+Workers may be parallelized only where dependency and authority boundaries are
+independent. The Tech Lead integrates the results and independently verifies
+claims against repository evidence.
 
 ## One-active-authorization invariant
 
-Exactly one implementation authorization may be active. Acceptance closes the current authorization before the next authorization can become active.
+Exactly one implementation authorization may be active. Acceptance closes the
+current authorization before the next authorization can become active.
+
+## Architecture-transition rule
+
+A proposed successor architecture is not automatically normative merely because
+its files exist. Promotion requires the normal ACR/change-control process, new
+frozen architecture/lock snapshots, updated dependency/work-item semantics,
+preserved historical 1.0 artifacts, and a durable acceptance record. Until that
+promotion is complete, only explicitly authorized transition/migration work may
+change implementation code.
 
 ## Stripe-of-connectivity objective
 
-The loop advances toward the program exit condition: an external application consumes ADCOS through stable APIs while provider, access technology, routing, path, session, metering, and payment implementations remain behind their canonical authority boundaries. R6 specifically turns independently operated networks and infrastructure owners into onboardable, certifiable, policy-bounded, revocable participants without requiring them to surrender infrastructure authority.
+The loop advances toward the program exit condition: an external application
+consumes ADCOS through stable APIs while provider, access technology, routing,
+path, session, metering and payment implementations remain behind their
+canonical authority boundaries. R7 turns this into programmable connectivity
+commerce; R8 hardens resilience/mobility/scale; R9 adds future access
+technologies without changing the normative contract boundary.
