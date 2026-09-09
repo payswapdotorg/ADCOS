@@ -26,6 +26,13 @@ CONTROL_FILES = {
     "spec/migration/classification-matrix.md",
     "spec/integration/vertical-proof.md",
     "spec/research/standards-and-use-cases.md",
+    "tools/README.md",
+    "tools/spec_check.py",
+    "tools/spec_check_selftest.py",
+    "tools/current_spec_check.py",
+    "tools/fresh_session_check.py",
+    "tools/tech_lead_guard.py",
+    "tools/architecture_drift_guard.py",
 }
 
 
