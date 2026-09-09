@@ -46,6 +46,11 @@ from typing import Any, Dict, Mapping, Optional, Tuple
 from agent.clock import AgentClock
 
 from .errors import CommercialError, CommercialReasonCode
+from .contract_binding import (
+    ContractReferenceIndex,
+    validate_contract_binding,
+    validate_contract_id,
+)
 from .journal import (
     AppendOnlyCommercialJournal,
     CommercialStore,
@@ -153,6 +158,17 @@ class CommandOutcome:
 # ---------------------------------------------------------------------------
 
 
+def _binding_of(intent: Mapping[str, Any]) -> str:
+    """The canonical contract binding carried by an intent
+    payload (LOCK-113): the M009 bound mode requires every
+    commercial account to cite the canonical contract it
+    mirrors.  Missing binding -> the empty string (the unbound
+    legacy mode; the admission gate rejects a missing binding
+    whenever a contract index is injected)."""
+    value = intent.get("contract_id", "")
+    return value if isinstance(value, str) else ""
+
+
 def _project_initial_transaction(record: JournalRecord) -> CommercialTransaction:
     event = record.event
     command = record.command
@@ -183,6 +199,7 @@ def _project_initial_transaction(record: JournalRecord) -> CommercialTransaction
         expires_at="",
         session_ref="",
         path_ref="",
+        contract_id=_binding_of(intent),
         delivery_evidence_refs=(),
         usage_refs=(),
         settlement_refs=(),
@@ -320,6 +337,7 @@ def apply_record(
         expires_at=expires_at,
         session_ref=session_ref,
         path_ref=path_ref,
+        contract_id=transaction.contract_id,
         delivery_evidence_refs=delivery_refs,
         usage_refs=usage_refs,
         settlement_refs=settlement_refs,
@@ -368,6 +386,7 @@ class CommercialCore:
         store: CommercialStore,
         clock: AgentClock,
         references: ReferenceIndex,
+        contract_references: Optional[ContractReferenceIndex] = None,
     ) -> None:
         if not isinstance(clock, AgentClock):
             raise CommercialError(
@@ -379,6 +398,15 @@ class CommercialCore:
                 CommercialReasonCode.INVALID_INPUT,
                 "references must be a ReferenceIndex",
             )
+        if contract_references is not None and not isinstance(
+            contract_references, ContractReferenceIndex
+        ):
+            raise CommercialError(
+                CommercialReasonCode.INVALID_INPUT,
+                "contract_references must be a ContractReferenceIndex "
+                "(built from the contracts.ContractStore public surface "
+                "by the caller)",
+            )
         self._journal = AppendOnlyCommercialJournal(store=store)
         if len(self._journal) != 0:
             raise CommercialError(
@@ -388,6 +416,7 @@ class CommercialCore:
             )
         self._clock = clock
         self._references = references
+        self._contract_references = contract_references
         self._state: Dict[str, CommercialTransaction] = {}
 
     @classmethod
@@ -397,6 +426,7 @@ class CommercialCore:
         store: CommercialStore,
         clock: AgentClock,
         references: ReferenceIndex,
+        contract_references: Optional[ContractReferenceIndex] = None,
     ) -> "CommercialCore":
         """Journal-first recovery: load, verify the full hash
         chain, fold, resume.
@@ -406,6 +436,9 @@ class CommercialCore:
         facts are immutable, but future commands re-validate
         their references against the current index (an evicted
         delivery citation fails settlement, never silently).
+        The canonical contract index is injected fresh the same
+        way (future commands re-validate their contract binding
+        against the CURRENT canonical contract state).
         """
         core = cls.__new__(cls)
         if not isinstance(clock, AgentClock):
@@ -418,9 +451,19 @@ class CommercialCore:
                 CommercialReasonCode.INVALID_INPUT,
                 "references must be a ReferenceIndex",
             )
+        if contract_references is not None and not isinstance(
+            contract_references, ContractReferenceIndex
+        ):
+            raise CommercialError(
+                CommercialReasonCode.INVALID_INPUT,
+                "contract_references must be a ContractReferenceIndex "
+                "(built from the contracts.ContractStore public surface "
+                "by the caller)",
+            )
         core._journal = AppendOnlyCommercialJournal(store=store)
         core._clock = clock
         core._references = references
+        core._contract_references = contract_references
         core._state = fold_state(core._journal.records())
         return core
 
@@ -539,6 +582,45 @@ class CommercialCore:
                     "transaction %r is not journaled" % command.transaction_id,
                 )
             from_state = transaction.state
+
+        # 5b. the M009 canonical contract binding (LOCK-113).  In
+        #     bound mode (a contract index injected) every command
+        #     must resolve the transaction's canonical contract
+        #     citation and the forward actions must satisfy the
+        #     canonical-state floor: the commercial reconciliation
+        #     walk never runs ahead of the canonical contract.  In
+        #     unbound legacy mode (no index) the W051 semantics
+        #     stand unchanged (the accepted M003 marketplace and
+        #     M006 composition-track consumers).
+        if self._contract_references is not None:
+            if command.action == CommercialAction.SUBMIT_INTENT:
+                intent_payload = command.payload.get("intent")
+                binding = (
+                    intent_payload.get("contract_id", "")
+                    if isinstance(intent_payload, Mapping)
+                    else ""
+                )
+                if not isinstance(binding, str) or not binding:
+                    raise CommercialError(
+                        CommercialReasonCode.CONTRACT_UNKNOWN,
+                        "submit_intent carries no canonical contract "
+                        "citation (contract_id) in the intent payload; "
+                        "the bound commercial core opens accounts ONLY "
+                        "against canonical contracts (LOCK-113)",
+                    )
+                validate_contract_id(binding, "intent contract_id")
+            else:
+                binding = transaction.contract_id
+                if not binding:
+                    raise CommercialError(
+                        CommercialReasonCode.CONTRACT_UNKNOWN,
+                        "transaction %r carries no canonical contract "
+                        "binding (created in unbound mode); the bound "
+                        "core cannot continue it"
+                        % command.transaction_id,
+                    )
+            citation = self._contract_references.citation(binding)
+            validate_contract_binding(command.action, citation)
 
         # 6. the deterministic event instant: exactly ONE clock
         #    read per non-duplicate submission (appended or

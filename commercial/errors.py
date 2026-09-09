@@ -21,7 +21,16 @@ from __future__ import annotations
 
 
 class CommercialReasonCode:
-    """The frozen CommercialCore reason vocabulary (W051 contract)."""
+    """The CommercialCore reason vocabulary (W051 contract + the
+    M009 contract-binding codes).
+
+    The W051-era vocabulary is frozen; the two M009 additions
+    (CONTRACT_UNKNOWN / CONTRACT_STATE_INVALID) are the disclosed
+    additive re-bind codes for the canonical contract citation
+    gate (LOCK-113): an unresolvable contract citation and a
+    canonical-state floor violation.  No historical code is
+    removed or renumbered.
+    """
 
     INVALID_INPUT = "invalid-input"
     COMMAND_INVALID = "command-invalid"
@@ -43,6 +52,9 @@ class CommercialReasonCode:
     JOURNAL_CORRUPT = "journal-corrupt"
     STORE_FAILED = "store-failed"
     INSTANT_INVALID = "instant-invalid"
+    # M009 canonical contract binding (LOCK-113)
+    CONTRACT_UNKNOWN = "contract-unknown"
+    CONTRACT_STATE_INVALID = "contract-state-invalid"
 
     @classmethod
     def values(cls) -> tuple:
@@ -67,6 +79,8 @@ class CommercialReasonCode:
             cls.JOURNAL_CORRUPT,
             cls.STORE_FAILED,
             cls.INSTANT_INVALID,
+            cls.CONTRACT_UNKNOWN,
+            cls.CONTRACT_STATE_INVALID,
         )
 
 

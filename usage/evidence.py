@@ -367,6 +367,29 @@ class CommercialTransactionSnapshot:
         )
 
 
+def _reconstruct_snapshot(data: Mapping) -> CommercialTransactionSnapshot:
+    """Reconstruct the typed snapshot for index deserialization.
+
+    M009 re-bind: entries carrying the contract binding marker
+    (``binding == "contract"``) reconstruct as the contract-cited
+    :class:`~usage.contract_binding.ContractCommercialSnapshot`
+    so the canonical binding survives the canonical-JSON
+    round-trip byte-identically; every other entry reconstructs
+    as the legacy commercial snapshot.  Fail-closed: a forged
+    binding marker on a non-contract-shaped entry fails at the
+    contract snapshot's own construction validation.
+    """
+    if data.get("binding") == "contract":
+        # imported lazily to keep the module import order stable
+        from .contract_binding import ContractCommercialSnapshot
+
+        payload = {
+            key: value for key, value in data.items() if key != "binding"
+        }
+        return ContractCommercialSnapshot.from_dict(payload)
+    return CommercialTransactionSnapshot.from_dict(data)
+
+
 class UsageEvidenceIndex:
     """An immutable snapshot of resolvable usage-evidence inputs.
 
@@ -524,7 +547,9 @@ class UsageEvidenceIndex:
                 for entry in data["evidence"]
             ],
             transactions=[
-                CommercialTransactionSnapshot.from_dict(entry)
+                _reconstruct_snapshot(entry)
+                if isinstance(entry, Mapping) and entry.get("binding")
+                else CommercialTransactionSnapshot.from_dict(entry)
                 for entry in data["transactions"]
             ],
         )

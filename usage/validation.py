@@ -248,17 +248,36 @@ def validate_delivery_eligibility(
 ) -> None:
     """Usage requires an already-authorized delivery path.
 
-    A DELIVERED-class observation against a transaction whose
-    cited W051 state is pre-delivery fails closed: the explicit
+    A DELIVERED-class observation against a commercial authority
+    whose cited state is pre-delivery fails closed: the explicit
     reservation/lease-phase citation fails closed
     RESERVATION_NOT_USAGE (reservation or lease state NEVER
     creates usage -- the named separation), and any other
     pre-delivery phase fails closed TRANSACTION_NOT_DELIVERING.
+
+    M009 re-bind: a contract-cited snapshot
+    (:class:`~usage.contract_binding.ContractCommercialSnapshot`)
+    gates on the CANONICAL contract state vocabulary: the
+    canonical reservation phase (INTENT / OFFER_SELECTED /
+    CONTRACT_ACTIVE -- the contract active without execution,
+    the canonical reservation/lease state) fails closed
+    RESERVATION_NOT_USAGE exactly like the legacy
+    RESERVATION_HELD citation, and every other pre-delivery
+    canonical state fails closed TRANSACTION_NOT_DELIVERING.
     """
     if command.payload.get("quantity_class") != QuantityClass.DELIVERED:
         return
     if snapshot.is_delivery_eligible():
         return
+    reservation_phase = getattr(snapshot, "is_reservation_phase", None)
+    if callable(reservation_phase) and reservation_phase():
+        raise UsageError(
+            UsageReasonCode.RESERVATION_NOT_USAGE,
+            "transaction %s is %s (the canonical reservation phase; "
+            "reservation/lease state never creates usage; only "
+            "authoritative delivered-traffic evidence does)"
+            % (command.transaction_id, snapshot.commercial_state),
+        )
     if snapshot.commercial_state == "RESERVATION_HELD":
         raise UsageError(
             UsageReasonCode.RESERVATION_NOT_USAGE,

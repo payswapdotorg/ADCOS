@@ -116,6 +116,13 @@ class BillableUsageSnapshot:
 
     usage_transaction_id: str
     usage_state: str
+    #: M009 canonical contract binding (LOCK-113): the canonical
+    #: contract the cited usage account is bound to (the usage
+    #: account key under the M009 re-bind).  Empty only for
+    #: legacy unbound citations (the composition-track
+    #: consumers); when non-empty it MUST match the canonical
+    #: contract-id grammar (fail closed at construction).
+    contract_id: str = ""
     gross_amount_micros: int = 0
     statement_id: Optional[str] = None
     billable_quantity: int = 0
@@ -137,6 +144,14 @@ class BillableUsageSnapshot:
                 "usage_state %r must be one of %s (the cited W052 "
                 "vocabulary)" % (self.usage_state, list(KNOWN_USAGE_STATES)),
             )
+        if self.contract_id:
+            # M009 canonical contract binding (LOCK-113): a
+            # non-empty binding must be a canonical contract id
+            # (the M002 content-derived grammar — cited, not
+            # duplicated)
+            from .facts import validate_contract_id as _validate_binding
+
+            _validate_binding(self.contract_id, "contract_id")
         if not isinstance(self.gross_amount_micros, int) or isinstance(
             self.gross_amount_micros, bool
         ):
@@ -212,6 +227,8 @@ class BillableUsageSnapshot:
             "reversed_amount_micros": self.reversed_amount_micros,
             "disputed": self.disputed,
         }
+        if self.contract_id:
+            data["contract_id"] = self.contract_id
         if self.statement_id is not None:
             data["statement_id"] = self.statement_id
             data["sealed_at"] = self.sealed_at
@@ -237,6 +254,7 @@ class BillableUsageSnapshot:
         return cls(
             usage_transaction_id=data["usage_transaction_id"],
             usage_state=data["usage_state"],
+            contract_id=str(data.get("contract_id", "")),
             gross_amount_micros=data.get("gross_amount_micros", 0),
             statement_id=data.get("statement_id"),
             billable_quantity=data.get("billable_quantity", 0),

@@ -138,30 +138,62 @@ from platform.lifecycle import PlatformIntegrator  # noqa: E402
 import commercial  # noqa: E402
 from commercial import (  # noqa: E402
     CommercialCore,
+    ContractCitation,
+    ContractReferenceIndex,
     Reference,
     ReferenceFamily,
     ReferenceIndex,
 )
 
+import contracts  # noqa: E402
+from contracts import (  # noqa: E402
+    ActivateContract,
+    BeneficiaryScope,
+    ConnectivityPrincipal,
+    ContractStore,
+    CreateContract,
+    HardConstraint,
+    OpaqueReference,
+    Provenance,
+    RecordAssurance,
+    RecordDelivery,
+    RecordExecutionActivation,
+    RecordSettled,
+    RecordSettlementPending,
+    RecordUsageFinal,
+    SelectOffers,
+    TerminationRules,
+    ValidityInterval,
+)
+
 import usage  # noqa: E402
 from usage import (  # noqa: E402
+    ContractCommercialSnapshot,
+    DeliveryEvidence,
     EvidenceFamily,
     EvidenceIndex,
+    EvidenceKind,
     EvidenceReference,
     MemoryUsageStore,
+    QuantityClass,
+    UsageEvidenceIndex,
     UsageLedger,
     UsageState,
 )
 
 import allocation  # noqa: E402
 from allocation import (  # noqa: E402
+    AllocationEvidenceIndex,
     AllocationLedger,
     AllocationState,
+    BillableUsageSnapshot,
     EconomicPolicy,
+    ExternalReferenceSnapshot,
     FactFamily,
     FactIndex,
     FactReference,
     MemoryAllocationStore,
+    ReferenceKind,
 )
 
 import payment  # noqa: E402
@@ -253,14 +285,26 @@ _KEY_B = b"w045-battery-key-B"
 _CT0 = "2026-09-01T12:00:00Z"
 _CSTEP = 60
 
+#: The canonical contract drive instants (the M002 recorded-at
+#: instants; injected, never the wall clock).
+_CX0 = "2026-09-01T11:00:00Z"
+_CX_STEP = 300
+
 #: The W052 usage-ledger clock epoch and step.
 _UT0 = "2026-09-01T13:00:00Z"
 _USTEP = 60
 
-#: The usage observations' metering instants (caller DATA).
+#: The delivery-plane metering time-series instants (the M009
+#: delivered-evidence interval bounds; public journal reads).
+_WE1 = "2026-09-01T13:00:00Z"
+_WE2 = "2026-09-01T13:00:30Z"
+_WE3 = "2026-09-01T13:01:00Z"
+
+#: The usage observations' metering instants (caller DATA;
+#: windows contained in the evidence intervals).
 _OBS1 = "2026-09-01T13:00:10Z"
 _OBS2 = "2026-09-01T13:00:20Z"
-_OBS3 = "2026-09-01T13:00:30Z"
+_OBS3 = "2026-09-01T13:00:40Z"
 
 #: The WORK-053 allocation-ledger clock epoch and step.
 _AT0 = "2026-09-01T15:00:00Z"
@@ -269,7 +313,11 @@ _ASTEP = 60
 #: The declared allocation effective instant.
 _EFFECTIVE_AT = "2026-09-01T13:30:00Z"
 
-#: The standard W053 economic policy fixture (immutable v1).
+#: The standard W053 economic policy fixture (the current
+#: terms-derived immutable version: adcos 500 bps of the
+#: distributable, provider share bounds [0, 10000] bps, declared
+#: half-up rounding; the M009 allocation drive selects a 6000 bps
+#: provider share).
 _PID = "std"
 _PID_V = 1
 _CCY = "GHS"
@@ -279,9 +327,10 @@ _ADC_BPS = 500
 _TAX_BPS = 1250
 _DEV_MIN = 0
 _DEV_MAX = 10000
-_DEV_SHARE = 6000
+_PROVIDER_BPS = 6000
+_TAX_MICROS = 100
 _POLICY_FROM = "2026-01-01T00:00:00Z"
-_POLICY_UNTIL = ""
+_POLICY_UNTIL = "2027-01-01T00:00:00Z"
 
 #: The W044 payment-gateway clock epoch and step.
 _PT0 = "2026-09-02T07:00:00Z"
@@ -423,7 +472,30 @@ _AUTHORIZED_PATHS = (
     "eligibility/",
     "tools/eligibility_selftest.py",
     "docs/WORK-045-evidence.md",
+    # the M009 child scope (R7-CORE-001, DEC-0101): the commercial-track
+    # re-bind lands across the usage/commercial/allocation/payment domains,
+    # the re-baselined batteries, and the M009 evidence record
+    "usage/",
+    "commercial/",
+    "allocation/",
+    "payment/",
+    "tools/payment_selftest.py",
+    "tools/usage_selftest.py",
+    "tools/commercial_selftest.py",
+    "tools/allocation_selftest.py",
+    "docs/M009-evidence.md",
 )
+
+
+def _active_authorization_covers(path: str) -> bool:
+    """Authorization-aware delta-shape consultation (the
+    docs/M001-evidence.md §4 duty for the post-M001
+    implementation era)."""
+    try:
+        from authorization_provenance import covers
+        return covers(path)
+    except Exception:
+        return False
 AUTHORIZED_CI_WIRING = ".github/workflows/spec-check.yml"
 
 #: The pinned golden stream digest of the canonical scenario
@@ -432,7 +504,7 @@ AUTHORIZED_CI_WIRING = ".github/workflows/spec-check.yml"
 #: W044-shape records, the born-frozen event payloads, the
 #: provider-ledger registration digest, and the single
 #: conferment increment).
-_GOLDEN_STREAM_SHA = "sha256:6c54627097a093fb032c29b8103b3b03bfc204b14a31973045fea35e85111192"
+_GOLDEN_STREAM_SHA = "sha256:1c9b51c17ec72376bffb904edf677f03aeb52e216959098ab91d31433743e88d"
 
 
 def ok(name: str, detail: str = "") -> Result:
@@ -616,10 +688,13 @@ def _establish_session(
 def _world():
     """One booted node + one booted peered peer runtime with one
     ESTABLISHED session, an ACTIVATED NetworkPath over the
-    session, and a PlatformIntegrator journal of delivery-plane
-    evidence events -- all through the ordinary public production
-    chain.  Returns (runtime, peer, session_id, manager,
-    integrator, shared clock)."""
+    session, and a PlatformIntegrator journal carrying the
+    DELIVERY-PLANE METERING TIME SERIES on the active interface
+    (cumulative rx/tx counters at three instants; the M009
+    delivery-evidence intervals derive from the pairs) -- all
+    through the ordinary public production chain.  Returns
+    (runtime, peer, session_id, manager, integrator, shared
+    clock)."""
     snapshots = _snapshots()
     shared = StepClock(_T0, 60)
     peer = AgentRuntime(
@@ -644,12 +719,32 @@ def _world():
     manager.probe(wifi)
     manager.activate(wifi)
     integrator = PlatformIntegrator(store=MemoryPlatformStore(), clock=shared)
-    for snapshot in snapshots:
-        integrator.ingest_interface_observation(
-            snapshot, observed_at=shared.now()
-        )
     integrator.ingest_platform_state(
         _platform_snapshot(), observed_at=shared.now()
+    )
+    # the delivery-plane metering time series on the ACTIVE path
+    # interface: cumulative counters (rx grows 0 -> 500 -> 900,
+    # tx grows 0 -> 150 -> 250; totals 0 -> 650 -> 1150; the M009
+    # delivered-evidence intervals [WE1, WE2] = 650 and
+    # [WE2, WE3] = 500 -- public-read-only derivation)
+    integrator.ingest_interface_observation(
+        _snap(name=WIFI_IF, kind="wireless", addresses=("fd00::a:1",), rx=0, tx=0),
+        observed_at=_WE1,
+    )
+    integrator.ingest_interface_observation(
+        _snap(name=WIFI_IF, kind="wireless", addresses=("fd00::a:1",), rx=500, tx=150),
+        observed_at=_WE2,
+    )
+    integrator.ingest_interface_observation(
+        _snap(name=WIFI_IF, kind="wireless", addresses=("fd00::a:1",), rx=900, tx=250),
+        observed_at=_WE3,
+    )
+    # one distractor observation on a second interface (NOT the
+    # active path; its evidence correlates to a different
+    # transaction in the index)
+    integrator.ingest_interface_observation(
+        _snap(name=ETH_IF, kind="ethernet", addresses=("fd00::a:2",), rx=11, tx=5),
+        observed_at=_WE1,
     )
     return runtime, peer, session_id, manager, integrator, shared
 
@@ -722,34 +817,226 @@ def _commercial_references(
     return ReferenceIndex(entries)
 
 
+def _create_contract_command() -> CreateContract:
+    """The canonical contract creation core (the M002 public
+    surface; the M009 commercial-track binding authority)."""
+    return CreateContract(
+        principal=ConnectivityPrincipal(
+            principal_kind="APPLICATION", principal_ref="app:buyer-1"
+        ),
+        beneficiaries=(
+            BeneficiaryScope(
+                beneficiary_kind="DEVICE", beneficiary_ref="dev:gw-1"
+            ),
+        ),
+        requirements=(
+            OpaqueReference(
+                ref_kind="intent-requirements",
+                value="intent:buyer-1-gh",
+                provenance=Provenance(issuer="arch:buyer-agent"),
+            ),
+        ),
+        hard_constraints=(
+            HardConstraint(
+                kind="latency-bound",
+                params={"max_ms": 150},
+                provenance=Provenance(issuer="prov:netpro"),
+            ),
+        ),
+        validity=ValidityInterval(
+            not_before="2026-09-01T00:00:00Z",
+            not_after="2026-10-01T00:00:00Z",
+        ),
+        service_properties=(
+            OpaqueReference(
+                ref_kind="service-property",
+                value="prop:committed-1",
+                provenance=Provenance(issuer="prov:netpro"),
+            ),
+        ),
+        usage_pricing_terms=OpaqueReference(
+            ref_kind="usage-pricing-terms",
+            value="terms:comm-m009-1",
+            provenance=Provenance(issuer="comm:ops"),
+        ),
+        assurance_obligations=(
+            OpaqueReference(
+                ref_kind="assurance-obligation",
+                value="oblig:evid-1",
+                provenance=Provenance(issuer="assur:m005"),
+            ),
+        ),
+        execution_scope=(
+            OpaqueReference(
+                ref_kind="execution-scope",
+                value="scope:exec-default",
+                provenance=Provenance(issuer="arch:buyer-agent"),
+            ),
+        ),
+        termination=TerminationRules(
+            conditions=("principal-requested", "constraint-violated"),
+            compensation=OpaqueReference(
+                ref_kind="compensation",
+                value="comp:rule-1",
+                provenance=Provenance(issuer="comm:ops"),
+            ),
+        ),
+        provenance=Provenance(
+            issuer="arch:buyer-agent", decision_refs=("dec:m009-buy",)
+        ),
+    )
+
+
+def _wire_ref(kind: str, value: str, issuer: str) -> OpaqueReference:
+    return OpaqueReference(
+        ref_kind=kind, value=value, provenance=Provenance(issuer=issuer)
+    )
+
+
+#: The canonical contract walk stages (the frozen 1.1 #11 walk;
+#: every M009 floor maps onto one of these).
+_CONTRACT_STAGES = (
+    "created",       # INTENT
+    "offers",        # OFFER_SELECTED
+    "active",        # CONTRACT_ACTIVE
+    "execution",     # EXECUTION_ACTIVE (usage-metering eligible)
+    "delivery",      # DELIVERY
+    "usage-final",   # USAGE_FINAL
+    "settlement-pending",  # SETTLEMENT_PENDING
+    "settled",       # SETTLED
+)
+
+
+def _contract_store(*, through: str = "delivery") -> Tuple[ContractStore, str]:
+    """Drive one REAL canonical ConnectivityContract through the
+    M002 public surface (``contracts.ContractStore``) to the
+    requested walk stage.  Returns (store, contract_id).
+
+    The ASSURED stage is folded into the delivery->usage-final
+    transition (``RecordAssurance`` with the compliant state
+    between RecordDelivery and RecordUsageFinal, exactly the
+    legal 1.1 chain DELIVERY -> ASSURED -> USAGE_FINAL).
+    """
+    store = ContractStore()
+    created = store.submit(_create_contract_command(), recorded_at=_CX0)
+    cid = created.contract.contract_id
+    at = 1
+    def step(command, instant=None):
+        nonlocal at
+        when = instant if instant is not None else (
+            "2026-09-01T%02d:%02d:00Z" % (11 + (at * 300) // 3600, (at * 300) % 3600 // 60)
+        )
+        at += 1
+        return store.submit(command, recorded_at=when, contract_id=cid)
+
+    step(
+        SelectOffers(
+            offers=(_wire_ref("offer", "offer:provider-1-wifi", "prov:netpro"),)
+        ),
+        instant="2026-09-01T11:05:00Z",
+    )
+    if _stage_reached(through, "active"):
+        step(
+            ActivateContract(
+                activated_at="2026-09-01T11:10:00Z",
+                signature_refs=(_wire_ref("signature", "sig:ed25519-1", "arch:buyer-agent"),),
+            ),
+            instant="2026-09-01T11:10:00Z",
+        )
+    if _stage_reached(through, "execution"):
+        step(
+            RecordExecutionActivation(recorded_at="2026-09-01T11:15:00Z"),
+            instant="2026-09-01T11:15:00Z",
+        )
+    if _stage_reached(through, "delivery"):
+        step(
+            RecordDelivery(recorded_at="2026-09-01T11:20:00Z"),
+            instant="2026-09-01T11:20:00Z",
+        )
+    if _stage_reached(through, "usage-final"):
+        step(
+            RecordAssurance(
+                recorded_at="2026-09-01T11:25:00Z",
+                assurance_state="compliant",
+                evidence_refs=(_wire_ref("decision", "dec:assur-ok-1", "assur:m005"),),
+            ),
+            instant="2026-09-01T11:25:00Z",
+        )
+        step(RecordUsageFinal(recorded_at="2026-09-01T11:30:00Z"),
+             instant="2026-09-01T11:30:00Z")
+    if _stage_reached(through, "settlement-pending"):
+        step(RecordSettlementPending(recorded_at="2026-09-01T11:35:00Z"),
+             instant="2026-09-01T11:35:00Z")
+    if _stage_reached(through, "settled"):
+        step(RecordSettled(recorded_at="2026-09-01T11:40:00Z"),
+             instant="2026-09-01T11:40:00Z")
+    return store, cid
+
+
+def _stage_reached(through: str, stage: str) -> bool:
+    """True iff the requested walk stage is at or past ``stage``
+    (the linear 1.1 walk order)."""
+    if through not in _CONTRACT_STAGES or stage not in _CONTRACT_STAGES:
+        raise AssertionError("unknown contract walk stage %r" % through)
+    return _CONTRACT_STAGES.index(through) >= _CONTRACT_STAGES.index(stage)
+
+
+def _contract_index(store: ContractStore, contract_id: str) -> ContractReferenceIndex:
+    """Build the injected ContractReferenceIndex from PUBLIC reads
+    only (the CURRENT canonical contract state through the
+    ContractStore public surface)."""
+    return ContractReferenceIndex(
+        [
+            ContractCitation(
+                contract_id=contract_id,
+                contract_state=store.contract(contract_id).state,
+                provenance="contract-store-public-read",
+            )
+        ]
+    )
+
+
 def _commercial_tx(
     manager: NetworkPathManager,
     integrator: PlatformIntegrator,
     session_id: str,
     *,
     clock_epoch: str = _CT0,
+    contract_stage: str = "delivery",
 ):
-    """Drive one REAL WORK-051 CommercialCore transaction through
-    the public typed surface to USAGE_ACCRUING (inside the
-    delivery window).  Returns (core, transaction_id)."""
+    """Drive one REAL contract-bound commercial reconciliation
+    account through the public typed surface to USAGE_ACCRUING
+    (inside the delivery window).
+
+    M009 re-bind: the canonical contract (driven through the M002
+    public surface to ``contract_stage``) is cited at every step
+    -- the intent payload carries the canonical contract id, the
+    core runs BOUND (the injected ContractReferenceIndex), and
+    every forward action's canonical-state floor is satisfied.
+    Returns (core, transaction_id, store, contract_id)."""
+    store, contract_id = _contract_store(through=contract_stage)
     references = _commercial_references(manager, integrator, session_id)
     core = CommercialCore(
         store=commercial.MemoryCommercialStore(),
         clock=StepClock(clock_epoch, _CSTEP),
         references=references,
+        contract_references=_contract_index(store, contract_id),
     )
     deadline = add_seconds(clock_epoch, 600)
     out = core.submit_intent(
         command_id="w051-01",
         actor="buyer-agent",
         source="developer-api",
-        intent={"buyer": "buyer-1", "want": "connectivity", "region": "gh"},
+        intent={
+            "buyer": "buyer-1", "want": "connectivity", "region": "gh",
+            "contract_id": contract_id,
+        },
     )
     tx = out.transaction_id
     core.select_offer(
         command_id="w051-02", transaction_id=tx, actor="buyer-agent",
         source="developer-api",
-        offer={"offer_id": _OFFER_1, "provider": _PROVIDER_1,
+        offer={"offer_id": "offer-1", "provider": "provider-1",
                "unit": "GB", "price": "10"},
     )
     core.hold_reservation(
@@ -778,12 +1065,14 @@ def _commercial_tx(
         command_id="w051-07", transaction_id=tx, actor="platform",
         source="usage-service", usage_refs=(usage_ref,),
     )
-    return core, tx
+    return core, tx, store, contract_id
 
 
 # ---------------------------------------------------------------------------
-# WORK-052 composition fixtures (the billable-final usage facts)
+# WORK-052 composition fixtures (the billable-final usage facts,
+# contract-bound per the M009 LOCK-113 re-bind)
 # ---------------------------------------------------------------------------
+
 
 def _payment_ref() -> str:
     return _external_id("payment-observation", "payment-1")
@@ -793,15 +1082,48 @@ def _settlement_ref() -> str:
     return _external_id("settlement-confirmation", "settle-1")
 
 
+def _evidence_window_id(first: Any, second: Any) -> str:
+    """The content-derived delivery-evidence interval identity
+    (the W052/M009 public derivation: a window is a pair of
+    metering events; the id is canonical-JSON content)."""
+    return "sha256:" + hashlib.sha256(
+        canonical_json_bytes(
+            {
+                "kind": "delivery-evidence-window",
+                "from_event": first.event_id,
+                "to_event": second.event_id,
+            }
+        )
+    ).hexdigest()
+
+
+def _wifi_journal_events(integrator: PlatformIntegrator) -> Tuple[Any, ...]:
+    """The ordered public journal events of the ACTIVE path
+    interface's metering time series (public reads only)."""
+    return tuple(
+        record.event
+        for record in integrator.journal_records()
+        if record.event.kind == "interface-observation"
+        and record.event.platform_ref == WIFI_IF
+    )
+
+
 def _usage_evidence(
     manager: NetworkPathManager,
     integrator: PlatformIntegrator,
     session_id: str,
     core: CommercialCore,
     tx: str,
+    *,
+    contract_store: Optional[ContractStore] = None,
+    contract_id: Optional[str] = None,
 ) -> EvidenceIndex:
-    """Build the W052 EvidenceIndex from PUBLIC reads only (the
-    accepted W052 battery's builder, verbatim)."""
+    """Build the M009 family-classified EvidenceIndex from PUBLIC
+    reads only (the re-established era surface carrying the M009
+    semantics: family-classified citations with the canonical
+    contract binding on the commercial family).  The typed
+    projection for the ledger admission is built by
+    :func:`_typed_evidence_index`."""
     entries: List[EvidenceReference] = []
     for record in integrator.journal_records():
         event = record.event
@@ -815,15 +1137,24 @@ def _usage_evidence(
                 instant=event.observed_at,
             )
         )
-    projection = core.transaction(tx)
+    binding = (
+        contract_id
+        if contract_id is not None
+        else core.transaction(tx).contract_id
+    )
     entries.append(
         EvidenceReference(
-            reference_id=tx,
+            reference_id=binding,
             family=EvidenceFamily.COMMERCIAL,
-            provenance="commercial-core",
-            commercial_state=projection.state,
-            session_ref=projection.session_ref,
-            path_ref=projection.path_ref,
+            provenance="contract-store-public-read",
+            commercial_state=(
+                contract_store.contract(binding).state
+                if contract_store is not None
+                else "EXECUTION_ACTIVE"
+            ),
+            contract_id=binding,
+            session_ref=core.transaction(tx).session_ref,
+            path_ref=core.transaction(tx).path_ref,
         )
     )
     entries.append(
@@ -851,6 +1182,81 @@ def _usage_evidence(
     return EvidenceIndex(entries)
 
 
+def _typed_evidence_index(
+    references: EvidenceIndex,
+    *,
+    contract_state: str = "EXECUTION_ACTIVE",
+    unit_price_micros: int = 2,
+    billable_unit: str = "MB",
+    integrator: Optional[PlatformIntegrator] = None,
+    distractor_transaction: Optional[str] = None,
+) -> UsageEvidenceIndex:
+    """Project the family index into the typed admission surface
+    (the W052/M009 UsageEvidenceIndex): the delivered-evidence
+    intervals (public journal reads; the contract-bound delivery
+    facts) plus the contract-cited commercial snapshot
+    (ContractCommercialSnapshot -- LOCK-113: the account key IS
+    the canonical contract id) and the DATA-only payment /
+    provider observation entries the kind table rejects
+    structurally."""
+    binding = references.by_family(EvidenceFamily.COMMERCIAL)[0].contract_id
+    evidence: List[DeliveryEvidence] = []
+    if integrator is not None:
+        events = _wifi_journal_events(integrator)
+        for first, second in zip(events, events[1:]):
+            first_total = first.payload["rx_bytes"] + first.payload["tx_bytes"]
+            second_total = (
+                second.payload["rx_bytes"] + second.payload["tx_bytes"]
+            )
+            evidence.append(
+                DeliveryEvidence(
+                    evidence_id=_evidence_window_id(first, second),
+                    transaction_id=binding,
+                    delivered_quantity=second_total - first_total,
+                    window_start=first.observed_at,
+                    window_end=second.observed_at,
+                    evidence_kind=EvidenceKind.DELIVERED,
+                    provenance="platform-journal",
+                )
+            )
+    # the DATA-only external observation entries (payment and
+    # provider observations recorded in the index so the ledger's
+    # kind table can reject them structurally)
+    evidence.append(
+        DeliveryEvidence(
+            evidence_id=_payment_ref(),
+            transaction_id=binding,
+            delivered_quantity=0,
+            window_start=_WE1,
+            window_end=_WE3,
+            evidence_kind=EvidenceKind.PAYMENT_OBSERVED,
+            provenance="external-payment-observation",
+        )
+    )
+    if distractor_transaction is not None:
+        events = _wifi_journal_events(integrator)
+        first = events[0]
+        evidence.append(
+            DeliveryEvidence(
+                evidence_id=_evidence_window_id(first, first),
+                transaction_id=distractor_transaction,
+                delivered_quantity=1,
+                window_start=first.observed_at,
+                window_end=first.observed_at,
+                evidence_kind=EvidenceKind.DELIVERED,
+                provenance="platform-journal",
+            )
+        )
+    snapshot = ContractCommercialSnapshot(
+        transaction_id=binding,
+        commercial_state=contract_state,
+        unit_price_micros=unit_price_micros,
+        billable_unit=billable_unit,
+        tariff_provenance="contract-usage-pricing-terms-read",
+    )
+    return UsageEvidenceIndex(evidence=evidence, transactions=[snapshot])
+
+
 def _observation(
     ledger: UsageLedger,
     tx: str,
@@ -860,105 +1266,160 @@ def _observation(
     observation_id: str,
     quantity: int,
     observed_at: str,
-    evidence_refs: Optional[Tuple[str, ...]] = None,
-    payment_refs: Tuple[str, ...] = (),
-    unit: str = "MB",
+    evidence_id: Optional[str] = None,
+    quantity_class: str = QuantityClass.DELIVERED,
+    window_start: Optional[str] = None,
+    window_end: Optional[str] = None,
 ) -> Any:
-    """Ingest one W052 usage observation through the public typed
-    surface (the W052 battery's helper, verbatim)."""
-    session_ref = references.by_family(EvidenceFamily.COMMERCIAL)[0].session_ref
-    path_ref = references.by_family(EvidenceFamily.COMMERCIAL)[0].path_ref
-    if evidence_refs is None:
-        evidence_refs = tuple(
-            ref.reference_id
-            for ref in references.by_family(EvidenceFamily.DELIVERY_EVIDENCE)
-        )[:1]
-    return ledger.ingest_observation(
+    """Ingest one M009 usage observation through the public typed
+    surface (the W052/M009 admission: DELIVERED observations cite
+    the authoritative delivery-evidence interval and the window;
+    RESERVED/ATTEMPTED observations are DATA only).  The account
+    key ``tx`` IS the canonical contract id (LOCK-113)."""
+    kwargs: Dict[str, Any] = {}
+    if quantity_class == QuantityClass.DELIVERED:
+        if evidence_id is None:
+            evidence_id = references.by_family(
+                EvidenceFamily.DELIVERY_EVIDENCE
+            )[0].reference_id
+        kwargs["evidence_id"] = evidence_id
+        kwargs["window_start"] = window_start
+        kwargs["window_end"] = window_end
+    return ledger.observe_usage(
         command_id=command_id,
-        observation_id=observation_id,
         transaction_id=tx,
-        evidence_refs=evidence_refs,
-        session_ref=session_ref,
-        path_ref=path_ref,
+        quantity_class=quantity_class,
         quantity=quantity,
-        unit=unit,
-        observed_at=observed_at,
         actor="metering-agent",
         source="usage-service",
-        payment_refs=payment_refs,
+        **kwargs,
     )
 
 
 def _final_usage(
     references: EvidenceIndex,
     tx: str,
+    *,
+    typed_index: Optional[UsageEvidenceIndex] = None,
+    integrator: Optional[PlatformIntegrator] = None,
+    store: Optional[MemoryUsageStore] = None,
+    stop_after: Optional[str] = None,
 ):
-    """Drive one REAL W052 UsageLedger account through the public
-    typed surface to BILLABLE_FINAL.  Returns (usage_ledger,
-    finality_id)."""
+    """Drive one REAL contract-bound UsageLedger account through
+    the public typed surface: two DELIVERED observations on the
+    first evidence interval plus one on the second (400 quantity
+    total), one DATA-only reserved observation, and the explicit
+    billable-final seal (the statement amount 400 x 2 = 800 minor
+    units, tariff-bound to the contract-cited snapshot).
+    ``stop_after`` optionally stops the drive early ("observed").
+    Returns (usage_ledger, finality_id) where ``finality_id`` is
+    the account's public citation identity: the immutable sealed
+    statement id once final, else the contract-bound account key
+    (the honest public identity of an unsealed account)."""
+    if typed_index is None:
+        typed_index = _typed_evidence_index(
+            references, integrator=integrator
+        )
     ledger = UsageLedger(
-        store=MemoryUsageStore(),
+        store=store if store is not None else MemoryUsageStore(),
         clock=StepClock(_UT0, _USTEP),
-        evidence=references,
+        evidence_index=typed_index,
+    )
+    events = _wifi_journal_events(integrator) if integrator is not None else ()
+    windows = [
+        _evidence_window_id(first, second)
+        for first, second in zip(events, events[1:])
+    ]
+    window_bounds = [
+        (first.observed_at, second.observed_at)
+        for first, second in zip(events, events[1:])
+    ]
+    first_window = windows[0] if windows else None
+    first_bounds = window_bounds[0] if window_bounds else (_WE1, _WE2)
+    second_window = windows[1] if len(windows) > 1 else first_window
+    second_bounds = window_bounds[1] if len(window_bounds) > 1 else (
+        _WE2, _WE3
     )
     _observation(
         ledger, tx, references,
         command_id="u-01", observation_id="obs-1",
         quantity=100, observed_at=_OBS1,
+        evidence_id=first_window,
+        window_start=_OBS1, window_end=_OBS2,
     )
+    if stop_after == "observed":
+        return ledger, tx
     _observation(
         ledger, tx, references,
         command_id="u-02", observation_id="obs-2",
         quantity=250, observed_at=_OBS2,
+        evidence_id=first_window,
+        window_start=_OBS2, window_end="2026-09-01T13:00:25Z",
     )
     _observation(
         ledger, tx, references,
         command_id="u-04", observation_id="obs-3",
         quantity=50, observed_at=_OBS3,
-        payment_refs=(_payment_ref(),),
+        evidence_id=second_window,
+        window_start=second_bounds[0], window_end=_OBS3,
     )
-    ledger.reconcile(
-        command_id="u-05", transaction_id=tx, unit_price=2,
-        actor="billing", source="billing-service",
-    )
-    ledger.finalize_billable(
+    if stop_after == "reconciled":
+        return ledger, tx
+    ledger.seal_billable(
         command_id="u-06", transaction_id=tx,
         actor="billing", source="billing-service",
     )
-    account = ledger.account(tx)
-    finality_id = account.finality["record_id"]
+    account = ledger.transaction(tx)
+    finality_id = account.statement.statement_id
     return ledger, finality_id
 
 
 # ---------------------------------------------------------------------------
-# WORK-053 composition fixtures (the finalized allocations)
+# WORK-053 composition fixtures (the finalized allocations,
+# contract-bound per the M009 LOCK-113 re-bind)
 # ---------------------------------------------------------------------------
+
 
 def _allocation_facts(
     usage_ledgers: Tuple[UsageLedger, ...],
     cores: Tuple[CommercialCore, ...],
 ) -> FactIndex:
-    """Build the injected W053 FactIndex from PUBLIC reads only
-    (the accepted W053 battery's builder)."""
+    """Build the injected M009 FactIndex from PUBLIC reads only
+    (the re-established era surface carrying the M009 semantics:
+    family-classified fact citations with the canonical contract
+    binding on the usage-final and commercial families)."""
     entries: List[FactReference] = []
     for ledger in usage_ledgers:
-        for account in ledger.accounts():
-            finality = account.finality or {}
+        for account in ledger.transactions():
+            statement = account.statement
             entries.append(
                 FactReference(
                     reference_id=(
-                        finality["record_id"]
-                        if finality
+                        statement.statement_id
+                        if statement is not None
                         else account.transaction_id
                     ),
                     family=FactFamily.USAGE_FINAL,
                     provenance="usage-ledger",
                     usage_state=account.state,
                     transaction_id=account.transaction_id,
-                    amount=finality.get("amount", 0),
-                    quantity=finality.get("quantity", 0),
-                    unit=account.unit,
-                    finalized_at=finality.get("finalized_at", ""),
+                    contract_id=account.transaction_id,
+                    amount=(
+                        statement.amount_micros if statement is not None else 0
+                    ),
+                    quantity=(
+                        statement.billable_quantity
+                        if statement is not None
+                        else 0
+                    ),
+                    unit=(
+                        statement.billable_unit
+                        if statement is not None
+                        else ""
+                    ),
+                    finalized_at=(
+                        statement.sealed_at if statement is not None else ""
+                    ),
                 )
             )
     for core in cores:
@@ -972,6 +1433,7 @@ def _allocation_facts(
                     family=FactFamily.COMMERCIAL,
                     provenance="commercial-core",
                     commercial_state=projection.state,
+                    contract_id=projection.contract_id,
                     session_ref=projection.session_ref,
                     path_ref=projection.path_ref,
                 )
@@ -993,22 +1455,80 @@ def _allocation_facts(
     return FactIndex(entries)
 
 
-def _register_std_policy(ledger: AllocationLedger, *, command_id: str = "p-01"):
+def _typed_allocation_index(
+    facts: FactIndex,
+    usage_ledgers: Tuple[UsageLedger, ...],
+    *,
+    contract_id: str,
+) -> AllocationEvidenceIndex:
+    """Project the family fact index into the typed admission
+    surface (the W053/M009 AllocationEvidenceIndex): the
+    billable-usage snapshots (contract-bound -- the
+    ``contract_id`` member carries the canonical binding) and the
+    external settlement/payment reference citations."""
+    usage: List[BillableUsageSnapshot] = []
+    for ledger in usage_ledgers:
+        for account in ledger.transactions():
+            statement = account.statement
+            if statement is None:
+                usage.append(
+                    BillableUsageSnapshot(
+                        usage_transaction_id=account.transaction_id,
+                        usage_state=account.state,
+                        contract_id=contract_id,
+                    )
+                )
+            else:
+                usage.append(
+                    BillableUsageSnapshot(
+                        usage_transaction_id=account.transaction_id,
+                        usage_state=account.state,
+                        contract_id=contract_id,
+                        gross_amount_micros=statement.amount_micros,
+                        statement_id=statement.statement_id,
+                        billable_quantity=statement.billable_quantity,
+                        unit_price_micros=statement.unit_price_micros,
+                        billable_unit=statement.billable_unit,
+                        tariff_provenance=statement.tariff_provenance,
+                        sealed_at=statement.sealed_at,
+                    )
+                )
+    references = [
+        ExternalReferenceSnapshot(
+            _settlement_ref(),
+            ReferenceKind.SETTLEMENT,
+            "external-settlement-plane",
+            None,
+        ),
+        ExternalReferenceSnapshot(
+            _payment_ref(),
+            ReferenceKind.PAYMENT,
+            "external-payment-plane",
+            None,
+        ),
+    ]
+    return AllocationEvidenceIndex(usage=usage, references=references)
+
+
+def _register_std_policy(
+    ledger: AllocationLedger, *, command_id: str = "p-01"
+) -> Any:
     """Register the standard immutable economic-policy version
-    through the public typed surface."""
+    through the public typed surface (the current W053/M009
+    registration: terms-derived identity, adcos share and
+    provider bounds, declared rounding).  Returns the command
+    outcome (``fact_id`` is the content-derived policy id)."""
     return ledger.register_policy(
         command_id=command_id,
-        policy_id=_PID,
-        version=_PID_V,
+        label=_PID,
+        adcos_share_bps=_ADC_BPS,
+        provider_min_bps=_DEV_MIN,
+        provider_max_bps=_DEV_MAX,
+        rounding_mode=_ROUNDING,
         currency=_CCY,
-        exponent=_EXP,
-        rounding=_ROUNDING,
+        minor_unit_digits=_EXP,
         effective_from=_POLICY_FROM,
         effective_until=_POLICY_UNTIL,
-        adc_os_share_bps=_ADC_BPS,
-        tax_bps=_TAX_BPS,
-        developer_share_min_bps=_DEV_MIN,
-        developer_share_max_bps=_DEV_MAX,
         actor="economics",
         source="policy-service",
     )
@@ -1020,35 +1540,55 @@ def _std_allocate(
     tx: str,
     *,
     command_id: str = "a-01",
+    policy_id: Optional[str] = None,
 ):
     """Allocate one billable-final usage record under the standard
-    policy through the public typed surface."""
+    policy through the public typed surface (the current
+    W053/M009 surface: the usage transaction id + the sealed
+    statement id + the policy version id + the provider share
+    inside the policy bounds)."""
     return ledger.allocate(
         command_id=command_id,
-        usage_record_id=finality_id,
-        policy_id=_PID,
-        policy_version=_PID_V,
-        developer_share_bps=_DEV_SHARE,
-        adjustment=0,
-        effective_at=_EFFECTIVE_AT,
-        currency=_CCY,
-        commercial_refs=(tx,),
+        usage_transaction_id=tx,
+        usage_statement_id=finality_id,
+        policy_id=policy_id if policy_id is not None else _PID,
+        provider_share_bps=_PROVIDER_BPS,
+        tax_micros=_TAX_MICROS,
         actor="economics",
         source="allocation-service",
     )
 
 
-# ---------------------------------------------------------------------------
-# WORK-044 composition fixtures (the payment boundary)
-# ---------------------------------------------------------------------------
+def _std_policy_id() -> str:
+    """The content-derived id of the standard policy version (the
+    terms-derived identity; identical terms always mean the
+    identical version)."""
+    from allocation import derive_policy_id
+
+    return derive_policy_id(
+        label=_PID,
+        adcos_share_bps=_ADC_BPS,
+        provider_min_bps=_DEV_MIN,
+        provider_max_bps=_DEV_MAX,
+        rounding_mode=_ROUNDING,
+        currency=_CCY,
+        minor_unit_digits=_EXP,
+        effective_from=_POLICY_FROM,
+        effective_until=_POLICY_UNTIL,
+    )
+
 
 def _payment_snapshot(
     core: CommercialCore,
     usage_ledger: UsageLedger,
-    alloc_ledger: AllocationLedger,
+    alloc_ledger: Optional[AllocationLedger],
 ) -> CommercialSnapshot:
-    """Build the injected W044 CommercialSnapshot from PUBLIC
-    reads only."""
+    """Build the injected W044/M009 CommercialSnapshot from PUBLIC
+    reads only: the contract-bound commercial reconciliation
+    accounts (carrying the canonical ``contract_id`` binding --
+    LOCK-113), the usage accounts (the sealed statement id once
+    final, else the honest open contract-bound identity), and the
+    allocation accounts with their public split DATA."""
     entries: List[CommercialCitation] = []
     for entry in core.transactions():
         entries.append(
@@ -1056,45 +1596,82 @@ def _payment_snapshot(
                 reference_id=entry.transaction_id,
                 family=CitationFamily.COMMERCIAL,
                 provenance="commercial-core",
+                contract_id=entry.contract_id,
                 commercial_state=entry.state,
             )
         )
-    for account in usage_ledger.accounts():
-        finality = account.finality or {}
+    for account in usage_ledger.transactions():
+        statement = account.statement
         entries.append(
             CommercialCitation(
                 reference_id=(
-                    finality["record_id"]
-                    if finality
+                    statement.statement_id
+                    if statement is not None
                     else account.transaction_id
                 ),
                 family=CitationFamily.USAGE_FINAL,
                 provenance="usage-ledger",
+                contract_id=account.transaction_id,
                 transaction_id=account.transaction_id,
                 usage_state=account.state,
-                amount=finality.get("amount", 0),
-                quantity=finality.get("quantity", 0),
-                unit=account.unit,
-                finalized_at=finality.get("finalized_at", ""),
+                amount=(
+                    statement.amount_micros if statement is not None else 0
+                ),
+                quantity=(
+                    statement.billable_quantity
+                    if statement is not None
+                    else 0
+                ),
+                unit=(
+                    statement.billable_unit if statement is not None else ""
+                ),
+                finalized_at=(
+                    statement.sealed_at if statement is not None else ""
+                ),
             )
         )
-    for account in alloc_ledger.allocations():
-        entries.append(
-            CommercialCitation(
-                reference_id=account.usage_record_id,
-                family=CitationFamily.ALLOCATION,
-                provenance="allocation-ledger",
-                transaction_id=account.transaction_id,
-                allocation_state=account.state,
-                billable_amount=account.billable_amount,
-                currency=account.currency,
-                exponent=account.exponent,
-                developer_amount=account.developer_amount,
-                provider_amount=account.provider_amount,
-                adc_os_amount=account.adc_os_amount,
-                tax_amount=account.tax_amount,
+    if alloc_ledger is not None:
+        for account in alloc_ledger.allocations():
+            snapshot = account.snapshot
+            entries.append(
+                CommercialCitation(
+                    reference_id=account.usage_transaction_id,
+                    family=CitationFamily.ALLOCATION,
+                    provenance="allocation-ledger",
+                    contract_id=account.usage_transaction_id,
+                    transaction_id=account.usage_transaction_id,
+                    allocation_state=account.state,
+                    billable_amount=(
+                        snapshot.gross_micros if snapshot is not None else 0
+                    ),
+                    currency=(
+                        snapshot.currency if snapshot is not None else ""
+                    ),
+                    exponent=(
+                        snapshot.minor_unit_digits
+                        if snapshot is not None
+                        else 0
+                    ),
+                    developer_amount=(
+                        snapshot.developer_share_micros
+                        if snapshot is not None
+                        else 0
+                    ),
+                    provider_amount=(
+                        snapshot.provider_share_micros
+                        if snapshot is not None
+                        else 0
+                    ),
+                    adc_os_amount=(
+                        snapshot.adcos_share_micros
+                        if snapshot is not None
+                        else 0
+                    ),
+                    tax_amount=(
+                        snapshot.tax_micros if snapshot is not None else 0
+                    ),
+                )
             )
-        )
     return CommercialSnapshot(entries)
 
 
@@ -1182,28 +1759,44 @@ def _drive_to_captured(
 # ---------------------------------------------------------------------------
 
 def _composed_world() -> Dict[str, Any]:
-    """The composed battery fixture: the REAL agent/session/
-    NetworkPath world, a REAL W051 transaction (USAGE_ACCRUING),
-    a REAL W052 account (BILLABLE_FINAL), a REAL W053 allocation
+    """The composed battery fixture (the M009 re-bind): the REAL
+    agent/session/NetworkPath world, the REAL canonical contract
+    (M002 public surface), the REAL contract-bound W051 account
+    (USAGE_ACCRUING), the REAL contract-bound W052 account
+    (BILLABLE_FINAL), the REAL contract-bound W053 allocation
     account (SETTLED), a REAL W044 payment intent (CAPTURED with
     its capability declaration), and the W045 AuthoritySnapshot
     built from PUBLIC reads only."""
     runtime, peer, session_id, manager, integrator, shared = _world()
-    core, tx = _commercial_tx(manager, integrator, session_id)
-    references = _usage_evidence(manager, integrator, session_id, core, tx)
-    usage_ledger, finality_id = _final_usage(references, tx)
+    core, tx, store, contract_id = _commercial_tx(
+        manager, integrator, session_id
+    )
+    references = _usage_evidence(
+        manager, integrator, session_id, core, tx,
+        contract_store=store, contract_id=contract_id,
+    )
+    typed_index = _typed_evidence_index(
+        references, contract_state=store.contract(contract_id).state,
+        integrator=integrator,
+    )
+    usage_ledger, finality_id = _final_usage(
+        references, contract_id, typed_index=typed_index,
+        integrator=integrator,
+    )
     facts = _allocation_facts((usage_ledger,), (core,))
     alloc_ledger = AllocationLedger(
         store=MemoryAllocationStore(),
         clock=StepClock(_AT0, _ASTEP),
-        facts=facts,
+        evidence_index=_typed_allocation_index(
+            facts, (usage_ledger,), contract_id=contract_id
+        ),
     )
-    _register_std_policy(alloc_ledger)
-    _std_allocate(alloc_ledger, finality_id, tx)
+    out = _register_std_policy(alloc_ledger)
+    _std_allocate(alloc_ledger, finality_id, contract_id, policy_id=out.fact_id)
     alloc_ledger.acknowledge_settlement(
         command_id="s-01",
-        usage_record_id=finality_id,
-        settlement_refs=(_settlement_ref(),),
+        usage_transaction_id=contract_id,
+        settlement_reference=_settlement_ref(),
         actor="settlement",
         source="settlement-service",
     )
@@ -1226,11 +1819,11 @@ def _composed_world() -> Dict[str, Any]:
             provider_id=offer_projection.get("provider", ""),
         ),
         AuthorityCitation(
-            reference_id=finality_id,
+            reference_id=contract_id,
             family=EligibilityCitationFamily.ALLOCATION,
             provenance="allocation-ledger",
             allocation_state=allocation_account.state,
-            currency=allocation_account.currency,
+            currency=allocation_account.snapshot.currency,
         ),
         AuthorityCitation(
             reference_id=intent.intent_id,
@@ -1253,6 +1846,8 @@ def _composed_world() -> Dict[str, Any]:
         "usage_ledger": usage_ledger,
         "finality_id": finality_id,
         "alloc_ledger": alloc_ledger,
+        "contract_store": store,
+        "contract_id": contract_id,
         "gateway": gateway,
         "intent_id": intent.intent_id,
         "snapshot": snapshot,
@@ -1510,7 +2105,7 @@ def _golden_scenario(
         command_id="ev-01", actor="platform", source="policy-engine",
         jurisdiction=_J_ALPHA, provider_id=_PROVIDER_1,
         payment_reference=world["intent_id"],
-        citations=(world["tx"], world["finality_id"]),
+        citations=(world["tx"], world["contract_id"]),
         valid_until=_CONFER_UNTIL,
     )
     conferral = authority.decision(out.decision_id)
@@ -1543,7 +2138,7 @@ def _golden_scenario(
     authority.suspend(
         command_id="susp-01", actor="trust-ops", source="trust-service",
         provider_id=_PROVIDER_1, reason="compliance-hold",
-        evidence_refs=(world["finality_id"],),
+        evidence_refs=(world["contract_id"],),
     )
     # the denied offer evaluation while suspended
     authority.evaluate(
@@ -1556,7 +2151,7 @@ def _golden_scenario(
     authority.reinstate(
         command_id="rein-01", actor="trust-ops", source="trust-service",
         provider_id=_PROVIDER_1, reason="hold-cleared",
-        evidence_refs=(world["finality_id"],),
+        evidence_refs=(world["contract_id"],),
     )
     # a restrictive J-ALPHA policy v2 (mode set narrowed) -> the
     # renewal evaluation under v2 denies the offer mode
@@ -1933,8 +2528,10 @@ def case_07_citation_snapshot(results: List[Result]) -> None:
     if commercial.offer_id != _OFFER_1:
         results.append(fail(name, "offer projection citation"))
         return
+    # the M009 re-bind: the allocation citation keys on the
+    # contract-bound usage account key (the canonical contract id)
     allocation = snapshot.resolve(
-        world["finality_id"], EligibilityCitationFamily.ALLOCATION
+        world["contract_id"], EligibilityCitationFamily.ALLOCATION
     )
     if allocation.allocation_state != "SETTLED":
         results.append(fail(name, "allocation citation state"))
@@ -2430,7 +3027,7 @@ def case_14_provider_lifecycle(results: List[Result]) -> None:
     out = authority.evaluate(
         command_id="ev-01", actor="platform", source="policy-engine",
         jurisdiction=_J_ALPHA, provider_id=_PROVIDER_1,
-        citations=(world["tx"], world["finality_id"]),
+        citations=(world["tx"], world["contract_id"]),
         valid_until=_CONFER_UNTIL,
     )
     decision = authority.decision(out.decision_id)
@@ -2664,7 +3261,7 @@ def case_17_suspension(results: List[Result]) -> None:
     authority.suspend(
         command_id="susp-01", actor="trust-ops", source="trust-service",
         provider_id=_PROVIDER_1, reason="compliance-hold",
-        evidence_refs=(world["finality_id"], world["tx"]),
+        evidence_refs=(world["contract_id"], world["tx"]),
     )
     record = authority.provider(_PROVIDER_1)
     if record.state != "suspended":
@@ -2673,7 +3270,7 @@ def case_17_suspension(results: List[Result]) -> None:
     if record.action_reason != "compliance-hold":
         results.append(fail(name, "suspension reason"))
         return
-    if record.action_evidence != (world["finality_id"], world["tx"]):
+    if record.action_evidence != (world["contract_id"], world["tx"]):
         results.append(fail(name, "suspension evidence refs"))
         return
     # new offers denied while suspended
@@ -2697,7 +3294,7 @@ def case_17_suspension(results: List[Result]) -> None:
     # allocation citation remains resolvable and the W053
     # authority state is byte-identical
     allocation = world["snapshot"].resolve(
-        world["finality_id"], EligibilityCitationFamily.ALLOCATION
+        world["contract_id"], EligibilityCitationFamily.ALLOCATION
     )
     if allocation.allocation_state != "SETTLED":
         results.append(fail(name, "settlement reference lost"))
@@ -4228,11 +4825,14 @@ def case_43_scope_audit(results: List[Result]) -> None:
     files = [line for line in out.split("\n") if line]
     unexpected = [
         path for path in files
-        if not any(
-            path == surface or path.startswith(surface)
-            for surface in _AUTHORIZED_PATHS
+        if not (
+            _active_authorization_covers(path)
+            or any(
+                path == surface or path.startswith(surface)
+                for surface in _AUTHORIZED_PATHS
+            )
+            or path == AUTHORIZED_CI_WIRING
         )
-        and path != AUTHORIZED_CI_WIRING
     ]
     if unexpected:
         results.append(
@@ -4271,7 +4871,7 @@ def case_44_closed_loop_composition(results: List[Result]) -> None:
         command_id="ev-01", actor="platform", source="policy-engine",
         jurisdiction=_J_ALPHA, provider_id=_PROVIDER_1,
         payment_reference=world["intent_id"],
-        citations=(world["tx"], world["finality_id"]),
+        citations=(world["tx"], world["contract_id"]),
         valid_until=_CONFER_UNTIL,
     )
     decision = authority.decision(out.decision_id)
@@ -4287,7 +4887,7 @@ def case_44_closed_loop_composition(results: List[Result]) -> None:
     if world["tx"] not in decision.citations:
         results.append(fail(name, "transaction citation missing"))
         return
-    if world["finality_id"] not in decision.citations:
+    if world["contract_id"] not in decision.citations:
         results.append(fail(name, "allocation citation missing"))
         return
     if decision.payment_reference != world["intent_id"]:
@@ -4295,7 +4895,7 @@ def case_44_closed_loop_composition(results: List[Result]) -> None:
         return
     # the citation ledger carries the real ids
     citations = authority.citation_ledger()
-    for reference in (world["tx"], world["finality_id"], world["intent_id"]):
+    for reference in (world["tx"], world["contract_id"], world["intent_id"]):
         if reference not in citations:
             results.append(
                 fail(name, "citation ledger missing %r" % reference[:20])
@@ -4307,10 +4907,10 @@ def case_44_closed_loop_composition(results: List[Result]) -> None:
     authority.suspend(
         command_id="susp-01", actor="trust-ops", source="trust-service",
         provider_id=_PROVIDER_1, reason="compliance-hold",
-        evidence_refs=(world["finality_id"],),
+        evidence_refs=(world["contract_id"],),
     )
     allocation = world["snapshot"].resolve(
-        world["finality_id"], EligibilityCitationFamily.ALLOCATION
+        world["contract_id"], EligibilityCitationFamily.ALLOCATION
     )
     if allocation.allocation_state != "SETTLED":
         results.append(fail(name, "suspension destroyed the settlement "

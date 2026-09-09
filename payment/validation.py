@@ -339,13 +339,17 @@ def validate_payout_emission(citation: CommercialCitation) -> None:
     closed naming the member (the emission basis must be the
     REAL public split).
     """
+    # M009 re-bind: the current W053/M009 allocation-account states
+    # are PLANNED (the immutable allocation snapshot exists) and
+    # SETTLED (the settlement acknowledgement exists); the era
+    # "ALLOCATED" name maps onto PLANNED (the snapshot exists).
     if citation.allocation_state not in (
-        "ALLOCATED",
+        "PLANNED",
         "SETTLED",
     ):
         raise PaymentError(
             PaymentReasonCode.CITATION_STATE_INVALID,
-            "payout emission requires an ALLOCATED or SETTLED allocation "
+            "payout emission requires a PLANNED or SETTLED allocation "
             "citation (cited allocation %r is %r)"
             % (citation.reference_id, citation.allocation_state),
         )

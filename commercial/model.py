@@ -842,13 +842,21 @@ class CommercialTransaction:
     expires_at: str
     session_ref: str
     path_ref: str
-    delivery_evidence_refs: Tuple[str, ...]
-    usage_refs: Tuple[str, ...]
-    settlement_refs: Tuple[str, ...]
-    payment_refs: Tuple[str, ...]
-    last_action: str
-    last_instant: str
-    event_count: int
+    # M009 canonical contract binding (LOCK-113): the canonical
+    # contract this commercial reconciliation account mirrors.
+    # Empty ONLY in the unbound legacy mode (the accepted M003
+    # marketplace composition and the M006 composition-track
+    # consumers); every bound transaction carries the canonical
+    # contract id (validated against the M002 grammar at
+    # admission when the contract index is injected).
+    contract_id: str = ""
+    delivery_evidence_refs: Tuple[str, ...] = ()
+    usage_refs: Tuple[str, ...] = ()
+    settlement_refs: Tuple[str, ...] = ()
+    payment_refs: Tuple[str, ...] = ()
+    last_action: str = ""
+    last_instant: str = ""
+    event_count: int = 0
 
     def __post_init__(self) -> None:
         _require_text(self.transaction_id, "transaction_id")
@@ -874,6 +882,7 @@ class CommercialTransaction:
         if self.expires_at != "":
             _require_instant(self.expires_at, "expires_at")
         for label, value in (
+            ("contract_id", self.contract_id),
             ("session_ref", self.session_ref),
             ("path_ref", self.path_ref),
         ):
@@ -930,6 +939,7 @@ class CommercialTransaction:
             "expires_at": self.expires_at,
             "session_ref": self.session_ref,
             "path_ref": self.path_ref,
+            "contract_id": self.contract_id,
             "delivery_evidence_refs": list(self.delivery_evidence_refs),
             "usage_refs": list(self.usage_refs),
             "settlement_refs": list(self.settlement_refs),
