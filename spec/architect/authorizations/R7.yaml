@@ -1,0 +1,136 @@
+# ADCOS implementation authorization record — R7 Universal Connectivity Commerce
+# (bounded R7 program authorization, the DEC-0101 governance-compression class).
+# Issued by DEC-0101; ONE active authorization for the whole M002-M014 tranche.
+# Per-child acceptance decisions (DEC-0102+) close each child; this authorization
+# closes when the R7 gate completes.
+work_item: R7
+child_work_items:
+  - M002
+  - M003
+  - M004
+  - M005
+  - M006
+  - M007
+  - M008
+  - M009
+  - M010
+  - M011
+  - M012
+  - M013
+  - M014
+current_child_work_item: M002
+status: active
+authorized: true
+type: implementation
+authorization_id: "R7-CORE-001"
+authorization_decision: DEC-0101
+scope_amendment_chain: []
+superseded_by: null
+supersession_decision: null
+baseline_sha: 1e5c55f9916ff964d3bfc0761d04a8d5fd02c41b
+review_basis: "DEC-0101 activated R7 as a bounded program authorization from the DEC-0100 acceptance head 4168f73 plus the fresh-session reconciliation repair 1e5c55f (live main, push CI green run 34367311873). M001 is accepted (DEC-0100, merge 80292c2, ACR-014 ACCEPTED); Architecture 1.1 is the sole normative forward architecture; the 1.1 successor dependency model governs M002-M014. The gate-specific contract is the R7 charter (spec/architect/work-items/R7-charter.md); the dependency overlay is spec/architect/dependency-overlays/R7.yaml."
+dependencies:
+  - M001
+authority_inputs:
+  - "spec/mission.md (permanent Mission Authority)"
+  - "Architecture 1.1 FROZEN (spec/architecture.md, spec/architecture-lock.md, LOCK-101..LOCK-120, ACR-014/DEC-0100)"
+  - "The accepted 1.1 successor registry and dependency model (spec/work-items.md, spec/dependency-graph.md; proposal records under spec/)"
+  - "spec/migration/classification-matrix.md (the migration policy for harvesting legacy material)"
+  - "spec/architect/work-items/R7-charter.md (the gate contract: child scopes, acceptance criteria, evidence/worker/migration policies)"
+  - "spec/architect/dependency-overlays/R7.yaml (the gate overlay)"
+authority_outputs:
+  - "The M002-M014 implementation tranche delivered and accepted per child from repository evidence"
+  - "The canonical ConnectivityContract domain and its dependent 1.1 surfaces"
+scope:
+  # M002 — Connectivity Contract Core (current child)
+  - "contracts/"
+  - "docs/M002-evidence.md"
+  # Shared battery surface: the authorization-aware battery-scope consultation
+  # repairs (docs/M001-evidence.md §4 recorded duty) and every current/future
+  # per-child battery. The drift guard's CONTROL_FILES independently freeze the
+  # governance checkers (spec_check, current_spec_check, fresh_session_check,
+  # tech_lead_guard, architecture_drift_guard, spec_check_selftest, tools/README.md)
+  # against implementation-PR modification, so this prefix cannot reach them.
+  - "tools/"
+  # M003 — Offers and Provider Capability Exchange
+  - "offers/"
+  - "capabilities/"
+  - "discovery/"
+  - "marketplace/"
+  - "docs/M003-evidence.md"
+  # M004 — Eligibility and Policy
+  - "policy/"
+  - "eligibility/"
+  - "docs/M004-evidence.md"
+  # M005 — Evidence and Assurance
+  - "assurance/"
+  - "evidence/"
+  - "telemetry/"
+  - "docs/M005-evidence.md"
+  # M006 — Execution Plan
+  - "executionplans/"
+  - "composition/"
+  - "docs/M006-evidence.md"
+  # M007 — Provider/Standard Adapters
+  - "adapters/"
+  - "docs/M007-evidence.md"
+  # M008 — Replan and Failover
+  - "replan/"
+  - "mobility/"
+  - "multipath/"
+  - "sessions/"
+  - "docs/M008-evidence.md"
+  # M009 — Usage and Commercial Reconciliation (incl. the DEC-0099-disclosed
+  # era-superseded battery re-baselines assigned to the commercial track)
+  - "usage/"
+  - "commercial/"
+  - "allocation/"
+  - "payment/"
+  - "docs/M009-evidence.md"
+  # M010/M011/M012 — Vertical proofs
+  - "sharenet/"
+  - "roamlink/"
+  - "comos/"
+  - "docs/M010-evidence.md"
+  - "docs/M011-evidence.md"
+  - "docs/M012-evidence.md"
+  # M013 — Developer Connectivity API
+  - "developerapi/"
+  - "docs/M013-evidence.md"
+  # M014 — Production Federation (incl. the client battery re-baseline)
+  - "federation/"
+  - "scale/"
+  - "upgrade/"
+  - "identity/"
+  - "client/"
+  - "docs/M014-evidence.md"
+out_of_scope:
+  - "Any control-plane surface: spec/, .github/, AGENTS.md, README.md, docs/tech-lead/, docs/M001-evidence.md, and the drift-guard CONTROL_FILES (tools/spec_check.py, tools/spec_check_selftest.py, tools/current_spec_check.py, tools/fresh_session_check.py, tools/tech_lead_guard.py, tools/architecture_drift_guard.py, tools/README.md) — governance changes flow only through governance decisions."
+  - "spec/mission.md (permanent Mission Authority)."
+  - "Protocol Version 1.0 wire/schema semantics; any protocol semantic change requires the ACR/change-control process."
+  - "containment/ and sharing/ surfaces (WORK-048 accepted-not-restored; never restored implicitly or explicitly)."
+  - "pilot/ (WORK-040 independent physical track) and any EVID-002..EVID-008 physical obligation."
+  - "Rewriting or deleting any historical acceptance record, ledger entry, or archived 1.0 content; converting SOFTWARE evidence into PHYSICAL PASS."
+  - "Activating R8 or any post-R7 gate."
+scope_amendments:
+  rule: "Implementation paths outside the declared child scopes require a lightweight charter scope-amendment decision recorded in spec/architect/decisions/ (no re-authorization ceremony; the program authorization stays singular); the amendment records the exact added prefixes and the owning child work item."
+acceptance_criteria:
+  - "Each child M-item is accepted ONLY from repository evidence at an exact delivery head: implementation-only PR delta (drift guard), full scope coverage by this authorization (the current-era provenance gate tools/authorization_provenance.py, byte-identical inheritance from main), the child battery plus the entire existing blocking battery suite green on the head, the deterministic evidence doc verification matrix, and the sole-Architect review against the R7 charter acceptance criteria."
+  - "Acceptance is recorded as one durable decision per child (DEC-0102 onward) with the exact reviewed delivery head and merge SHA; execution-state, roadmap and ledger reconcile to each merge."
+  - "The canonical contract invariants hold at every child: ConnectivityContract authority uniqueness (LOCK-101/LOCK-117), no silent hard-constraint weakening (LOCK-108), adapter isolation (LOCK-110), provider sovereignty (LOCK-104/LOCK-105), typed evidence (LOCK-106), commercial separation (LOCK-113), secrets never stored (LOCK-119)."
+  - "Determinism discipline on every delivered surface: injected instants, seeded PRNGs only where declared, canonical-JSON round-trips, no wall clock/randomness/network, sorted iteration, fail-closed errors with stable machine-readable codes."
+  - "M002 specifically: the canonical ConnectivityContract domain (frozen 1.1 §3 field set), the contract-level lifecycle state machine (frozen 1.1 §9/§11 reference lifecycle), lease/expiry semantics over injected instants, hard-constraint immutability after activation, structural authority uniqueness (execution artifacts as opaque references), the authorization-aware battery-scope consultation repairs across the battery surface, and tools/contract_selftest.py green."
+evidence_classes:
+  - criterion: "All M002-M014 child acceptance criteria"
+    class: SOFTWARE
+    allowed_statuses: [PASS, PARTIAL, NOT-TESTABLE, OPEN]
+  - criterion: "No physical-world obligation is created or closed by any R7 child"
+    class: PHYSICAL
+    allowed_statuses: [NOT-TESTABLE, OPEN]
+acceptance_gate:
+  status: "pending"
+  acceptance_decision: null
+  accepted_delivery_sha: null
+  acceptance_merge_sha: null
+handoff: "spec/architect/work-items/R7-charter.md"
+handoff_required: true

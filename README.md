@@ -66,11 +66,20 @@ constraint.
 
 ## Current transition state
 
-R6 Provider Onboarding & Federation is complete. The repository is now at the
-Architecture 1.1 transition boundary. There is currently no active implementation
-authorization. The immediate next gate is **M001 — Architecture 1.1 Freeze**;
-R7 Universal Connectivity Commerce follows M001 and is implemented from the
-accepted 1.1 contract model.
+This section projects the authoritative program state from
+`spec/architect/current-state.md` (the sole authority for current-state wording).
+
+R6 Provider Onboarding & Federation is complete. **M001 — Architecture 1.1
+Freeze is ACCEPTED (DEC-0100; ACR-014 ACCEPTED; Architecture 1.1 FROZEN as the
+sole normative forward architecture, 1.0 preserved under `spec/history/`).**
+**R7 — Universal Connectivity Commerce is ACTIVE** under DEC-0101 as a bounded
+program authorization (`R7-CORE-001`) with the R7 charter
+(`spec/architect/work-items/R7-charter.md`) declaring the child work-item
+scopes M002-M014. **M002 — Connectivity Contract Core is the current child
+work item in implementation.** Per-child acceptance (DEC-0102 onward) is
+mandatory and is the serialization point; the Tech Lead may decompose,
+dispatch, integrate and deliver within the authorized child scopes without
+further pre-implementation authorization ceremonies.
 
 R4/W040 remains an independent physical-validation track. W048 remains
 accepted-not-restored and may not be silently recreated.

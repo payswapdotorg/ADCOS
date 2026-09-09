@@ -30,15 +30,18 @@ acceptance criteria MUST trace to Architecture 1.1 locks and target artifacts.
 No agent may use Architecture 1.0 to invent new behavior merely because 1.0 is
 currently present in the repository.
 
-M001 — Architecture 1.1 Freeze has delivered the promotion (ACR-014): the
-canonical files `spec/architecture.md` and `spec/architecture-lock.md` now
-carry Architecture 1.1 and LOCK-101..LOCK-120 as FROZEN, and Architecture 1.0
-is preserved verbatim under `spec/history/` as superseded historical evidence.
-Until the M001 acceptance decision (DEC-0100) closes the gate, only
-explicitly authorized transition/migration work may proceed.
-
-Architecture 1.1 is the sole normative architecture for forward
-implementation. Architecture 1.0 is historical/superseded evidence.
+M001 — Architecture 1.1 Freeze has been accepted (DEC-0100): the promotion
+(ACR-014) is complete, the canonical files `spec/architecture.md` and
+`spec/architecture-lock.md` carry Architecture 1.1 and LOCK-101..LOCK-120 as
+FROZEN, and Architecture 1.0 is preserved verbatim under `spec/history/` as
+superseded historical evidence. Architecture 1.1 is permanently the sole
+normative architecture for forward implementation. The current program gate is
+R7 — Universal Connectivity Commerce, ACTIVE under DEC-0101 as a bounded
+program authorization (`R7-CORE-001`, `spec/architect/authorizations/R7.yaml`)
+with the R7 charter (`spec/architect/work-items/R7-charter.md`) declaring the
+child work-item scopes M002-M014. Implementation proceeds only within the
+active authorization's declared scope; each child work item is accepted only
+from repository evidence per the charter's acceptance rules.
 
 ## Live-main rule
 

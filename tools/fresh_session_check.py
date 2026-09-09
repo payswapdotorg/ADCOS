@@ -79,11 +79,14 @@ def main() -> int:
         "spec/architect/execution-state.yaml",
         "spec/architect/execution-ledger.yaml",
         "spec/architect/work-items/M001.md",
+        "spec/architect/work-items/R7-charter.md",
+        "spec/architect/dependency-overlays/R7.yaml",
         "spec/architect/authorizations/M001.yaml",
+        "spec/architect/authorizations/R7.yaml",
         "spec/architect/decisions/DEC-0098-m001-activation.yaml",
         "spec/architect/decisions/DEC-0099-m001-battery-reconciliation.yaml",
         "spec/architect/decisions/DEC-0100-m001-acceptance.yaml",
-        "spec/architect/decisions/DEC-0100-m001-acceptance.yaml",
+        "spec/architect/decisions/DEC-0101-r7-activation.yaml",
         "spec/acr/ACR-014-architecture-1.1-freeze.md",
         "spec/history/README.md",
         "spec/history/architecture-1.0.md",
@@ -117,25 +120,25 @@ def main() -> int:
         (resume, "Fresh-session guarantee", "resume protocol must define fresh-session sufficiency"),
         (resume, "M001 — Architecture 1.1 Freeze", "resume protocol must identify the 1.1 transition gate"),
         (roadmap, "mandatory_forward_target: \"Architecture 1.1\"", "roadmap must declare 1.1 as mandatory forward target"),
-        (roadmap, "next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE", "roadmap must put R7 as the next gate after the accepted M001"),
-        (roadmap, 'roadmap_version: "1.7"', "roadmap must be advanced to the post-M001-acceptance version 1.7"),
-        (roadmap, "program_state: R7_UNLOCKED_NOT_ACTIVATED", "roadmap must record the post-acceptance R7-unlocked program state"),
+        (roadmap, "next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE", "roadmap must put R7 as the active gate"),
+        (roadmap, 'roadmap_version: "1.8"', "roadmap must be advanced to the R7-active version 1.8"),
+        (roadmap, "program_state: R7_UNIVERSAL_CONNECTIVITY_COMMERCE_ACTIVE", "roadmap must record the R7-active program state"),
     ]
     for text, marker, message in required_markers:
         if marker.lower() not in text.lower():
             failures.append(message)
 
-    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "No implementation authorization is active", "Architecture 1.0 is preserved historical evidence", "R7 — Universal Connectivity Commerce"]:
+    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "the sole active implementation authorization", "Architecture 1.0 is preserved historical evidence", "R7 — Universal Connectivity Commerce", "M002 — Connectivity Contract Core"]:
         if marker.lower() not in current.lower():
-            failures.append(f"current-state.md missing post-acceptance checkpoint marker: {marker}")
+            failures.append(f"current-state.md missing R7-active checkpoint marker: {marker}")
 
-    for marker in ['roadmap_version: "1.7"', "program_state: R7_UNLOCKED_NOT_ACTIVATED", "active_work_item: null", "active_authorization: null", "next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE", "completion_decision: DEC-0100"]:
+    for marker in ['roadmap_version: "1.8"', "program_state: R7_UNIVERSAL_CONNECTIVITY_COMMERCE_ACTIVE", "execution_mode: implementing", "active_work_item: M002", "active_authorization: R7-CORE-001", "next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE", "completion_decision: DEC-0100", "activation_decision: DEC-0101"]:
         if marker not in roadmap:
             failures.append(f"roadmap.yaml missing current authoritative marker: {marker}")
 
-    for marker in ["mode: awaiting-architect-decisions", "active_work_item: null", "active_authorization: null", "gate-specific R7 Work Item contract", "R7 — Universal Connectivity Commerce"]:
+    for marker in ["mode: implementing", "active_work_item: M002", "active_authorization: R7-CORE-001", "current_child_work_item: M002", "program_authorization: R7-CORE-001", "R7-CORE-001"]:
         if marker not in execution:
-            failures.append(f"execution-state.yaml missing post-acceptance marker: {marker}")
+            failures.append(f"execution-state.yaml missing R7-active marker: {marker}")
 
     proposal = ROOT / "spec/architecture-1.1-proposed.md"
     if proposal.exists() and "mandatory forward implementation target" not in agents.lower():
@@ -190,12 +193,26 @@ def main() -> int:
     elif declared is not None:
         if active != 1:
             failures.append(f"roadmap declares active authorization {declared} but {active} authorization file(s) declare active=true ({', '.join(active_files) or 'none'})")
-        elif "M001.yaml" not in active_files:
-            failures.append(f"roadmap declares {declared} but the active authorization file is not M001.yaml")
         else:
-            m001_auth = (auth_root / "M001.yaml").read_text(encoding="utf-8")
-            if "authorization_id: \"M001-CORE-001\"" not in m001_auth or "work_item: M001" not in m001_auth:
-                failures.append("M001.yaml does not bind work_item M001 to authorization_id M001-CORE-001")
+            # the single active authorization must carry the declared
+            # authorization id and bind the declared active work item —
+            # either directly (work_item: <item>, the historical per-item
+            # model) or as the current child of a bounded program
+            # authorization (current_child_work_item: <item>, the DEC-0101
+            # R7 program model)
+            atext = (auth_root / active_files[0]).read_text(encoding="utf-8")
+            if f'authorization_id: "{declared}"' not in atext:
+                failures.append(f"the active authorization {active_files[0]} does not carry authorization_id {declared}")
+            awi_declared = None
+            m2 = re.search(r"^\s*active_work_item:\s*(\S+)", roadmap, re.MULTILINE)
+            if m2:
+                awi_declared = m2.group(1)
+            if awi_declared and awi_declared != "null":
+                if not (f"work_item: {awi_declared}" in atext or f"current_child_work_item: {awi_declared}" in atext):
+                    failures.append(
+                        f"the active authorization {active_files[0]} does not bind work item {awi_declared} "
+                        "(directly or as the current program child)"
+                    )
 
     actual = args.actual_main_sha
     if not actual:

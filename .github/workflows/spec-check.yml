@@ -251,6 +251,20 @@ jobs:
         run: python3 tools/usage_selftest.py
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
 
+      # M002 — Connectivity Contract Core battery (R7-CORE-001, DEC-0101).
+      # Pre-delivery existence guard: the battery lands with the authorized
+      # M002 delivery; until then the step skips visibly (never silently) and
+      # activates automatically on the delivery merge. Same guard pattern as
+      # the DEC-0099-disclosed era-superseded batteries.
+      - name: Run connectivity contract core tests
+        run: |
+          if [ -f tools/contract_selftest.py ]; then
+            python3 tools/contract_selftest.py
+          else
+            echo "SKIP (pre-delivery, disclosed): tools/contract_selftest.py lands with the authorized M002 delivery (R7-CORE-001, DEC-0101)"
+          fi
+        continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
+
       - name: Run economic allocation tests
         run: python3 tools/allocation_selftest.py
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
@@ -307,7 +321,12 @@ jobs:
           implementation_delta="$(git diff --name-only origin/main...HEAD | grep -Ev '^(spec/|docs/|tools/|\.github/|AGENTS\.md$|README\.md$)' || true)"
           if [ -n "$implementation_delta" ]; then
             printf '%s\n' "$implementation_delta"
-            python3 tools/spec_check.py --provenance
+            # Current-era provenance gate (ARCH-08 successor): understands the
+            # R7 program-authorization model (DEC-0101). The legacy
+            # tools/spec_check.py --provenance stays frozen as history — its
+            # WORK-* glob and schema cannot see M-item/R7 authorizations and
+            # its ARCH-02 parse debt is structurally blocking in that mode.
+            python3 tools/authorization_provenance.py
           else
             echo "governance/meta-only PR; strict implementation authorization provenance is not applicable"
           fi

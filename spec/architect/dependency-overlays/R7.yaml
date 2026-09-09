@@ -1,0 +1,35 @@
+# ADCOS gate-specific dependency overlay — R7 / Universal Connectivity Commerce
+# Governed by DEC-0101 (the R7 activation and governance-compression decision).
+# Representation only; no new runtime authority.
+version: 1
+status: active
+gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE
+charter: "spec/architect/work-items/R7-charter.md"
+authorization: "R7-CORE-001"
+architecture_version: "1.1"
+protocol_version: "1.0"
+baseline_sha: "1e5c55f9916ff964d3bfc0761d04a8d5fd02c41b"
+
+hard_dependencies:
+  - M001
+
+dependency_model: "the accepted Architecture 1.1 successor dependency graph (canonical at spec/dependency-graph.md): M002 -> M003 -> M004 -> M005 -> M006 -> M007 -> M008; M009 branches from M002; M013 is independent of the M002-M008 chain; M010/M011/M012 depend on M013; M014 converges M008+M009+M010+M011+M012+M013"
+
+forbidden_dependencies:
+  - WORK-048
+
+rules:
+  - "M001 must remain accepted (DEC-0100) for the whole tranche; it is the sole hard dependency."
+  - "Per-M-item acceptance is mandatory before any dependent M-item may be accepted; dependency advancement never precedes acceptance (the acceptance gate, not a pre-implementation gate, is the serialization point)."
+  - "Downstream preparation may proceed in parallel (the 3-worker pipeline), but downstream acceptance is blocked until its declared dependencies are accepted; no false downstream acceptance."
+  - "WORK-048 is accepted-not-restored and must not be restored implicitly or explicitly under any child scope."
+  - "WORK-040 remains independent physical evidence and is not a software prerequisite for any M-item."
+  - "EVID-002..EVID-008 remain open physical obligations, unaffected by R7 software evidence."
+  - "Architecture 1.0 is not a forward design source; the migration classification matrix governs how legacy material is harvested."
+  - "Provider-specific implementations stay behind adapter boundaries; provider SDK types never enter the core."
+  - "Protocol Version 1.0 wire semantics are frozen; any protocol semantic change requires the ACR/change-control process."
+
+execution_order:
+  prerequisite: "M001 accepted under DEC-0100 (merge 80292c2)"
+  active_child: "M002 — Connectivity Contract Core"
+  successor_chain: "M003 -> M004 -> M005 -> M006 -> M007 -> M008 (worker A); M013 -> M010/M011/M012 (worker B); M009 (worker C); M014 converges last"

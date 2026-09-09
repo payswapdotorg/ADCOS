@@ -1,14 +1,16 @@
 # ADCOS Authoritative Execution Roadmap
-# FROZEN — roadmap version 1.7 (advanced from 1.6 by DEC-0100;
-# M001 — Architecture 1.1 Freeze is COMPLETE under M001-CORE-001,
-# accepted at delivery head 36bfd8e636feafb531ef551a2e15793b57cc2f00
-# and merged as 80292c24502200f84d11491ed12e9cec5e5baf11; ACR-014 ACCEPTED)
+# FROZEN — roadmap version 1.8 (advanced from 1.7 by DEC-0101:
+# R7 — Universal Connectivity Commerce ACTIVATED as a bounded program
+# authorization R7-CORE-001 with charter child scopes M002-M014;
+# M001 — Architecture 1.1 Freeze remains COMPLETE under DEC-0100:
+# delivery head 36bfd8e636feafb531ef551a2e15793b57cc2f00 merged as
+# 80292c24502200f84d11491ed12e9cec5e5baf11; ACR-014 ACCEPTED)
 # Architecture 1.1 is the sole normative forward architecture; Architecture 1.0
-# is preserved historical evidence at spec/history/. R7 is the next unlocked
-# (not activated) gate and requires its own gate-specific authorization.
+# is preserved historical evidence at spec/history/. R7 is ACTIVE under DEC-0101
+# (the bounded R7 program authorization R7-CORE-001 with charter child scopes).
 
 schema_version: 2
-roadmap_version: "1.7"
+roadmap_version: "1.8"
 status: FROZEN_AUTHORITATIVE
 authority: "spec/architect/roadmap.yaml"
 human_projection: "spec/architect/roadmap.md"
@@ -47,14 +49,14 @@ architecture_transition:
   forward_rule: "Architecture 1.1 is the sole normative architecture for forward implementation. Architecture 1.0 is preserved historical evidence used only to understand and migrate existing implementation; no new feature semantics may be invented from it."
 
 current_state:
-  actual_main_sha: 3e3ea3b044048f2d0386fbce1c90b64b0e9e4e8c
-  last_reconciled_snapshot_sha: 80292c24502200f84d11491ed12e9cec5e5baf11
-  program_state: R7_UNLOCKED_NOT_ACTIVATED
-  execution_mode: awaiting-architect-decisions
-  active_work_item: null
-  active_authorization: null
+  actual_main_sha: 1e5c55f9916ff964d3bfc0761d04a8d5fd02c41b
+  last_reconciled_snapshot_sha: 1e5c55f9916ff964d3bfc0761d04a8d5fd02c41b
+  program_state: R7_UNIVERSAL_CONNECTIVITY_COMMERCE_ACTIVE
+  execution_mode: implementing
+  active_work_item: M002
+  active_authorization: R7-CORE-001
   next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE
-  reconciliation_note: "M001 is complete under DEC-0100 (delivery head 36bfd8e, acceptance merge 80292c2; pre-acceptance governance repairs at 3e3ea3b). ACR-014 is ACCEPTED; Architecture 1.1 is the sole normative forward architecture with 1.0 preserved under spec/history/. No implementation authorization is active. R7 — Universal Connectivity Commerce is the next gate, UNLOCKED and NOT ACTIVATED: it requires its own gate-specific Work Item contract, dependency overlay, evidence obligations, and repository-local implementation authorization before any implementation. R4 remains independently in-review. W048 remains accepted-not-restored."
+  reconciliation_note: "M001 is complete under DEC-0100 (delivery head 36bfd8e, acceptance merge 80292c2; ACR-014 ACCEPTED; Architecture 1.1 FROZEN with 1.0 preserved under spec/history/). R7 — Universal Connectivity Commerce is ACTIVATED under DEC-0101 as a bounded program authorization (R7-CORE-001, baseline 1e5c55f) covering the R7 charter child scopes M002-M014; M002 — Connectivity Contract Core is the current child; per-child acceptance decisions (DEC-0102+) are the serialization points; the Tech Lead may decompose, dispatch (3x3/9/depth-2), integrate and deliver within the charter scope without further pre-implementation ceremonies. R4 remains independently in-review. W048 remains accepted-not-restored."
 
 authoritative_execution_layer:
   model: "post-snapshot gate-specific Work Items"
@@ -204,12 +206,19 @@ roadmap:
     completion_merge_sha: 80292c24502200f84d11491ed12e9cec5e5baf11
     authorization_rule: "M001 is accepted and closed (DEC-0100); ACR-014 is ACCEPTED; Architecture 1.1 is the sole normative forward architecture with Architecture 1.0 preserved under spec/history/."
   - id: R7_UNIVERSAL_CONNECTIVITY_COMMERCE
-    status: UNLOCKED
+    status: ACTIVE
     objective: "Normalize heterogeneous connectivity resources into programmable offers selected by intent, policy, evidence, availability, geography, quality, and price under the accepted Architecture 1.1 contract model."
     prerequisite: M001_ARCHITECTURE_1_1_FREEZE
     prerequisite_satisfied_by: DEC-0100
-    activation_rule: "M001 is accepted (DEC-0100). Create the gate-specific R7 Work Item contract, dependency overlay, evidence obligations, and repository-local implementation authorization before implementation."
-    first_work_item_candidate: "M002 — Connectivity Contract Core (per the accepted 1.1 dependency model)"
+    activation_decision: DEC-0101
+    activation_mode: "governance compression (DEC-0101): one bounded R7 program authorization with child work-item scopes"
+    work_item: M002
+    work_item_chain: [M002, M003, M004, M005, M006, M007, M008, M009, M010, M011, M012, M013, M014]
+    work_item_contract: "spec/architect/work-items/R7-charter.md"
+    authorization: "R7-CORE-001"
+    dependency_overlay: "spec/architect/dependency-overlays/R7.yaml"
+    baseline_sha: "1e5c55f9916ff964d3bfc0761d04a8d5fd02c41b"
+    authorization_rule: "R7-CORE-001 is the sole active implementation authorization (charter child scopes; per-child acceptance decisions DEC-0102+ are mandatory and are the serialization points). Architecture 1.1 is the sole design source; Architecture 1.0 is not."
     architectural_direction: "R7 MUST be designed and implemented from accepted Architecture 1.1, with ConnectivityContract as canonical authority. Architecture 1.0 is not a forward design source."
   - id: R8_RESILIENCE_MOBILITY_AND_SCALE
     status: AFTER_R7

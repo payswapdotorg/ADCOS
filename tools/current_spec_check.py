@@ -52,9 +52,13 @@ REQUIRED_FILES = [
     "spec/architect/execution-ledger.yaml",
     "spec/architect/evidence-obligations.yaml",
     "spec/architect/authorizations/M001.yaml",
+    "spec/architect/authorizations/R7.yaml",
     "spec/architect/decisions/DEC-0098-m001-activation.yaml",
     "spec/architect/decisions/DEC-0099-m001-battery-reconciliation.yaml",
     "spec/architect/decisions/DEC-0100-m001-acceptance.yaml",
+    "spec/architect/decisions/DEC-0101-r7-activation.yaml",
+    "spec/architect/work-items/R7-charter.md",
+    "spec/architect/dependency-overlays/R7.yaml",
     "docs/tech-lead/ADCOS-TECH-LEAD-HANDOFF.md",
     "docs/tech-lead/worker-model.md",
     "docs/tech-lead/dispatch-state.yaml",
@@ -160,7 +164,7 @@ def main() -> int:
                 fail(errors, "dispatch-state.yaml cannot declare more than 9 active subagents")
 
     for marker in (
-        'roadmap_version: "1.7"',
+        'roadmap_version: "1.8"',
         'status: FROZEN_AUTHORITATIVE',
         'source_of_truth: repository_only',
         'mandatory_forward_target: "Architecture 1.1"',
@@ -171,11 +175,14 @@ def main() -> int:
         'completion_decision: DEC-0100',
         'completion_merge_sha: 80292c24502200f84d11491ed12e9cec5e5baf11',
         'id: R7_UNIVERSAL_CONNECTIVITY_COMMERCE',
-        'status: UNLOCKED',
+        'status: ACTIVE',
+        'activation_decision: DEC-0101',
+        'authorization: "R7-CORE-001"',
+        'work_item_contract: "spec/architect/work-items/R7-charter.md"',
         'prerequisite: M001_ARCHITECTURE_1_1_FREEZE',
-        'program_state: R7_UNLOCKED_NOT_ACTIVATED',
-        'active_work_item: null',
-        'active_authorization: null',
+        'program_state: R7_UNIVERSAL_CONNECTIVITY_COMMERCE_ACTIVE',
+        'active_work_item: M002',
+        'active_authorization: R7-CORE-001',
         'next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE',
     ):
         if marker not in roadmap_text:
@@ -204,8 +211,12 @@ def main() -> int:
                     fail(errors, "execution-state.yaml halted_reason must explain the R7 gate authorization requirement")
             elif mode == "implementing":
                 # post-acceptance implementing state: exactly one active
-                # authorization file matching the declared work item; M001
-                # itself can never return to implementing (accepted/closed)
+                # authorization file matching the declared work item — either
+                # a direct work-item authorization (work_item: <item>) or a
+                # bounded program authorization whose current child is the
+                # declared work item (current_child_work_item: <item>, the
+                # DEC-0101 R7 program model); M001 itself can never return to
+                # implementing (accepted/closed)
                 awi = execution.get("active_work_item")
                 aaz = execution.get("active_authorization")
                 if not isinstance(awi, str) or not awi:
@@ -227,8 +238,8 @@ def main() -> int:
                     fail(errors, f"exactly one active authorization file is required while implementing, found {len(active_texts)}")
                 else:
                     fname, atext = active_texts[0]
-                    if f"work_item: {awi}" not in atext:
-                        fail(errors, f"the active authorization {fname} does not bind work item {awi}")
+                    if not (f"work_item: {awi}" in atext or f"current_child_work_item: {awi}" in atext):
+                        fail(errors, f"the active authorization {fname} does not bind work item {awi} (directly or as the current program child)")
                     if f"authorization_id: \"{aaz}\"" not in atext:
                         fail(errors, f"the active authorization {fname} does not carry authorization_id {aaz}")
                     base = re.search(r"^baseline_sha:\s*([0-9a-f]{40})\s*$", atext, re.MULTILINE)

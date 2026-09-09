@@ -1,0 +1,52 @@
+# DEC-0101 — R7 activation and governance compression: one bounded program
+# authorization for the M002-M014 implementation tranche
+# Sole-Architect governance decision, single-agent mode (Architect + Tech Lead).
+# Durable activation record; per-child acceptance decisions follow (DEC-0102+).
+decision_id: DEC-0101
+date: "2026-09-09"
+type: governance
+status: ACCEPTED
+owner: "Architect"
+work_item: R7
+authorization: R7-CORE-001
+
+review_basis: "Live main 1e5c55f9916ff964d3bfc0761d04a8d5fd02c41b (DEC-0100 acceptance head 4168f73 plus the fresh-session reconciliation repair, push CI green run 34367311873), the M001 acceptance chain (DEC-0100, delivery head 36bfd8e, merge 80292c2, ACR-014 ACCEPTED), the frozen Architecture 1.1 package (spec/architecture.md, LOCK-101..LOCK-120, successor registry M001-M014, 1.1 dependency model), spec/architect/roadmap.yaml v1.7 R7 gate (UNLOCKED, prerequisite satisfied by DEC-0100), the migration classification matrix, the standing authority-uniqueness invariant (at most one active implementation authorization), and local verification of current_spec_check, tech_lead_guard, architecture_drift_guard and fresh_session_check on the pre-decision head."
+
+decision: ACCEPTED
+
+evidence:
+  - "M001 is accepted and closed (DEC-0100; M001-CORE-001 status accepted, authorized false; ACR-014 ACCEPTED; 1.0 preserved verbatim under spec/history/); live main push CI green at 4168f73 (run 34366545495) and at the reconciliation repair 1e5c55f (run 34367311873)."
+  - "All four current-governance gates re-run locally on the pre-decision head: current_spec_check PASS, tech_lead_guard PASS, architecture_drift_guard PASS (governance-only), fresh_session_check PASS (exact snapshot equality after the 1e5c55f re-baseline)."
+  - "The fresh-session live-main reconciliation was repaired at 1e5c55f to the standing reconciliation convention (snapshot == live main OR ancestor with governance-only deltas between, fail-closed otherwise), removing the structural self-reference defect that blocked implementation PRs."
+  - "The R7 activation predicates of roadmap v1.7 are satisfied: gate-specific Work Item contract (the R7 charter), dependency overlay (R7.yaml), evidence policy (charter + authorization evidence classes), and the repository-local implementation authorization (R7-CORE-001, this decision)."
+
+findings:
+  - "R7 is UNLOCKED with its M001 prerequisite satisfied by DEC-0100, but no gate-specific contract, overlay, or authorization existed — implementation was halted at a governance fixed point: the mechanism that authorizes engineering work had itself become a prerequisite deliverable of engineering work."
+  - "The repository already contains a large migration reservoir (adapters, commercial core, developer API, capabilities, policy, federation, mobility) that the frozen classification matrix assigns to the M003-M014 child scopes; the bottleneck was administrative serialization, not architectural uncertainty."
+  - "The per-work-item pre-implementation ceremony chain (one contract + overlay + obligations + authorization issuance per M-item) would add 13 more governance events before the tranche could proceed, while per-item ACCEPTANCE already provides the serialization point that actually protects the architecture."
+  - "The historical per-item activation pattern (DEC-0095 for W057, DEC-0098 for M001) is superseded for the R7 tranche by a bounded program authorization with child scopes: one active authorization (R7-CORE-001) covering the charter's declared child scopes, with per-child acceptance decisions keeping Architect control at the evidence boundary."
+
+blockers: []
+required_corrections: []
+
+accepted_scope:
+  - "R7 — Universal Connectivity Commerce is ACTIVATED as the current program gate: roadmap 1.7 -> 1.8 records R7 ACTIVE with program state R7_UNIVERSAL_CONNECTIVITY_COMMERCE_ACTIVE, active work item M002, active authorization R7-CORE-001."
+  - "The R7 implementation charter (spec/architect/work-items/R7-charter.md) is the gate-specific Work Item contract: mission objective, architectural invariants (LOCK-101..LOCK-120), child work-item scopes and acceptance criteria (M002-M014), dependency model, evidence policy, migration policy, 3-worker concurrency policy, acceptance rules."
+  - "R7-CORE-001 is issued as the sole active implementation authorization (baseline 1e5c55f): a bounded R7 program authorization whose scope is the union of the charter child scopes plus the shared battery surface; per-child acceptance remains mandatory; at most one authorization stays active."
+  - "The Tech Lead is empowered to decompose, dispatch (within the 3x3/9/depth-2 machine-checked dispatch limits), branch, integrate, test, verify and deliver implementation PRs against the authorized child scopes without further pre-implementation authorization ceremonies; scope amendments outside the declared prefixes are lightweight decisions recorded in the registry."
+  - "Stale state projections are repaired: README.md next-gate projection, AGENTS.md transition-conditional, current-state routing rule, roadmap current_state section, and the M002-contract battery CI wiring (with a pre-delivery existence guard, visible skip)."
+  - "The implementation-PR provenance gate is migrated to the current era: tools/authorization_provenance.py (ARCH-08 successor, control-plane classified) replaces the legacy tools/spec_check.py --provenance CI invocation — the legacy checker's frozen WORK-* glob and schema cannot see M-item/R7 program authorizations and its ARCH-02 parse debt is recorded as blocking in that mode, making it structurally unsatisfiable for post-M001 implementation PRs. The legacy checker stays the non-blocking frozen compatibility audit; no invariant is weakened. The new gate also exposes active_authorization()/covers() as the shared authority for the batteries' authorization-aware delta-shape consultation (the docs/M001-evidence.md §4 duty)."
+  - "The current-governance checkers evolve in lockstep to validate the R7-active state and fail closed against the pre-activation markers (synchronized updates, the DEC-0098 pattern)."
+
+rejected_scope:
+  - "This decision does not accept any child work item; M002-M014 acceptance happens per child from repository evidence (DEC-0102 onward)."
+  - "This decision does not weaken any invariant: locks stay frozen, control-plane mixing stays forbidden, provenance stays fail-closed, per-item acceptance stays mandatory, and the one-active-authorization invariant is preserved (the program authorization is singular)."
+  - "No R8 activation, no WORK-048 restoration, no W040/EVID-007/EVID-008 disturbance, no protocol semantic change, no mission change."
+  - "No legacy implementation is reclassified as 1.1-complete by this decision; the migration matrix continues to govern harvesting."
+
+downstream_effect:
+  - "Exactly one implementation authorization (R7-CORE-001) is active; M001-CORE-001 and all W-item authorizations remain closed."
+  - "Implementation PRs under R7-CORE-001 must classify as implementation-only (drift guard) and be fully scope-covered (ARCH-08 provenance, byte-identical authorization inheritance from main)."
+  - "The M002 delivery PR carries the authorization-aware battery-scope consultation repairs pre-recorded by docs/M001-evidence.md §4, after which the battery suite validates deltas against the ACTIVE authorization scope instead of frozen historical per-battery scopes."
+  - "Acceptance of each child (starting with M002 -> DEC-0102) records the exact reviewed head and merge SHA, closes that child, advances the dependency chain, and reconciles execution-state/roadmap/ledger."
+  - "Once M002 is accepted, the Tech Lead exploits the 3-worker pipeline (A: M003->M008; B: M013 then verticals; C: M009 then M014 preparation) within the charter's dependency and authority boundaries."

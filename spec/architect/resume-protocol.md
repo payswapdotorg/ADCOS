@@ -24,20 +24,23 @@ A brand-new Architect, Tech Lead, worker, or implementation agent must resume fr
 
 ## Current checkpoint
 
-The latest reconciled software mainline is the M001 acceptance merge
-`80292c24502200f84d11491ed12e9cec5e5baf11` (PR #25, DEC-0100).
+The latest reconciled software baseline is the pre-activation head
+`1e5c55f9916ff964d3bfc0761d04a8d5fd02c41b` (DEC-0100 acceptance head `4168f73`
+plus the fresh-session reconciliation repair); the DEC-0101 activation sits
+beyond it per the standing reconciliation convention.
 
 - R6 Provider Onboarding & Federation is complete under `DEC-0097`.
 - M001 — Architecture 1.1 Freeze is complete under `DEC-0100`: Architecture 1.1
   is the sole normative forward architecture (`spec/architecture.md` FROZEN v1.1,
   LOCK-101..LOCK-120); Architecture 1.0 is preserved historical evidence at
   `spec/history/`; ACR-014 is ACCEPTED.
-- `M001-CORE-001` is closed. No implementation authorization is active.
-- The immediate forward gate is **R7 — Universal Connectivity Commerce**
-  (UNLOCKED, NOT ACTIVATED): it requires its own gate-specific Work Item
-  contract, dependency overlay, evidence obligations, and repository-local
-  implementation authorization before any implementation. First candidate:
-  M002 — Connectivity Contract Core.
+- `M001-CORE-001` is closed. **R7 — Universal Connectivity Commerce is ACTIVE
+  under DEC-0101** as a bounded program authorization: `R7-CORE-001`
+  (`spec/architect/authorizations/R7.yaml`) with the R7 charter
+  (`spec/architect/work-items/R7-charter.md`) declaring the child work-item
+  scopes M002-M014. The current child is **M002 — Connectivity Contract Core**
+  (implementing). Per-child acceptance decisions (DEC-0102 onward) are the
+  serialization points.
 - R4/W040 remains an independent physical-validation track and is not replaced by the software roadmap.
 - W048 remains accepted-not-restored and MUST NOT be recreated, mocked, or substituted implicitly.
 

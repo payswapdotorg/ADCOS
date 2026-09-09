@@ -48,6 +48,7 @@ CONTROL_FILES = {
     "tools/fresh_session_check.py",
     "tools/tech_lead_guard.py",
     "tools/architecture_drift_guard.py",
+    "tools/authorization_provenance.py",
 }
 
 
