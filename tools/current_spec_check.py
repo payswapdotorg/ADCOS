@@ -35,6 +35,7 @@ REQUIRED_FILES = [
     "spec/dependency-graph-1.1.md",
     "spec/migration/classification-matrix.md",
     "spec/integration/vertical-proof.md",
+    "spec/research/standards-and-use-cases.md",
     "spec/architect/LLM-ARCHITECT-HANDOFF.md",
     "spec/architect/resume-protocol.md",
     "spec/architect/current-state.md",
@@ -46,7 +47,9 @@ REQUIRED_FILES = [
     "spec/architect/evidence-obligations.yaml",
     "docs/tech-lead/ADCOS-TECH-LEAD-HANDOFF.md",
     "docs/tech-lead/worker-model.md",
+    "docs/tech-lead/dispatch-state.yaml",
     "tools/fresh_session_check.py",
+    "tools/tech_lead_guard.py",
 ]
 
 TARGET_PACKAGE = [
@@ -57,6 +60,7 @@ TARGET_PACKAGE = [
     "spec/dependency-graph-1.1.md",
     "spec/migration/classification-matrix.md",
     "spec/integration/vertical-proof.md",
+    "spec/research/standards-and-use-cases.md",
 ]
 
 
@@ -104,7 +108,7 @@ def main() -> int:
         (agents, "Architecture 1.1 is the forward implementation target", "AGENTS.md is not 1.1-forward"),
         (tl, "Architecture 1.1 is the target architecture", "Tech Lead handoff is not 1.1-forward"),
         (tl, "up to 3 workers", "Tech Lead direct-worker limit is missing"),
-        (workers, "Maximum active descendants: 9", "worker model does not enforce 3x3/9-descendant limit"),
+        (workers, "Maximum active descendants: 9", "worker model does not record the 3x3/9-descendant rule"),
         (resume, "Fresh-session guarantee", "resume protocol lacks fresh-session guarantee"),
         (resume, "M001 — Architecture 1.1 Freeze", "resume protocol does not route through M001"),
         (current, "mandatory forward implementation target", "current-state does not declare 1.1 mandatory-forward"),
@@ -114,6 +118,42 @@ def main() -> int:
     for haystack, marker, message in markers:
         if marker.lower() not in haystack.lower():
             fail(errors, message)
+
+    # Machine-check the dispatch contract instead of relying only on prose.
+    dispatch = yaml_subset_load(text("docs/tech-lead/dispatch-state.yaml"), "docs/tech-lead/dispatch-state.yaml")
+    if not isinstance(dispatch, dict):
+        fail(errors, "dispatch-state.yaml is not a mapping")
+    else:
+        for key, expected in {
+            "max_direct_workers": 3,
+            "max_subagents_per_worker": 3,
+            "max_active_descendants": 9,
+            "max_depth": 2,
+        }.items():
+            if dispatch.get(key) != expected:
+                fail(errors, f"dispatch-state.yaml {key} must be {expected}")
+        active_workers = dispatch.get("active_workers")
+        if not isinstance(active_workers, list) or len(active_workers) > 3:
+            fail(errors, "dispatch-state.yaml active_workers must be a list of at most 3 direct workers")
+        else:
+            subagent_total = 0
+            worker_ids: set[str] = set()
+            for worker in active_workers:
+                if not isinstance(worker, dict):
+                    fail(errors, "dispatch-state.yaml contains a non-mapping worker")
+                    continue
+                wid = worker.get("id")
+                if not isinstance(wid, str) or not wid or wid in worker_ids:
+                    fail(errors, "dispatch-state.yaml worker ids must be non-empty and unique")
+                if isinstance(wid, str):
+                    worker_ids.add(wid)
+                subs = worker.get("subagents", [])
+                if not isinstance(subs, list) or len(subs) > 3:
+                    fail(errors, f"dispatch-state.yaml worker {wid!r} must have at most 3 subagents")
+                else:
+                    subagent_total += len(subs)
+            if subagent_total > 9:
+                fail(errors, "dispatch-state.yaml cannot declare more than 9 active subagents")
 
     # Roadmap is authoritative. We validate its literal authority markers
     # rather than using the legacy YAML subset parser, because the current
@@ -132,9 +172,6 @@ def main() -> int:
         if marker not in roadmap_text:
             fail(errors, f"roadmap.yaml missing mandatory transition marker: {marker}")
 
-    # Machine-readable execution state must remain within the accepted schema;
-    # transition intent is expressed by the gate/declaration, not a new ad-hoc
-    # execution mode.
     if not isinstance(state, dict):
         fail(errors, "execution-state.yaml is not a mapping")
     else:
@@ -160,8 +197,6 @@ def main() -> int:
             if not isinstance(state.get("open_architectural_questions"), list):
                 fail(errors, "execution-state.yaml open_architectural_questions must be a list")
 
-    # Post-snapshot Work Items may live under the Architect-owned gate-specific
-    # namespace. The historical frozen registry remains untouched.
     wi_dir = ROOT / "spec/architect/work-items"
     if not wi_dir.is_dir():
         fail(errors, "spec/architect/work-items/ missing")
@@ -170,10 +205,6 @@ def main() -> int:
             if not (wi_dir / f"{wid}.md").is_file():
                 fail(errors, f"post-snapshot Work Item contract missing: {wid}")
 
-    # Ledger compatibility: W050's reconstructed accepted state is explicitly
-    # allowed to omit branch/PR; the note must explain why rather than inventing
-    # a synthetic delivery identity. New post-snapshot items must not be blocked
-    # merely because they sit outside the frozen pre-snapshot registry.
     if isinstance(ledger, dict):
         items = ledger.get("work_items")
         if not isinstance(items, list):
@@ -192,7 +223,6 @@ def main() -> int:
             if not any(e.get("work_item") == "WORK-057" for e in items if isinstance(e, dict)):
                 fail(errors, "execution-ledger.yaml must contain the current W057 acceptance projection")
 
-    # Evidence obligations must remain visible in the current-state projection.
     if isinstance(evidence, dict):
         obligations = evidence.get("obligations")
         if not isinstance(obligations, list):
@@ -208,7 +238,7 @@ def main() -> int:
                 fail(errors, "current-state.md hides open evidence obligations: " + ", ".join(missing))
 
     print("current-spec check: PASS")
-    print("Architecture 1.1 routing, M001 gate, 3x3 worker hierarchy, post-snapshot Work Items, reconstructed W050 provenance, and evidence visibility are consistent")
+    print("Architecture 1.1 routing, M001 gate, 3x3 worker hierarchy, machine-checked dispatch state, post-snapshot Work Items, reconstructed W050 provenance, and evidence visibility are consistent")
     return 0
 
 
