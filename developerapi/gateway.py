@@ -1,16 +1,20 @@
-"""WORK-046 developer platform request boundary (the gateway).
+"""M013 developer platform request boundary (the gateway): the
+W046-era request-admission machinery harvested and re-bound
+onto the canonical Architecture 1.1 authority.
 
 The single request-admission path of the developer API (the
-W046 frozen contract's interface boundary):
+retained W046 pipeline):
 
     authenticate (constant-time, environment-bound)
       -> resolve the API version (deterministic policy)
       -> rate limit (per application, non-mutating)
       -> authorize the scoped capability
-      -> for mutations: the DURABLE idempotency ledger
-      -> adapt to the canonical subsystem (typed public
-         command surfaces ONLY) or the developerapi-owned
-         resource projection
+      -> for mutations: the DURABLE WRITE-AHEAD idempotency hold
+         (the request digest is journaled BEFORE any canonical
+         effect exists), then the DURABLE idempotency ledger
+      -> adapt to the canonical authority (the accepted
+         contracts domain's PUBLIC command surface ONLY) or the
+         developerapi-owned resource projection
       -> append the atomic journal record (persist-then-ack)
          -- the FINALITY POINT: the canonical mutation result
          and its response are final from here
@@ -18,114 +22,100 @@ W046 frozen contract's interface boundary):
          record (the admission-time audience and emission
          identity FROZEN: ``required`` with the exact resolved
          endpoints, or terminal ``not-required`` with none) and,
-         when required, its derived delivery OBLIGATION record.
-         Both are part of the SUCCESSFUL-ADMISSION CONTRACT:
-         they must be durable BEFORE the response is returned.
-         If either cannot be durably recorded, the boundary
-         fails DETERMINISTICALLY (store-failed, 500) and NEVER
-         claims successful admission of a mutation whose
-         required observation admission was not established --
-         no rollback, no re-execution; the durable mutation
-         stays durable, and the SAME request retried with the
-         SAME idempotency key completes the admission (the
-         historical admission decision, once durable, is
-         AUTHORITATIVE: an idempotent replay NEVER re-resolves
-         the current endpoint state) and then receives the
-         canonical stored response byte-identically
+         when required, its derived delivery OBLIGATION record
+         (the retained W046 admission contract, unchanged)
       -> return the canonical response envelope
       -> webhook queue writes + delivery attempts STRICTLY
          AFTER the admission + obligation are durable and fully
-         contained: a webhook queue or delivery failure may
-         affect only webhook observability/retry state, never
-         the response -- and never the loss of the durable
-         admission/obligation to observe
+         contained
 
-Authority discipline (the frozen boundary -- battery-pinned
-structurally by the import audit and the cross-authority call
-audit):
+Authority discipline (the M013 re-bind, LOCK-101/LOCK-114):
 
-- The gateway composes the accepted commercial-plane
-  authorities through their PUBLIC surfaces ONLY:
-  :class:`commercial.lifecycle.CommercialCore` (``submit_intent``
-  / ``hold_reservation`` for the two sanctioned
-  developer-mutating commercial operations; the public reads
-  otherwise), :class:`usage.ledger.UsageLedger` (public reads
-  only -- usage truth is never developer-writable), and
-  :class:`allocation.ledger.AllocationLedger`
-  (``register_policy`` for economic-policy configuration; the
-  public reads otherwise).  WORK-056 re-binds these adapters to
-  the CURRENT accepted public surfaces (the W052/W053 review
-  corrections renamed ``usage.lifecycle`` -> ``usage.ledger``
-  and ``allocation.lifecycle`` -> ``allocation.ledger`` and
-  reshaped the usage/policy projections); the boundary's frozen
-  route/capability/envelope contract is unchanged, INCLUDING
-  the frozen 1.x economic-policy REST shape (GET
-  /economic-policies/{id}/{version} and the 11-member 1.x
-  request/response contract): the 1.x wire contract is
-  preserved verbatim and adapted to the current canonical
-  terms-derived policy model through the boundary's 1.x
-  compatibility layer (see :func:`_encode_1x_policy_label`),
-  never silently redefined.
+- The gateway composes EXACTLY ONE canonical authority: the
+  accepted contracts domain (M002, DEC-0102) through its PUBLIC
+  surface ONLY -- :class:`contracts.store.ContractStore`
+  (``next_record``/``merge`` for the two-step public submit,
+  and the public reads ``contract``/``contracts``/``lease``/
+  ``leases``/``leases_for_contract``/``journal``).  The
+  canonical command objects are built from the
+  ``contracts.model`` public constructors; the boundary never
+  constructs a second contract model, never re-defines a
+  contract vocabulary, and never writes contract state through
+  any other path.
 
-- The gateway NEVER imports or touches the identity, session,
-  NetworkPath, routing, transport, packet, payment, or
-  eligibility authorities.  There is no authority object,
-  client, or private accessor for any of them anywhere in the
-  developerapi family: the commercial core is injected ALREADY
-  COMPOSED by the platform (its reference index was built from
-  the connectivity authorities' public surfaces by the platform
-  composer, outside this package).
+- Offers, assurance and usage semantics are referenced, never
+  re-implemented (LOCK-114): accepted offers enter through
+  ``SelectOffers`` as opaque ``offer`` typed references; usage
+  and pricing terms ride the contract's opaque
+  ``usage-pricing-terms`` reference; assurance obligations ride
+  opaque ``assurance-obligation`` references.  There is no offer
+  publication route, no usage ledger read, no economic-policy
+  surface: those semantics belong to the M003/M005/M009 child
+  domains, which are not re-modelled here.
+
+- No network implementation objects appear anywhere in the API
+  surface (LOCK-114): the request/response member vocabulary is
+  technology-neutral; execution material appears only as the
+  contract's opaque ``execution-scope``/``execution-artifact``
+  references (LOCK-117: data, never authority).  The developer
+  never needs to know about Node, Link, gNB, UPF, radio bearer,
+  provider routing or any equivalent implementation detail.
+
+- The gateway NEVER imports the identity, session, NetworkPath,
+  routing, transport, packet, payment, eligibility, commercial,
+  usage, allocation, adapter, offers, assurance or evidence
+  authorities.  There is no authority object, client, or private
+  accessor for any of them anywhere in the developerapi family:
+  the contract store is injected ALREADY COMPOSED by the
+  platform (the execution/assurance/commercial authorities
+  drive it through its command surface on the platform side,
+  outside this package).
 
 - API success NEVER implies physical connectivity success: the
   lifecycle observation resource keeps the distinct statements
-  distinct (commercial state vs. connectivity vs. physical
-  evidence), and no response fabricates or promotes physical
-  evidence (battery-pinned).
+  distinct and never fabricates or promotes physical evidence.
 
-- Webhook emission is OBSERVATION ONLY: events are built from
-  public reads, queued before delivery, and delivered through
-  the injectable transport seam; delivery state never feeds
-  back into any business state.  The observation phase runs
-  strictly AFTER the mutation's finality point, and its queue
-  and delivery steps are fully contained: a webhook queue or
-  delivery persistence failure can never turn an admitted
-  mutation into an API failure, never alter the canonical
-  mutation result, never cause a duplicate canonical mutation,
-  never invalidate idempotency, and never act as a hidden
-  transaction coordinator for the commercial plane (battery
-  case 42 failure-injects exactly this).  The DELIVERY
-  OBLIGATION, however, is a durable operational obligation of
-  the observation channel itself: it is persisted BEFORE the
-  API response is returned and survives a process crash, so a
-  queue-write failure (or a crash between the obligation and
-  the queue phase) loses nothing -- restart recovery re-queues
-  the still-missing endpoints exactly once (battery case 43
-  failure-injects the crash).  The obligation write itself is
-  part of the admission contract, NOT contained best effort:
-  when it fails the boundary returns the deterministic
-  admission failure instead of a false success, the durable
-  mutation is neither rolled back nor re-executed, and the
-  same-key retry completes the admission BEFORE the stored
-  response is replayed (battery case 44 failure-injects the
-  obligation write, the crash, and the healing retry).  The
-  delivery STATE stays observational; the delivery OBLIGATION
-  is durable and admission-gating.  That distinction is the
-  whole reliability contract.
+- Webhook emission is OBSERVATION ONLY (the retained W046
+  invariant): events are built from public reads, queued before
+  delivery, and delivered through the injectable transport
+  seam; delivery state never feeds back into any business
+  state.  The observation phase runs strictly AFTER the
+  mutation's finality point, and its queue and delivery steps
+  are fully contained; the DELIVERY OBLIGATION is durable and
+  admission-gating exactly as in W046.
 
-Durability (the idempotency contract): every mutation's
-request+response is ONE atomic journal record (the durable
-ledger).  Duplicates replay the canonical prior response
-byte-identically; conflicting reuse fails closed; the ledger
-survives restart (journal-first recovery).  The crash window
-between an adapted authority's append and the boundary record
-is handled honestly: the derived api command id makes the
-canonical subsystem's own durable idempotency return the
-DUPLICATE outcome, and the boundary reconstructs the canonical
-prior result from the subsystem's PUBLIC journal reads (never
-re-executing the mutation).
+- Sandbox and production are non-interchangeable, isolated
+  namespaces (retained); sandbox results are never production
+  or physical evidence.
+
+- Developer-facing errors preserve the canonical ADCOS reason
+  codes unchanged (retained; the canonical table is re-bound to
+  the contracts-domain ``ContractReason`` vocabulary).
+
+- The SDK contains no hidden business authority (import
+  discipline is battery-audited).
+
+Idempotency over a content-derived canonical command identity
+(the M013 crash-window discipline):
+
+The contracts authority's command identity is content-derived
+over (contract id, canonical payload, recorded instant).  The
+boundary therefore requires every mutation to declare its
+command instants IN THE REQUEST (``recorded_at`` /
+``activated_at`` / ``granted_at`` -- deterministic, offline),
+so an idempotent redelivery of the same key with the same body
+derives the BYTE-IDENTICAL canonical command: the canonical
+authority's own DUPLICATE discipline recognizes it and the
+boundary reconstructs the response from public reads (never
+re-executing the mutation).  The write-ahead pending hold
+journeys the (key, digest) pair BEFORE the canonical
+submission, so the same key with CHANGED content fails closed
+``idempotency-conflict`` even inside the crash window, and a
+semantically rejected request releases the hold (failures
+never consume the key -- the retained W046 contract).
 
 The platform administration surface (credential issuance,
-endpoint secret derivation, transaction observation emission,
+endpoint secret derivation, contract observation emission,
 due-delivery processing) is explicit and separated from the
 request path: it is how the platform operator provisions and
 operates the boundary, never an HTTP route.
@@ -140,12 +130,26 @@ from agent.clock import AgentClock
 
 from protocol.canonicalization import canonical_json_bytes
 
-from commercial.errors import CommercialError
-from commercial.lifecycle import CommercialCore
-from usage.errors import UsageError
-from usage.ledger import UsageLedger
-from allocation.errors import AllocationError
-from allocation.ledger import AllocationLedger
+from contracts import (
+    ActivateContract,
+    BeneficiaryScope,
+    ConnectivityPrincipal,
+    CreateContract,
+    ContractError,
+    ContractStore,
+    GrantLease,
+    HardConstraint,
+    OpaqueReference,
+    Provenance,
+    RenewLease,
+    RevokeLease,
+    SelectOffers,
+    TerminateContract,
+    TerminationRules,
+    ValidityInterval,
+    build_contract,
+    build_lease,
+)
 
 from . import webhooks as webhook_platform
 from .credentials import (
@@ -171,6 +175,8 @@ from .journal import (
     AppendOnlyApiJournal,
     CredentialRecord,
     MutationRecord,
+    MutationPendingRecord,
+    MutationAbandonedRecord,
     WebhookAdmissionRecord,
     WebhookAttemptRecord,
     WebhookObligationRecord,
@@ -189,41 +195,64 @@ from .schema import (
 
 #: The transport seam: (endpoint_id, url, payload, headers) ->
 #: (delivered, response_code).  Deterministic, offline, injected.
+#: The observation channel's delivery seam only -- never a
+#: connectivity implementation object (the API surface itself
+#: carries no transport, socket, adapter or provider SDK type).
 DeliveryTransport = Callable[
     [str, str, Mapping[str, Any], Mapping[str, str]], Tuple[bool, int]
 ]
 
-#: The states a transaction must have reached for its lease
-#: (reservation) projection to exist.
-_LEASE_STATES = frozenset({
-    "RESERVATION_HELD",
-    "SESSION_AUTHORIZED",
-    "PATH_ACTIVE",
-    "DELIVERY_STARTED",
-    "USAGE_ACCRUING",
-    "DELIVERY_COMPLETED",
-    "BILLABLE_FINAL",
-    "SETTLEMENT_PENDING",
-    "SETTLED",
-    "CANCELLED",
-    "EXPIRED",
-    "PATH_FAILED",
-    "NON_DELIVERED",
+#: The canonical merge statuses that carry a reconstructable
+#: canonical contract for the submitted command: ``duplicate``
+#: (the byte-identical command already ran -- the crash window)
+#: and, for creates only, ``sequence-conflict`` (the
+#: content-derived creation core already exists; create is
+#: once).  Both respond with the canonical current state.
+_DUPLICATE_STATUSES = frozenset({"duplicate"})
+
+#: The merge statuses the boundary's own submit path can never
+#: produce (a discipline violation implies concurrent external
+#: writers or corruption): fail closed with the canonical
+#: reason preserved.
+_FAILURE_STATUSES = frozenset({
+    "replay-stale",
+    "sequence-gap",
+    "id-mismatch",
+    "unknown-contract",
+    "journal-tamper",
 })
 
 #: The honest lifecycle statement set (never collapsed): the
-#: API reports the canonical COMMERCIAL state and explicitly
-#: does NOT claim connectivity or physical evidence.
+#: API reports the canonical CONTRACT state machine and
+#: explicitly does NOT claim connectivity or physical evidence.
 _LIFECYCLE_STATEMENTS = (
     "api_request_accepted",
-    "commercial_intent_persisted",
-    "reservation_created",
-    "lease_created",
-    "provider_eligibility_determined_by_w045_authority",
-    "connectivity_requested",
-    "connectivity_operational_per_networkpath_authority",
-    "physical_connectivity_observed",
+    "contract_intent_recorded",
+    "contract_offers_selected",
+    "contract_active",
+    "execution_status_reported_from_contract_state",
+    "assurance_reported_from_contract_recorded_outcomes",
+    "physical_connectivity_not_claimed",
 )
+
+#: The honest execution-status classification, derived purely
+#: from the canonical contract state machine (frozen 1.1 §11
+#: reference lifecycle + §9 degraded/terminal states).
+_EXECUTION_STATUS_BY_STATE = {
+    "INTENT": "not-started",
+    "OFFER_SELECTED": "not-started",
+    "CONTRACT_ACTIVE": "permitted",
+    "EXECUTION_ACTIVE": "executing",
+    "DELIVERY": "delivering",
+    "ASSURED": "delivered-assured",
+    "DEGRADED": "degraded",
+    "USAGE_FINAL": "usage-accounted",
+    "SETTLEMENT_PENDING": "usage-accounted",
+    "SETTLED": "closed",
+    "TERMINATED": "closed",
+    "EXPIRED": "closed",
+    "FAILED": "closed",
+}
 
 
 @dataclass(frozen=True)
@@ -291,28 +320,24 @@ class RouteSpec:
     schema_role: str = ""
 
 
-#: The frozen route table (the versioned REST surface, native
-#: ADCOS terminology: offers, intents, reservations/leases,
-#: usage, billing, economic policies, webhook endpoints,
-#: deliveries, the self credential record).
+#: The canonical route table (the Architecture 1.1 §12
+#: developer-facing API semantics, LOCK-114): create intents,
+#: accept offers (typed references), create/get contracts,
+#: inspect execution status and assurance, retrieve usage
+#: semantics, terminate, leases, and the retained webhook
+#: observation surface.  The W046-era commercial-plane routes
+#: (offer publication, reservations, usage/billing reads,
+#: economic policies) are demoted with the 1.x surface;
+#: disclosed in docs/M013-evidence.md.
 ROUTES: Dict[Tuple[str, str], RouteSpec] = {
     ("GET", "application"): RouteSpec(
         "application_self", "", False, ""
     ),
-    ("GET", "offers"): RouteSpec(
-        "offers_list", Capability.OFFERS_READ, False, ""
-    ),
-    ("POST", "offers"): RouteSpec(
-        "offer_publish", Capability.OFFERS_WRITE, True, "offer"
-    ),
-    ("GET", "offers/{}"): RouteSpec(
-        "offer_get", Capability.OFFERS_READ, False, ""
+    ("POST", "intents"): RouteSpec(
+        "intent_create", Capability.INTENTS_WRITE, True, "intent_request"
     ),
     ("GET", "intents"): RouteSpec(
         "intents_list", Capability.INTENTS_READ, False, ""
-    ),
-    ("POST", "intents"): RouteSpec(
-        "intent_create", Capability.INTENTS_WRITE, True, "intent_request"
     ),
     ("GET", "intents/{}"): RouteSpec(
         "intent_get", Capability.INTENTS_READ, False, ""
@@ -320,34 +345,43 @@ ROUTES: Dict[Tuple[str, str], RouteSpec] = {
     ("GET", "intents/{}/lifecycle"): RouteSpec(
         "intent_lifecycle", Capability.INTENTS_READ, False, ""
     ),
-    ("POST", "intents/{}/reservations"): RouteSpec(
-        "reservation_create", Capability.LEASES_WRITE, True,
-        "reservation_request",
+    ("POST", "intents/{}/offers"): RouteSpec(
+        "offers_accept", Capability.INTENTS_WRITE, True, "offer_selection"
     ),
-    ("GET", "reservations"): RouteSpec(
-        "reservations_list", Capability.LEASES_READ, False, ""
+    ("POST", "intents/{}/activation"): RouteSpec(
+        "contract_activate", Capability.INTENTS_WRITE, True,
+        "activation_request",
     ),
-    ("GET", "reservations/{}"): RouteSpec(
-        "reservation_get", Capability.LEASES_READ, False, ""
+    ("GET", "contracts"): RouteSpec(
+        "contracts_list", Capability.INTENTS_READ, False, ""
     ),
-    ("GET", "usage"): RouteSpec(
-        "usage_list", Capability.USAGE_READ, False, ""
+    ("GET", "contracts/{}"): RouteSpec(
+        "contract_get", Capability.INTENTS_READ, False, ""
     ),
-    ("GET", "usage/{}"): RouteSpec(
-        "usage_get", Capability.USAGE_READ, False, ""
+    ("GET", "contracts/{}/usage"): RouteSpec(
+        "contract_usage", Capability.USAGE_READ, False, ""
     ),
-    ("GET", "billing"): RouteSpec(
-        "billing_list", Capability.BILLING_READ, False, ""
+    ("GET", "contracts/{}/assurance"): RouteSpec(
+        "contract_assurance", Capability.ASSURANCE_READ, False, ""
     ),
-    ("GET", "economic-policies"): RouteSpec(
-        "policies_list", Capability.ECONOMIC_POLICY_READ, False, ""
+    ("POST", "contracts/{}/termination"): RouteSpec(
+        "contract_terminate", Capability.INTENTS_WRITE, True,
+        "termination_request",
     ),
-    ("POST", "economic-policies"): RouteSpec(
-        "policy_register", Capability.ECONOMIC_POLICY_WRITE, True,
-        "economic_policy",
+    ("POST", "contracts/{}/leases"): RouteSpec(
+        "lease_grant", Capability.LEASES_WRITE, True, "lease_request"
     ),
-    ("GET", "economic-policies/{}/{}"): RouteSpec(
-        "policy_get", Capability.ECONOMIC_POLICY_READ, False, ""
+    ("GET", "leases"): RouteSpec(
+        "leases_list", Capability.LEASES_READ, False, ""
+    ),
+    ("GET", "leases/{}"): RouteSpec(
+        "lease_get", Capability.LEASES_READ, False, ""
+    ),
+    ("POST", "leases/{}/renewal"): RouteSpec(
+        "lease_renew", Capability.LEASES_WRITE, True, "lease_renewal"
+    ),
+    ("POST", "leases/{}/revocation"): RouteSpec(
+        "lease_revoke", Capability.LEASES_WRITE, True, "lease_revocation"
     ),
     ("GET", "webhook-endpoints"): RouteSpec(
         "endpoints_list", Capability.WEBHOOKS_READ, False, ""
@@ -411,113 +445,94 @@ def match_route(method: str, route: str) -> Tuple[RouteSpec, List[str]]:
 
 
 # ---------------------------------------------------------------------------
-# The frozen-1.x economic-policy compatibility layer
-#
-# WORK-056 preserves the accepted WORK-046 1.0/1.1 economic-policy
-# contract VERBATIM (the GET /economic-policies/{id}/{version}
-# route, the 11-member request/response model, the
-# client-chosen (policy_id, version) coordinates, tax_bps, and
-# the open-ended effective window) while adapting internally to
-# the CURRENT canonical W053 terms-derived immutable
-# PolicyVersion model.  The adaptation is honest and
-# single-sited:
-#
-# - The canonical free-text LABEL term carries the 1.x-only
-#   coordinate block (the (policy_id, version) coordinates,
-#   tax_bps, and the open-ended flag) as canonical JSON under a
-#   reserved prefix.  The label participates in the canonical
-#   policy-id derivation, so distinct 1.x coordinates stay
-#   distinct immutable versions, identical 1.x bodies dedup
-#   canonically, and a same-coordinates/different-economics
-#   re-registration is detectable and fails closed (the frozen
-#   1.x conflict semantic).
-#
-# - The shared economics members map one-to-one onto the
-#   canonical terms (adc_os_share_bps -> adcos_share_bps,
-#   developer_share_min/max_bps -> provider_min/max_bps,
-#   rounding -> rounding_mode, exponent -> minor_unit_digits,
-#   currency and the effective window unchanged).
-#
-# - The 1.x open-ended window (absent/empty effective_until)
-#   is represented canonically as the maximal closed window
-#   (the sentinel instant below); the open-ended flag round-
-#   trips through the label block so the 1.x response
-#   projects effective_until = "" exactly as the 1.x contract
-#   defines it.
-#
-# - 1.x-only member constraints the current canonical model
-#   cannot carry (tax_bps range, version >= 1, and the frozen
-#   adc_os_share_bps + tax_bps <= 10000 sum rule) are enforced
-#   at the boundary as boundary-local validation.
-#
-# - Canonical policies registered through OTHER surfaces (with
-#   non-1.x labels) are NOT projected onto the 1.x surface: the
-#   boundary never fabricates 1.x members for a canonical
-#   record that does not carry them.
+# Request-body helpers (canonical material construction; the canonical
+# authority owns every vocabulary, pattern, and secret scan -- the
+# boundary enforces only the member-level typed-reference discipline)
 # ---------------------------------------------------------------------------
 
-#: The reserved label prefix of a 1.x-coordinate policy block.
-_1X_POLICY_LABEL_PREFIX = "adc-os-1x-policy:v1:"
 
-#: The canonical closed-window representation of the 1.x
-#: open-ended effective window (the maximal RFC 3339 instant;
-#: deterministic, disclosed, and round-tripped through the
-#: label block's open_ended flag).
-_1X_OPEN_ENDED_UNTIL = "9999-12-31T23:59:59Z"
-
-#: The 1.x policy members the canonical terms model does not
-#: carry (carried in the label block instead).
-_1X_POLICY_BLOCK_MEMBERS = ("policy_id", "version", "tax_bps", "open_ended")
+def _require_text(value: object, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise DeveloperApiError(
+            DeveloperApiReasonCode.INVALID_INPUT,
+            "%s must be a non-empty string" % label,
+        )
+    return value
 
 
-def _encode_1x_policy_label(
-    policy_id: str, version: int, tax_bps: int, open_ended: bool
-) -> str:
-    """The canonical label encoding the frozen 1.x coordinate
-    block (injective and deterministic: canonical JSON under
-    the reserved prefix)."""
-    return _1X_POLICY_LABEL_PREFIX + canonical_json_bytes(
-        {
-            "policy_id": policy_id,
-            "version": version,
-            "tax_bps": tax_bps,
-            "open_ended": open_ended,
-        }
-    ).decode("ascii")
+def _require_mapping(value: object, label: str) -> Dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise DeveloperApiError(
+            DeveloperApiReasonCode.INVALID_INPUT,
+            "%s must be a mapping" % label,
+        )
+    return dict(value)
 
 
-def _decode_1x_policy_label(label: object) -> Optional[Dict[str, Any]]:
-    """Decode a 1.x coordinate block from a canonical policy
-    label; None when the label is not a 1.x-coordinate block
-    (a policy registered through another surface)."""
-    if not isinstance(label, str) or not label.startswith(
-        _1X_POLICY_LABEL_PREFIX
-    ):
-        return None
-    import json
+def _require_list(value: object, label: str) -> List[Any]:
+    if isinstance(value, str) or not isinstance(value, (list, tuple)):
+        raise DeveloperApiError(
+            DeveloperApiReasonCode.INVALID_INPUT,
+            "%s must be a list" % label,
+        )
+    return list(value)
 
-    try:
-        block = json.loads(label[len(_1X_POLICY_LABEL_PREFIX):])
-    except ValueError:
-        return None
-    if not isinstance(block, dict) or sorted(block) != sorted(
-        _1X_POLICY_BLOCK_MEMBERS
-    ):
-        return None
-    if not isinstance(block.get("policy_id"), str) or not block["policy_id"]:
-        return None
-    for member in ("version", "tax_bps"):
-        value = block.get(member)
-        if not isinstance(value, int) or isinstance(value, bool):
-            return None
-    if not isinstance(block.get("open_ended"), bool):
-        return None
-    return {
-        "policy_id": block["policy_id"],
-        "version": block["version"],
-        "tax_bps": block["tax_bps"],
-        "open_ended": block["open_ended"],
-    }
+
+def _typed_reference(
+    entry: object, expected_kind: str, label: str
+) -> OpaqueReference:
+    """Build one canonical opaque typed reference from a request
+    entry.
+
+    The entry carries ``{ref_kind, value, provenance?}``.  The
+    boundary enforces the CANONICAL reference kind for the
+    member (the typed-reference discipline: offers, usage terms,
+    assurance obligations, requirements, execution scope and
+    signatures each ride their own frozen kind); the canonical
+    authority enforces the value grammar, the provenance shape
+    and the LOCK-119 secret scan (a ``ContractError`` propagates
+    and is adapted by the caller).  The boundary NEVER
+    interprets the referenced semantics."""
+    if not isinstance(entry, Mapping):
+        raise DeveloperApiError(
+            DeveloperApiReasonCode.INVALID_INPUT,
+            "%s must be a mapping carrying a typed reference "
+            "(ref_kind, value, provenance?)" % label,
+        )
+    if entry.get("ref_kind") != expected_kind:
+        raise DeveloperApiError(
+            DeveloperApiReasonCode.INVALID_INPUT,
+            "%s.ref_kind must be %r (the canonical reference kind "
+            "for this member; found %r) -- referenced semantics "
+            "ride typed references, never re-modelled fields"
+            % (label, expected_kind, entry.get("ref_kind")),
+        )
+    return OpaqueReference.from_dict(entry)
+
+
+def _typed_references(
+    entries: object, expected_kind: str, label: str
+) -> Tuple[OpaqueReference, ...]:
+    items = _require_list(entries, label)
+    return tuple(
+        _typed_reference(entry, expected_kind, "%s[%d]" % (label, i))
+        for i, entry in enumerate(items)
+    )
+
+
+def _apply_filters(
+    items: List[Dict[str, Any]], filters: Mapping[str, str]
+) -> List[Dict[str, Any]]:
+    """Apply the declared equality filters to a page's item set
+    (the pagination module's declared contract: equality filters
+    over declared, indexable members)."""
+    if not filters:
+        return items
+    return [
+        item
+        for item in items
+        if all(str(item.get(key, "")) == value for key, value in filters.items())
+    ]
 
 
 @dataclass(frozen=True)
@@ -572,22 +587,21 @@ class _MutationEmission:
 
 
 class DeveloperApiService:
-    """The developer platform request boundary (frozen public
-    surface).
+    """The developer platform request boundary (the M013
+    canonical surface).
 
     Construct fresh over an EMPTY store; recover a persisted
     store with :meth:`load` (journal-first recovery: the fold
     IS the state).  One instance is bound to exactly ONE
-    environment and holds exactly ONE journal.
-    """
+    environment, exactly ONE boundary journal, and exactly ONE
+    canonical contract store (injected ALREADY COMPOSED by the
+    platform)."""
 
     def __init__(
         self,
         *,
         environment: str,
-        core: CommercialCore,
-        usage: UsageLedger,
-        allocation: AllocationLedger,
+        contracts: ContractStore,
         store: ApiStore,
         clock: AgentClock,
         issuance_key: bytes,
@@ -595,39 +609,25 @@ class DeveloperApiService:
         delivery_transports: Optional[Mapping[str, DeliveryTransport]] = None,
     ) -> None:
         self._environment = require_environment(environment)
-        if not isinstance(core, CommercialCore):
+        if not isinstance(contracts, ContractStore):
             raise DeveloperApiError(
                 DeveloperApiReasonCode.INVALID_INPUT,
-                "the developer API requires a CommercialCore (the "
-                "WORK-051 canonical commercial authority, injected "
-                "already-composed by the platform)",
-            )
-        if not isinstance(usage, UsageLedger):
-            raise DeveloperApiError(
-                DeveloperApiReasonCode.INVALID_INPUT,
-                "the developer API requires a UsageLedger (the "
-                "WORK-052 canonical usage authority)",
-            )
-        if not isinstance(allocation, AllocationLedger):
-            raise DeveloperApiError(
-                DeveloperApiReasonCode.INVALID_INPUT,
-                "the developer API requires an AllocationLedger (the "
-                "WORK-053 canonical economic allocation authority)",
+                "the developer API requires a ContractStore (the "
+                "accepted canonical contracts authority, M002/DEC-0102, "
+                "injected already-composed by the platform)",
             )
         if not isinstance(clock, AgentClock):
             raise DeveloperApiError(
                 DeveloperApiReasonCode.INVALID_INPUT,
-                "the developer API requires an AgentClock (the WORK-033 "
-                "seam; the boundary never reads a wall clock)",
+                "the developer API requires an AgentClock (the injected "
+                "clock seam; the boundary never reads a wall clock)",
             )
         if not isinstance(issuance_key, (bytes, bytearray)) or not issuance_key:
             raise DeveloperApiError(
                 DeveloperApiReasonCode.INVALID_INPUT,
                 "the developer API requires a platform issuance key",
             )
-        self._core = core
-        self._usage = usage
-        self._allocation = allocation
+        self._contracts = contracts
         self._clock = clock
         self._issuance_key = bytes(issuance_key)
         self._rate_limiter = rate_limiter
@@ -667,9 +667,7 @@ class DeveloperApiService:
         cls,
         *,
         environment: str,
-        core: CommercialCore,
-        usage: UsageLedger,
-        allocation: AllocationLedger,
+        contracts: ContractStore,
         store: ApiStore,
         clock: AgentClock,
         issuance_key: bytes,
@@ -680,9 +678,7 @@ class DeveloperApiService:
         (byte-identical replay; construction is recovery)."""
         service = cls(
             environment=environment,
-            core=core,
-            usage=usage,
-            allocation=allocation,
+            contracts=contracts,
             store=_FreshStoreView(store),
             clock=clock,
             issuance_key=issuance_key,
@@ -718,6 +714,14 @@ class DeveloperApiService:
             raise DeveloperApiError(
                 DeveloperApiReasonCode.JOURNAL_CORRUPT,
                 "live idempotency ledger diverges from the journal fold",
+            )
+        if sorted(folded.mutations_pending) != sorted(
+            self._index.mutations_pending
+        ):
+            raise DeveloperApiError(
+                DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                "live write-ahead hold ledger diverges from the journal "
+                "fold",
             )
         if sorted(folded.credentials) != sorted(self._index.credentials):
             raise DeveloperApiError(
@@ -860,31 +864,48 @@ class DeveloperApiService:
             self._issuance_key, endpoint_id
         )
 
-    def observe_transaction(self, transaction_id: str) -> int:
+    def observe_contract(self, contract_id: str) -> int:
         """Emit the lifecycle observation webhook for one
-        commercial transaction (platform-side surface).
+        canonical contract (platform-side surface).
 
         Reads the canonical CURRENT public projection and emits
-        ``connectivity_transaction.state_changed`` when the
-        transaction advanced beyond the last observed version.
-        Returns the number of new deliveries queued.  The
-        webhook system reports what ADCOS already knows; it
+        ``connectivity_contract.state_changed`` when the
+        contract's journal advanced beyond the last observed
+        command.  Returns the number of new deliveries queued.
+        The webhook system reports what ADCOS already knows; it
         never decides what ADCOS knows."""
-        transaction = self._core.transaction(transaction_id)
-        latest_event_id = self._latest_core_event_id(transaction_id)
-        if not latest_event_id:
-            latest_event_id = transaction.to_dict().get(
-                "transaction_id", ""
+        contract = self._developer_contract_or_none(contract_id)
+        if contract is None:
+            raise DeveloperApiError(
+                DeveloperApiReasonCode.RESOURCE_UNKNOWN,
+                "contract %r is not visible in environment %r"
+                % (contract_id, self._environment),
+                resource_id=contract_id,
+                environment=self._environment,
+            )
+        latest = None
+        for record in self._contracts.journal():
+            if record.contract_id == contract_id:
+                latest = record
+        if latest is None:
+            raise DeveloperApiError(
+                DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                "contract %r exists but its canonical journal records "
+                "are unreadable" % contract_id,
             )
         return self._emit_event(
-            event_type="connectivity_transaction.state_changed",
-            event_id=latest_event_id,
-            occurred_at=transaction.to_dict().get("last_instant", ""),
-            resource_kind="intent",
-            resource_id=transaction_id,
-            resource_version=transaction.to_dict().get("event_count", 1),
+            event_type="connectivity_contract.state_changed",
+            event_id=latest.command_id,
+            occurred_at=latest.recorded_at,
+            resource_kind="contract",
+            resource_id=contract_id,
+            resource_version=sum(
+                1
+                for record in self._contracts.journal()
+                if record.contract_id == contract_id
+            ),
             correlation="",
-            data=self._intent_resource(transaction_id),
+            data=self._contract_resource(contract),
         )
 
     def process_due_deliveries(self) -> int:
@@ -973,9 +994,7 @@ class DeveloperApiService:
         error, and the instant.  Incidents are process-local
         health data: they are NOT journal records, they never
         survive a restart, and durable truth remains the journal
-        alone.  The platform operator reads them to diagnose
-        webhook-plane health; nothing in the commercial plane
-        reads them.  An OBLIGATION-write failure is deliberately
+        alone.  An OBLIGATION-write failure is deliberately
         absent from this surface: it is not contained health
         data but the deterministic admission failure the caller
         receives (and the same-key retry heals)."""
@@ -992,7 +1011,7 @@ class DeveloperApiService:
         admission state exists (the admission record and, for a
         required admission, the obligation).
 
-        Containment semantics (the frozen W046 invariant): the
+        Containment semantics (the retained W046 invariant): the
         per-endpoint queue writes (dedupe by delivery identity)
         and the delivery pass may fail freely -- a queue-write
         failure is recorded as an incident and the DURABLE
@@ -1003,7 +1022,7 @@ class DeveloperApiService:
         reaches the caller: the mutation response was finalized
         before this method is entered, and this method must never
         raise.  The webhook system is an observer, never a
-        transaction coordinator for the commercial plane."""
+        transaction coordinator for the canonical authority."""
         try:
             self._queue_observation(
                 event_id=emission.event_id,
@@ -1093,7 +1112,8 @@ class DeveloperApiService:
         self, emission: _MutationEmission, *, key: str, request_id: str
     ) -> None:
         """The ADMISSION GATE for the durable observation-
-        admission state (the W046 successful-admission contract).
+        admission state (the retained W046 successful-admission
+        contract).
 
         Sequence: resolve the observation's audience from the
         folded endpoint index EXACTLY ONCE (a public read; the
@@ -1169,12 +1189,12 @@ class DeveloperApiService:
         self, emission: _MutationEmission
     ) -> Tuple[str, Tuple[str, ...]]:
         """Resolve one emission's admission-time audience: the
-        owning developer (or the platform-level marker; empty
-        when no owner exists) and the endpoints subscribed to
-        the event type, from the folded endpoint index ONLY (the
-        audience at admission time).  The endpoints are EMPTY
-        iff no audience exists (no delivery obligation; the
-        admission is terminal ``not-required``).
+        owning developer (empty when no owner exists) and the
+        endpoints subscribed to the event type, from the folded
+        endpoint index ONLY (the audience at admission time).
+        The endpoints are EMPTY iff no audience exists (no
+        delivery obligation; the admission is terminal
+        ``not-required``).
 
         This is the ONLY audience-resolution site in the family
         (battery AST-audited): it is called exactly once per
@@ -1373,7 +1393,8 @@ class DeveloperApiService:
     ) -> None:
         """Complete the admission of a prior mutation on its
         idempotent replay (the historical admission decision is
-        AUTHORITATIVE -- the frozen-state recovery).
+        AUTHORITATIVE -- the frozen-state recovery; the retained
+        W046 machinery, unchanged).
 
         Three -- and only three -- durable states exist for a
         prior mutation's observation admission, and each has
@@ -1466,8 +1487,11 @@ class DeveloperApiService:
         developerapi-owned mutations), its stored canonical
         response (the observation payload -- the event data IS
         the mutation's own response data), the canonical
-        subsystems' PUBLIC journals (the event identity and
-        instant of the command the idempotency key derives), and
+        contracts authority's PUBLIC journal (the command
+        identity and instant of the command the byte-identical
+        request body re-derives -- the command identity is
+        content-derived, so re-deriving it from the digest-
+        verified body is a pure read, never a submission), and
         the retry request itself (the correlation, re-derived
         over the byte-identical body the digest match
         guarantees).  Returns None when the operation owes no
@@ -1475,35 +1499,21 @@ class DeveloperApiService:
         truth is inconsistent."""
         body = request.canonical_body()
         developer = credential.developer_id
-        key = prior.idempotency_key
         stored = _json_loads(prior.response_body)
         data = stored.get("data") if isinstance(stored, Mapping) else None
-
-        if spec.operation == "offer_publish":
-            resource = prior.resource_dict()
-            offer_id = prior.resource_id
-            return _MutationEmission(
-                event_type="offer.published",
-                event_id=webhook_platform.derive_api_event_id(
-                    self._environment,
-                    "offer",
-                    offer_id,
-                    "offer.published",
-                    1,
-                ),
-                occurred_at=str(resource.get("created_at", "")),
-                resource_kind="offer",
-                resource_id=offer_id,
-                resource_version=1,
-                correlation=derive_request_id(
-                    self._environment,
-                    version.version,
-                    request.method,
-                    request.route,
-                    body,
-                ),
-                data=resource,
+        if not isinstance(data, Mapping):
+            raise DeveloperApiError(
+                DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                "prior mutation stores a malformed canonical "
+                "response body",
             )
+        correlation = derive_request_id(
+            self._environment,
+            version.version,
+            request.method,
+            request.route,
+            body,
+        )
 
         if spec.operation == "endpoint_register":
             resource = prior.resource_dict()
@@ -1525,158 +1535,194 @@ class DeveloperApiService:
                 data=resource,
             )
 
-        if spec.operation in ("intent_create", "reservation_create"):
-            command_id = derive_api_command_id(
-                self._environment, developer, key
-            )
-            record = self._find_core_record(command_id)
-            if record is None:
-                raise DeveloperApiError(
-                    DeveloperApiReasonCode.JOURNAL_CORRUPT,
-                    "prior mutation %r references canonical command %r "
-                    "that the core journal does not hold"
-                    % (key, command_id),
-                )
-            if not isinstance(data, Mapping):
-                raise DeveloperApiError(
-                    DeveloperApiReasonCode.JOURNAL_CORRUPT,
-                    "prior mutation %r stores a malformed canonical "
-                    "response body" % key,
-                )
-            event = record.event.to_dict()
-            if spec.operation == "intent_create":
-                return self._intent_emission_from_core(
-                    event, data, request, version
-                )
-            return self._reservation_emission_from_core(
-                event, data, request, version, positional
-            )
-
-        if spec.operation == "policy_register":
-            command_id = derive_api_command_id(
-                self._environment, developer, key
-            )
-            record = self._find_allocation_record(command_id)
-            if record is None:
-                raise DeveloperApiError(
-                    DeveloperApiReasonCode.JOURNAL_CORRUPT,
-                    "prior mutation %r references canonical command %r "
-                    "that the allocation journal does not hold"
-                    % (key, command_id),
-                )
-            if not isinstance(data, Mapping):
-                raise DeveloperApiError(
-                    DeveloperApiReasonCode.JOURNAL_CORRUPT,
-                    "prior mutation %r stores a malformed canonical "
-                    "response body" % key,
-                )
-            # the frozen 1.x coordinate identity ("policy_id@
-            # version") recovers from the canonical command's
-            # label (the command subject carries the 1.x
-            # coordinate block); the stored response body's id
-            # member is the fallback
-            block = _decode_1x_policy_label(record.command.subject_id)
-            if block is not None:
-                resource_id = "%s@%s" % (
-                    block["policy_id"],
-                    block["version"],
-                )
-            elif isinstance(data.get("id"), str) and data["id"]:
-                resource_id = data["id"]
-            else:
-                raise DeveloperApiError(
-                    DeveloperApiReasonCode.JOURNAL_CORRUPT,
-                    "prior mutation %r stores an economic-policy record "
-                    "whose 1.x coordinates cannot be recovered" % key,
-                )
-            return _MutationEmission(
-                event_type="economic_policy.registered",
-                event_id=record.event.event_id,
-                occurred_at=record.event.instant,
-                resource_kind="economic_policy",
-                resource_id=resource_id,
-                resource_version=1,
-                correlation=derive_request_id(
-                    self._environment,
-                    version.version,
-                    request.method,
-                    request.route,
-                    body,
-                ),
-                data=data,
-            )
-
-        return None
-
-    def _intent_emission_from_core(
-        self,
-        event: Mapping[str, Any],
-        data: Mapping[str, Any],
-        request: ApiRequest,
-        version: ApiVersionSpec,
-    ) -> _MutationEmission:
-        """The ``connectivity_intent.created`` emission for one
-        admitted intent, built from the canonical event and the
-        mutation's own response data (the single derivation
-        shared by the crash-window admission and the
-        admission-completion reconstruction)."""
+        # the canonical contract/lease mutations: the command
+        # identity is re-derived from the byte-identical body
+        # (a pure public read through next_record -- never
+        # submitted); the emission members follow the operation
+        # table
+        command, contract_id, recorded_at = self._rebuild_canonical_command(
+            spec, body, credential, prior.idempotency_key, positional
+        )
+        if command is None:
+            return None
+        event_type = _EMISSION_EVENT_TYPES.get(spec.operation)
+        if event_type is None:
+            return None
+        record = self._rederive_command_id(contract_id, command, recorded_at)
+        if spec.operation == "intent_create":
+            resource_kind, resource_id = "contract", record.contract_id
+        elif spec.operation in (
+            "offers_accept", "contract_activate", "contract_terminate"
+        ):
+            resource_kind, resource_id = "contract", contract_id
+        elif spec.operation == "lease_grant":
+            resource_kind = "lease"
+            resource_id = _derive_lease_id(contract_id, command)
+        elif spec.operation == "lease_renew":
+            resource_kind = "lease"
+            resource_id = _derive_lease_id(contract_id, command)
+        else:  # lease_revoke
+            resource_kind, resource_id = "lease", positional[0]
         return _MutationEmission(
-            event_type="connectivity_intent.created",
-            event_id=str(event.get("event_id", "")),
-            occurred_at=str(event.get("instant", "")),
-            resource_kind="intent",
-            resource_id=str(event.get("transaction_id", "")),
-            resource_version=_event_count_of(data),
-            correlation=derive_request_id(
-                self._environment,
-                version.version,
-                request.method,
-                request.route,
-                request.canonical_body(),
-            ),
+            event_type=event_type,
+            event_id=record.command_id,
+            occurred_at=recorded_at,
+            resource_kind=resource_kind,
+            resource_id=resource_id,
+            resource_version=self._contract_journal_position(contract_id)[0],
+            correlation=correlation,
             data=data,
         )
 
-    def _reservation_emission_from_core(
+    def _rebuild_canonical_command(
         self,
-        event: Mapping[str, Any],
-        data: Mapping[str, Any],
-        request: ApiRequest,
-        version: ApiVersionSpec,
+        spec: RouteSpec,
+        body: Mapping[str, Any],
+        credential: ApplicationCredential,
+        key: str,
         positional: List[str],
-    ) -> _MutationEmission:
-        """The ``reservation.held`` emission for one admitted
-        reservation, built from the canonical event and the
-        mutation's own response data (the single derivation
-        shared by the crash-window admission and the
-        admission-completion reconstruction)."""
-        transaction_id = str(event.get("transaction_id", ""))
-        if not transaction_id and positional:
-            transaction_id = positional[0]
-        return _MutationEmission(
-            event_type="reservation.held",
-            event_id=str(event.get("event_id", "")),
-            occurred_at=str(event.get("instant", "")),
-            resource_kind="intent",
-            resource_id=transaction_id,
-            resource_version=_event_count_of(data),
-            correlation=derive_request_id(
-                self._environment,
-                version.version,
-                request.method,
-                request.route,
-                request.canonical_body(),
-            ),
-            data=data,
-        )
+    ) -> Tuple[Optional[object], Optional[str], str]:
+        """Rebuild the canonical command of a prior mutation from
+        the digest-verified byte-identical request body (pure
+        construction, never submitted -- the command identity is
+        content-derived, so rebuilding it reproduces the
+        historical id exactly).  Returns (command, contract_id,
+        recorded_at); (None, None, "") when the operation is not
+        a canonical contract/lease mutation."""
+        operation = spec.operation
+        if operation == "intent_create":
+            command = self._build_create_command(body, credential, key)
+            return command, None, _require_text(
+                body.get("recorded_at"), "intent_request.recorded_at"
+            )
+        if operation == "offers_accept":
+            contract_id = positional[0]
+            command = SelectOffers(
+                offers=_typed_references(
+                    body.get("offers"), "offer", "offer_selection.offers"
+                )
+            )
+            return command, contract_id, _require_text(
+                body.get("recorded_at"), "offer_selection.recorded_at"
+            )
+        if operation == "contract_activate":
+            contract_id = positional[0]
+            command = ActivateContract(
+                activated_at=_require_text(
+                    body.get("activated_at"),
+                    "activation_request.activated_at",
+                ),
+                signature_refs=_typed_references(
+                    body.get("signature_refs"),
+                    "signature",
+                    "activation_request.signature_refs",
+                ),
+            )
+            return command, contract_id, _require_text(
+                body.get("activated_at"), "activation_request.activated_at"
+            )
+        if operation == "contract_terminate":
+            contract_id = positional[0]
+            command = TerminateContract(
+                recorded_at=_require_text(
+                    body.get("recorded_at"),
+                    "termination_request.recorded_at",
+                ),
+                condition=_require_text(
+                    body.get("condition"), "termination_request.condition"
+                ),
+                reason=_require_text(
+                    body.get("reason"), "termination_request.reason"
+                ),
+            )
+            return command, contract_id, _require_text(
+                body.get("recorded_at"),
+                "termination_request.recorded_at",
+            )
+        if operation == "lease_grant":
+            contract_id = positional[0]
+            command = GrantLease(
+                granted_at=_require_text(
+                    body.get("granted_at"), "lease_request.granted_at"
+                ),
+                not_before=_require_text(
+                    body.get("not_before"), "lease_request.not_before"
+                ),
+                not_after=_require_text(
+                    body.get("not_after"), "lease_request.not_after"
+                ),
+            )
+            return command, contract_id, _require_text(
+                body.get("granted_at"), "lease_request.granted_at"
+            )
+        if operation == "lease_renew":
+            lease_id = positional[0]
+            lease = self._developer_lease_or_none(lease_id)
+            if lease is None:
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                    "prior mutation references lease %r that the "
+                    "canonical authority does not hold" % lease_id,
+                )
+            command = RenewLease(
+                lease_id=lease_id,
+                granted_at=_require_text(
+                    body.get("granted_at"), "lease_renewal.granted_at"
+                ),
+                not_before=_require_text(
+                    body.get("not_before"), "lease_renewal.not_before"
+                ),
+                not_after=_require_text(
+                    body.get("not_after"), "lease_renewal.not_after"
+                ),
+            )
+            return command, lease.contract_id, _require_text(
+                body.get("granted_at"), "lease_renewal.granted_at"
+            )
+        if operation == "lease_revoke":
+            lease_id = positional[0]
+            lease = self._developer_lease_or_none(lease_id)
+            if lease is None:
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                    "prior mutation references lease %r that the "
+                    "canonical authority does not hold" % lease_id,
+                )
+            command = RevokeLease(
+                lease_id=lease_id,
+                recorded_at=_require_text(
+                    body.get("recorded_at"),
+                    "lease_revocation.recorded_at",
+                ),
+                reason=_require_text(
+                    body.get("reason"), "lease_revocation.reason"
+                ),
+            )
+            return command, lease.contract_id, _require_text(
+                body.get("recorded_at"),
+                "lease_revocation.recorded_at",
+            )
+        return None, None, ""
 
-    def _find_allocation_record(self, command_id: str) -> Optional[Any]:
-        """Find one command's record in the economic-allocation
-        PUBLIC journal (read-only; never re-executes)."""
-        for record in self._allocation.journal_records():
-            if record.command.command_id == command_id:
-                return record
-        return None
+    def _rederive_command_id(
+        self, contract_id: Optional[str], command: object, recorded_at: str
+    ) -> Any:
+        """Re-derive the canonical command identity of a prior
+        mutation (a PURE public read through ``next_record``:
+        the record is built, never submitted -- the identity is
+        content-derived, so this reproduces the historical
+        command id exactly)."""
+        try:
+            return self._contracts.next_record(
+                contract_id, command, recorded_at
+            )
+        except ContractError as error:
+            raise DeveloperApiError(
+                DeveloperApiReasonCode.JOURNAL_CORRUPT,
+                "the canonical command identity of a prior mutation "
+                "cannot be re-derived from the digest-verified body: %s"
+                % error.detail,
+            ) from error
 
     def _record_observation_incident(
         self, phase: str, error: BaseException
@@ -1706,7 +1752,7 @@ class DeveloperApiService:
     def handle(self, request: ApiRequest) -> ApiResponse:
         """The single request admission path.
 
-        Canonical subsystem failures surfacing anywhere in the
+        Canonical authority failures surfacing anywhere in the
         read or mutation paths are translated HERE with the
         exact canonical reason preserved (criterion 4)."""
         request_id = derive_request_id(
@@ -1720,7 +1766,7 @@ class DeveloperApiService:
             return self._handle(request, request_id)
         except DeveloperApiError as error:
             return self._error_response(request, request_id, error)
-        except (CommercialError, UsageError, AllocationError) as error:
+        except ContractError as error:
             return self._error_response(
                 request,
                 request_id,
@@ -1819,37 +1865,14 @@ class DeveloperApiService:
                 request, request_id, version, data, rate=rate
             )
 
-        if spec.operation == "offers_list":
-            items = self._developer_offers(developer)
-            filters = normalize_filters(
-                body.get("filters"), ("pricing_currency", "pricing_unit")
-            )
-            page, cursor, more = self._page(
-                items, "offer", developer, filters, body
-            )
-            data = {"items": page, "next_cursor": cursor, "has_more": more}
-            return self._envelope(
-                request, request_id, version, data, rate=rate
-            )
-
-        if spec.operation == "offer_get":
-            offer = self._index.offers.get(positional[0])
-            if offer is None or offer.get("developer_id") != developer:
-                raise self._resource_unknown(
-                    "offer", positional[0], request_id
-                )
-            return self._envelope(
-                request, request_id, version, offer, rate=rate
-            )
-
         if spec.operation == "intents_list":
             items = [
-                self._intent_resource(tx_id)
-                for tx_id in self._developer_transaction_ids(developer)
+                self._contract_resource(contract)
+                for contract in self._developer_contracts(developer)
+                if contract.state == "INTENT"
             ]
-            filters = normalize_filters(body.get("filters"), ("state",))
             page, cursor, more = self._page(
-                items, "intent", developer, filters, body
+                items, "contract", developer, {}, body
             )
             data = {"items": page, "next_cursor": cursor, "has_more": more}
             return self._envelope(
@@ -1857,172 +1880,83 @@ class DeveloperApiService:
             )
 
         if spec.operation == "intent_get":
-            transaction = self._developer_transaction(
-                positional[0], developer
-            )
+            contract = self._developer_contract(positional[0], developer)
             return self._envelope(
                 request,
                 request_id,
                 version,
-                self._intent_resource_from(transaction),
+                self._contract_resource(contract),
                 rate=rate,
             )
 
         if spec.operation == "intent_lifecycle":
-            transaction = self._developer_transaction(
-                positional[0], developer
-            )
-            data = self._lifecycle_resource(transaction)
+            contract = self._developer_contract(positional[0], developer)
+            data = self._lifecycle_resource(contract)
             return self._envelope(
                 request, request_id, version, data, rate=rate
             )
 
-        if spec.operation == "reservations_list":
+        if spec.operation == "contracts_list":
             items = [
-                self._reservation_resource_from(
-                    self._core.transaction(tx_id)
-                )
-                for tx_id in self._developer_transaction_ids(developer)
-                if self._core.transaction(tx_id).to_dict().get("state")
-                in _LEASE_STATES
+                self._contract_resource(contract)
+                for contract in self._developer_contracts(developer)
             ]
             filters = normalize_filters(body.get("filters"), ("state",))
+            items = _apply_filters(items, filters)
             page, cursor, more = self._page(
-                items, "reservation", developer, filters, body
+                items, "contract", developer, filters, body
             )
             data = {"items": page, "next_cursor": cursor, "has_more": more}
             return self._envelope(
                 request, request_id, version, data, rate=rate
             )
 
-        if spec.operation == "reservation_get":
-            transaction = self._developer_transaction(
-                positional[0], developer
-            )
-            if (
-                transaction.to_dict().get("state") not in _LEASE_STATES
-            ):
-                raise self._resource_unknown(
-                    "reservation", positional[0], request_id
-                )
+        if spec.operation == "contract_get":
+            contract = self._developer_contract(positional[0], developer)
             return self._envelope(
                 request,
                 request_id,
                 version,
-                self._reservation_resource_from(transaction),
+                self._contract_resource(contract),
                 rate=rate,
             )
 
-        if spec.operation == "usage_list":
+        if spec.operation == "contract_usage":
+            contract = self._developer_contract(positional[0], developer)
+            data = self._usage_terms_resource(contract)
+            return self._envelope(
+                request, request_id, version, data, rate=rate
+            )
+
+        if spec.operation == "contract_assurance":
+            contract = self._developer_contract(positional[0], developer)
+            data = self._assurance_resource(contract)
+            return self._envelope(
+                request, request_id, version, data, rate=rate
+            )
+
+        if spec.operation == "leases_list":
             items = [
-                self._usage_resource(usage_transaction_id)
-                for usage_transaction_id in self._developer_usage_ids(
-                    developer
-                )
+                self._lease_resource(lease)
+                for lease in self._developer_leases(developer)
             ]
             filters = normalize_filters(body.get("filters"), ("state",))
+            items = _apply_filters(items, filters)
             page, cursor, more = self._page(
-                items, "usage", developer, filters, body
+                items, "contract_lease", developer, filters, body
             )
             data = {"items": page, "next_cursor": cursor, "has_more": more}
             return self._envelope(
                 request, request_id, version, data, rate=rate
             )
 
-        if spec.operation == "usage_get":
-            if positional[0] not in self._developer_usage_ids(developer):
-                raise self._resource_unknown(
-                    "usage transaction", positional[0], request_id
-                )
+        if spec.operation == "lease_get":
+            lease = self._developer_lease(positional[0], developer)
             return self._envelope(
                 request,
                 request_id,
                 version,
-                self._usage_resource(positional[0]),
-                rate=rate,
-            )
-
-        if spec.operation == "billing_list":
-            items = []
-            for usage_transaction_id in self._developer_usage_ids(developer):
-                projection = self._usage.transaction(usage_transaction_id)
-                if projection.statement is None:
-                    # only the sealed billable-final facts are
-                    # billing records (the current W052 model:
-                    # BILLABLE_FINAL == the sealed statement)
-                    continue
-                billing = {
-                    "id": usage_transaction_id,
-                    "kind": "billing_record",
-                    "transaction_id": usage_transaction_id,
-                    "environment": self._environment,
-                    "usage": self._usage_resource(usage_transaction_id),
-                    "finality": self._usage.reconciliation_statement(
-                        usage_transaction_id
-                    ),
-                    "allocation": self._allocation_snapshot(
-                        usage_transaction_id
-                    ),
-                }
-                items.append(billing)
-            page, cursor, more = self._page(
-                items, "billing_record", developer, {}, body
-            )
-            data = {"items": page, "next_cursor": cursor, "has_more": more}
-            return self._envelope(
-                request, request_id, version, data, rate=rate
-            )
-
-        if spec.operation == "policies_list":
-            # the frozen 1.x surface: only canonical policies
-            # registered through the 1.x contract (a decodable
-            # 1.x coordinate label) are projected -- the boundary
-            # never fabricates 1.x members for canonical policy
-            # records registered through other surfaces.
-            items = [
-                self._policy_resource(policy)
-                for policy in self._allocation.policies()
-                if _decode_1x_policy_label(policy.label) is not None
-            ]
-            page, cursor, more = self._page(
-                items, "economic_policy", developer, {}, body
-            )
-            data = {"items": page, "next_cursor": cursor, "has_more": more}
-            return self._envelope(
-                request, request_id, version, data, rate=rate
-            )
-
-        if spec.operation == "policy_get":
-            try:
-                policy_version = int(positional[1])
-            except (TypeError, ValueError):
-                raise DeveloperApiError(
-                    DeveloperApiReasonCode.INVALID_INPUT,
-                    "the policy version path segment %r must be an integer"
-                    % positional[1],
-                ) from None
-            policy = self._find_1x_policy(positional[0], policy_version)
-            if policy is None:
-                # the 1.x coordinate is unknown: the canonical
-                # policy-unknown classification, preserved
-                from allocation.errors import (
-                    AllocationError as _AllocationError,
-                    AllocationReasonCode as _AllocationReasonCode,
-                )
-
-                raise self._adapted_error(
-                    _AllocationError(
-                        _AllocationReasonCode.POLICY_UNKNOWN,
-                        "economic policy %r is not a registered immutable "
-                        "version" % ("%s@%s" % (positional[0], policy_version)),
-                    ),
-                    request_id=request_id,
-                ) from None
-            return self._envelope(
-                request,
-                request_id,
-                version,
-                self._policy_resource(policy),
+                self._lease_resource(lease),
                 rate=rate,
             )
 
@@ -2136,6 +2070,34 @@ class DeveloperApiService:
                 },
             )
 
+        # the write-ahead hold (the M013 crash-window closure): a
+        # prior attempt that crashed anywhere between the hold and
+        # the committed record leaves the (key, digest) pair
+        # durable, so the same key with CHANGED content fails
+        # closed HERE -- even before any canonical submission --
+        # and the same key with the SAME content completes through
+        # the canonical authority's own duplicate discipline.
+        pending = self._index.mutations_pending.get(key)
+        if pending is not None:
+            if pending.request_digest != digest:
+                raise DeveloperApiError(
+                    DeveloperApiReasonCode.IDEMPOTENCY_CONFLICT,
+                    "idempotency key %r is held by an uncommitted "
+                    "attempt with a materially different request (the "
+                    "write-ahead hold: the prior attempt may have "
+                    "reached the canonical authority; the same key "
+                    "never admits changed content)" % key,
+                )
+            # the hold exists and matches: complete it (no second
+            # hold is appended)
+        else:
+            self._append_pending_mutation(
+                key, credential, request, version, request_id, digest
+            )
+
+        # strict request validation against the request's OWN
+        # version schema set (nothing durable yet for an
+        # schema-invalid request -- the retained W046 contract)
         schema_role = spec.schema_role
         deprecations: Tuple[str, ...] = ()
         if schema_role:
@@ -2144,9 +2106,38 @@ class DeveloperApiService:
                 schema.validate(body, "request body")
                 deprecations = schema.deprecations_in(body)
 
-        data, resource_kind, resource_id, resource, emission = self._execute_mutation(
-            request, version, spec, positional, credential, key
-        )
+        try:
+            data, resource_kind, resource_id, resource, emission = (
+                self._execute_mutation(
+                    request, version, spec, positional, credential, key
+                )
+            )
+        except DeveloperApiError as error:
+            # a semantically rejected request NEVER consumes the
+            # key (the retained W046 contract): the write-ahead
+            # hold is released durably and the error surfaces
+            self._append_abandoned_mutation(key, error.reason)
+            raise
+        except ContractError as error:
+            # a canonical construction/submission rejection (the
+            # contracts domain's own fail-closed validation):
+            # adapt it with the canonical reason preserved and
+            # release the write-ahead hold the same way
+            adapted = self._adapted_error(error)
+            self._append_abandoned_mutation(key, adapted.reason)
+            raise adapted
+
+        # FINALITY POINT: the canonical mutation is admitted, its
+        # idempotency record is durable, and the envelope below is
+        # THE response.  From here the webhook observation phase
+        # runs (the retained W046 admission contract):
+        #
+        #   MutationRecord (finality)
+        #       -> WebhookAdmissionRecord (the FROZEN admission-
+        #          time audience: required with the exact resolved
+        #          endpoints, or terminal not-required with none)
+        #       -> WebhookObligationRecord (only when required)
+        #       -> the successful response
         envelope = self._envelope(
             request,
             request_id,
@@ -2177,55 +2168,256 @@ class DeveloperApiService:
         )
         self._journal.append(record)
         self._index.apply(record)
-
-        # FINALITY POINT: the canonical mutation is admitted, its
-        # idempotency record is durable, and the envelope above is
-        # THE response.  From here the webhook observation phase
-        # runs: its queue and delivery steps are fully contained
-        # (a queue or delivery failure may affect only webhook
-        # observability/retry state; it can NEVER turn an admitted
-        # mutation into an API failure, alter the canonical
-        # mutation result, cause a duplicate canonical mutation,
-        # invalidate idempotency, or act as a hidden transaction
-        # coordinator for the commercial plane -- the W046 frozen
-        # observational-only invariant; battery case 42
-        # failure-injects the exact sequence).  The observation's
-        # ADMISSION STATE, however, is part of the
-        # SUCCESSFUL-ADMISSION CONTRACT and is made DURABLE HERE,
-        # BEFORE this response is returned, in the deterministic
-        # order:
-        #
-        #   MutationRecord (finality)
-        #       -> WebhookAdmissionRecord (the FROZEN admission-
-        #          time audience: required with the exact resolved
-        #          endpoints, or terminal not-required with none)
-        #       -> WebhookObligationRecord (only when required)
-        #       -> the successful response
-        #
-        # Neither write is contained: when either fails the
-        # boundary raises the deterministic admission failure
-        # (store-failed, 500 -- never a false 200), the durable
-        # mutation is neither rolled back nor re-executed, and
-        # the same-key retry completes the admission from durable
-        # truth alone -- using the FROZEN admission when it
-        # exists (an idempotent replay never re-resolves the
-        # current endpoint state, so a late-registered endpoint
-        # can neither create a webhook for a mutation that
-        # completed with no audience nor drift a required
-        # admission's historical audience) and establishing the
-        # admission from the request + the durable canonical
-        # mutation when it does not (battery case 43
-        # failure-injects the queue-write crash; battery case 44
-        # failure-injects the OBLIGATION-write failure, the
-        # crash, and the frozen-audience healing retry; battery
-        # case 45 failure-injects the ADMISSION-record write, the
-        # crash, and the audience-freeze/no-audience/no-drift
-        # semantics).
         if emission is not None:
             self._admit_observation(
                 emission, key=key, request_id=request_id
             )
         return envelope
+
+    # -- the write-ahead hold sites (single site each) --------------------
+
+    def _append_pending_mutation(
+        self,
+        key: str,
+        credential: ApplicationCredential,
+        request: ApiRequest,
+        version: ApiVersionSpec,
+        request_id: str,
+        digest: str,
+    ) -> None:
+        """Append the durable write-ahead idempotency hold of one
+        mutation (persist-then-execute; the single pending-write
+        site).  CAN raise (store failure): nothing canonical has
+        run yet -- the mutation fails store-failed with no
+        side effects."""
+        record = MutationPendingRecord.build(
+            sequence=self._journal.tail_sequence() + 1,
+            prev_record_id=self._journal.tail_record_id(),
+            idempotency_key=key,
+            application_id=credential.application_id,
+            developer_id=credential.developer_id,
+            method=request.method,
+            route=request.route,
+            api_version=version.version,
+            request_id=request_id,
+            request_digest=digest,
+        )
+        self._journal.append(record)
+        self._index.apply(record)
+
+    def _append_abandoned_mutation(self, key: str, reason: str) -> None:
+        """Append the durable release of a rejected mutation's
+        write-ahead hold (persist-then-ack; the single
+        abandonment-write site).  A store failure here propagates
+        (store-failed): the hold remains durable and the same-key
+        retry re-runs the request deterministically."""
+        record = MutationAbandonedRecord.build(
+            sequence=self._journal.tail_sequence() + 1,
+            prev_record_id=self._journal.tail_record_id(),
+            idempotency_key=key,
+            reason=reason,
+        )
+        self._journal.append(record)
+        self._index.apply(record)
+
+    # -- canonical command submission --------------------------------------
+
+    def _submit_canonical(
+        self,
+        contract_id: Optional[str],
+        command: object,
+        recorded_at: str,
+    ) -> Tuple[Any, Any]:
+        """Submit one canonical command through the contracts
+        authority's PUBLIC journal surface (``next_record`` +
+        ``merge`` -- the two-step public submit; the boundary
+        never touches private state).  Returns (the derived
+        CommandRecord, the MergeResult).  Raises the adapted
+        canonical error on any semantic rejection (the canonical
+        reason is preserved through the boundary)."""
+        try:
+            record = self._contracts.next_record(
+                contract_id, command, recorded_at
+            )
+            result = self._contracts.merge(record)
+        except ContractError as error:
+            raise self._adapted_error(error) from error
+        return record, result
+
+    def _require_merge_admitted(
+        self, result: Any, *, contract_id: str, create: bool
+    ) -> Any:
+        """Classify one canonical merge outcome for a developer
+        mutation.
+
+        Success statuses and ``duplicate`` (the crash-window
+        byte-identical redelivery, and for creates the
+        content-identity collision under a different key)
+        return the canonical contract the result carries; the
+        discipline-failure statuses fail closed with the
+        canonical reason preserved (the boundary's own submit
+        path never produces them -- a concurrent external writer
+        or corruption is the only source)."""
+        status = result.status
+        if status in _DUPLICATE_STATUSES or (
+            create and status == "sequence-conflict"
+        ):
+            contract = result.contract
+            if contract is not None and contract.contract_id == contract_id:
+                return contract
+        elif status not in _FAILURE_STATUSES and status != "sequence-conflict":
+            contract = result.contract
+            if contract is not None and contract.contract_id == contract_id:
+                return contract
+        raise self._adapted_error(
+            ContractError(
+                status,
+                "the canonical contract authority returned %s (%s)"
+                % (status, result.detail),
+            )
+        )
+
+    def _build_create_command(
+        self,
+        body: Mapping[str, Any],
+        credential: ApplicationCredential,
+        key: str,
+    ) -> CreateContract:
+        """Build the canonical CreateContract command from the
+        request body (LOCK-102/LOCK-114: the technology-neutral
+        creation core; the principal is DERIVED from the
+        authenticated application -- never request-supplied --
+        and the provenance carries the application issuer and
+        the boundary's key-derived decision reference).
+
+        Every semantics-bearing member is canonical material:
+        typed references, hard constraints, the validity window,
+        the termination rules.  Deep validation (vocabularies,
+        patterns, LOCK-119 secret scans) is the canonical
+        authority's own; a ``ContractError`` propagates and is
+        adapted by the mutation path."""
+        requirements = _typed_references(
+            body.get("requirements"),
+            "intent-requirements",
+            "intent_request.requirements",
+        )
+        if not requirements:
+            raise DeveloperApiError(
+                DeveloperApiReasonCode.INVALID_INPUT,
+                "intent_request.requirements requires at least one "
+                "normalized-requirements typed reference (LOCK-102: "
+                "the contract's normalized requirements)",
+            )
+        hard_raw = body.get("hard_constraints")
+        constraints = tuple(
+            HardConstraint.from_dict(entry)
+            for entry in (
+                _require_list(
+                    hard_raw, "intent_request.hard_constraints"
+                )
+                if hard_raw is not None
+                else ()
+            )
+        )
+        validity = ValidityInterval.from_dict(
+            _require_mapping(body.get("validity"), "intent_request.validity")
+        )
+        termination_raw = body.get("termination")
+        termination = (
+            TerminationRules.from_dict(
+                _require_mapping(
+                    termination_raw, "intent_request.termination"
+                )
+            )
+            if termination_raw is not None
+            else None
+        )
+        beneficiaries_raw = body.get("beneficiaries")
+        beneficiaries = tuple(
+            BeneficiaryScope.from_dict(entry)
+            for entry in (
+                _require_list(
+                    beneficiaries_raw, "intent_request.beneficiaries"
+                )
+                if beneficiaries_raw is not None
+                else ()
+            )
+        )
+        service_raw = body.get("service_properties")
+        service_properties = (
+            _typed_references(
+                service_raw,
+                "service-property",
+                "intent_request.service_properties",
+            )
+            if service_raw is not None
+            else ()
+        )
+        usage_raw = body.get("usage_pricing_terms")
+        usage_pricing_terms = (
+            _typed_reference(
+                usage_raw,
+                "usage-pricing-terms",
+                "intent_request.usage_pricing_terms",
+            )
+            if usage_raw is not None
+            else None
+        )
+        assurance_raw = body.get("assurance_obligations")
+        assurance_obligations = (
+            _typed_references(
+                assurance_raw,
+                "assurance-obligation",
+                "intent_request.assurance_obligations",
+            )
+            if assurance_raw is not None
+            else ()
+        )
+        scope_raw = body.get("execution_scope")
+        execution_scope = (
+            _typed_references(
+                scope_raw,
+                "execution-scope",
+                "intent_request.execution_scope",
+            )
+            if scope_raw is not None
+            else ()
+        )
+        superseded_raw = body.get("superseded_contract")
+        superseded_contract = (
+            _typed_reference(
+                superseded_raw,
+                "superseded-contract",
+                "intent_request.superseded_contract",
+            )
+            if superseded_raw is not None
+            else None
+        )
+        return CreateContract(
+            principal=ConnectivityPrincipal(
+                principal_kind="APPLICATION",
+                principal_ref=credential.application_id,
+            ),
+            beneficiaries=beneficiaries,
+            requirements=requirements,
+            hard_constraints=constraints,
+            validity=validity,
+            service_properties=service_properties,
+            usage_pricing_terms=usage_pricing_terms,
+            assurance_obligations=assurance_obligations,
+            execution_scope=execution_scope,
+            termination=termination,
+            provenance=Provenance(
+                issuer="developerapi-application:%s"
+                % credential.application_id,
+                decision_refs=(
+                    derive_api_command_id(
+                        self._environment, credential.developer_id, key
+                    ),
+                ),
+            ),
+            superseded_contract=superseded_contract,
+        )
 
     def _execute_mutation(
         self,
@@ -2238,65 +2430,46 @@ class DeveloperApiService:
     ) -> Tuple[
         Any, str, str, Mapping[str, Any], Optional[_MutationEmission]
     ]:
-        """Execute one mutation: adapt to the canonical subsystem
-        or the developerapi-owned projection.  Returns
+        """Execute one mutation: adapt to the canonical contracts
+        authority or the developerapi-owned projection.  Returns
         (response data, resource kind, resource id, resource
         mapping, webhook emission spec).
 
         The emission spec is a plain frozen value built from the
         mutation's own executed result (the audience is resolved
         later, at admission time); the crash-window duplicate
-        branches owe the SAME emission, re-derived from the
-        canonical subsystem's PUBLIC journal reads -- every
-        admission door is gated by the same durable-obligation
-        contract.  Adapted mutations carry empty resource
-        mappings (the truth stays in the canonical subsystem
-        journal); the crash-window idempotency is the canonical
-        subsystem's own (command id derived from the idempotency
-        key)."""
+        branches owe the SAME emission (the canonical command id
+        is content-derived and byte-stable across retries), so
+        every admission door is gated by the same
+        durable-obligation contract.  Adapted mutations carry
+        empty resource mappings (the truth stays in the canonical
+        contracts journal); the crash-window idempotency is the
+        canonical authority's own (the command identity is
+        content-derived over the request-declared instants)."""
         body = request.canonical_body()
         developer = credential.developer_id
-        source = "developerapi:%s" % credential.application_id
 
-        if spec.operation == "offer_publish":
-            offer_id = derive_resource_id(
-                self._environment, "offer", developer, key
+        if spec.operation == "intent_create":
+            recorded_at = _require_text(
+                body.get("recorded_at"), "intent_request.recorded_at"
             )
-            resource = {
-                "id": offer_id,
-                "kind": "offer",
-                "environment": self._environment,
-                "developer_id": developer,
-                "created_at": self._clock.now(),
-                "api_version": version.version,
-            }
-            for member in (
-                "name",
-                "description",
-                "capacity_bps",
-                "pricing_currency",
-                "pricing_amount",
-                "pricing_unit",
-                "effective_from",
-                "effective_until",
-                "region",
-            ):
-                if member in body:
-                    resource[member] = body[member]
-
+            command = self._build_create_command(body, credential, key)
+            record, result = self._submit_canonical(
+                None, command, recorded_at
+            )
+            contract = self._require_merge_admitted(
+                result, contract_id=record.contract_id, create=True
+            )
+            data = self._contract_resource(contract)
             emission = _MutationEmission(
-                event_type="offer.published",
-                event_id=webhook_platform.derive_api_event_id(
-                    self._environment,
-                    "offer",
-                    offer_id,
-                    "offer.published",
-                    1,
-                ),
-                occurred_at=resource["created_at"],
-                resource_kind="offer",
-                resource_id=offer_id,
-                resource_version=1,
+                event_type="connectivity_intent.created",
+                event_id=record.command_id,
+                occurred_at=recorded_at,
+                resource_kind="contract",
+                resource_id=contract.contract_id,
+                resource_version=self._contract_journal_position(
+                    contract.contract_id
+                )[0],
                 correlation=derive_request_id(
                     self._environment,
                     version.version,
@@ -2304,10 +2477,9 @@ class DeveloperApiService:
                     request.route,
                     body,
                 ),
-                data=dict(resource),
+                data=dict(data),
             )
-
-            return dict(resource), "offer", offer_id, resource, emission
+            return dict(data), "", "", {}, emission
 
         if spec.operation == "endpoint_register":
             url, event_types = webhook_platform.validate_endpoint_registration(
@@ -2349,66 +2521,40 @@ class DeveloperApiService:
 
             return dict(resource), "webhook_endpoint", endpoint_id, resource, emission
 
-        if spec.operation == "intent_create":
-            intent = body.get("intent")
-            if not isinstance(intent, Mapping):
+        if spec.operation == "offers_accept":
+            contract = self._developer_contract(positional[0], developer)
+            recorded_at = _require_text(
+                body.get("recorded_at"), "offer_selection.recorded_at"
+            )
+            command = SelectOffers(
+                offers=_typed_references(
+                    body.get("offers"), "offer", "offer_selection.offers"
+                )
+            )
+            if not command.offers:
                 raise DeveloperApiError(
                     DeveloperApiReasonCode.INVALID_INPUT,
-                    "the intent member must be a mapping (the canonical "
-                    "commercial intent payload)",
+                    "offer_selection.offers requires at least one "
+                    "accepted-offer typed reference (the offer "
+                    "semantics stay the M003 authority's; this API "
+                    "carries the typed references only)",
                 )
-            command_id = derive_api_command_id(
-                self._environment, developer, key
+            record, result = self._submit_canonical(
+                contract.contract_id, command, recorded_at
             )
-            try:
-                outcome = self._core.submit_intent(
-                    command_id=command_id,
-                    actor=developer,
-                    source=source,
-                    intent=dict(intent),
-                )
-            except CommercialError as error:
-                raise self._adapted_error(error, request_id="") from error
-            if outcome.status == "duplicate":
-                # the crash window: the canonical subsystem holds
-                # the command; reconstruct the canonical prior
-                # result from its PUBLIC journal reads.  The
-                # reconstructed mutation owes the SAME observation
-                # emission (the canonical event is already durable
-                # in the core journal): the admission gate below
-                # establishes its obligation before this response
-                # is returned -- no admission door bypasses the
-                # contract.
-                record = self._find_core_record(command_id)
-                if record is None:
-                    raise DeveloperApiError(
-                        DeveloperApiReasonCode.JOURNAL_CORRUPT,
-                        "core reports duplicate for %r but the journal "
-                        "record is unreadable" % command_id,
-                    )
-                data = self._intent_resource_at_creation(
-                    record, developer
-                )
-                emission = self._intent_emission_from_core(
-                    record.event.to_dict(), data, request, version
-                )
-                return (
-                    data,
-                    "",
-                    "",
-                    {},
-                    emission,
-                )
-            transaction = self._core.transaction(outcome.transaction_id)
-            data = self._intent_resource_from(transaction)
-
+            contract = self._require_merge_admitted(
+                result, contract_id=contract.contract_id, create=False
+            )
+            data = self._contract_resource(contract)
             emission = _MutationEmission(
-                event_type="connectivity_intent.created",
-                event_id=outcome.event_id,
-                occurred_at=outcome.instant,
-                resource_kind="intent",
-                resource_id=outcome.transaction_id,
-                resource_version=_event_count_of(data),
+                event_type="connectivity_contract.offers_selected",
+                event_id=record.command_id,
+                occurred_at=recorded_at,
+                resource_kind="contract",
+                resource_id=contract.contract_id,
+                resource_version=self._contract_journal_position(
+                    contract.contract_id
+                )[0],
                 correlation=derive_request_id(
                     self._environment,
                     version.version,
@@ -2418,68 +2564,43 @@ class DeveloperApiService:
                 ),
                 data=dict(data),
             )
+            return dict(data), "", "", {}, emission
 
-            return data, "", "", {}, emission
-
-        if spec.operation == "reservation_create":
-            transaction_id = positional[0]
-            transaction = self._developer_transaction(
-                transaction_id, developer
+        if spec.operation == "contract_activate":
+            contract = self._developer_contract(positional[0], developer)
+            activated_at = _require_text(
+                body.get("activated_at"), "activation_request.activated_at"
             )
-            expires_at = body.get("expires_at")
-            if not isinstance(expires_at, str) or not expires_at:
+            command = ActivateContract(
+                activated_at=activated_at,
+                signature_refs=_typed_references(
+                    body.get("signature_refs"),
+                    "signature",
+                    "activation_request.signature_refs",
+                ),
+            )
+            if not command.signature_refs:
                 raise DeveloperApiError(
                     DeveloperApiReasonCode.INVALID_INPUT,
-                    "expires_at must be a non-empty RFC 3339 UTC instant",
+                    "activation_request.signature_refs requires at least "
+                    "one signature typed reference",
                 )
-            payment_refs_raw = body.get("payment_refs") or ()
-            if not isinstance(payment_refs_raw, (list, tuple)):
-                raise DeveloperApiError(
-                    DeveloperApiReasonCode.INVALID_INPUT,
-                    "payment_refs must be a list of payment observation "
-                    "references (DATA)",
-                )
-            command_id = derive_api_command_id(
-                self._environment, developer, key
+            record, result = self._submit_canonical(
+                contract.contract_id, command, activated_at
             )
-            try:
-                outcome = self._core.hold_reservation(
-                    command_id=command_id,
-                    transaction_id=transaction_id,
-                    actor=developer,
-                    source=source,
-                    expires_at=expires_at,
-                    payment_refs=tuple(payment_refs_raw),
-                )
-            except CommercialError as error:
-                raise self._adapted_error(error, request_id="") from error
-            if outcome.status == "duplicate":
-                # the crash window (same contract as intent_create:
-                # the reconstructed mutation owes the same emission)
-                record = self._find_core_record(command_id)
-                if record is None:
-                    raise DeveloperApiError(
-                        DeveloperApiReasonCode.JOURNAL_CORRUPT,
-                        "core reports duplicate for %r but the journal "
-                        "record is unreadable" % command_id,
-                    )
-                data = self._reservation_resource_at_creation(
-                    record, developer
-                )
-                emission = self._reservation_emission_from_core(
-                    record.event.to_dict(), data, request, version, positional
-                )
-                return data, "", "", {}, emission
-            held = self._core.transaction(transaction_id)
-            data = self._reservation_resource_from(held)
-
+            contract = self._require_merge_admitted(
+                result, contract_id=contract.contract_id, create=False
+            )
+            data = self._contract_resource(contract)
             emission = _MutationEmission(
-                event_type="reservation.held",
-                event_id=outcome.event_id,
-                occurred_at=outcome.instant,
-                resource_kind="intent",
-                resource_id=transaction_id,
-                resource_version=_event_count_of(data),
+                event_type="connectivity_contract.activated",
+                event_id=record.command_id,
+                occurred_at=activated_at,
+                resource_kind="contract",
+                resource_id=contract.contract_id,
+                resource_version=self._contract_journal_position(
+                    contract.contract_id
+                )[0],
                 correlation=derive_request_id(
                     self._environment,
                     version.version,
@@ -2489,136 +2610,38 @@ class DeveloperApiService:
                 ),
                 data=dict(data),
             )
+            return dict(data), "", "", {}, emission
 
-            return data, "", "", {}, emission
-
-        if spec.operation == "policy_register":
-            # The FROZEN 1.x economic-policy request contract,
-            # preserved verbatim (the WORK-046 accepted surface):
-            # the 11 members, effective_until OPTIONAL (absent =
-            # the open-ended window).  Internally the boundary
-            # adapts to the CURRENT canonical W053 terms-derived
-            # immutable policy version (the 1.x compatibility
-            # layer above the service class).
-            required = (
-                "policy_id",
-                "version",
-                "currency",
-                "exponent",
-                "rounding",
-                "effective_from",
-                "effective_until",
-                "adc_os_share_bps",
-                "tax_bps",
-                "developer_share_min_bps",
-                "developer_share_max_bps",
+        if spec.operation == "contract_terminate":
+            contract = self._developer_contract(positional[0], developer)
+            recorded_at = _require_text(
+                body.get("recorded_at"), "termination_request.recorded_at"
             )
-            payload = {}
-            for member in required:
-                if member not in body:
-                    if member == "effective_until":
-                        # the open-ended window (the 1.x model:
-                        # absent until = open-ended)
-                        payload[member] = ""
-                        continue
-                    raise DeveloperApiError(
-                        DeveloperApiReasonCode.INVALID_INPUT,
-                        "economic policy registration is missing member %r"
-                        % member,
-                    )
-                payload[member] = body[member]
-            open_ended = payload["effective_until"] == ""
-            # the 1.x-only member constraints the current
-            # canonical terms model does not carry (boundary-
-            # local validation, fail closed)
-            if payload["version"] < 1:
-                raise DeveloperApiError(
-                    DeveloperApiReasonCode.INVALID_INPUT,
-                    "economic policy version %r must be a positive integer"
-                    % payload["version"],
-                )
-            if not 0 <= payload["tax_bps"] <= 10_000:
-                raise DeveloperApiError(
-                    DeveloperApiReasonCode.INVALID_INPUT,
-                    "economic policy tax_bps %r must be within [0, 10000]"
-                    % payload["tax_bps"],
-                )
-            if payload["adc_os_share_bps"] + payload["tax_bps"] > 10_000:
-                raise DeveloperApiError(
-                    DeveloperApiReasonCode.INVALID_INPUT,
-                    "economic policy adc_os_share_bps %r plus tax_bps %r "
-                    "must not exceed 10000"
-                    % (
-                        payload["adc_os_share_bps"],
-                        payload["tax_bps"],
-                    ),
-                )
-            # the canonical terms (the label term carries the 1.x
-            # coordinate block; the shared economics map 1:1)
-            label = _encode_1x_policy_label(
-                payload["policy_id"],
-                payload["version"],
-                payload["tax_bps"],
-                open_ended,
+            command = TerminateContract(
+                recorded_at=recorded_at,
+                condition=_require_text(
+                    body.get("condition"), "termination_request.condition"
+                ),
+                reason=_require_text(
+                    body.get("reason"), "termination_request.reason"
+                ),
             )
-            command_id = derive_api_command_id(
-                self._environment, developer, key
+            record, result = self._submit_canonical(
+                contract.contract_id, command, recorded_at
             )
-            # the frozen 1.x conflict semantic: a conflicting
-            # re-registration of the same (policy_id, version)
-            # fails closed BEFORE any canonical admission (an
-            # exact redelivery stays the idempotent no-op: the
-            # identical label derives the identical canonical
-            # version, which deduplicates below)
-            existing = self._find_1x_policy(
-                payload["policy_id"], payload["version"]
+            contract = self._require_merge_admitted(
+                result, contract_id=contract.contract_id, create=False
             )
-            if existing is not None and existing.label != label:
-                raise DeveloperApiError(
-                    DeveloperApiReasonCode.IDEMPOTENCY_CONFLICT,
-                    "economic policy %r was already registered with "
-                    "different content (conflicting re-registration "
-                    "rejected; policy versions are immutable)"
-                    % ("%s@%s" % (payload["policy_id"], payload["version"])),
-                    request_id="",
-                    environment=self._environment,
-                )
-            try:
-                outcome = self._allocation.register_policy(
-                    command_id=command_id,
-                    label=label,
-                    adcos_share_bps=payload["adc_os_share_bps"],
-                    provider_min_bps=payload["developer_share_min_bps"],
-                    provider_max_bps=payload["developer_share_max_bps"],
-                    rounding_mode=payload["rounding"],
-                    currency=payload["currency"],
-                    minor_unit_digits=payload["exponent"],
-                    effective_from=payload["effective_from"],
-                    effective_until=(
-                        payload["effective_until"]
-                        if not open_ended
-                        else _1X_OPEN_ENDED_UNTIL
-                    ),
-                    actor=developer,
-                    source=source,
-                )
-            except AllocationError as error:
-                raise self._adapted_error(error, request_id="") from error
-            # the canonical terms-derived policy version id (the
-            # register outcome's fact id; the composed W054
-            # precedent)
-            policy_id = outcome.fact_id
-            policy = self._allocation.policy(policy_id)
-            data = self._policy_resource(policy)
-
+            data = self._contract_resource(contract)
             emission = _MutationEmission(
-                event_type="economic_policy.registered",
-                event_id=outcome.event_id,
-                occurred_at=outcome.instant,
-                resource_kind="economic_policy",
-                resource_id="%s@%s"
-                % (payload["policy_id"], payload["version"]),
-                resource_version=1,
+                event_type="connectivity_contract.terminated",
+                event_id=record.command_id,
+                occurred_at=recorded_at,
+                resource_kind="contract",
+                resource_id=contract.contract_id,
+                resource_version=self._contract_journal_position(
+                    contract.contract_id
+                )[0],
                 correlation=derive_request_id(
                     self._environment,
                     version.version,
@@ -2628,8 +2651,136 @@ class DeveloperApiService:
                 ),
                 data=dict(data),
             )
+            return dict(data), "", "", {}, emission
 
-            return data, "", "", {}, emission
+        if spec.operation == "lease_grant":
+            contract = self._developer_contract(positional[0], developer)
+            granted_at = _require_text(
+                body.get("granted_at"), "lease_request.granted_at"
+            )
+            command = GrantLease(
+                granted_at=granted_at,
+                not_before=_require_text(
+                    body.get("not_before"), "lease_request.not_before"
+                ),
+                not_after=_require_text(
+                    body.get("not_after"), "lease_request.not_after"
+                ),
+            )
+            record, result = self._submit_canonical(
+                contract.contract_id, command, granted_at
+            )
+            self._require_merge_admitted(
+                result, contract_id=contract.contract_id, create=False
+            )
+            lease_id = _derive_lease_id(
+                contract.contract_id, command
+            )
+            lease = self._current_lease(lease_id)
+            data = self._lease_resource(lease)
+            emission = _MutationEmission(
+                event_type="connectivity_lease.granted",
+                event_id=record.command_id,
+                occurred_at=granted_at,
+                resource_kind="lease",
+                resource_id=lease_id,
+                resource_version=self._contract_journal_position(
+                    contract.contract_id
+                )[0],
+                correlation=derive_request_id(
+                    self._environment,
+                    version.version,
+                    request.method,
+                    request.route,
+                    body,
+                ),
+                data=dict(data),
+            )
+            return dict(data), "", "", {}, emission
+
+        if spec.operation == "lease_renew":
+            lease = self._developer_lease(positional[0], developer)
+            granted_at = _require_text(
+                body.get("granted_at"), "lease_renewal.granted_at"
+            )
+            command = RenewLease(
+                lease_id=lease.lease_id,
+                granted_at=granted_at,
+                not_before=_require_text(
+                    body.get("not_before"), "lease_renewal.not_before"
+                ),
+                not_after=_require_text(
+                    body.get("not_after"), "lease_renewal.not_after"
+                ),
+            )
+            record, result = self._submit_canonical(
+                lease.contract_id, command, granted_at
+            )
+            self._require_merge_admitted(
+                result, contract_id=lease.contract_id, create=False
+            )
+            successor_id = _derive_lease_id(lease.contract_id, command)
+            successor = self._current_lease(successor_id)
+            data = self._lease_resource(successor)
+            emission = _MutationEmission(
+                event_type="connectivity_lease.renewed",
+                event_id=record.command_id,
+                occurred_at=granted_at,
+                resource_kind="lease",
+                resource_id=successor_id,
+                resource_version=self._contract_journal_position(
+                    lease.contract_id
+                )[0],
+                correlation=derive_request_id(
+                    self._environment,
+                    version.version,
+                    request.method,
+                    request.route,
+                    body,
+                ),
+                data=dict(data),
+            )
+            return dict(data), "", "", {}, emission
+
+        if spec.operation == "lease_revoke":
+            lease = self._developer_lease(positional[0], developer)
+            recorded_at = _require_text(
+                body.get("recorded_at"), "lease_revocation.recorded_at"
+            )
+            command = RevokeLease(
+                lease_id=lease.lease_id,
+                recorded_at=recorded_at,
+                reason=_require_text(
+                    body.get("reason"), "lease_revocation.reason"
+                ),
+            )
+            record, result = self._submit_canonical(
+                lease.contract_id, command, recorded_at
+            )
+            self._require_merge_admitted(
+                result, contract_id=lease.contract_id, create=False
+            )
+            revoked = self._current_lease(lease.lease_id)
+            data = self._lease_resource(revoked)
+            emission = _MutationEmission(
+                event_type="connectivity_lease.revoked",
+                event_id=record.command_id,
+                occurred_at=recorded_at,
+                resource_kind="lease",
+                resource_id=lease.lease_id,
+                resource_version=self._contract_journal_position(
+                    lease.contract_id
+                )[0],
+                correlation=derive_request_id(
+                    self._environment,
+                    version.version,
+                    request.method,
+                    request.route,
+                    body,
+                ),
+                data=dict(data),
+            )
+            return dict(data), "", "", {}, emission
 
         raise DeveloperApiError(
             DeveloperApiReasonCode.ROUTE_UNKNOWN,
@@ -2671,11 +2822,11 @@ class DeveloperApiService:
         endpoints.
 
         The PLATFORM-side observation surface (the operator's
-        transaction-observation emission): an admission-record,
+        contract-observation emission): an admission-record,
         obligation-write, or queue-write failure raises to the
         OPERATOR, never to a developer response (there is no
         developer response on this path -- the observed
-        transaction's state is already canonical and final).
+        contract's state is already canonical and final).
         The API mutation path never calls this method: it drives
         the same shared pieces through the admission gate
         (:meth:`_admit_observation`)."""
@@ -2777,7 +2928,7 @@ class DeveloperApiService:
                 event_id=event_id,
                 event_type=event_type,
                 occurred_at=occurred_at,
-                api_version="1.0",
+                api_version="2.0",
                 environment=self._environment,
                 resource_kind=resource_kind,
                 resource_id=resource_id,
@@ -2808,32 +2959,26 @@ class DeveloperApiService:
         """The developer owning one observed resource (from the
         boundary's public projections; adapted resources are
         resolved through the canonical public reads)."""
-        if resource_kind == "offer":
-            offer = self._index.offers.get(resource_id)
-            return offer.get("developer_id") if offer else None
         if resource_kind == "webhook_endpoint":
             endpoint = self._index.endpoints.get(resource_id)
             return endpoint.get("developer_id") if endpoint else None
-        if resource_kind in ("intent",):
-            try:
-                transaction = self._core.transaction(resource_id)
-            except CommercialError:
+        if resource_kind == "contract":
+            contract = self._developer_contract_or_none(resource_id)
+            if contract is None:
                 return None
-            return transaction.to_dict().get("actor")
-        if resource_kind == "economic_policy":
-            policy_id, _, version = resource_id.rpartition("@")
-            try:
-                policy_version = int(version)
-            except ValueError:
+            return self._developer_of_application(
+                contract.principal.principal_ref
+            )
+        if resource_kind == "lease":
+            lease = self._developer_lease_or_none(resource_id)
+            if lease is None:
                 return None
-            # the frozen 1.x coordinate identity resolves through
-            # the boundary's 1.x compatibility layer (the label
-            # block carries the coordinates)
-            if self._find_1x_policy(policy_id, policy_version) is None:
+            contract = self._developer_contract_or_none(lease.contract_id)
+            if contract is None:
                 return None
-            # policies are platform-level: notify every endpoint
-            # subscribed to the event type
-            return "*"
+            return self._developer_of_application(
+                contract.principal.principal_ref
+            )
         return None
 
     def _attempt_delivery(self, delivery_id: str, now: str) -> None:
@@ -2898,227 +3043,157 @@ class DeveloperApiService:
         self._journal.append(record)
         self._index.apply(record)
 
-    # -- resource serializers (the adapted projections) ------------------
+    # -- resource serializers (the canonical projections) ------------------
 
-    def _intent_resource(self, transaction_id: str) -> Dict[str, Any]:
-        return self._intent_resource_from(
-            self._core.transaction(transaction_id)
-        )
+    def _contract_journal_position(
+        self, contract_id: str
+    ) -> Tuple[int, str]:
+        """The canonical contract journal's public position for
+        one contract: (record count, last recorded instant).
+        Pure public read over ``ContractStore.journal()``; the
+        count is the emission order metadata (resource_version)
+        and the honest ``entered_at`` of the lifecycle
+        observation."""
+        count = 0
+        last_instant = ""
+        for record in self._contracts.journal():
+            if record.contract_id == contract_id:
+                count += 1
+                last_instant = record.recorded_at
+        return count, last_instant
 
-    def _intent_resource_from(self, transaction: Any) -> Dict[str, Any]:
-        projection = transaction.to_dict()
-        resource = {
-            "id": projection.get("transaction_id", ""),
-            "kind": "intent",
+    def _contract_resource(
+        self, contract: Any
+    ) -> Dict[str, Any]:
+        """The developer-facing contract projection: the
+        canonical ``ConnectivityContract`` serialization,
+        VERBATIM in meaning, plus the boundary envelope members
+        only (id, kind, environment, and the canonical journal
+        position).  The boundary never re-shapes, renames, or
+        re-semantics the canonical record (no second domain
+        model)."""
+        resource: Dict[str, Any] = {
+            "id": contract.contract_id,
+            "kind": "contract",
             "environment": self._environment,
         }
-        for member in (
-            "state",
-            "actor",
-            "source",
-            "created_at",
-            "intent",
-            "offer",
-            "expires_at",
-            "session_ref",
-            "path_ref",
-            "delivery_evidence_refs",
-            "usage_refs",
-            "settlement_refs",
-            "payment_refs",
-            "last_action",
-            "last_instant",
-            "event_count",
-        ):
-            if member in projection:
-                resource[member] = projection[member]
+        resource.update(contract.to_dict())
+        resource["command_count"] = self._contract_journal_position(
+            contract.contract_id
+        )[0]
         return resource
 
-    def _reservation_resource_from(self, transaction: Any) -> Dict[str, Any]:
-        projection = transaction.to_dict()
-        return {
-            "id": projection.get("transaction_id", ""),
-            "kind": "reservation",
+    def _lease_resource(self, lease: Any) -> Dict[str, Any]:
+        """The developer-facing lease projection: the canonical
+        ``ContractLease`` serialization, verbatim in meaning,
+        plus the boundary envelope members only."""
+        resource: Dict[str, Any] = {
+            "id": lease.lease_id,
+            "kind": "contract_lease",
             "environment": self._environment,
-            "transaction_id": projection.get("transaction_id", ""),
-            "state": projection.get("state", ""),
-            "expires_at": projection.get("expires_at", ""),
-            "payment_refs": projection.get("payment_refs", ()),
-            "last_action": projection.get("last_action", ""),
-            "last_instant": projection.get("last_instant", ""),
-            "event_count": projection.get("event_count", 0),
         }
+        resource.update(lease.to_dict())
+        return resource
 
-    def _intent_resource_at_creation(
-        self, record: Any, developer: str
-    ) -> Dict[str, Any]:
-        event = record.event.to_dict()
-        command = record.command.to_dict()
-        return {
-            "id": event.get("transaction_id", ""),
-            "kind": "intent",
-            "environment": self._environment,
-            "state": event.get("to_state", ""),
-            "actor": command.get("actor", developer),
-            "source": command.get("source", ""),
-            "created_at": event.get("instant", ""),
-            "intent": dict(
-                (command.get("payload") or {}).get("intent") or {}
-            ),
-            "offer": {},
-            "expires_at": "",
-            "session_ref": "",
-            "path_ref": "",
-            "delivery_evidence_refs": (),
-            "usage_refs": (),
-            "settlement_refs": (),
-            "payment_refs": (),
-            "last_action": event.get("action", ""),
-            "last_instant": event.get("instant", ""),
-            "event_count": 1,
-        }
-
-    def _reservation_resource_at_creation(
-        self, record: Any, developer: str
-    ) -> Dict[str, Any]:
-        event = record.event.to_dict()
-        command = record.command.to_dict()
-        payload = command.get("payload") or {}
-        return {
-            "id": event.get("transaction_id", ""),
-            "kind": "reservation",
-            "environment": self._environment,
-            "transaction_id": event.get("transaction_id", ""),
-            "state": event.get("to_state", ""),
-            "expires_at": payload.get("expires_at", ""),
-            "payment_refs": tuple(
-                ref.get("reference_id", "")
-                for ref in event.get("causal_references", ())
-                if isinstance(ref, Mapping)
-                and ref.get("family") == "payment"
-            ),
-            "last_action": event.get("action", ""),
-            "last_instant": event.get("instant", ""),
-            "event_count": 1,
-        }
-
-    def _lifecycle_resource(self, transaction: Any) -> Dict[str, Any]:
-        projection = transaction.to_dict()
-        state = projection.get("state", "")
+    def _lifecycle_resource(self, contract: Any) -> Dict[str, Any]:
+        state = contract.state
+        position, last_instant = self._contract_journal_position(
+            contract.contract_id
+        )
         # The honest classification: the developer API reports
-        # the canonical COMMERCIAL state; it NEVER claims
-        # connectivity or physical evidence.  Physical
-        # connectivity is a W040-owned evidence plane the
-        # commercial state cannot promote.
-        connectivity = "not-evidenced"
-        if state in ("PATH_ACTIVE", "DELIVERY_STARTED", "USAGE_ACCRUING",
-                     "DELIVERY_COMPLETED", "BILLABLE_FINAL"):
-            connectivity = "commercial-path-active"
+        # the canonical CONTRACT state machine (frozen 1.1 §11);
+        # it NEVER claims connectivity or physical evidence.
+        # Execution material rides as opaque typed references
+        # (LOCK-117: data, never authority).
         return {
-            "id": projection.get("transaction_id", ""),
-            "kind": "intent_lifecycle",
+            "id": contract.contract_id,
+            "kind": "contract_lifecycle",
             "environment": self._environment,
-            "commercial_state": state,
-            "entered_at": projection.get("last_instant", ""),
-            "event_count": projection.get("event_count", 0),
-            "connectivity": connectivity,
+            "contract_state": state,
+            "entered_at": last_instant,
+            "command_count": position,
+            "validity": contract.validity.to_dict(),
+            "execution_status": _EXECUTION_STATUS_BY_STATE.get(
+                state, "unknown"
+            ),
+            "execution_scope_refs": [
+                ref.to_dict() for ref in contract.execution_scope
+            ],
+            "execution_artifact_refs": [
+                ref.to_dict() for ref in contract.execution_artifacts
+            ],
+            "assurance_obligation_refs": [
+                ref.to_dict() for ref in contract.assurance_obligations
+            ],
             "physical_connectivity_observed": False,
             "physical_evidence": "not-claimed",
             "statements": list(_LIFECYCLE_STATEMENTS),
             "note": (
                 "API success never implies physical connectivity "
-                "success: this observation reports canonical commercial "
-                "state only; physical connectivity evidence is owned by "
-                "the physical evidence plane (W040) and is never "
-                "fabricated or promoted by the developer API."
+                "success: this observation reports the canonical "
+                "contract state machine only (the frozen 1.1 "
+                "reference lifecycle); execution material appears "
+                "as opaque typed references and physical "
+                "connectivity evidence is never fabricated or "
+                "promoted by the developer API."
             ),
             "evidence_class": evidence_class(self._environment),
         }
 
-    def _usage_resource(self, usage_transaction_id: str) -> Dict[str, Any]:
-        """The developer-facing usage projection: the CURRENT
-        canonical W052 UsageTransaction serialization, verbatim
-        in meaning, plus the boundary envelope members only.
-        The boundary never re-shapes, renames, or re-semantics
-        the canonical projection (no second domain model)."""
-        content = self._usage.transaction(usage_transaction_id).to_dict()
-        resource = {
-            "id": usage_transaction_id,
-            "kind": "usage_transaction",
+    def _usage_terms_resource(self, contract: Any) -> Dict[str, Any]:
+        """The developer-facing usage-semantics read: the
+        contract's usage/pricing terms as the OPAQUE TYPED
+        REFERENCE the canonical record carries -- never
+        interpreted, never re-modelled.  The usage authority
+        (the M009 commercial track) owns the referenced
+        semantics; this API exposes the typed reference only
+        (LOCK-113/LOCK-114)."""
+        return {
+            "id": contract.contract_id,
+            "kind": "contract_usage_terms",
             "environment": self._environment,
-        }
-        for member in (
-            "transaction_id",
-            "state",
-            "observations",
-            "statement",
-            "compensations",
-        ):
-            if member in content:
-                resource[member] = content[member]
-        return resource
-
-    def _find_1x_policy(self, policy_id: str, version: int) -> Optional[Any]:
-        """Resolve one frozen-1.x (policy_id, version) coordinate
-        to its canonical immutable PolicyVersion (the label block
-        is the coordinate identity; deterministic registry scan).
-        None when the coordinate is not registered on the 1.x
-        surface (including canonical policies registered through
-        other surfaces, which never carry 1.x coordinates)."""
-        for policy in self._allocation.policies():
-            block = _decode_1x_policy_label(policy.label)
-            if (
-                block is not None
-                and block["policy_id"] == policy_id
-                and block["version"] == version
-            ):
-                return policy
-        return None
-
-    def _policy_resource(self, policy: Any) -> Dict[str, Any]:
-        """The developer-facing economic-policy projection: the
-        FROZEN WORK-046 1.x contract, preserved verbatim (the
-        "policy_id@version" resource id and the 11 response
-        members).  The projection adapts the CURRENT canonical
-        W053 terms-derived immutable PolicyVersion back onto the
-        1.x member names (the coordinate block -- policy_id,
-        version, tax_bps, the open-ended flag -- decodes from
-        the canonical label; the shared economics map 1:1); the
-        boundary never re-shapes canonical state in either
-        direction."""
-        content = policy.to_dict()
-        block = _decode_1x_policy_label(content.get("label", ""))
-        resource = {
-            "id": "%s@%s"
-            % (
-                block["policy_id"] if block else content.get("policy_id", ""),
-                block["version"] if block else "",
+            "contract_state": contract.state,
+            "usage_pricing_terms": (
+                contract.usage_pricing_terms.to_dict()
+                if contract.usage_pricing_terms is not None
+                else None
             ),
-            "kind": "economic_policy",
-            "environment": self._environment,
+            "note": (
+                "usage semantics are referenced, never interpreted: "
+                "the usage/pricing authority (the commercial "
+                "reconciliation track) owns the referenced material; "
+                "this API exposes the contract's opaque typed "
+                "reference only"
+            ),
+            "evidence_class": evidence_class(self._environment),
         }
-        if block is not None:
-            # the frozen 1.x member set, projected from the
-            # canonical terms + the coordinate block
-            resource.update(
-                {
-                    "policy_id": block["policy_id"],
-                    "version": block["version"],
-                    "currency": content["currency"],
-                    "exponent": content["minor_unit_digits"],
-                    "rounding": content["rounding_mode"],
-                    "effective_from": content["effective_from"],
-                    "effective_until": (
-                        "" if block["open_ended"]
-                        else content["effective_until"]
-                    ),
-                    "adc_os_share_bps": content["adcos_share_bps"],
-                    "tax_bps": block["tax_bps"],
-                    "developer_share_min_bps": content["provider_min_bps"],
-                    "developer_share_max_bps": content["provider_max_bps"],
-                }
-            )
-        return resource
+
+    def _assurance_resource(self, contract: Any) -> Dict[str, Any]:
+        """The developer-facing assurance-semantics read: the
+        contract's assurance obligations as OPAQUE TYPED
+        REFERENCES, plus the assurance-relevant contract state
+        (the frozen 1.1 §9 vocabulary integration: ASSURED /
+        DEGRADED / FAILED record the latest assurance evaluation
+        outcome).  The assurance authority (M005) owns the
+        obligations and their evaluation; this API reports the
+        contract-recorded outcomes only (LOCK-106/LOCK-114)."""
+        return {
+            "id": contract.contract_id,
+            "kind": "contract_assurance",
+            "environment": self._environment,
+            "contract_state": contract.state,
+            "assurance_obligations": [
+                ref.to_dict() for ref in contract.assurance_obligations
+            ],
+            "note": (
+                "assurance semantics are referenced, never evaluated: "
+                "the assurance authority owns the obligations; the "
+                "contract state machine records the evaluation "
+                "outcomes (ASSURED/DEGRADED/FAILED per the frozen "
+                "1.1 §9 vocabulary)"
+            ),
+            "evidence_class": evidence_class(self._environment),
+        }
 
     def _delivery_resource(self, state: Any) -> Dict[str, Any]:
         event = dict(state.event)
@@ -3165,22 +3240,9 @@ class DeveloperApiService:
             "note": (
                 "webhook delivery state is an observation channel: "
                 "delivery success or failure never changes canonical "
-                "commercial, usage, or allocation state"
+                "contract or lease state"
             ),
         }
-
-    def _allocation_snapshot(self, usage_transaction_id: str) -> Any:
-        """The canonical W053 allocation projection for one
-        billable-final usage transaction (the CURRENT model:
-        allocations are keyed by the usage transaction id), or
-        the empty marker when no allocation exists yet."""
-        try:
-            allocation_entry = self._allocation.allocation(
-                usage_transaction_id
-            )
-        except AllocationError:
-            return ""
-        return allocation_entry.to_dict()
 
     # -- pagination helper -------------------------------------------------
 
@@ -3204,12 +3266,88 @@ class DeveloperApiService:
 
     # -- tenant scoping ----------------------------------------------------
 
-    def _developer_offers(self, developer: str) -> List[Dict[str, Any]]:
+    def _developer_application_ids(
+        self, developer_id: str
+    ) -> set:
+        """The applications issued to one developer in this
+        environment (the ownership scope: a contract's canonical
+        principal IS the application; the developer owns the
+        contracts of ALL their applications)."""
+        return {
+            application_id
+            for application_id, entry in self._index.credentials.items()
+            if entry.get("developer_id") == developer_id
+        }
+
+    def _developer_contracts(self, developer_id: str) -> List[Any]:
+        owned = self._developer_application_ids(developer_id)
         return [
-            dict(offer)
-            for offer_id, offer in sorted(self._index.offers.items())
-            if offer.get("developer_id") == developer
+            contract
+            for contract in self._contracts.contracts()
+            if contract.principal.principal_ref in owned
         ]
+
+    def _developer_contract_or_none(
+        self, contract_id: str
+    ) -> Optional[Any]:
+        try:
+            return self._contracts.contract(contract_id)
+        except ContractError:
+            return None
+
+    def _developer_contract(
+        self, contract_id: str, developer_id: str
+    ) -> Any:
+        try:
+            contract = self._contracts.contract(contract_id)
+        except ContractError as error:
+            raise self._adapted_error(
+                error,
+                resource_id=contract_id,
+            ) from error
+        if (
+            contract.principal.principal_ref
+            not in self._developer_application_ids(developer_id)
+        ):
+            raise self._resource_unknown(
+                "contract", contract_id, ""
+            )
+        return contract
+
+    def _developer_leases(self, developer_id: str) -> List[Any]:
+        out: List[Any] = []
+        for contract in self._developer_contracts(developer_id):
+            for lease_id in self._contracts.leases_for_contract(
+                contract.contract_id
+            ):
+                out.append(self._contracts.lease(lease_id))
+        return sorted(out, key=lambda lease: lease.lease_id)
+
+    def _developer_lease_or_none(
+        self, lease_id: str
+    ) -> Optional[Any]:
+        try:
+            return self._contracts.lease(lease_id)
+        except ContractError:
+            return None
+
+    def _developer_lease(self, lease_id: str, developer_id: str) -> Any:
+        try:
+            lease = self._contracts.lease(lease_id)
+        except ContractError as error:
+            raise self._adapted_error(
+                error,
+                resource_id=lease_id,
+            ) from error
+        # the lease rides its contract's ownership scope
+        self._developer_contract(lease.contract_id, developer_id)
+        return lease
+
+    def _developer_of_application(
+        self, application_id: str
+    ) -> Optional[str]:
+        entry = self._index.credentials.get(application_id)
+        return entry.get("developer_id") if entry else None
 
     def _developer_endpoints(self, developer: str) -> List[Dict[str, Any]]:
         return [
@@ -3220,41 +3358,15 @@ class DeveloperApiService:
             if endpoint.get("developer_id") == developer
         ]
 
-    def _developer_transaction_ids(self, developer: str) -> List[str]:
-        out = []
-        for transaction in self._core.transactions():
-            if transaction.to_dict().get("actor") == developer:
-                out.append(transaction.to_dict()["transaction_id"])
-        return sorted(out)
-
-    def _developer_transaction(
-        self, transaction_id: str, developer: str
-    ) -> Any:
+    def _current_lease(self, lease_id: str) -> Any:
+        """The canonical lease record for a derived lease id
+        (the pure public read; the canonical authority raised on
+        any semantic rejection before the merge, so a missing
+        lease here is boundary inconsistency -- fail closed)."""
         try:
-            transaction = self._core.transaction(transaction_id)
-        except CommercialError as error:
-            raise self._adapted_error(
-                error,
-                request_id="",
-                resource_id=transaction_id,
-            ) from error
-        if transaction.to_dict().get("actor") != developer:
-            raise self._resource_unknown(
-                "intent", transaction_id, ""
-            )
-        return transaction
-
-    def _developer_usage_ids(self, developer: str) -> List[str]:
-        """The usage transactions visible to one developer: the
-        CURRENT W052 transaction-scoped projections whose cited
-        commercial transaction is owned by the developer (the
-        tenant-scope proof -- cross-tenant usage is invisible)."""
-        owned = set(self._developer_transaction_ids(developer))
-        out = []
-        for projection in self._usage.transactions():
-            if projection.transaction_id in owned:
-                out.append(projection.transaction_id)
-        return sorted(out)
+            return self._contracts.lease(lease_id)
+        except ContractError as error:
+            raise self._adapted_error(error) from error
 
     # -- envelope / error mapping -------------------------------------------
 
@@ -3330,31 +3442,25 @@ class DeveloperApiService:
         request_id: str = "",
         resource_id: str = "",
     ) -> DeveloperApiError:
-        """Map one canonical subsystem failure to the boundary,
+        """Map one canonical authority failure to the boundary,
         preserving the EXACT canonical reason code (criterion 4).
 
         The boundary reason classifies the failure family; the
         HTTP status derives from the canonical reason (the
         frozen mapping); the developer-facing error body always
         carries the canonical reason string unchanged."""
-        canonical_reason = getattr(error, "reason", "")
+        canonical_reason = getattr(error, "code", "") or getattr(
+            error, "reason", ""
+        )
         detail = getattr(error, "detail", "") or str(error)
-        if canonical_reason == "command-conflict":
-            # the crash-window conflicting redelivery surfaces as
-            # the boundary idempotency conflict, with the
-            # canonical reason attached unchanged
+        if canonical_reason == "sequence-conflict":
+            # the canonical create-once / command-content conflict
+            # family surfaces as the boundary idempotency
+            # conflict, with the canonical reason attached
+            # unchanged
             boundary_reason = DeveloperApiReasonCode.IDEMPOTENCY_CONFLICT
-        elif canonical_reason in (
-            "transaction-unknown",
-            "policy-unknown",
-            "reference-unknown",
-            "allocation-unknown",
-            "usage-unknown",
-            "evidence-unknown",
-        ):
-            # the CURRENT canonical not-found families (the
-            # W046-era "account-unknown" no longer exists in any
-            # adapted vocabulary)
+        elif canonical_reason in ("unknown-contract",):
+            # the canonical not-found family
             boundary_reason = DeveloperApiReasonCode.RESOURCE_UNKNOWN
         else:
             boundary_reason = DeveloperApiReasonCode.INVALID_INPUT
@@ -3379,48 +3485,39 @@ class DeveloperApiService:
             environment=self._environment,
         )
 
-    # -- canonical-subsystem public journal search ----------------------------
 
-    def _find_core_record(self, command_id: str) -> Optional[Any]:
-        for record in self._core.journal_records():
-            if record.command.command_id == command_id:
-                return record
-        return None
+#: The emission event-type table of the canonical mutations (the
+#: single operation -> event-type mapping shared by the execution
+#: path and the admission-completion reconstruction).
+_EMISSION_EVENT_TYPES = {
+    "intent_create": "connectivity_intent.created",
+    "offers_accept": "connectivity_contract.offers_selected",
+    "contract_activate": "connectivity_contract.activated",
+    "contract_terminate": "connectivity_contract.terminated",
+    "lease_grant": "connectivity_lease.granted",
+    "lease_renew": "connectivity_lease.renewed",
+    "lease_revoke": "connectivity_lease.revoked",
+}
 
-    def _latest_core_event_id(self, transaction_id: str) -> str:
-        latest = ""
-        for record in self._core.journal_records():
-            if record.event.transaction_id == transaction_id:
-                latest = record.event.event_id
-        return latest
+
+def _derive_lease_id(contract_id: str, command: Any) -> str:
+    """The content-derived lease identity of a grant/renewal
+    command (pure: the canonical derivation over (contract,
+    granted_at, not_before, not_after) -- the state is not part
+    of the identity)."""
+    return build_lease(
+        contract_id=contract_id,
+        state="granted",
+        granted_at=command.granted_at,
+        not_before=command.not_before,
+        not_after=command.not_after,
+    ).lease_id
 
 
 def _json_loads(text: str) -> Any:
     import json
 
     return json.loads(text)
-
-
-def _event_count_of(data: Mapping[str, Any]) -> int:
-    """The observed resource version from the mutation's own
-    response data (``event_count``; the projection member the
-    emission captured at execution time -- byte-faithful for the
-    reconstruction from the stored canonical response)."""
-    value = data.get("event_count", 1)
-    if isinstance(value, int) and not isinstance(value, bool) and (
-        value >= 1
-    ):
-        return value
-    return 1
-
-
-def _require_int(value: object, label: str) -> int:
-    if not isinstance(value, int) or isinstance(value, bool):
-        raise DeveloperApiError(
-            DeveloperApiReasonCode.INVALID_INPUT,
-            "%s must be an integer" % label,
-        )
-    return value
 
 
 class _FreshStoreView(ApiStore):

@@ -1,10 +1,13 @@
-"""WORK-046 developer/application credentials and capabilities.
+"""M013 developer/application credentials and capabilities (the
+W046-era model harvested onto the Architecture 1.1 surface).
 
-The scoped-credential model of the developer boundary (the
-W046 contract's criterion 2):
+The scoped-credential model of the developer boundary (retained
+from the accepted W046 contract's criterion 2; the capability
+vocabulary is re-targeted to the canonical contract surface per
+the M013 migration):
 
 - **Capability vocabulary**: one frozen, explicit scope
-  vocabulary (``offers:read`` .. ``webhooks:write``).  There is
+  vocabulary (``intents:read`` .. ``webhooks:write``).  There is
   deliberately NO universal application permission: every API
   operation requires a specific capability, and authorization
   is checked at the boundary BEFORE any adapted subsystem is
@@ -44,9 +47,9 @@ W046 contract's criterion 2):
   authorization cases).
 
 Credentials are the developer platform's APPLICATION-level
-commercial access identity ONLY.  They are not NodeIDs, not
-network identity (WORK-004 owns that), not trust, and never a
-connectivity authorization of any kind.
+API access identity ONLY.  They are not NodeIDs, not
+network identity (the identity domain owns that), not trust,
+and never a connectivity authorization of any kind.
 """
 
 from __future__ import annotations
@@ -79,34 +82,40 @@ SECRET_PREFIX = "dasec_"
 
 
 class Capability:
-    """The frozen developer-platform capability vocabulary."""
+    """The frozen developer-platform capability vocabulary (the
+    M013 re-targeting of the W046 set onto the canonical
+    contract surface).
 
-    OFFERS_READ = "offers:read"
-    OFFERS_WRITE = "offers:write"
+    Vocabulary evolution (disclosed in docs/M013-evidence.md):
+    the W046-era ``offers:*``, ``billing:read`` and
+    ``economic_policy:*`` capabilities are DEMOTED with their
+    routes (offer publication, billing reads and economic-policy
+    configuration are the M003/M009 child domains' semantics,
+    referenced by this API as opaque typed references only);
+    ``intents:read``/``intents:write`` now govern the full
+    canonical contract lifecycle (create/accept-offers/activate/
+    inspect/terminate); ``assurance:read`` is ADDED for the
+    assurance-obligation inspection route; ``usage:read`` is
+    retained for the usage-terms typed-reference read."""
+
     INTENTS_READ = "intents:read"
     INTENTS_WRITE = "intents:write"
     LEASES_READ = "leases:read"
     LEASES_WRITE = "leases:write"
     USAGE_READ = "usage:read"
-    BILLING_READ = "billing:read"
-    ECONOMIC_POLICY_READ = "economic_policy:read"
-    ECONOMIC_POLICY_WRITE = "economic_policy:write"
+    ASSURANCE_READ = "assurance:read"
     WEBHOOKS_READ = "webhooks:read"
     WEBHOOKS_WRITE = "webhooks:write"
 
     @classmethod
     def values(cls) -> tuple:
         return (
-            cls.OFFERS_READ,
-            cls.OFFERS_WRITE,
             cls.INTENTS_READ,
             cls.INTENTS_WRITE,
             cls.LEASES_READ,
             cls.LEASES_WRITE,
             cls.USAGE_READ,
-            cls.BILLING_READ,
-            cls.ECONOMIC_POLICY_READ,
-            cls.ECONOMIC_POLICY_WRITE,
+            cls.ASSURANCE_READ,
             cls.WEBHOOKS_READ,
             cls.WEBHOOKS_WRITE,
         )

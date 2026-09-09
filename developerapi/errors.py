@@ -1,12 +1,14 @@
-"""WORK-046 developer platform error model.
+"""M013 developer platform error model (the W046-era model
+harvested onto the Architecture 1.1 surface).
 
-Mirrors the WORK-051/W052/W053/W044/W045 discipline: ONE typed
-error class with a frozen boundary reason vocabulary and
-deterministic human-readable detail.  Reasons are DATA for
-diagnostics -- they never branch core protocol semantics, and
-secrets never appear in ``detail``.
+Mirrors the contracts-domain discipline: ONE typed error class
+with a frozen boundary reason vocabulary and deterministic
+human-readable detail.  Reasons are DATA for diagnostics --
+they never branch core protocol semantics, and secrets never
+appear in ``detail``.
 
-The W046-specific invariant (the frozen contract's criterion 4):
+The retained W046-specific invariant (the frozen contract's
+criterion 4):
 
 > developer-facing errors preserve canonical ADCOS reason codes.
 
@@ -15,15 +17,20 @@ own boundary reason, the EXACT canonical reason string of the
 underlying ADCOS subsystem failure (``canonical_reason``; empty
 when the failure is boundary-local, e.g. authentication).  The
 boundary NEVER rewrites, flattens, or invents a second
-reason-code authority: a CommercialCore ``lifecycle-illegal``
-reaches the developer as ``lifecycle-illegal``; a UsageLedger
-``account-unknown`` reaches the developer as
-``account-unknown``.
+reason-code authority: a contracts-domain ``invalid-transition``
+reaches the developer as ``invalid-transition``; a
+``contract-terminal`` reaches the developer as
+``contract-terminal``; a ``secret-rejected`` (LOCK-119) reaches
+the developer as ``secret-rejected``.
 
-The boundary vocabulary separates the failure families the W046
-boundary owns: authentication and credential expiry, environment
-isolation (sandbox/production non-interchangeability), scoped
-capability authorization, API-version compatibility, rate
+M013 re-binds the canonical-reason table to the accepted
+contracts-domain vocabulary (the M002 ``ContractReason`` set:
+the sole canonical authority the boundary adapts after the
+commercial-plane bindings were superseded by the Architecture
+1.1 migration).  The boundary vocabulary itself is retained
+from W046 unchanged: authentication and credential expiry,
+environment isolation (sandbox/production non-interchangeability),
+scoped capability authorization, API-version compatibility, rate
 limiting with truthful retry guidance, durable idempotency
 (duplicate, conflict, missing key), deterministic pagination,
 resource visibility, webhook verification (signature, timestamp
@@ -110,72 +117,32 @@ REASON_HTTP_STATUS = {
 }
 
 #: The frozen canonical-reason -> HTTP status table: the mapping
-#: for reasons surfaced from the canonical subsystems the W046
-#: boundary adapts.  WORK-056 re-binds this table to the three
-#: CURRENT accepted frozen vocabularies (the W052/W053 review
-#: corrections renamed and extended the usage/allocation reason
-#: sets after the W046-era names this table carried); every
-#: reason below is carried UNCHANGED through the boundary (the
+#: for reasons surfaced from the canonical subsystem the M013
+#: boundary adapts (the accepted contracts domain, M002 /
+#: DEC-0102: the ``ContractReason`` vocabulary).  Every reason
+#: below is carried UNCHANGED through the boundary (the
 #: classification is transport DATA, never a rewrite).  Unknown
 #: canonical reasons (future subsystem vocabularies) map to 400
 #: and are non-retryable -- the boundary never guesses.
 CANONICAL_REASON_HTTP_STATUS = {
-    # WORK-051 CommercialCore (commercial/errors.py, current)
+    # contracts domain (contracts/model.py ContractReason, M002)
     "invalid-input": 400,
-    "command-invalid": 400,
-    "command-duplicate": 200,
-    "command-conflict": 409,
-    "transaction-unknown": 404,
-    "lifecycle-illegal": 422,
-    "history-immutable": 409,
-    "reservation-expired": 422,
-    "expiry-not-due": 422,
-    "path-failure-rejected": 422,
-    "non-delivery-rejected": 422,
-    "settlement-rejected": 422,
-    "payment-not-delivery": 422,
-    "payment-not-settlement": 422,
-    "reference-unknown": 404,
-    "reference-family-invalid": 400,
-    "event-invalid": 400,
-    "journal-corrupt": 500,
-    "store-failed": 500,
-    "instant-invalid": 400,
-    # WORK-052 UsageLedger (usage/errors.py, current post-
-    # review-corrections vocabulary)
-    "evidence-unknown": 404,
-    "evidence-mismatch": 422,
-    "transaction-not-delivering": 422,
-    "observation-rejected": 422,
-    "quantity-exceeded": 422,
-    "window-invalid": 400,
-    "provider-not-delivery": 422,
-    "reservation-not-usage": 422,
-    "observation-class-invalid": 400,
-    "usage-sealed": 422,
-    "final-immutable": 422,
-    "compensation-requires-final": 422,
-    "compensation-exceeded": 422,
-    "dispute-already-open": 422,
-    # WORK-053 EconomicAllocation (allocation/errors.py,
-    # current post-review-corrections vocabulary)
-    "policy-invalid": 400,
-    "policy-unknown": 404,
-    "policy-not-effective": 422,
-    "split-out-of-bounds": 400,
-    "distribution-invalid": 400,
-    "usage-unknown": 404,
-    "usage-mismatch": 422,
-    "usage-not-final": 422,
-    "payment-not-usage": 422,
-    "settlement-not-usage": 422,
-    "reference-mismatch": 422,
-    "payment-not-settlement": 422,
-    "settlement-not-payment": 422,
-    "allocation-unknown": 404,
-    "allocation-already-exists": 409,
-    "settlement-immutable": 422,
-    "compensation-requires-settled": 422,
+    "invalid-state": 422,
+    "invalid-transition": 422,
+    "unknown-contract": 404,
+    "contract-terminal": 422,
+    "constraint-immutable": 422,
+    "not-yet-valid": 422,
+    "expired": 422,
+    "temporal-invalid": 400,
+    "id-mismatch": 500,
+    "secret-rejected": 400,
+    "vocabulary": 400,
+    "duplicate": 200,
+    "replay-stale": 409,
+    "sequence-conflict": 409,
+    "sequence-gap": 409,
+    "journal-tamper": 500,
 }
 
 #: The frozen retryability classification: which boundary

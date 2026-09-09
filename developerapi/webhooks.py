@@ -1,6 +1,7 @@
-"""WORK-046 webhook platform (observation channel ONLY).
+"""M013 webhook platform (observation channel ONLY; the
+W046-era model harvested onto the Architecture 1.1 surface).
 
-The frozen W046 webhook architecture (contract criterion 3 and
+The retained W046 webhook architecture (contract criterion 3 and
 the authority boundary):
 
 > Webhooks are an observation channel only.  They are NOT a
@@ -20,12 +21,12 @@ Members (the W046 contract's webhook requirements):
 
 - **Event identity**: every webhook event carries the event id,
   the event type, the resource id/kind, the ``resource_version``
-  ORDER METADATA (the canonical subsystem's own version counter
-  -- the commercial transaction's ``event_count``, or version 1
+  ORDER METADATA (the canonical contract journal's per-contract
+  position -- the sequence of the admitted command; version 1
   for one-shot developerapi resources), the creation timestamp
   (``occurred_at``), the API/schema version, the ENVIRONMENT,
   and the originating correlation id where one exists.  For
-  commercial events the event id is the CANONICAL core event id
+  contract events the event id is the CANONICAL command id
   CITED unchanged (never re-derived); for developerapi resource
   events it is content-derived over (environment, kind,
   resource, event type, version).
@@ -115,14 +116,24 @@ RETRY_BACKOFF_SECONDS = (60, 300, 1800, 7200, 21600)
 #: scheduled retries).
 MAX_DELIVERY_ATTEMPTS = 1 + len(RETRY_BACKOFF_SECONDS)
 
-#: The frozen webhook event-type vocabulary.
+#: The frozen webhook event-type vocabulary (the M013
+#: re-targeting onto the canonical contract surface: the
+#: contract/lease lifecycle events plus the retained endpoint
+#: registration; the W046-era commercial-plane events --
+#: offer.published, reservation.held, economic_policy.registered,
+#: connectivity_transaction.state_changed -- are demoted with
+#: their routes and replaced by the canonical contract
+#: equivalents; disclosed in docs/M013-evidence.md).
 EVENT_TYPES = (
-    "offer.published",
     "connectivity_intent.created",
-    "reservation.held",
-    "economic_policy.registered",
+    "connectivity_contract.offers_selected",
+    "connectivity_contract.activated",
+    "connectivity_contract.terminated",
+    "connectivity_contract.state_changed",
+    "connectivity_lease.granted",
+    "connectivity_lease.renewed",
+    "connectivity_lease.revoked",
     "webhook_endpoint.registered",
-    "connectivity_transaction.state_changed",
 )
 
 #: The event member set every signed payload carries.

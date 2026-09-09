@@ -1,68 +1,87 @@
-"""ADCOS developer platform package (WORK-046): the
-developer-facing Connectivity API, SDK & Webhook platform.
+"""ADCOS developer platform package (M013 — Developer
+Connectivity API, R7-CORE-001 child): the developer-facing
+Connectivity API, SDK & Webhook platform, harvested from the
+accepted WORK-046 era and translated onto the canonical
+Architecture 1.1 authority.
 
-Implements the frozen WORK-046 contract under the active
-authorization ``WORK-046-CORE-001`` (DEC-0065, baseline
-reconciled to ``3db7500`` by DEC-0066): a versioned, scoped,
+Implements the M013 contract (a REFACTOR of the W046-era
+surface, not a greenfield rewrite): a versioned, scoped,
 idempotent, deterministic developer API boundary over the
-accepted canonical commercial plane, with signed webhook
-observation delivery and an SDK that reproduces the canonical
-server semantics exactly.
+ACCEPTED CANONICAL CONTRACT AUTHORITY (the M002 contracts
+domain, DEC-0102), with signed webhook observation delivery
+and an SDK that reproduces the canonical server semantics
+exactly.
 
-The commercial operations the boundary supports (issue #90,
-native ADCOS semantics):
+The developer operations the boundary supports (the frozen
+Architecture 1.1 §12 developer-facing API semantics):
 
-- publishing connectivity offers
-- creating connectivity intents
-- reserving/leasing capacity
-- observing lifecycle (commercial state; NEVER physical
-  connectivity claims)
-- retrieving usage/billing records
-- configuring economic policy
+- creating connectivity intents (canonical contracts in
+  INTENT state, technology-neutral creation cores)
+- accepting provider offers (opaque TYPED REFERENCES ONLY --
+  the offers authority owns the semantics)
+- activating, inspecting and terminating connectivity
+  contracts (the full canonical state machine)
+- inspecting execution status and assurance (opaque typed
+  references + the contract-recorded outcomes)
+- retrieving usage semantics (the opaque usage-pricing-terms
+  typed reference)
+- contract-scoped leases (grant/renew/revoke)
 - receiving signed webhooks (observations only)
 
-Frozen authority boundary (mirrors the W044/W045 discipline):
+Frozen authority boundary (LOCK-101/LOCK-114, the M013
+re-bind):
 
 - The developer platform is an INTERFACE BOUNDARY, not a new
-  system authority.  It composes the accepted commercial
-  authorities through their PUBLIC surfaces only:
-  WORK-051 CommercialCore (submit_intent / hold_reservation
-  and the public reads), WORK-052 UsageLedger (public reads
-  only), WORK-053 AllocationLedger (register_policy and the
-  public reads).
-- It is NOT an identity authority (WORK-004), NOT a session
-  authority (WORK-012), NOT a NetworkPath authority (WORK-041),
-  NOT a routing engine (WORK-011), NOT a transport manager
-  (WORK-017), NOT an eligibility authority (WORK-045), and NOT
-  a payment boundary (WORK-044 owns payment-provider adapter
-  semantics and custody).  There is no authority object,
-  client, or private accessor for any of those planes anywhere
-  in this family: the commercial core is injected ALREADY
-  COMPOSED by the platform.
+  system authority.  It composes EXACTLY ONE canonical
+  authority -- the accepted contracts domain (M002) -- through
+  its PUBLIC surfaces only: the command submission
+  (``ContractStore.next_record``/``merge``) and the public
+  reads (contract/lease/journal projections).  It is NOT an
+  identity authority, NOT a session authority, NOT a
+  NetworkPath authority, NOT a routing engine, NOT a
+  transport manager, NOT an eligibility authority, NOT a
+  payment boundary, and NOT an offers/usage/assurance
+  authority (those child domains -- M003/M005/M009 -- are
+  referenced through opaque typed references ONLY; no second
+  domain model, no re-implementation of their internals).
+  There is no authority object, client, or private accessor
+  for any of those planes anywhere in this family: the
+  contract store is injected ALREADY COMPOSED by the platform.
+- No network implementation objects appear in the API surface
+  (LOCK-114): no sockets, adapters, transports or provider SDK
+  types; execution material rides the contract's opaque
+  typed references (LOCK-117: data, never authority).
 - API success NEVER implies physical connectivity success.  The
   lifecycle observation keeps the distinct statements distinct
   and never fabricates or promotes physical evidence.
-- Webhook delivery is an observation channel only: delivery
-  state never becomes canonical business state.  The channel's
-  DELIVERY OBLIGATION, however, is durable operational state of
-  the channel itself (persisted before the API response,
-  recovered across restart) -- durability of the obligation,
-  observational purity of the delivery state.
+- Webhook delivery is an observation channel only (the retained
+  W046 architecture): delivery state never becomes canonical
+  business state.  The channel's DELIVERY OBLIGATION, however,
+  is durable operational state of the channel itself (persisted
+  before the API response, recovered across restart) --
+  durability of the obligation, observational purity of the
+  delivery state.
 - Sandbox and production are non-interchangeable, isolated
   namespaces; sandbox results are never production or physical
   evidence.
 - Developer-facing errors preserve the canonical ADCOS reason
-  codes unchanged (no second reason-code authority).
+  codes unchanged (no second reason-code authority; the table
+  is re-bound to the contracts-domain vocabulary).
 - The SDK contains no hidden business authority (import
   discipline is battery-audited).
 
 Determinism discipline (the family precedent): every id,
 digest, record, and response body is content-derived over
-WORK-003 canonical JSON; the ONLY time source is the injected
-WORK-033 clock seam; no randomness, no UUIDs, no wall clock,
+the canonical JSON profile; the ONLY time source is the
+injected clock seam; no randomness, no UUIDs, no wall clock,
 no network, no live credentials; secrets (credential secrets,
 webhook signing secrets) are derived from the injected platform
-issuance key and NEVER journaled or logged.
+issuance key and NEVER journaled or logged.  Canonical command
+instants are REQUEST-DECLARED, so the canonical command
+identity is byte-stable across idempotent retries and the
+crash window closes through the canonical authority's own
+duplicate discipline plus the boundary's write-ahead
+idempotency holds.
 """
 
 from __future__ import annotations
@@ -108,6 +127,8 @@ from .journal import (
     CredentialRecord,
     FileApiStore,
     MemoryApiStore,
+    MutationAbandonedRecord,
+    MutationPendingRecord,
     MutationRecord,
     WebhookAttemptRecord,
     WebhookObligationRecord,
@@ -209,6 +230,8 @@ __all__ = [
     "CredentialRecord",
     "FileApiStore",
     "MemoryApiStore",
+    "MutationAbandonedRecord",
+    "MutationPendingRecord",
     "MutationRecord",
     "WebhookAttemptRecord",
     "WebhookObligationRecord",

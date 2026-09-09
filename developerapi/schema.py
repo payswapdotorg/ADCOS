@@ -1,7 +1,8 @@
-"""WORK-046 explicit, versioned API contract.
+"""M013 explicit, versioned API contract (the W046-era model
+harvested onto the Architecture 1.1 surface).
 
-The frozen W046 contract (criterion 1) requires an EXPLICIT
-versioned API schema with backward-compatibility guarantees:
+The retained versioned-API-schema machinery with backward-
+compatibility guarantees:
 
 - **API versioning**: the version namespace is the route prefix
   ``/api/{version}/...``; every request must ALSO carry the
@@ -60,16 +61,26 @@ versioned API schema with backward-compatibility guarantees:
 
 Resource schemas are DATA (field tables), not code paths: the
 developer-facing resource shapes below cover the canonical
-commercial surface the W046 contract names -- offers, intents,
-reservations/leases, lifecycle observations, usage records,
-billing records, economic policy, application credentials,
-webhook endpoints, and webhook deliveries.  The ADAPTED
-resources (intent/reservation/usage/billing/policy) serialize
-from the canonical subsystem projections unchanged in meaning:
-the boundary adds only the resource envelope (``resource``,
-``api_version``, ``environment``, ``request_id``) -- it never
-re-shapes, renames, or re-semantics canonical state (no second
-domain model).
+contract surface the Architecture 1.1 §12 developer-API
+semantics name -- connectivity intents, accepted-offer
+typed references, contract activation, termination, contract
+leases, application credentials, and webhook endpoints.  The
+ADAPTED resources (contract/lease projections) serialize from
+the canonical contracts-domain records unchanged in meaning:
+the boundary adds only the resource envelope (``kind``,
+``environment``) -- it never re-shapes, renames, or re-semantics
+canonical state (no second domain model).
+
+M013 version policy (disclosed in docs/M013-evidence.md): the
+2.0 major version carries the canonical Architecture 1.1
+surface; the 1.x line is RETIRED (the schema module's own
+gate classifies the 1.x -> 2.0 resource change as BREAKING --
+removal of the commercial-plane members -- which requires a
+new major version, and the 1.x backing bindings are superseded
+by the accepted contracts domain); 0.9 stays deprecated with
+its historical schema set (the retained machinery surfaces --
+credentials, webhook endpoints -- remain admitted with the
+deprecation notice); 0.8 stays retired.
 """
 
 from __future__ import annotations
@@ -81,8 +92,10 @@ from protocol.canonicalization import canonical_json_bytes
 
 from .errors import DeveloperApiError, DeveloperApiReasonCode
 
-#: The current major API version line.
-API_VERSION_CURRENT = "1.0"
+#: The current major API version line (the Architecture 1.1
+#: canonical contract surface; see the module docstring for the
+#: 1.x retirement disclosure).
+API_VERSION_CURRENT = "2.0"
 
 #: The header carrying the client-requested API version.
 API_VERSION_HEADER = "X-ADCOS-API-Version"
@@ -266,7 +279,15 @@ class ResourceSchema:
 
 
 # ---------------------------------------------------------------------------
-# The version-1.0 resource schema set
+# The historical version-1.0 / 1.1 resource schema sets (the
+# W046-era commercial-plane contract).  RETAINED AS DATA for the
+# deprecated 0.9 line (the last pre-2.0 admitted version); the
+# 1.0/1.1 versions themselves are RETIRED at the M013
+# translation (their resource semantics -- offer publication,
+# commercial intents/reservations, usage/billing reads,
+# economic policies -- are demoted to the M003/M009 child
+# domains per the migration matrix; the canonical surface is
+# 2.0).  Disclosed in docs/M013-evidence.md.
 # ---------------------------------------------------------------------------
 
 _OFFER_FIELDS_V1 = (
@@ -347,8 +368,24 @@ RESOURCE_SCHEMAS_V1: Dict[str, ResourceSchema] = {
     ),
 }
 
-#: The request-schema roles (which schema validates which body).
+#: The request-schema roles of the CURRENT canonical surface
+#: (which schema validates which mutation body; the roles are
+#: looked up per the request's OWN version schema set).
 REQUEST_SCHEMA_ROLES = {
+    "POST /intents": "intent_request",
+    "POST /intents/{}/offers": "offer_selection",
+    "POST /intents/{}/activation": "activation_request",
+    "POST /contracts/{}/termination": "termination_request",
+    "POST /contracts/{}/leases": "lease_request",
+    "POST /leases/{}/renewal": "lease_renewal",
+    "POST /leases/{}/revocation": "lease_revocation",
+    "POST /webhook-endpoints": "webhook_endpoint",
+}
+
+#: The retained W046-era 1.x roles (historical data; the demoted
+#: routes no longer dispatch, so these roles are unreachable on
+#: the canonical route table).
+REQUEST_SCHEMA_ROLES_V1 = {
     "POST /offers": "offer",
     "POST /webhook-endpoints": "webhook_endpoint",
     "POST /economic-policies": "economic_policy",
@@ -357,10 +394,12 @@ REQUEST_SCHEMA_ROLES = {
 }
 
 # ---------------------------------------------------------------------------
-# The version-1.1 schema set: the ADDITIVE evolution of 1.0
-# (one optional field gained on the offer resource, one v1.0
-# field marked deprecated).  This is the live demonstration
-# lineage the compatibility battery exercises.
+# The version-1.1 schema set: the historical ADDITIVE evolution
+# of 1.0 (one optional field gained on the offer resource, one
+# v1.0 field marked deprecated).  Retained as the compatibility
+# machinery's demonstration lineage (the battery exercises the
+# classification gate on these constructed pairs); the 1.1
+# version itself is RETIRED at the M013 translation.
 # ---------------------------------------------------------------------------
 
 _OFFER_FIELDS_V1_1 = _OFFER_FIELDS_V1 + (
@@ -388,6 +427,130 @@ _OFFER_FIELDS_V1_1 = tuple(
 
 RESOURCE_SCHEMAS_V1_1: Dict[str, ResourceSchema] = dict(RESOURCE_SCHEMAS_V1)
 RESOURCE_SCHEMAS_V1_1["offer"] = ResourceSchema("offer", "1.1", _OFFER_FIELDS_V1_1)
+
+
+# ---------------------------------------------------------------------------
+# The version-2.0 resource schema set: the canonical
+# Architecture 1.1 contract surface (technology-neutral,
+# LOCK-114).  Every request member is either structural
+# metadata (the request-declared command instant, which makes
+# the canonical command identity stable across idempotent
+# retries) or canonical contract material delivered as OPAQUE
+# TYPED REFERENCES (requirements, accepted offers, usage terms,
+# assurance obligations, execution scope, signatures, the
+# supersession link) -- the boundary never interprets another
+# child domain's semantics (LOCK-102/LOCK-114: no network
+# implementation objects, no second domain model).
+# ---------------------------------------------------------------------------
+
+#: The canonical intent-creation request: the technology-
+#: neutral creation core of a connectivity contract (frozen
+#: Architecture 1.1 §3).  ``recorded_at`` is the request-
+#: declared command instant (retry-stable canonical identity);
+#: every semantics-bearing member is canonical contract material
+#: validated by the contracts domain itself.
+_INTENT_REQUEST_FIELDS_V2 = (
+    FieldSpec("requirements", "list"),
+    FieldSpec("validity", "mapping"),
+    FieldSpec("termination", "mapping"),
+    FieldSpec("recorded_at", "text"),
+    FieldSpec("hard_constraints", "list", required=False),
+    FieldSpec("beneficiaries", "list", required=False),
+    FieldSpec("service_properties", "list", required=False),
+    FieldSpec("usage_pricing_terms", "mapping", required=False),
+    FieldSpec("assurance_obligations", "list", required=False),
+    FieldSpec("execution_scope", "list", required=False),
+    FieldSpec("superseded_contract", "mapping", required=False),
+)
+
+#: The accepted-offer selection request: OFFERS SEMANTICS STAY
+#: THE M003 AUTHORITY'S -- the request carries the accepted
+#: offer references as opaque TYPED REFERENCES only
+#: (``ref_kind: "offer"``); the boundary validates the reference
+#: shape and passes it through; it never interprets, prices, or
+#: re-models an offer.
+_OFFER_SELECTION_FIELDS_V2 = (
+    FieldSpec("offers", "list"),
+    FieldSpec("recorded_at", "text"),
+)
+
+#: The contract activation request: the request-declared
+#: activation instant (canonically validated against the
+#: contract's validity interval) and the signature typed
+#: references.
+_ACTIVATION_REQUEST_FIELDS_V2 = (
+    FieldSpec("activated_at", "text"),
+    FieldSpec("signature_refs", "list"),
+)
+
+#: The contract termination request: the declared termination
+#: condition (must be declared in the contract's termination
+#: rules), the recorded reason, and the request-declared command
+#: instant.
+_TERMINATION_REQUEST_FIELDS_V2 = (
+    FieldSpec("condition", "text"),
+    FieldSpec("reason", "text"),
+    FieldSpec("recorded_at", "text"),
+)
+
+#: The contract-scoped lease grant request: the request-declared
+#: lease window (all three members canonically validated: the
+#: window must lie inside the contract validity).
+_LEASE_REQUEST_FIELDS_V2 = (
+    FieldSpec("granted_at", "text"),
+    FieldSpec("not_before", "text"),
+    FieldSpec("not_after", "text"),
+)
+
+#: The lease renewal request: the successor lease window
+#: (renewal creates a NEW lease record; the predecessor flips to
+#: ``renewed`` -- the audit trail).
+_LEASE_RENEWAL_FIELDS_V2 = (
+    FieldSpec("granted_at", "text"),
+    FieldSpec("not_before", "text"),
+    FieldSpec("not_after", "text"),
+)
+
+#: The lease revocation request: the recorded reason and the
+#: request-declared command instant.
+_LEASE_REVOCATION_FIELDS_V2 = (
+    FieldSpec("reason", "text"),
+    FieldSpec("recorded_at", "text"),
+)
+
+#: The webhook-endpoint registration request (RETAINED VERBATIM
+#: from the W046 1.x contract: url + event_types).
+_WEBHOOK_ENDPOINT_FIELDS_V2 = (
+    FieldSpec("url", "text"),
+    FieldSpec("event_types", "list"),
+)
+
+RESOURCE_SCHEMAS_V2: Dict[str, ResourceSchema] = {
+    "intent_request": ResourceSchema(
+        "intent_request", "2.0", _INTENT_REQUEST_FIELDS_V2
+    ),
+    "offer_selection": ResourceSchema(
+        "offer_selection", "2.0", _OFFER_SELECTION_FIELDS_V2
+    ),
+    "activation_request": ResourceSchema(
+        "activation_request", "2.0", _ACTIVATION_REQUEST_FIELDS_V2
+    ),
+    "termination_request": ResourceSchema(
+        "termination_request", "2.0", _TERMINATION_REQUEST_FIELDS_V2
+    ),
+    "lease_request": ResourceSchema(
+        "lease_request", "2.0", _LEASE_REQUEST_FIELDS_V2
+    ),
+    "lease_renewal": ResourceSchema(
+        "lease_renewal", "2.0", _LEASE_RENEWAL_FIELDS_V2
+    ),
+    "lease_revocation": ResourceSchema(
+        "lease_revocation", "2.0", _LEASE_REVOCATION_FIELDS_V2
+    ),
+    "webhook_endpoint": ResourceSchema(
+        "webhook_endpoint", "2.0", _WEBHOOK_ENDPOINT_FIELDS_V2
+    ),
+}
 
 
 # ---------------------------------------------------------------------------
@@ -421,26 +584,49 @@ class ApiVersionSpec:
             )
 
 
-#: The frozen registered API versions (single site).
+#: The frozen registered API versions (single site; the M013
+#: re-targeting disclosed in docs/M013-evidence.md: 2.0 is the
+#: canonical Architecture 1.1 surface; the 1.x line is retired
+#: with the honest migration notices; 0.9 remains deprecated
+#: with its historical schema set; 0.8 remains retired).
 API_VERSIONS: Dict[str, ApiVersionSpec] = {
-    "1.0": ApiVersionSpec(
-        version="1.0",
+    "2.0": ApiVersionSpec(
+        version="2.0",
         status="supported",
         notice="",
-        schemas=RESOURCE_SCHEMAS_V1,
+        schemas=RESOURCE_SCHEMAS_V2,
     ),
     "1.1": ApiVersionSpec(
         version="1.1",
-        status="supported",
-        notice="",
+        status="retired",
+        notice=(
+            "API version 1.1 is retired at the M013 translation: the 1.x "
+            "commercial-plane resource surface (offer publication, "
+            "commercial intent/reservation projections, usage/billing "
+            "reads, economic policies) is superseded by the Architecture "
+            "1.1 canonical contract surface; migrate to 2.0"
+        ),
         schemas=RESOURCE_SCHEMAS_V1_1,
+    ),
+    "1.0": ApiVersionSpec(
+        version="1.0",
+        status="retired",
+        notice=(
+            "API version 1.0 is retired at the M013 translation: the 1.x "
+            "commercial-plane resource surface is superseded by the "
+            "Architecture 1.1 canonical contract surface; migrate to 2.0"
+        ),
+        schemas=RESOURCE_SCHEMAS_V1,
     ),
     "0.9": ApiVersionSpec(
         version="0.9",
         status="deprecated",
         notice=(
-            "API version 0.9 is deprecated: migrate to 1.0; 0.9 requests "
-            "remain admitted with this notice until retirement"
+            "API version 0.9 is deprecated: migrate to 2.0; 0.9 requests "
+            "remain admitted with this notice until retirement (the "
+            "retained machinery surfaces -- the application self read "
+            "and webhook endpoints -- are shared; the 1.x-era commercial "
+            "resource routes no longer dispatch)"
         ),
         schemas=RESOURCE_SCHEMAS_V1,
     ),
