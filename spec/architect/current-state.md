@@ -68,6 +68,20 @@ implemented from the accepted 1.1 architecture. Its goal is to normalize
 heterogeneous connectivity resources into programmable offers selected by intent,
 policy, evidence, availability, geography, quality and price.
 
+## Evidence obligations
+
+The following external evidence obligations remain open and must remain visible in every current-state projection until an Architect decision closes them:
+
+- `EVID-002` — real SDR hardware topology for WORK-020.
+- `EVID-003` — Raspberry Pi-class physical hardware for WORK-034.
+- `EVID-004` — physical Android handset-backed second-path rebind/handover for WORK-035.
+- `EVID-005` — physical Network-in-a-Box deployment at a real isolated site for WORK-036.
+- `EVID-006` — real 5G interoperability lab for WORK-037.
+- `EVID-007` — real users and physical devices for the WORK-040 pilot.
+- `EVID-008` — a real 5G access path for the WORK-040 pilot.
+
+`EVID-001` is closed and remains the only currently closed physical obligation.
+
 ## Source of truth
 
 This file is a current-state projection only. Lifecycle history is governed by `spec/architect/execution-ledger.yaml`; architecture-transition authority by accepted ACRs and the 1.1 target package during promotion; program order by `spec/architect/roadmap.yaml`; permission by `spec/architect/authorizations/`. No conversation context is required or authoritative.
