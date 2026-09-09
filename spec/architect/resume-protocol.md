@@ -24,13 +24,20 @@ A brand-new Architect, Tech Lead, worker, or implementation agent must resume fr
 
 ## Current checkpoint
 
-The latest reconciled software mainline is `88a73720d8ff28e95728a03e13db631ffdf9688f`.
+The latest reconciled software mainline is the M001 acceptance merge
+`80292c24502200f84d11491ed12e9cec5e5baf11` (PR #25, DEC-0100).
 
 - R6 Provider Onboarding & Federation is complete under `DEC-0097`.
-- `WORK-057-CORE-001` is closed.
-- No implementation authorization is active.
-- The immediate forward gate is **M001 — Architecture 1.1 Freeze**.
-- R7 Universal Connectivity Commerce follows M001 and MUST be implemented from the accepted Architecture 1.1 successor package.
+- M001 — Architecture 1.1 Freeze is complete under `DEC-0100`: Architecture 1.1
+  is the sole normative forward architecture (`spec/architecture.md` FROZEN v1.1,
+  LOCK-101..LOCK-120); Architecture 1.0 is preserved historical evidence at
+  `spec/history/`; ACR-014 is ACCEPTED.
+- `M001-CORE-001` is closed. No implementation authorization is active.
+- The immediate forward gate is **R7 — Universal Connectivity Commerce**
+  (UNLOCKED, NOT ACTIVATED): it requires its own gate-specific Work Item
+  contract, dependency overlay, evidence obligations, and repository-local
+  implementation authorization before any implementation. First candidate:
+  M002 — Connectivity Contract Core.
 - R4/W040 remains an independent physical-validation track and is not replaced by the software roadmap.
 - W048 remains accepted-not-restored and MUST NOT be recreated, mocked, or substituted implicitly.
 

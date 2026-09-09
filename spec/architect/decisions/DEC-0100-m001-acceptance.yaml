@@ -1,0 +1,55 @@
+# DEC-0100 — M001 acceptance: Architecture 1.1 Freeze accepted, authorization closed, R7 unlocked
+# Sole-Architect governance decision, single-agent mode.
+decision_id: DEC-0100
+date: "2026-09-09"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M001
+authorization: M001-CORE-001
+
+review_basis: "Sole-Architect review of the exact M001 delivery head 36bfd8e636feafb531ef551a2e15793b57cc2f00 (PR #25, branch m001-architecture-1.1-freeze, branch point 725397ffd60e7d8f44c24c85c86037f43ff6c303): all four current-governance gates re-run locally on the exact head (current_spec_check PASS, tech_lead_guard PASS, architecture_drift_guard PASS with a governance-only 27-file control-plane delta, fresh_session_check PASS against the pinned branch point), PR-head CI green (run 34357122687), the 1.0 archive verified byte-verbatim against the branch point for all four snapshot files, LOCK-101..LOCK-120 all present in the canonical lock file, the accepted-proposal records carrying ACCEPTED headers, and ACR-014 ACCEPTED with the DEC-0098 approval path."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 25
+  pr_head: 36bfd8e636feafb531ef551a2e15793b57cc2f00
+  branch: "m001-architecture-1.1-freeze"
+  branch_point: 725397ffd60e7d8f44c24c85c86037f43ff6c303
+  merge_sha: 80292c24502200f84d11491e9cec5e5baf11
+  merged_at: "2026-09-09T14:09:22Z"
+  ci_run_at_head: 34357122687
+
+acceptance_findings:
+  - "Every M001.yaml acceptance criterion was reproduced by the Architect against the exact delivery head before the merge: successor snapshots canonical (spec/architecture.md FROZEN v1.1, LOCK-101..LOCK-120), 1.0 snapshot preserved byte-verbatim under spec/history/ (machine-proven), M001-M014 successor registry and 1.1 dependency model canonical, migration classification matrix and vertical-proof boundaries accepted as governance artifacts, ACR-014 ACCEPTED, accepted-proposal records with ACCEPTED status headers."
+  - "P0 governance defect found during pre-acceptance review and repaired BEFORE this acceptance (commit 3e3ea3b, recorded below): tools/current_spec_check.py never aggregated its errors — every invariant after the missing-files gate was dead code and the checker unconditionally printed PASS, so the M001 delivery's fail-closed property was vacuous. The repair adds the terminal fail-closed gate and aligns four dead markers to the authoritative wording."
+  - "Real state gap unmasked by the repaired checker and repaired in the same commit 3e3ea3b: the R6 WORK-057 acceptance projection was never appended to the execution ledger (the dead-code requirement had masked it); the entry is now appended with the DEC-0095/DEC-0096/DEC-0097 provenance preserved exactly."
+  - "Push-CI defect found at the merge: the PR #25 merge push (run 34361750390) ran the implementation-domain batteries BLOCKING (an empty push diff is not governance-classified) and conformance case_63 failed against its era-stale frozen-authority mirror (pinned to the W054 merge, before the legitimate M001 promotion of the canonical snapshots). Repaired in 3e3ea3b by re-baselining the mirror to the M001 acceptance merge 80292c2 — the same battery-mirror-reconciliation class as DEC-0099, executed as recorded direct mainline-integrity reconciliation. Post-repair, main push CI is green and the frozen 1.1 canonical files are enforced byte-exactly."
+
+repairs_recorded:
+  - commit: 3e3ea3b044048f2d0386fbce1c90b64b0e9e4e8c
+    summary: "current_spec_check fail-closed aggregation + marker alignment; WORK-057 ledger projection appended; conformance case_63 frozen-authority mirror re-baselined to the M001 acceptance merge (DEC-0099 battery-mirror class)"
+    verified: "current_spec_check PASS with real enforcement; tech_lead_guard PASS; architecture_drift_guard PASS at the pushed state; conformance battery 63/63 at the pushed state; push CI run 34363339714"
+
+accepted_scope:
+  - "M001 — Architecture 1.1 Freeze is ACCEPTED at the exact delivery head 36bfd8e636feafb531ef551a2e15793b57cc2f00, merged as 80292c24502200f84d11491ed12e9cec5e5baf11."
+  - "M001-CORE-001 is closed by this acceptance; no implementation authorization remains active."
+  - "Roadmap advances to v1.7: M001 COMPLETE with this decision and the exact merge SHA; R7_UNIVERSAL_CONNECTIVITY_COMMERCE becomes the next gate, UNLOCKED and NOT ACTIVATED."
+  - "The current-governance checkers (tools/current_spec_check.py, tools/fresh_session_check.py) are evolved to the post-acceptance invariants and fail closed against pre-acceptance markers (M001-ACTIVE, implementing-M001, open ACR-014)."
+  - "Execution state, execution ledger, authorization closure, current-state projection, resume protocol, and the M001 work-item contract are reconciled to this acceptance without rewriting any historical record."
+
+rejected_scope:
+  - "R7 is NOT activated by this decision: the gate-specific R7 Work Item contract, dependency overlay, evidence obligations, and repository-local implementation authorization require their own decision (DEC-0101+)."
+  - "No Architecture/protocol semantic change beyond the accepted 1.1 freeze; ACR-014 remains ACCEPTED, not superseded."
+  - "No physical-world obligation is created or closed: W040 remains independently in-review; EVID-007 and EVID-008 remain OPEN, physical, and W040-owned; W048 remains accepted-not-restored."
+  - "No rewriting of any historical acceptance record, ledger entry, decision, or archived 1.0 content."
+
+evidence:
+  - "docs/M001-evidence.md §7 persists the acceptance record: the exact-head verification matrix, the discovered defects, their repairs, and the merge/CI facts."
+  - "SOFTWARE-class evidence only for all M001 criteria; the PHYSICAL class remains NOT-TESTABLE/OPEN per the authorization's evidence_classes."
+
+downstream_effect:
+  - "Forward implementation is gated on the R7 activation decision; until then the implementation halt holds (mode: awaiting-architect-decisions)."
+  - "All successor Work Items MUST derive from the accepted Architecture 1.1 package (M001-M014 registry, 1.1 dependency graph); Architecture 1.0 is migration/history only."
+  - "The M002 Connectivity Contract Core is the first R7-gate implementation candidate per the accepted 1.1 dependency model."

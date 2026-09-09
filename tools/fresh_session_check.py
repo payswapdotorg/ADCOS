@@ -63,6 +63,8 @@ def main() -> int:
         "spec/architect/authorizations/M001.yaml",
         "spec/architect/decisions/DEC-0098-m001-activation.yaml",
         "spec/architect/decisions/DEC-0099-m001-battery-reconciliation.yaml",
+        "spec/architect/decisions/DEC-0100-m001-acceptance.yaml",
+        "spec/architect/decisions/DEC-0100-m001-acceptance.yaml",
         "spec/acr/ACR-014-architecture-1.1-freeze.md",
         "spec/history/README.md",
         "spec/history/architecture-1.0.md",
@@ -96,23 +98,25 @@ def main() -> int:
         (resume, "Fresh-session guarantee", "resume protocol must define fresh-session sufficiency"),
         (resume, "M001 — Architecture 1.1 Freeze", "resume protocol must identify the 1.1 transition gate"),
         (roadmap, "mandatory_forward_target: \"Architecture 1.1\"", "roadmap must declare 1.1 as mandatory forward target"),
-        (roadmap, "next_gate: M001_ARCHITECTURE_1_1_FREEZE", "roadmap must put the 1.1 promotion gate before R7"),
+        (roadmap, "next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE", "roadmap must put R7 as the next gate after the accepted M001"),
+        (roadmap, 'roadmap_version: "1.7"', "roadmap must be advanced to the post-M001-acceptance version 1.7"),
+        (roadmap, "program_state: R7_UNLOCKED_NOT_ACTIVATED", "roadmap must record the post-acceptance R7-unlocked program state"),
     ]
     for text, marker, message in required_markers:
         if marker.lower() not in text.lower():
             failures.append(message)
 
-    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "Exactly one implementation authorization is active", "Architecture 1.0 is preserved historical evidence"]:
+    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "No implementation authorization is active", "Architecture 1.0 is preserved historical evidence", "R7 — Universal Connectivity Commerce"]:
         if marker.lower() not in current.lower():
-            failures.append(f"current-state.md missing transition checkpoint marker: {marker}")
+            failures.append(f"current-state.md missing post-acceptance checkpoint marker: {marker}")
 
-    for marker in ["roadmap_version: \"1.6\"", "program_state: M001_ARCHITECTURE_1_1_FREEZE_ACTIVE", "active_work_item: M001", "active_authorization: M001-CORE-001", "next_gate: M001_ARCHITECTURE_1_1_FREEZE"]:
+    for marker in ['roadmap_version: "1.7"', "program_state: R7_UNLOCKED_NOT_ACTIVATED", "active_work_item: null", "active_authorization: null", "next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE", "completion_decision: DEC-0100"]:
         if marker not in roadmap:
             failures.append(f"roadmap.yaml missing current authoritative marker: {marker}")
 
-    for marker in ["mode: implementing", "active_work_item: M001", "active_authorization: M001-CORE-001", "M001 — Architecture 1.1 Freeze", "R7 requires its own gate-specific Work Item authorization"]:
+    for marker in ["mode: awaiting-architect-decisions", "active_work_item: null", "active_authorization: null", "gate-specific R7 Work Item contract", "R7 — Universal Connectivity Commerce"]:
         if marker not in execution:
-            failures.append(f"execution-state.yaml missing current transition marker: {marker}")
+            failures.append(f"execution-state.yaml missing post-acceptance marker: {marker}")
 
     proposal = ROOT / "spec/architecture-1.1-proposed.md"
     if proposal.exists() and "mandatory forward implementation target" not in agents.lower():
@@ -133,6 +137,20 @@ def main() -> int:
     acr14 = read("spec/acr/ACR-014-architecture-1.1-freeze.md")
     if "## Status\nACCEPTED" not in acr14:
         failures.append("ACR-014 must record its ACCEPTED status")
+
+    # post-acceptance closure: M001-CORE-001 is closed by DEC-0100 (fail
+    # closed against the pre-acceptance M001-ACTIVE markers)
+    m001_auth = ROOT / "spec/architect/authorizations/M001.yaml"
+    if m001_auth.is_file():
+        m001_text = m001_auth.read_text(encoding="utf-8")
+        if not re.search(r"^status:\s*accepted\s*$", m001_text, re.MULTILINE):
+            failures.append("M001 authorization must be status accepted after the DEC-0100 acceptance")
+        if not re.search(r"^authorized:\s*false\s*$", m001_text, re.MULTILINE):
+            failures.append("M001 authorization must be authorized false after the DEC-0100 acceptance")
+        if "acceptance_decision: DEC-0100" not in m001_text:
+            failures.append("M001 authorization acceptance gate must record DEC-0100")
+        if "acceptance_merge_sha: 80292c24502200f84d11491ed12e9cec5e5baf11" not in m001_text:
+            failures.append("M001 authorization acceptance gate must record the exact acceptance merge")
 
     auth_root = ROOT / "spec/architect" / "authorizations"
     active = 0

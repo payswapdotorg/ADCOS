@@ -1,8 +1,10 @@
 # ADCOS Work Item authorization record — M001 Architecture 1.1 Freeze.
-# Issued by DEC-0098. Closes upon the DEC-0099 acceptance of the M001 delivery.
+# Issued by DEC-0098; scope amended by DEC-0099; accepted by DEC-0100.
+# The authorization is closed by sole-Architect acceptance DEC-0100
+# (delivery head 36bfd8e, acceptance merge 80292c2).
 work_item: M001
-status: active
-authorized: true
+status: accepted
+authorized: false
 type: implementation
 authorization_id: "M001-CORE-001"
 authorization_decision: DEC-0098
@@ -12,7 +14,7 @@ scope_amendment_chain:
 superseded_by: null
 supersession_decision: null
 baseline_sha: 40737a0c716eff3ad05753431c24c2717afb2a68
-review_basis: "DEC-0098 activated M001 as the sole transition Work Item from the PR #24-merged mainline. DEC-0099 amends the scope with the battery-mirror synchronization surface. The delivery must be governance-classified (control-plane-only), reviewed by the sole Architect, and accepted before ACR-014 becomes ACCEPTED."
+review_basis: "DEC-0098 activated M001 as the sole transition Work Item from the PR #24-merged mainline. DEC-0099 amended the scope with the battery-mirror synchronization surface. DEC-0100 accepts the exact delivery head 36bfd8e636feafb531ef551a2e15793b57cc2f00 (PR #25, branch m001-architecture-1.1-freeze, branch point 725397ffd60e7d8f44c24c85c86037f43ff6c303), merged as 80292c24502200f84d11491ed12e9cec5e5baf11. Pre-acceptance repairs recorded by DEC-0100: commit 3e3ea3b (current_spec_check fail-closed aggregation + marker alignment, WORK-057 ledger projection appended, conformance case_63 frozen-authority mirror re-baseline)."
 dependencies: []
 authority_inputs:
   - "spec/mission.md (permanent Mission Authority)"
@@ -81,9 +83,9 @@ evidence_classes:
     class: PHYSICAL
     allowed_statuses: [NOT-TESTABLE, OPEN]
 acceptance_gate:
-  status: "authorized-pending-delivery"
-  acceptance_decision: null
-  accepted_delivery_sha: null
-  acceptance_merge_sha: null
+  status: "accepted"
+  acceptance_decision: DEC-0100
+  accepted_delivery_sha: 36bfd8e636feafb531ef551a2e15793b57cc2f00
+  acceptance_merge_sha: 80292c24502200f84d11491ed12e9cec5e5baf11
 handoff: "spec/architect/work-items/M001.md"
 handoff_required: true

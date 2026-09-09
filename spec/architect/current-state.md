@@ -1,27 +1,27 @@
 # ADCOS Current State
 
-**M001 IN REVIEW — the Architecture 1.1 Freeze delivery is on branch `m001-architecture-1.1-freeze` awaiting sole-Architect acceptance (DEC-0100); Architecture 1.1 is promoted as the sole normative forward architecture by this delivery.**
+**M001 ACCEPTED (DEC-0100) — Architecture 1.1 is the sole normative forward architecture, FROZEN with ACR-014 ACCEPTED; no implementation authorization is active; R7 — Universal Connectivity Commerce is the next unlocked (not activated) gate.**
 
 ## Repository
 
 - Repository: `github.com/payswapdotorg/ADCOS`
-- Delivery branch point: `725397ffd60e7d8f44c24c85c86037f43ff6c303` (main CI green; PR #24 merge + DEC-0098 activation + guard repair + DEC-0099 battery-mirror reconciliation)
+- M001 delivery: PR #25 head `36bfd8e636feafb531ef551a2e15793b57cc2f00` (branch `m001-architecture-1.1-freeze`, branch point `725397ffd60e7d8f44c24c85c86037f43ff6c303`), Architect-accepted under `DEC-0100` and merged as `80292c24502200f84d11491ed12e9cec5e5baf11`
+- Pre-acceptance governance repair: `3e3ea3b` (current_spec_check fail-closed aggregation + marker alignment; WORK-057 ledger projection appended; conformance case_63 frozen-authority mirror re-baselined to the acceptance merge; main push CI green)
 - R6 implementation delivery: `58eced2f7864bd8d6e9cac658574d8c7b0b48965`, accepted under `DEC-0097`, merged as PR #23 at `a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19`
-- Architecture: Version `1.1` FROZEN in the M001 delivery (`spec/architecture.md`); Version 1.0 preserved verbatim at `spec/history/architecture-1.0.md`
+- Architecture: Version `1.1` FROZEN (`spec/architecture.md`, LOCK-101..LOCK-120); Version 1.0 preserved verbatim at `spec/history/architecture-1.0.md`
 - Protocol baseline: `1.0` frozen unless/until a successor is separately accepted
-- Roadmap: `1.6` frozen / authoritative (advances to 1.7 at the DEC-0100 acceptance)
+- Roadmap: `1.7` frozen / authoritative (advanced from 1.6 by DEC-0100)
 
 ## Program authority
 
-`spec/architect/roadmap.yaml` is the sole canonical program roadmap. R0, R1, R2, R3, R5 and R6 are complete. R4 remains an independent physical-validation track under W040. M001 — Architecture 1.1 Freeze — is ACTIVE and IN REVIEW (delivery branch `m001-architecture-1.1-freeze`). R7 remains the business-program gate that follows the M001 acceptance.
+`spec/architect/roadmap.yaml` is the sole canonical program roadmap. R0, R1, R2, R3, R5, R6 and M001 — Architecture 1.1 Freeze — are complete. R4 remains an independent physical-validation track under W040. R7 — Universal Connectivity Commerce — is the next gate: UNLOCKED and NOT ACTIVATED, awaiting its gate-specific Work Item contract, dependency overlay, evidence obligations, and repository-local implementation authorization.
 
 ## Execution authority
 
-- `active_work_item: M001` (in review)
-- `active_authorization: M001-CORE-001` (issued by `DEC-0098`; scope amended by `DEC-0099`)
-- Exactly one implementation authorization is active: `M001-CORE-001`. All W-item authorizations remain closed.
-- The M001 delivery is a pure architecture/governance transition: it promotes the 1.1 successor snapshots into the canonical files, preserves the 1.0 snapshot verbatim under `spec/history/`, flips ACR-014 to ACCEPTED, and evolves the current-governance checkers to the post-freeze invariants. Sole-Architect review of the exact delivery head and the DEC-0100 acceptance close M001.
-- After M001 acceptance, subsequent feature Work Items MUST be derived from the 1.1 work-item/dependency package and MUST NOT revert to 1.0 semantics.
+- `active_work_item: null` — implementation is halted pending the R7 activation decision
+- `active_authorization: null` — no implementation authorization is active; `M001-CORE-001` is closed by the `DEC-0100` acceptance (status accepted, authorized false)
+- M001 delivered a pure architecture/governance transition: the 1.1 successor snapshots are canonical, the 1.0 snapshot is preserved verbatim under `spec/history/`, ACR-014 is ACCEPTED, and the current-governance checkers enforce the post-acceptance invariants and fail closed on pre-acceptance markers.
+- Subsequent feature Work Items MUST be derived from the accepted 1.1 work-item/dependency package (M001-M014) and MUST NOT revert to 1.0 semantics.
 
 ## Historical accepted state
 
@@ -58,16 +58,13 @@ transition/migration work may proceed.
 
 ## Next gate
 
-M001 — Architecture 1.1 Freeze — is the ACTIVE transition gate under
-authorization M001-CORE-001. Its governance-classified delivery must produce
-the accepted Architecture 1.1/lock snapshots (promoted into
-`spec/architecture.md` / `spec/architecture-lock.md`), the successor work-item
-registry and dependency graph, the archived 1.0 snapshot under `spec/history/`,
-migration classifications, vertical-proof boundaries, and durable acceptance
-evidence (DEC-0099).
-
-R7 — Universal Connectivity Commerce — follows the transition and must be
-implemented from the accepted 1.1 architecture. Its goal is to normalize
+R7 — Universal Connectivity Commerce — is the next gate: UNLOCKED (its M001
+prerequisite is satisfied by DEC-0100) and NOT ACTIVATED. Activation requires
+the gate-specific R7 Work Item contract, dependency overlay, evidence
+obligations, and repository-local implementation authorization before any
+implementation. The first implementation candidate is M002 — Connectivity
+Contract Core (canonical contract, lifecycle, hard constraints, lease/expiry
+and authority uniqueness) per the accepted 1.1 dependency model. Its goal is to normalize
 heterogeneous connectivity resources into programmable offers selected by intent,
 policy, evidence, availability, geography, quality and price.
 

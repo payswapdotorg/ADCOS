@@ -99,3 +99,74 @@ The delivery promotes the Architecture 1.1 successor snapshots:
 
 The exact delivery head SHA is recorded at review; the DEC-0100 acceptance
 closes M001 (roadmap 1.7, authorization closed, R7 next unlocked).
+
+## 7. Acceptance (DEC-0100)
+
+**Accepted:** 2026-09-09, sole-Architect decision DEC-0100.
+**Exact delivery head:** `36bfd8e636feafb531ef551a2e15793b57cc2f00` (PR #25).
+**Acceptance merge:** `80292c24502200f84d11491ed12e9cec5e5baf11` (merge commit;
+the second parent is the exact reviewed head). PR-head CI green (run
+34357122687).
+
+### Pre-acceptance review findings and repairs (commit `3e3ea3b`, recorded by DEC-0100)
+
+Adversarial review of the exact head surfaced three real defects, all repaired
+BEFORE the acceptance was registered (governance-infrastructure repair, the
+51b8fd5/DEC-0099 class):
+
+1. **`tools/current_spec_check.py` never aggregated its errors.** The only
+   `if errors: return 1` gate sat behind the missing-files check; every
+   marker, ledger, authorization, and archive invariant after it was dead
+   code and the checker unconditionally printed PASS. The M001 delivery's
+   "checkers validate the post-freeze state" property was therefore vacuous.
+   Repair: terminal fail-closed gate added; four dead markers aligned to the
+   authoritative wording (markdown-normalized, matching fresh_session_check).
+   Post-repair, the checker genuinely enforces the invariants.
+2. **The R6 WORK-057 acceptance projection was never appended to the
+   execution ledger** — the dead-code W057 requirement had masked the gap.
+   Repair: the WORK-057 accepted-merged entry appended with the exact
+   DEC-0095/DEC-0096/DEC-0097 and PR #23 provenance.
+3. **The PR #25 merge push ran the implementation-domain batteries BLOCKING
+   and conformance `case_63` failed against its era-stale frozen-authority
+   mirror** (pinned to the W054 merge; an empty push diff is not
+   governance-classified, so the continue-on-error tolerance does not apply
+   on push). Repair: the mirror re-baselined to the M001 acceptance merge
+   `80292c2` — post-repair it enforces the frozen 1.1 canonical files
+   byte-exactly (battery-mirror reconciliation, DEC-0099 class).
+
+Post-repair verification at `3e3ea3b`: `current_spec_check` PASS with real
+enforcement · `tech_lead_guard` PASS · `architecture_drift_guard` PASS at the
+pushed state · conformance battery **63/63** · main push CI green (run
+34363339714).
+
+### Acceptance verification matrix (reproduced by the Architect)
+
+- All M001-CORE-001 acceptance criteria reproduced on the exact head before
+  the merge (see §6); 1.0 archive byte-verbatim (four files machine-proven
+  against the branch point); LOCK-101..LOCK-120 all 20 present; the
+  accepted-proposal records carry ACCEPTED headers; ACR-014 ACCEPTED with
+  the DEC-0098 approval path.
+- Roadmap advances to v1.7: M001 COMPLETE (completion decision DEC-0100,
+  completion merge SHA `80292c2`); R7 UNLOCKED and NOT ACTIVATED.
+- M001-CORE-001 closed (status accepted, authorized false, acceptance gate
+  filled with DEC-0100, the exact delivery head, and the acceptance merge).
+- Execution state, execution ledger (M001 accepted-merged entry +
+  LEDGER-RECON-014), current-state projection, resume protocol, and the M001
+  work-item contract reconcile to this acceptance; no historical record is
+  rewritten.
+- The current-governance checkers are evolved to the post-acceptance
+  invariants and fail closed against pre-acceptance markers (M001-ACTIVE,
+  implementing-M001, ACR-014 open).
+- SOFTWARE-class evidence only; the PHYSICAL class remains NOT-TESTABLE/OPEN
+  (no physical-world obligation created or closed; EVID-007/EVID-008 remain
+  open, physical, and W040-owned).
+
+### Downstream state
+
+- No implementation authorization is active; the implementation halt holds
+  (mode: awaiting-architect-decisions).
+- R7 — Universal Connectivity Commerce is the next unlocked gate; its
+  activation requires the gate-specific Work Item contract, dependency
+  overlay, evidence obligations, and repository-local authorization
+  (DEC-0101+). First implementation candidate: **M002 — Connectivity
+  Contract Core** per the accepted 1.1 dependency model.

@@ -103,8 +103,8 @@
 # semantic changes.
 
 schema_version: 1
-main_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
-last_updated: "2026-09-06"
+main_sha: 80292c24502200f84d11491ed12e9cec5e5baf11
+last_updated: "2026-09-09"
 work_items:
   - work_item: WORK-001
     title: "Protocol specification/governance foundation"
@@ -1106,8 +1106,33 @@ work_items:
     handoff_required: true
     lifecycle: accepted-merged
     note: "R6-gate acceptance projection appended by the DEC-0100-era governance repair (the current_spec_check fail-closed repair unmasked that the R6 acceptance was never appended to this ledger: the pre-repair checker's aggregation defect made the W057 projection requirement dead code). Activation provenance, preserved exactly: WORK-057-CORE-001 issued by DEC-0095 from the autonomous-governance baseline, reviewed/corrected under DEC-0096 (round 1: adapter certification authority bypass and federation proposal self-acceptance — both P0 corrections verified in round 2), accepted by DEC-0097. Delivery provenance, preserved exactly: adversarially reviewed over two rounds on one PR lineage — accepted on the exact reviewed head 58eced2f7864bd8d6e9cac658574d8c7b0b48965 (PR #23) and merged as a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19 (2026-09-06T17:36:38Z; the merge commit second parent is the exact reviewed head). R6 complete; R7 next unlocked but unactivated at the M001 transition. SOFTWARE-class evidence only; W040 physical obligations EVID-007/EVID-008 remain independent, open, and W040-owned. No work-item history rewritten: every earlier entry is byte-identical; this entry is appended, never converted."
+  - work_item: M001
+    title: "Architecture 1.1 Freeze"
+    phase: "M-gate (architecture transition)"
+    branch: "m001-architecture-1.1-freeze"
+    baseline_sha: 40737a0c716eff3ad05753431c24c2717afb2a68
+    pr: 25
+    pr_head: 36bfd8e636feafb531ef551a2e15793b57cc2f00
+    reviewed_sha: 36bfd8e636feafb531ef551a2e15793b57cc2f00
+    merge_sha: 80292c24502200f84d11491ed12e9cec5e5baf11
+    merged_at: 2026-09-09T14:09:22Z
+    ci_run: 34357122687
+    review_rounds: 1
+    acceptance_decision: DEC-0100
+    correction_decisions: []
+    handoff: spec/architect/work-items/M001.md
+    handoff_required: true
+    lifecycle: accepted-merged
+    note: "M-gate acceptance entry appended by LEDGER-RECON-014 (DEC-0100). Activation provenance, preserved exactly: M001-CORE-001 issued by DEC-0098 from the PR #24 transition-package merge 40737a0, scope amended by DEC-0099 (battery-mirror surface). Delivery provenance, preserved exactly: the governance-classified delivery on branch m001-architecture-1.1-freeze from branch point 725397f, accepted on the exact single-commit reviewed head 36bfd8e636feafb531ef551a2e15793b57cc2f00 (PR #25, one Architect review round, zero correction rounds; governance-only 27-file control-plane delta) and merged as 80292c24502200f84d11491ed12e9cec5e5baf11 (2026-09-09T14:09:22Z; the merge commit second parent is the exact reviewed head). The delivery promotes Architecture 1.1 as the sole normative forward architecture (spec/architecture.md FROZEN v1.1, LOCK-101..LOCK-120, M001-M014 registry, 1.1 dependency model), preserves the 1.0 snapshot byte-verbatim under spec/history/, and flips ACR-014 to ACCEPTED. Pre-acceptance governance repairs recorded by DEC-0100 at 3e3ea3b (current_spec_check fail-closed aggregation + marker alignment; the WORK-057 projection entry above; conformance case_63 frozen-authority mirror re-baselined to this acceptance merge) with push CI green. R7 becomes the next unlocked (not activated) gate. SOFTWARE-class evidence only for all M001 criteria; W040 physical obligations EVID-007/EVID-008 remain independent, open, and W040-owned. No work-item history rewritten: every earlier entry is byte-identical; this entry is appended, never converted."
 
 reconciliations:
+  - reconciliation_id: LEDGER-RECON-014
+    recorded_by: "DEC-0100 (the M001 acceptance; the pre-acceptance governance repair 3e3ea3b is recorded inside this record, not as a separate decision)"
+    recorded_at: 2026-09-09T14:30:00Z
+    from_main_sha: 725397ffd60e7d8f44c24c85c86037f43ff6c303
+    to_main_sha: 80292c24502200f84d11491ed12e9cec5e5baf11
+    reason: "M001 acceptance reconciliation: main advanced from the delivery branch point 725397ffd60e7d8f44c24c85c86037f43ff6c303 (the DEC-0099 battery-mirror reconciliation, main CI green) through the PR #25 merge 80292c24502200f84d11491ed12e9cec5e5baf11 (the M001 Architecture 1.1 Freeze delivery, exact reviewed head 36bfd8e636feafb531ef551a2e15793b57cc2f00, Architect-accepted) and the pre-acceptance governance repair 3e3ea3b (current_spec_check fail-closed aggregation + marker alignment, WORK-057 ledger projection appended, conformance case_63 frozen-authority mirror re-baselined to the acceptance merge; push CI run 34363339714 green). This reconciliation moves the snapshot baseline to the acceptance merge 80292c2 in lockstep with execution-state.yaml; records the M001 acceptance (DEC-0100: reviewed_sha 36bfd8e, merge_sha 80292c2, merged_at 2026-09-09T14:09:22Z) with its execution-ledger entry appended at lifecycle accepted-merged; closes the M001-CORE-001 authorization (status accepted, authorized false, acceptance gate filled with DEC-0100 + the exact delivery and merge SHAs); and unlocks R7 as the next gate (NOT activated — no authorization exists; the implementation halt holds until the gate-specific R7 Work Item authorization is issued)."
+    history: "No work-item history is rewritten and no prior reconciliation record is altered: every WORK-001..WORK-057 entry is byte-identical to the pre-reconciliation state (the WORK-057 projection entry appended by the 3e3ea3b repair is preserved exactly as recorded; the WORK-040 entry stays in-review, acceptance_decision null, EVID-007/EVID-008 OPEN and W040-owned). The M001 entry is appended, never converted. No frozen canonical architecture document is modified by this reconciliation: spec/architecture.md, spec/architecture-lock.md, spec/work-items.md, spec/dependency-graph.md, and spec/schemas/ are byte-identical to the merged M001 delivery state (they were promoted by the accepted delivery PR #25, not by this governance commit). No implementation code changes. The only changes are the new decision record (DEC-0100), the decisions README registration, the M001-CORE-001 authorization closure, the roadmap.yaml v1.6 -> v1.7 transition (M001 COMPLETE with completion_decision/completion_merge_sha, R7 UNLOCKED), the execution-state.yaml post-acceptance projection (main_sha 80292c2, mode awaiting-architect-decisions, active authorization null, open_acrs empty), the current-state.md and resume-protocol.md projections, the M001 work-item contract status, the M001-evidence.md acceptance section, the appended M001 ledger entry, this LEDGER-RECON-014 record, and the synchronized checker evolution (tools/current_spec_check.py and tools/fresh_session_check.py post-acceptance invariants, fail closed against pre-acceptance markers). ACR-014 is ACCEPTED (not superseded); no physical-world obligation is created or closed; W048 remains accepted-not-restored."
   - reconciliation_id: LEDGER-RECON-013
     recorded_by: DEC-0089
     recorded_at: 2026-09-06T03:43:16Z
