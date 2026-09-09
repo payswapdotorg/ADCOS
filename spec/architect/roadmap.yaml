@@ -1,12 +1,13 @@
 # ADCOS Authoritative Execution Roadmap
-# FROZEN — roadmap version 1.5 (advanced from 1.4 by DEC-0097;
-# WORK-057 accepted and R6 completed)
+# FROZEN — roadmap version 1.6 (advanced from 1.5 by DEC-0098;
+# M001 — Architecture 1.1 Freeze is ACTIVE under authorization M001-CORE-001
+# from baseline 40737a0c716eff3ad05753431c24c2717afb2a68)
 # Architecture 1.0 is preserved as the legacy baseline; Architecture 1.1 is
-# the mandatory forward target and must be promoted through M001/ACR before
-# feature implementation proceeds.
+# the mandatory forward target and must be promoted through the M001 delivery
+# (ACR-014 / DEC-0099) before feature implementation proceeds.
 
 schema_version: 2
-roadmap_version: "1.5"
+roadmap_version: "1.6"
 status: FROZEN_AUTHORITATIVE
 authority: "spec/architect/roadmap.yaml"
 human_projection: "spec/architect/roadmap.md"
@@ -44,14 +45,14 @@ architecture_transition:
   forward_rule: "No new feature semantics may be invented from Architecture 1.0. Before M001 only explicitly authorized transition/migration work may modify implementation. After M001, Architecture 1.1 is the sole normative architecture for forward implementation."
 
 current_state:
-  actual_main_sha: bf3b7cebe0a22a07740bed1934a438be3c9cddc3
-  last_reconciled_snapshot_sha: bf3b7cebe0a22a07740bed1934a438be3c9cddc3
-  program_state: R6_PROVIDER_ONBOARDING_AND_FEDERATION_COMPLETE
-  execution_mode: governed-transition-to-architecture-1.1
-  active_work_item: null
-  active_authorization: null
+  actual_main_sha: 40737a0c716eff3ad05753431c24c2717afb2a68
+  last_reconciled_snapshot_sha: 40737a0c716eff3ad05753431c24c2717afb2a68
+  program_state: M001_ARCHITECTURE_1_1_FREEZE_ACTIVE
+  execution_mode: implementing
+  active_work_item: M001
+  active_authorization: M001-CORE-001
   next_gate: M001_ARCHITECTURE_1_1_FREEZE
-  reconciliation_note: "R6 is complete under DEC-0097. The repository is now at the Architecture 1.1 transition boundary. M001 is the next software governance gate; R7 follows M001. R4 remains independently in-review. W048 remains accepted-not-restored."
+  reconciliation_note: "R6 is complete under DEC-0097. DEC-0098 accepts the PR #24 transition-package merge (40737a0) and activates M001 under M001-CORE-001 as the sole active Work Item. The M001 governance-classified delivery, its review, and the DEC-0099 acceptance will promote the 1.1 successor snapshots and unlock R7. R4 remains independently in-review. W048 remains accepted-not-restored."
 
 authoritative_execution_layer:
   model: "post-snapshot gate-specific Work Items"
@@ -184,9 +185,14 @@ roadmap:
     dependency_overlay: "spec/architect/dependency-overlays/R6-W057.yaml"
     handoff: "docs/WORK-057-handoff.md"
   - id: M001_ARCHITECTURE_1_1_FREEZE
-    status: NEXT
+    status: ACTIVE
     objective: "Formally adopt Architecture 1.1 as the forward normative architecture and freeze its locks, successor Work Item contracts, dependency graph, migration classifications and vertical-proof boundaries while preserving Architecture 1.0 history."
     work_item: "M001"
+    work_item_contract: "spec/architect/work-items/M001.md"
+    authorization: "M001-CORE-001"
+    activation_decision: DEC-0098
+    baseline_sha: 40737a0c716eff3ad05753431c24c2717afb2a68
+    acr: ACR-014
     target_package: "spec/work-items-1.1.md"
     authorization_rule: "M001 requires its own repository-local implementation authorization; until it is accepted, no feature work may be implemented from 1.0 semantics."
   - id: R7_UNIVERSAL_CONNECTIVITY_COMMERCE

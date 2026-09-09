@@ -79,6 +79,7 @@ Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-
 | DEC-0095 | governance | WORK-057 | ACCEPTED | SUPERSEDED | ACR-013 acceptance: post-snapshot gate-specific Work Item governance and activation of WORK-057-CORE-001 for R6 |
 | DEC-0096 | correction | WORK-057 | CHANGES_REQUIRED | SUPERSEDED | W057 Round 1 adversarial review: adapter certification authority bypass and federation proposal self-acceptance |
 | DEC-0097 | acceptance | WORK-057 | ACCEPTED | ACCEPTED | W057 Round 2 acceptance: P0 corrections verified; PR #23 head 58eced2 merged as a08ce85; WORK-057 authorization closed; R6 complete; R7 next unlocked but unactivated |
+| DEC-0098 | governance | M001 | ACCEPTED | ACCEPTED | M001 activation: Architecture 1.1 Freeze authorized under M001-CORE-001 from baseline 40737a0 (PR #24 transition-package merge); ACR-014 proposed with the DEC-0098 approval path; roadmap 1.5 -> 1.6 |
 
 ## Rules
 

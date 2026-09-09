@@ -143,12 +143,16 @@ def main() -> int:
                 fail(errors, "dispatch-state.yaml cannot declare more than 9 active subagents")
 
     for marker in (
-        'roadmap_version: "1.5"',
+        'roadmap_version: "1.6"',
         'status: FROZEN_AUTHORITATIVE',
         'source_of_truth: repository_only',
         'mandatory_forward_target: "Architecture 1.1"',
         'promotion_gate: "M001 — Architecture 1.1 Freeze"',
         'id: M001_ARCHITECTURE_1_1_FREEZE',
+        'status: ACTIVE',
+        'program_state: M001_ARCHITECTURE_1_1_FREEZE_ACTIVE',
+        'active_work_item: M001',
+        'active_authorization: M001-CORE-001',
         'id: R7_UNIVERSAL_CONNECTIVITY_COMMERCE',
         'prerequisite: M001_ARCHITECTURE_1_1_FREEZE',
     ):
@@ -165,28 +169,62 @@ def main() -> int:
         if not isinstance(execution, dict):
             fail(errors, "execution-state.yaml execution section missing")
         else:
-            if execution.get("mode") != "awaiting-architect-decisions":
-                fail(errors, f"execution-state.yaml mode must be awaiting-architect-decisions, got {execution.get('mode')!r}")
-            if execution.get("active_work_item") is not None:
-                fail(errors, "execution-state.yaml active_work_item must be null before M001")
-            if execution.get("active_authorization") is not None:
-                fail(errors, "execution-state.yaml active_authorization must be null before M001")
-            if not isinstance(execution.get("halted_reason"), str) or not execution.get("halted_reason"):
-                fail(errors, "execution-state.yaml halted_reason must explain the M001 gate")
+            mode = execution.get("mode")
+            if mode == "awaiting-architect-decisions":
+                # pre-M001 halt state: no active item, halted reason explains the gate
+                if execution.get("active_work_item") is not None:
+                    fail(errors, "execution-state.yaml active_work_item must be null before M001 activation")
+                if execution.get("active_authorization") is not None:
+                    fail(errors, "execution-state.yaml active_authorization must be null before M001 activation")
+                if not isinstance(execution.get("halted_reason"), str) or not execution.get("halted_reason"):
+                    fail(errors, "execution-state.yaml halted_reason must explain the M001 gate")
+            elif mode == "implementing":
+                # M001-active state: exactly one transition Work Item + authorization
+                if execution.get("active_work_item") != "M001":
+                    fail(errors, "execution-state.yaml implementing mode is only valid for M001 before its acceptance")
+                if execution.get("active_authorization") != "M001-CORE-001":
+                    fail(errors, "execution-state.yaml active_authorization must be M001-CORE-001 while M001 is active")
+                if execution.get("halted_reason") is not None:
+                    fail(errors, "execution-state.yaml halted_reason must be null while M001 is active")
+                auth_path = ROOT / "spec/architect/authorizations/M001.yaml"
+                if not auth_path.is_file():
+                    fail(errors, "M001-CORE-001 authorization file missing while M001 is active")
+                else:
+                    auth_text = auth_path.read_text(encoding="utf-8")
+                    if not re.search(r"^status:\s*active\s*$", auth_text, re.MULTILINE):
+                        fail(errors, "M001 authorization must have status active while M001 is active")
+                    if not re.search(r"^authorized:\s*true\s*$", auth_text, re.MULTILINE):
+                        fail(errors, "M001 authorization must have authorized true while M001 is active")
+                    base = re.search(r"^baseline_sha:\s*([0-9a-f]{40})\s*$", auth_text, re.MULTILINE)
+                    main_sha = repository.get("main_sha") if isinstance(repository, dict) else None
+                    if base and main_sha and base.group(1) != main_sha:
+                        fail(errors, "M001 authorization baseline does not match the reconciled main snapshot")
+            else:
+                fail(errors, f"execution-state.yaml execution.mode must be awaiting-architect-decisions or implementing, got {mode!r}")
             if "M001 — Architecture 1.1 Freeze" not in "\n".join(str(x) for x in execution.get("next_required_decisions", [])):
                 fail(errors, "execution-state.yaml does not identify M001 as the immediate gate")
             if not isinstance(state.get("open_acrs"), list):
                 fail(errors, "execution-state.yaml open_acrs must be a list")
             if not isinstance(state.get("open_architectural_questions"), list):
                 fail(errors, "execution-state.yaml open_architectural_questions must be a list")
+            if mode == "implementing" and "ACR-014" not in state.get("open_acrs", []):
+                fail(errors, "execution-state.yaml open_acrs must track ACR-014 while M001 is active")
 
     wi_dir = ROOT / "spec/architect/work-items"
     if not wi_dir.is_dir():
         fail(errors, "spec/architect/work-items/ missing")
     else:
-        for wid in ("WORK-054", "WORK-055", "WORK-056", "WORK-057"):
+        for wid in ("WORK-054", "WORK-055", "WORK-056", "WORK-057", "M001"):
             if not (wi_dir / f"{wid}.md").is_file():
                 fail(errors, f"post-snapshot Work Item contract missing: {wid}")
+
+    acr_dir = ROOT / "spec/acr"
+    if not (acr_dir / "ACR-014-architecture-1.1-freeze.md").is_file():
+        fail(errors, "ACR-014 (Architecture 1.1 freeze) record missing")
+    else:
+        acr_text = (acr_dir / "ACR-014-architecture-1.1-freeze.md").read_text(encoding="utf-8")
+        if "DEC-0098" not in acr_text:
+            fail(errors, "ACR-014 must record the DEC-0098 Architect approval")
 
     if isinstance(ledger, dict):
         items = ledger.get("work_items")

@@ -1,0 +1,44 @@
+# DEC-0098 — M001 activation: Architecture 1.1 Freeze authorized
+# Sole-Architect governance decision, single-agent mode (Architect + Tech Lead).
+# Durable activation record; the acceptance record follows as DEC-0099.
+decision_id: DEC-0098
+date: "2026-09-09"
+type: governance
+status: ACCEPTED
+owner: "Architect"
+work_item: M001
+authorization: M001-CORE-001
+
+review_basis: "Live main 40737a0c716eff3ad05753431c24c2717afb2a68 (PR #24 Architect-accepted merge), the Architecture 1.1 transition package (architecture, LOCK-101..LOCK-120, application model, work-items M001-M014, dependency graph, migration matrix, vertical proofs), spec/change-control.md ACR process, spec/architect/roadmap.yaml v1.5 M001 gate, and local verification of current_spec_check, tech_lead_guard, architecture_drift_guard and fresh_session_check on the merged main."
+
+decision: ACCEPTED
+
+evidence:
+  - "PR #24 (chore/adcos-architecture-1.1-bootstrap-6, head 46eef881) CI green at merge time; merged as 40737a0c716eff3ad05753431c24c2717afb2a68 by the sole Architect."
+  - "All four current-governance gates re-run locally on the merged main before this decision: current_spec_check PASS, tech_lead_guard PASS, architecture_drift_guard PASS (governance-only classification), fresh_session_check reconciled by this decision."
+  - "The legacy frozen-specification audit (tools/spec_check.py) remains a non-blocking compatibility audit carrying the known inherited ARCH-02/04/05/06/07 governance debt; no invariant was weakened."
+
+findings:
+  - "R6 is complete under DEC-0097 and no implementation authorization is active; the repository is at the Architecture 1.1 transition boundary."
+  - "roadmap.yaml v1.5 sets next_gate M001_ARCHITECTURE_1_1_FREEZE with promotion_requires: accepted ACR plus successor snapshots plus preserved 1.0 history."
+  - "The 1.1 transition package is complete, internally consistent, and machine-checked; ACR-014 records the required eight change-control elements."
+
+blockers: []
+required_corrections: []
+
+accepted_scope:
+  - "ACR-014 is proposed with the full eight change-control elements and the DEC-0098 approval of its promotion path."
+  - "Work Item M001 (Architecture 1.1 Freeze) is activated under repository-local authorization M001-CORE-001 from baseline 40737a0c716eff3ad05753431c24c2717afb2a68."
+  - "Execution mode transitions to implementing with M001 as the sole active Work Item."
+  - "Roadmap version advances 1.5 -> 1.6 recording this activation."
+
+rejected_scope:
+  - "This decision does not itself accept ACR-014; ACR-014 becomes ACCEPTED only when its synchronized updates land as the reviewed M001 delivery."
+  - "No feature implementation from 1.0 semantics is authorized; M001 is a pure architecture/governance transition Work Item."
+  - "No R7 activation is implied; R7 requires its own gate-specific contract, overlay and authorization after M001 acceptance."
+  - "W048 remains accepted-not-restored; W040/EVID-007/EVID-008 remain independent physical obligations, unaffected."
+
+downstream_effect:
+  - "Exactly one implementation authorization (M001-CORE-001) is active; all W-item authorizations remain closed."
+  - "The M001 delivery PR must be governance-classified (control-plane-only delta) and must not mix implementation-domain files."
+  - "Acceptance of the M001 delivery (DEC-0099) will flip ACR-014 to ACCEPTED, promote the 1.1 successor snapshots, archive the 1.0 snapshot under spec/history/, close M001-CORE-001, advance the roadmap to 1.7 with R7 as the next unlocked gate, and reconcile execution-state and ledger to the exact merge SHA."

@@ -1,28 +1,27 @@
 # ADCOS Current State
 
-**READY FOR CONTROLLED ARCHITECTURE TRANSITION — R6 complete; 1.1 is the mandatory forward implementation target; no active implementation authorization.**
+**M001 ACTIVE — Architecture 1.1 Freeze is the sole active Work Item under authorization M001-CORE-001 (DEC-0098).**
 
 ## Repository
 
 - Repository: `github.com/payswapdotorg/ADCOS`
-- Reconciled software mainline: `88a73720d8ff28e95728a03e13db631ffdf9688f`
+- Reconciled software mainline: `40737a0c716eff3ad05753431c24c2717afb2a68` (PR #24 Architect-accepted merge of the Architecture 1.1 transition package)
 - R6 implementation delivery: `58eced2f7864bd8d6e9cac658574d8c7b0b48965`, accepted under `DEC-0097`, merged as PR #23 at `a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19`
-- Post-merge roadmap reconciliation: `88a73720d8ff28e95728a03e13db631ffdf9688f`
 - Legacy architecture baseline: Architecture `1.0` frozen and retained for migration/history
-- Forward implementation target: Architecture `1.1` proposal package
+- Forward implementation target: Architecture `1.1` proposal package (promotion in progress under M001/ACR-014)
 - Protocol baseline: `1.0` frozen unless/until a successor is separately accepted
-- Roadmap: `1.5` frozen / authoritative
+- Roadmap: `1.6` frozen / authoritative (advanced by DEC-0098)
 
 ## Program authority
 
-`spec/architect/roadmap.yaml` is the sole canonical program roadmap. R0, R1, R2, R3, R5 and R6 are complete. R4 remains an independent physical-validation track under W040. The next forward software activity is the Architecture 1.1 transition gate M001; R7 remains the business-program gate that follows that transition.
+`spec/architect/roadmap.yaml` is the sole canonical program roadmap. R0, R1, R2, R3, R5 and R6 are complete. R4 remains an independent physical-validation track under W040. M001 — Architecture 1.1 Freeze — is now ACTIVE (DEC-0098). R7 remains the business-program gate that follows the M001 acceptance.
 
 ## Execution authority
 
-- `active_work_item: null`
-- `active_authorization: null`
-- Exactly one implementation authorization may be active; currently zero are active.
-- Before any feature implementation, the sole Architect must authorize M001 — Architecture 1.1 Freeze through the repository ACR/change-control process.
+- `active_work_item: M001`
+- `active_authorization: M001-CORE-001` (issued by `DEC-0098`, baseline `40737a0c716eff3ad05753431c24c2717afb2a68`)
+- Exactly one implementation authorization is active: `M001-CORE-001`. All W-item authorizations remain closed.
+- M001 is a pure architecture/governance transition Work Item: its delivery PR must classify as governance-only (no implementation-domain files), promote the 1.1 successor snapshots, archive the 1.0 snapshot under `spec/history/`, and be accepted by the sole Architect (DEC-0099) before ACR-014 becomes ACCEPTED.
 - After M001 acceptance, subsequent feature Work Items MUST be derived from the 1.1 work-item/dependency package and MUST NOT revert to 1.0 semantics.
 
 ## Historical accepted state
@@ -53,15 +52,21 @@ or sponsor connectivity for bounded beneficiaries.
 **Critical routing rule:** Architecture 1.0 remains a preserved historical/frozen
 baseline, not the design source for new capabilities. During the transition,
 agents use 1.0 only to understand and safely migrate existing implementation.
-All new semantics and forward Work Items must trace to 1.1. M001 is the formal
-promotion gate. After M001 is accepted, the 1.1 successor architecture/locks
-become normative and 1.0 is historical evidence only.
+All new semantics and forward Work Items must trace to 1.1. M001 (ACTIVE,
+ACR-014) is the formal promotion gate; until its delivery is accepted, only
+explicitly authorized transition/migration work may proceed. After M001 is
+accepted, the 1.1 successor architecture/locks become normative and 1.0 is
+historical evidence only.
 
 ## Next gate
 
-M001 — Architecture 1.1 Freeze — is the immediate transition gate. It must produce
-the accepted Architecture 1.1/lock snapshots, updated dependency/work-item
-contracts, migration classifications, and durable acceptance evidence.
+M001 — Architecture 1.1 Freeze — is the ACTIVE transition gate under
+authorization M001-CORE-001. Its governance-classified delivery must produce
+the accepted Architecture 1.1/lock snapshots (promoted into
+`spec/architecture.md` / `spec/architecture-lock.md`), the successor work-item
+registry and dependency graph, the archived 1.0 snapshot under `spec/history/`,
+migration classifications, vertical-proof boundaries, and durable acceptance
+evidence (DEC-0099).
 
 R7 — Universal Connectivity Commerce — follows the transition and must be
 implemented from the accepted 1.1 architecture. Its goal is to normalize

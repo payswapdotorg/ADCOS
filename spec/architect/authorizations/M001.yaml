@@ -1,0 +1,86 @@
+# ADCOS Work Item authorization record — M001 Architecture 1.1 Freeze.
+# Issued by DEC-0098. Closes upon the DEC-0099 acceptance of the M001 delivery.
+work_item: M001
+status: active
+authorized: true
+type: implementation
+authorization_id: "M001-CORE-001"
+authorization_decision: DEC-0098
+scope_amendment_decision: null
+scope_amendment_chain: []
+superseded_by: null
+supersession_decision: null
+baseline_sha: 40737a0c716eff3ad05753431c24c2717afb2a68
+review_basis: "DEC-0098 activated M001 as the sole transition Work Item from the PR #24-merged mainline. The delivery must be governance-classified (control-plane-only), reviewed by the sole Architect, and accepted before ACR-014 becomes ACCEPTED."
+dependencies: []
+authority_inputs:
+  - "spec/mission.md (permanent Mission Authority)"
+  - "The Architecture 1.1 transition package merged with PR #24: architecture-1.1-proposed.md, architecture-lock-1.1-proposed.md, application-model.md, work-items-1.1.md, dependency-graph-1.1.md, migration/classification-matrix.md, integration/vertical-proof.md, research/standards-and-use-cases.md"
+  - "Preserved Architecture 1.0 baseline (spec/architecture.md, spec/architecture-lock.md, spec/work-items.md, spec/dependency-graph.md) as migration/history input"
+  - "spec/change-control.md ACR process and the frozen governance rules"
+authority_outputs:
+  - "Architecture Version 1.1 successor snapshot as the sole normative forward architecture, with the 1.0 snapshot preserved as historical evidence"
+  - "Successor Work Item registry (M001-M014) and successor dependency graph as canonical forward contracts"
+scope:
+  - "spec/architecture.md"
+  - "spec/architecture-lock.md"
+  - "spec/work-items.md"
+  - "spec/dependency-graph.md"
+  - "spec/history/"
+  - "spec/architecture-1.1-proposed.md"
+  - "spec/architecture-lock-1.1-proposed.md"
+  - "spec/application-model.md"
+  - "spec/work-items-1.1.md"
+  - "spec/dependency-graph-1.1.md"
+  - "spec/migration/"
+  - "spec/integration/"
+  - "spec/research/"
+  - "spec/acr/"
+  - "spec/architect/"
+  - "spec/governance.md"
+  - "spec/change-control.md"
+  - "spec/workflow.md"
+  - "AGENTS.md"
+  - "README.md"
+  - "docs/tech-lead/"
+  - "docs/M001-evidence.md"
+  - "tools/current_spec_check.py"
+  - "tools/fresh_session_check.py"
+  - "tools/tech_lead_guard.py"
+  - "tools/architecture_drift_guard.py"
+  - "tools/spec_check.py"
+  - "tools/spec_check_selftest.py"
+  - ".github/workflows/spec-check.yml"
+  - ".github/CODEOWNERS"
+out_of_scope:
+  - "Any implementation-domain source, schema, or battery change (the M001 delta must classify as governance-only under tools/architecture_drift_guard.py)."
+  - "Changing Protocol Version 1.0 or any wire/schema semantics."
+  - "Rewriting or deleting any historical acceptance record, ledger entry, or archived 1.0 content."
+  - "Activating R7 or any successor Work Item."
+  - "Modifying spec/mission.md."
+  - "Restoring WORK-048 or altering WORK-040/EVID-007/EVID-008 physical evidence obligations."
+acceptance_criteria:
+  - "ACR-014 exists with all eight change-control elements and records the Architect approval (DEC-0098) and the resulting Architecture Version 1.1; its status becomes ACCEPTED in the same delivery."
+  - "spec/architecture.md carries Architecture 1.1 semantics as FROZEN with Architecture Version 1.1 recorded, and the 1.0 snapshot is preserved verbatim under spec/history/architecture-1.0.md with an explicit supersedence chain."
+  - "spec/architecture-lock.md carries the normative LOCK-101..LOCK-120, with the 1.0 locks preserved under spec/history/architecture-lock-1.0.md."
+  - "The successor Work Item registry (M001-M014) and dependency graph are canonical, with the 1.0 registry and graph preserved under spec/history/."
+  - "The migration classification matrix and the ShareNet/RoamLink/COMOS vertical-proof boundaries are accepted as governance artifacts of the 1.1 architecture."
+  - "Roadmap M001 advances to COMPLETE with a durable completion decision and exact merge SHA; R7 becomes the next unlocked (not activated) gate."
+  - "Execution state, execution ledger, authorization closure, and current-state projection reconcile to the exact merge SHA without rewriting history."
+  - "tools/current_spec_check.py and tools/fresh_session_check.py validate the post-freeze state and fail closed against pre-freeze markers; tools/tech_lead_guard.py and tools/architecture_drift_guard.py remain green; the legacy spec_check audit remains non-blocking."
+  - "The delivery PR classifies as a governance-only delta (no implementation-domain files)."
+  - "The accepted-proposal records (architecture-1.1-proposed.md, architecture-lock-1.1-proposed.md, work-items-1.1.md, dependency-graph-1.1.md) carry ACCEPTED status headers pointing at the canonical successor files."
+evidence_classes:
+  - criterion: "All M001 acceptance criteria"
+    class: SOFTWARE
+    allowed_statuses: [PASS, PARTIAL, NOT-TESTABLE, OPEN]
+  - criterion: "No physical-world obligation is created or closed by M001"
+    class: PHYSICAL
+    allowed_statuses: [NOT-TESTABLE, OPEN]
+acceptance_gate:
+  status: "authorized-pending-delivery"
+  acceptance_decision: null
+  accepted_delivery_sha: null
+  acceptance_merge_sha: null
+handoff: "spec/architect/work-items/M001.md"
+handoff_required: true

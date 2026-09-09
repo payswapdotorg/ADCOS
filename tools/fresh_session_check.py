@@ -59,6 +59,10 @@ def main() -> int:
         "spec/architect/roadmap.yaml",
         "spec/architect/execution-state.yaml",
         "spec/architect/execution-ledger.yaml",
+        "spec/architect/work-items/M001.md",
+        "spec/architect/authorizations/M001.yaml",
+        "spec/architect/decisions/DEC-0098-m001-activation.yaml",
+        "spec/acr/ACR-014-architecture-1.1-freeze.md",
         "docs/tech-lead/ADCOS-TECH-LEAD-HANDOFF.md",
         "docs/tech-lead/worker-model.md",
         "docs/tech-lead/dispatch-state.yaml",
@@ -91,15 +95,15 @@ def main() -> int:
         if marker.lower() not in text.lower():
             failures.append(message)
 
-    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "no active implementation authorization", "Architecture 1.0 remains a preserved historical/frozen"]:
+    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "Exactly one implementation authorization is active", "Architecture 1.0 remains a preserved historical/frozen"]:
         if marker.lower() not in current.lower():
             failures.append(f"current-state.md missing transition checkpoint marker: {marker}")
 
-    for marker in ["roadmap_version: \"1.5\"", "program_state: R6_PROVIDER_ONBOARDING_AND_FEDERATION_COMPLETE", "active_work_item: null", "active_authorization: null", "next_gate: M001_ARCHITECTURE_1_1_FREEZE"]:
+    for marker in ["roadmap_version: \"1.6\"", "program_state: M001_ARCHITECTURE_1_1_FREEZE_ACTIVE", "active_work_item: M001", "active_authorization: M001-CORE-001", "next_gate: M001_ARCHITECTURE_1_1_FREEZE"]:
         if marker not in roadmap:
             failures.append(f"roadmap.yaml missing current authoritative marker: {marker}")
 
-    for marker in ["active_work_item: null", "active_authorization: null", "mode: awaiting-architect-decisions", "M001 — Architecture 1.1 Freeze", "R7 follows M001"]:
+    for marker in ["mode: implementing", "active_work_item: M001", "active_authorization: M001-CORE-001", "M001 — Architecture 1.1 Freeze", "R7 requires its own gate-specific Work Item authorization"]:
         if marker not in execution:
             failures.append(f"execution-state.yaml missing current transition marker: {marker}")
 
@@ -109,13 +113,29 @@ def main() -> int:
 
     auth_root = ROOT / "spec/architect" / "authorizations"
     active = 0
+    active_files: list[str] = []
     if auth_root.exists():
         for path in auth_root.glob("*.y*ml"):
             auth_text = path.read_text(encoding="utf-8")
             if re.search(r"^status:\s*active\s*$", auth_text, re.MULTILINE) and re.search(r"^authorized:\s*true\s*$", auth_text, re.MULTILINE):
                 active += 1
-    if "active_authorization: null" in roadmap and active > 0:
-        failures.append(f"roadmap says no active authorization but {active} authorization file(s) declare active=true")
+                active_files.append(path.name)
+    declared = None
+    m = re.search(r"^\s*active_authorization:\s*(\S+)", roadmap, re.MULTILINE)
+    if m:
+        declared = m.group(1)
+    if declared == "null":
+        if active > 0:
+            failures.append(f"roadmap says no active authorization but {active} authorization file(s) declare active=true")
+    elif declared is not None:
+        if active != 1:
+            failures.append(f"roadmap declares active authorization {declared} but {active} authorization file(s) declare active=true ({', '.join(active_files) or 'none'})")
+        elif "M001.yaml" not in active_files:
+            failures.append(f"roadmap declares {declared} but the active authorization file is not M001.yaml")
+        else:
+            m001_auth = (auth_root / "M001.yaml").read_text(encoding="utf-8")
+            if "authorization_id: \"M001-CORE-001\"" not in m001_auth or "work_item: M001" not in m001_auth:
+                failures.append("M001.yaml does not bind work_item M001 to authorization_id M001-CORE-001")
 
     actual = args.actual_main_sha
     if not actual:
