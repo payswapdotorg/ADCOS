@@ -27,6 +27,14 @@ credential/provenance machinery — no duplicated identity grammar.
 Signing uses the WORK-003 canonical signature-input machinery and the
 WORK-004 provider abstraction. No trust, authorization, topology,
 routing, resource, or federation policy is decided here.
+
+M003 refactor (Architecture 1.1, migration matrix: "Discovery:
+REFACTOR → Offer discovery, not global topology"): observations may
+carry OPAQUE ``offer_references`` (the offer identities providers
+announce through the discovery mechanism — preserved verbatim, never
+resolved or classified here; the offers authority, M003, owns them),
+and ``offer_view.py`` projects OFFER sightings (provider, offer,
+freshness, provenance) from the merged store — offers, never topology.
 """
 
 from __future__ import annotations
@@ -48,6 +56,14 @@ from .serialization import (
 )
 from .service import DiscoveryService, DiscoveryServiceError
 from .signing import sign_observation, verify_observation
+from .offer_view import (
+    OfferSighting,
+    OfferViewError,
+    SIGHTING_FRESHNESS,
+    active_offer_sightings,
+    offer_sightings,
+    sighted_offer_references,
+)
 from .transport import (
     DiscoveryTransport,
     InMemoryEndpoint,
@@ -78,10 +94,14 @@ __all__ = [
     "LoopbackUdpTransport",
     "MergeResult",
     "MergeRejectedError",
+    "OfferSighting",
+    "OfferViewError",
+    "SIGHTING_FRESHNESS",
     "SerializationError",
     "SourceType",
     "TransportError",
     "evaluate_status",
+    "active_offer_sightings",
     "is_local_ipv4",
     "is_loopback_ipv4",
     "is_private_ipv4",
@@ -90,7 +110,9 @@ __all__ = [
     "observation_signature_input",
     "observation_to_bytes",
     "observation_to_dict",
+    "offer_sightings",
     "poll_bootstrap",
+    "sighted_offer_references",
     "sign_observation",
     "verify_observation",
 ]

@@ -76,10 +76,15 @@ class DiscoveryService:
         sequence: int,
         observed_endpoints: Iterable[dict],
         advertised_capability_references: Iterable[str] = (),
+        offer_references: Iterable[str] = (),
         source_type: str = SourceType.LOCAL,
         source_context: Optional[dict] = None,
     ) -> DiscoveryObservation:
-        """Build (but not yet sign) a discovery observation."""
+        """Build (but not yet sign) a discovery observation.
+
+        ``offer_references`` (M003): opaque offer identities the observed
+        provider announced through this mechanism — preserved verbatim,
+        never resolved here (the offers authority, M003, owns them)."""
         return DiscoveryObservation(
             sender_node_id=self._sender_node_id,
             observed_node_id=observed_node_id,
@@ -89,6 +94,7 @@ class DiscoveryService:
             source_type=source_type,
             source_context=dict(source_context) if source_context else {},
             advertised_capability_references=tuple(advertised_capability_references),
+            offer_references=tuple(offer_references),
             observed_endpoints=tuple(observed_endpoints),
         )
 

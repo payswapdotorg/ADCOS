@@ -1,10 +1,19 @@
-"""Discovery observation model (WORK-006).
+"""Discovery observation model (WORK-006; M003 offer-discovery refactor).
 
 A ``DiscoveryObservation`` is an authenticated, attributable record that a
 Node was observed through a discovery mechanism at a particular time and
 context. It is NOT identity, trust, topology authority, a route, or a
 resource-availability statement — those decisions belong to later layers
 (WORK-007+).
+
+M003 refactor (Architecture 1.1, migration matrix: "Discovery: REFACTOR
+→ Offer discovery, not global topology"): an observation may carry OPAQUE
+``offer_references`` — the offer identities a provider announced through
+the discovery mechanism. Offer references are preserved verbatim, never
+reinterpreted, never classified, and never resolved into topology by this
+layer (the offers authority, M003, owns them). The serialized field is
+emitted ONLY when non-empty, so every offer-less observation keeps the
+exact frozen legacy field shape and byte-identical signature input.
 
 Field set per the WORK-006 handoff conceptual model:
 
@@ -22,6 +31,12 @@ Field set per the WORK-006 handoff conceptual model:
     advertised_capability_references
                           optional opaque capability-id references
                           (WORK-005 vocabulary; never reinterpreted here)
+    offer_references      optional opaque offer-id references (M003:
+                          providers announce offer identities through the
+                          discovery mechanism; never reinterpreted here —
+                          emitted in the serialized shape ONLY when
+                          non-empty, preserving the frozen legacy field set
+                          byte-identically)
     observed_endpoints    bounded, technology-neutral endpoint descriptors
     schema_version        MAJOR.MINOR
     signature             opaque hex (WORK-004 provider seam over WORK-003
@@ -120,6 +135,7 @@ class DiscoveryObservation:
     source_type: str
     source_context: Mapping[str, Any] = field(default_factory=dict)
     advertised_capability_references: Tuple[str, ...] = ()
+    offer_references: Tuple[str, ...] = ()
     observed_endpoints: Tuple[Mapping[str, Any], ...] = ()
     schema_version: str = "1.0"
     signature: str = ""
@@ -182,6 +198,16 @@ class DiscoveryObservation:
                 raise DiscoveryError(
                     "capability-ref", "capability references must be non-empty strings"
                 )
+        # Offer references (M003): opaque strings — the offers authority
+        # (M003) owns them; discovery preserves them verbatim, never
+        # resolves, classifies, or composes them into topology.
+        if not isinstance(self.offer_references, tuple):
+            raise DiscoveryError("offer-ref", "offer_references must be a tuple")
+        for ref in self.offer_references:
+            if not isinstance(ref, str) or not ref:
+                raise DiscoveryError(
+                    "offer-ref", "offer references must be non-empty strings"
+                )
         # Observed endpoints: bounded, technology-neutral descriptors.
         if not isinstance(self.observed_endpoints, tuple):
             raise DiscoveryError("endpoints", "observed_endpoints must be a tuple")
@@ -220,8 +246,11 @@ class DiscoveryObservation:
     def to_dict(self) -> dict:
         """Canonical field shape (for WORK-003 canonicalization and
         envelope payload transport). Members are ordered by the
-        canonicalization machinery; the field SET is frozen."""
-        return {
+        canonicalization machinery; the legacy field SET is frozen.
+        ``offer_references`` (the M003 extension) is emitted ONLY when
+        non-empty: offer-less observations serialize to the exact frozen
+        legacy shape (byte-identical signature input preserved)."""
+        document: dict = {
             "observation_id": self.observation_id,
             "sender_node_id": self.sender_node_id,
             "observed_node_id": self.observed_node_id,
@@ -235,6 +264,9 @@ class DiscoveryObservation:
             "schema_version": self.schema_version,
             "signature": self.signature,
         }
+        if self.offer_references:
+            document["offer_references"] = list(self.offer_references)
+        return document
 
     def __repr__(self) -> str:
         return (
@@ -282,6 +314,11 @@ def observation_from_mapping(data: object) -> DiscoveryObservation:
         observation_id = ""
     if not isinstance(observation_id, str):
         raise DiscoveryError("observation-id", "observation_id must be a string when present")
+    # offer_references (M003): OPTIONAL in the serialized shape (legacy
+    # records carry no such member); when present it must be an array.
+    if "offer_references" in data and data["offer_references"] is not None:
+        if not isinstance(data["offer_references"], list):
+            raise DiscoveryError("offer-ref", "offer_references must be an array")
     return DiscoveryObservation(
         sender_node_id=data["sender_node_id"],
         observed_node_id=data["observed_node_id"],
@@ -291,6 +328,7 @@ def observation_from_mapping(data: object) -> DiscoveryObservation:
         source_type=data["source_type"],
         source_context=dict(data["source_context"]),
         advertised_capability_references=tuple(data["advertised_capability_references"]),
+        offer_references=tuple(data.get("offer_references") or ()),
         observed_endpoints=tuple(data["observed_endpoints"]),
         schema_version=data["schema_version"],
         signature=data["signature"],

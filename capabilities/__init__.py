@@ -19,10 +19,25 @@ Identifier authority is the WORK-002 capability registry
 KNOWN / UNKNOWN_BUT_WELL_FORMED / INVALID, never coerced. Validity uses
 WORK-003 temporal primitives; signing uses the WORK-003 canonical
 signature-input machinery and the WORK-004 provider abstraction.
+
+M003 refactor (Architecture 1.1, R7-CORE-001): the provider-domain
+advertisement seam (``advertisement.py``) projects verified, currently
+usable statements into the typed entry material the Architecture 1.1
+offer exchange (``offers/``) consumes as capability advertisement
+grounding — classification authority stays HERE (the registry), never
+duplicated in the offers domain (migration matrix: "Capability registry:
+RETAIN + REFACTOR → Offer/capability exchange").
 """
 
 from __future__ import annotations
 
+from .advertisement import (
+    AdvertisementEntry,
+    AdvertisementError,
+    advertisement_entries,
+    advertisement_entry,
+    entries_to_dicts,
+)
 from .classification import CapabilityIdClass, classify_capability_id
 from .model import (
     CapabilityError,
@@ -57,6 +72,8 @@ from .validity import (
 )
 
 __all__ = [
+    "AdvertisementEntry",
+    "AdvertisementError",
     "CapabilityError",
     "CapabilityIdClass",
     "CapabilityRegistry",
@@ -70,6 +87,9 @@ __all__ = [
     "ValidityError",
     "classify_capability_id",
     "default_registry",
+    "advertisement_entries",
+    "advertisement_entry",
+    "entries_to_dicts",
     "evaluate_status",
     "negotiate",
     "sign_statement",
