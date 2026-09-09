@@ -10,8 +10,8 @@ last_updated: "2026-09-09"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: 80292c24502200f84d11491ed12e9cec5e5baf11
-  main_sha_semantics: "The M001 acceptance merge (PR #25: delivery head 36bfd8e, Architect acceptance under DEC-0100). The pre-acceptance governance repair 3e3ea3b and the DEC-0100 acceptance record sit beyond this reconciled baseline per the standing reconciliation convention."
+  main_sha: 4168f73a799243295220f2d7ad7bad2fad2cba23
+  main_sha_semantics: "The DEC-0100 M001 acceptance head (live main, push CI green run 34366545495): the acceptance decision record, DEC-0100 registration, M001-CORE-001 closure, roadmap 1.7 advance, and ledger LEDGER-RECON-014. Governance commits beyond this baseline sit per the standing reconciliation convention enforced by tools/fresh_session_check.py (governance-only deltas between the snapshot and live main)."
   lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
 versions:

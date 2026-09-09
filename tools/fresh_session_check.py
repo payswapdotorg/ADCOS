@@ -4,6 +4,18 @@
 This is an offline checker. It validates repository-local handoff mechanics;
 it does not grant implementation authority and it never replaces the normal
 Architect/ACR acceptance process.
+
+Live-main reconciliation semantics (the standing reconciliation convention,
+as documented in execution-state.yaml main_sha_semantics): the persisted
+snapshot must equal live ``origin/main`` OR be one of its ancestors with
+ONLY control-plane-classified deltas in between (the drift-guard
+classification, single source of truth). Governance commits may sit beyond
+the reconciled baseline between reconciliations; any implementation-domain
+movement on main beyond the snapshot fails closed. This repairs the exact-
+equality defect that structurally blocked implementation PRs: a commit can
+never contain its own future SHA, so an implementation branch (forbidden by
+the drift guard from touching spec/architect/) inherits a pin that always
+points strictly before its branch point.
 """
 from __future__ import annotations
 
@@ -14,6 +26,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+
+from architecture_drift_guard import CONTROL_FILES, CONTROL_PREFIXES  # type: ignore  # noqa: E402
+
+
+def _is_control(path: str) -> bool:
+    return path.startswith(CONTROL_PREFIXES) or path in CONTROL_FILES
 
 
 def read(rel: str) -> str:
@@ -190,9 +209,13 @@ def main() -> int:
     persisted_match = re.search(r"^\s*main_sha:\s*([0-9a-f]{40})\s*$", execution, re.MULTILINE)
     persisted = persisted_match.group(1) if persisted_match else None
     if actual and persisted and actual != persisted:
-        failures.append(
-            f"live origin/main {actual} differs from execution-state snapshot {persisted}; reconcile before implementation"
-        )
+        # Standing reconciliation convention: the snapshot may lag live main
+        # only through governance-only commits. Fail closed on any
+        # implementation-domain movement beyond the snapshot, on a snapshot
+        # that is not an ancestor of live main, and on git failures.
+        reconciled, problem = _governance_only_range(persisted, actual)
+        if not reconciled and problem is not None:
+            failures.append(problem)
 
     if failures:
         for item in failures:
@@ -203,10 +226,55 @@ def main() -> int:
     print("fresh-session check: PASS")
     print("repository contains the 1.1 forward-target routing, Tech Lead bootstrap, 3x3 worker rules, machine-readable dispatch state, current roadmap checkpoint, and governance authority chain")
     if actual:
-        print(f"origin/main verified against execution-state snapshot: {actual}")
+        print(f"origin/main verified against the execution-state snapshot: {actual}")
     else:
         print("origin/main SHA not available locally; rerun with --actual-main-sha for live reconciliation")
     return 0
+
+
+def _git(args: list[str]) -> str | None:
+    try:
+        p = subprocess.run(
+            ["git", *args], cwd=ROOT, text=True, capture_output=True, check=True
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return p.stdout
+
+
+def _governance_only_range(persisted: str, actual: str) -> tuple[bool, str | None]:
+    """True when every commit in (persisted..actual] is control-plane only."""
+    ancestor = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", persisted, actual],
+        cwd=ROOT, capture_output=True,
+    )
+    if ancestor.returncode != 0:
+        return False, (
+            f"live origin/main {actual} does not descend from the execution-state "
+            f"snapshot {persisted}; the snapshot is not a valid baseline — reconcile "
+            "before implementation"
+        )
+    revs = _git(["rev-list", "--reverse", f"{persisted}..{actual}"])
+    if revs is None:
+        return False, (
+            f"cannot enumerate the reconciliation range {persisted[:8]}..{actual[:8]}; "
+            "fail closed"
+        )
+    for rev in [line.strip() for line in revs.splitlines() if line.strip()]:
+        files = _git(["diff", "--name-only", f"{rev}^", rev])
+        if files is None:
+            return False, (
+                f"cannot classify the delta of {rev[:8]} in the reconciliation range; "
+                "fail closed"
+            )
+        offending = [f for f in files.splitlines() if f.strip() and not _is_control(f.strip())]
+        if offending:
+            return False, (
+                f"main advanced beyond the snapshot {persisted[:8]} with "
+                f"implementation-domain changes ({rev[:8]}: {offending[0]}); "
+                "reconcile the execution-state snapshot before implementation"
+            )
+    return True, None
 
 
 if __name__ == "__main__":
