@@ -104,8 +104,8 @@ def main() -> int:
             failures.append(f"execution-state.yaml missing current transition marker: {marker}")
 
     proposal = ROOT / "spec/architecture-1.1-proposed.md"
-    if proposal.exists() and "mandatory forward target" not in agents.lower():
-        failures.append("agent bootstrap must identify Architecture 1.1 as the mandatory forward target")
+    if proposal.exists() and "mandatory forward implementation target" not in agents.lower():
+        failures.append("agent bootstrap must identify Architecture 1.1 as the mandatory forward implementation target")
 
     auth_root = ROOT / "spec/architect" / "authorizations"
     active = 0
