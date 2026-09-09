@@ -41,8 +41,11 @@ program authorization (`R7-CORE-001`, `spec/architect/authorizations/R7.yaml`)
 with the R7 charter (`spec/architect/work-items/R7-charter.md`) declaring the
 child work-item scopes M002-M014. M002 — Connectivity Contract Core is
 ACCEPTED (DEC-0102; head 0112943, merge 0ffdf47; the canonical `contracts/`
-domain is live); M003 — Offers and Provider Capability Exchange is the current
-child. Implementation proceeds only within the active authorization's declared
+domain is live). M003 — Offers and Provider Capability Exchange is ACCEPTED
+(DEC-0103; head eace143, merge 4090e03; the provider-domain `offers/` model is
+live with its 49/49 battery). M013 — Developer Connectivity API is ACCEPTED
+(DEC-0113; head 69ef8de, merge 8f4d58a2; chain-independent). M004 —
+Eligibility and Policy is the current child. Implementation proceeds only within the active authorization's declared
 scope; each child work item is accepted only from repository evidence per the
 charter's acceptance rules.
 

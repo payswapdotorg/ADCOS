@@ -2,7 +2,7 @@
 
 **Gate-specific Work Item contract (DEC-0101 governance-compression class).**
 **Authorization: R7-CORE-001 (bounded R7 program authorization, DEC-0101). Baseline: `1e5c55f9916ff964d3bfc0761d04a8d5fd02c41b`.**
-**Status: ACTIVE — M002 accepted (DEC-0102, merge 0ffdf47); child M003 in implementation; per-child acceptance mandatory.**
+**Status: ACTIVE — M002 accepted (DEC-0102, merge 0ffdf47); M003 accepted (DEC-0103, merge 4090e03); M013 accepted (DEC-0113, merge 8f4d58a2, chain-independent); child M004 in implementation; per-child acceptance mandatory.**
 
 ## Objective
 

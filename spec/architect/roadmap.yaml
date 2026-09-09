@@ -1,9 +1,11 @@
 # ADCOS Authoritative Execution Roadmap
-# FROZEN — roadmap version 1.9 (advanced from 1.8 by DEC-0102:
-# M002 — Connectivity Contract Core ACCEPTED at PR #26 head 0112943, merged as
-# 0ffdf47; R7 stays ACTIVE under R7-CORE-001 with M003 as the current child;
-# R7 — Universal Connectivity Commerce ACTIVATED as a bounded program
-# authorization R7-CORE-001 with charter child scopes M002-M014;
+# FROZEN — roadmap version 2.0 (advanced from 1.9 by DEC-0103/DEC-0113:
+# M003 — Offers and Provider Capability Exchange ACCEPTED at PR #27 head eace143, merged as
+# 4090e03; M013 — Developer Connectivity API ACCEPTED at PR #28 head 69ef8de, merged as
+# 8f4d58a2 (chain-independent child); R7 stays ACTIVE under R7-CORE-001 with M004 as the
+# current child;
+# M002 — Connectivity Contract Core remains COMPLETE under DEC-0102 (head 0112943,
+# merged as 0ffdf47);
 # M001 — Architecture 1.1 Freeze remains COMPLETE under DEC-0100:
 # delivery head 36bfd8e636feafb531ef551a2e15793b57cc2f00 merged as
 # 80292c24502200f84d11491ed12e9cec5e5baf11; ACR-014 ACCEPTED)
@@ -12,7 +14,7 @@
 # (the bounded R7 program authorization R7-CORE-001 with charter child scopes).
 
 schema_version: 2
-roadmap_version: "1.9"
+roadmap_version: "2.0"
 status: FROZEN_AUTHORITATIVE
 authority: "spec/architect/roadmap.yaml"
 human_projection: "spec/architect/roadmap.md"
@@ -51,14 +53,14 @@ architecture_transition:
   forward_rule: "Architecture 1.1 is the sole normative architecture for forward implementation. Architecture 1.0 is preserved historical evidence used only to understand and migrate existing implementation; no new feature semantics may be invented from it."
 
 current_state:
-  actual_main_sha: 0ffdf4775112c0b71b71f47f3688a50347ab4371
-  last_reconciled_snapshot_sha: 0ffdf4775112c0b71b71f47f3688a50347ab4371
+  actual_main_sha: 8f4d58a23966a3af5242f37bab293a114cf5085a
+  last_reconciled_snapshot_sha: 8f4d58a23966a3af5242f37bab293a114cf5085a
   program_state: R7_UNIVERSAL_CONNECTIVITY_COMMERCE_ACTIVE
   execution_mode: implementing
-  active_work_item: M003
+  active_work_item: M004
   active_authorization: R7-CORE-001
   next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE
-  reconciliation_note: "M001 is complete under DEC-0100 (delivery head 36bfd8e, acceptance merge 80292c2; ACR-014 ACCEPTED; Architecture 1.1 FROZEN with 1.0 preserved under spec/history/). R7 — Universal Connectivity Commerce is ACTIVATED under DEC-0101 as a bounded program authorization (R7-CORE-001, baseline 1e5c55f) covering the R7 charter child scopes M002-M014. M002 — Connectivity Contract Core is complete under DEC-0102 (delivery head 0112943, acceptance merge 0ffdf47; the canonical contracts/ domain with its 54/54 battery; three reviewed CI-repair riders recorded in the decision); M003 — Offers and Provider Capability Exchange is the current child; per-child acceptance decisions (DEC-0103+) are the serialization points; the Tech Lead may decompose, dispatch (3x3/9/depth-2), integrate and deliver within the charter scope without further pre-implementation ceremonies. R4 remains independently in-review. W048 remains accepted-not-restored."
+  reconciliation_note: "M001 is complete under DEC-0100 (delivery head 36bfd8e, acceptance merge 80292c2; ACR-014 ACCEPTED; Architecture 1.1 FROZEN with 1.0 preserved under spec/history/). R7 — Universal Connectivity Commerce is ACTIVATED under DEC-0101 as a bounded program authorization (R7-CORE-001, baseline 1e5c55f) covering the R7 charter child scopes M002-M014. M002 — Connectivity Contract Core is complete under DEC-0102 (delivery head 0112943, acceptance merge 0ffdf47; the canonical contracts/ domain with its 54/54 battery; three reviewed CI-repair riders recorded in the decision). M003 — Offers and Provider Capability Exchange is complete under DEC-0103 (delivery head eace143, acceptance merge 4090e03; the provider-domain offers/ model with the capabilities/discovery/marketplace harvest; the 49/49 offer battery CI-wired at acceptance). M013 — Developer Connectivity API is complete under DEC-0113 (delivery head 69ef8de, acceptance merge 8f4d58a2; chain-independent; the developerapi/ surface on the canonical 1.1 authority; M010/M011/M012 available downstream). M004 — Eligibility and Policy is the current child; per-child acceptance decisions are the serialization points; the Tech Lead may decompose, dispatch (3x3/9/depth-2), integrate and deliver within the charter scope without further pre-implementation ceremonies. R4 remains independently in-review. W048 remains accepted-not-restored."
 
 authoritative_execution_layer:
   model: "post-snapshot gate-specific Work Items"
@@ -214,8 +216,8 @@ roadmap:
     prerequisite_satisfied_by: DEC-0100
     activation_decision: DEC-0101
     activation_mode: "governance compression (DEC-0101): one bounded R7 program authorization with child work-item scopes"
-    work_item: M003
-    child_acceptance_decisions: "M002 accepted by DEC-0102 (head 0112943, merge 0ffdf47); M003+ pending as DEC-0103+"
+    work_item: M004
+    child_acceptance_decisions: "M002 accepted by DEC-0102 (head 0112943, merge 0ffdf47); M003 accepted by DEC-0103 (head eace143, merge 4090e03); M013 accepted by DEC-0113 (head 69ef8de, merge 8f4d58a2); M004+ pending as DEC-0104+"
     work_item_chain: [M002, M003, M004, M005, M006, M007, M008, M009, M010, M011, M012, M013, M014]
     work_item_contract: "spec/architect/work-items/R7-charter.md"
     authorization: "R7-CORE-001"

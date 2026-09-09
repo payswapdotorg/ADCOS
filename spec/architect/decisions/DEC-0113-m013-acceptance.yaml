@@ -1,0 +1,54 @@
+# DEC-0113 — M013 acceptance: Developer Connectivity API accepted (chain-independent child)
+# Sole-Architect governance decision (per-child acceptance, DEC-0101 serialization point).
+decision_id: DEC-0113
+date: "2026-09-09"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M013
+authorization: R7-CORE-001
+
+review_basis: "Tech Lead review of the exact M013 delivery head 69ef8dee1adcf8c8a6f5855c9056d0364a0fd7b9 (PR #28, branch m013-developer-api, base d022e06 the DEC-0102-accepted main head; the DEC-0103 M003 acceptance merged 4090e03 BEFORE this merge with zero file overlap — verified merge-clean): all current-governance gates re-run locally on the exact head (current_spec_check PASS, tech_lead_guard PASS, architecture_drift_guard PASS with an implementation-only 10-file delta, authorization_provenance PASS — the whole implementation delta covered by R7-CORE-001 with the program-era baseline-range semantics, byte-identical authorization inheritance; fresh_session_check at review time objects to the then-unreconciled post-#27-merge main state citing eace1434 (M003 files) — the pending DEC-0103 acceptance reconciliation, NOT this PR's content; this PR's own CI at trigger time is green end-to-end, run 34395941523), the M013 battery 56/56 PASS run 3x consecutively (exit-code-based), the full battery suite green at the exact head in exact workflow order with exit-code-based detection (54 batteries PASS locally plus the era-superseded payment/eligibility/client skip guards), and contract 54/54 preserved. The review is durably recorded in the PR #28 review timeline (review 5159163426); GitHub self-approval was unavailable (the single operator account owns both the PR and the review), so this decision is the authoritative acceptance record per repo convention."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 28
+  pr_head: 69ef8dee1adcf8c8a6f5855c9056d0364a0fd7b9
+  branch: "m013-developer-api"
+  branch_point: d022e06f8c3d881d2cc484aa5899483c24ed5fe8
+  merge_sha: 8f4d58a23966a3af5242f37bab293a114cf5085a
+  merged_at: "2026-09-09T19:50:29Z"
+  ci_run_at_head: 34395941523
+  ci_run_at_merge: 34397464404
+
+delivery_composition:
+  - commit: 69ef8dee1adcf8c8a6f5855c9056d0364a0fd7b9
+    summary: "M013 single-commit delivery (the 3-worker pipeline's Worker B): the developerapi/ harvest+refactor onto the canonical Architecture 1.1 authority (gateway re-bound onto the accepted contracts domain through its public surface; schema 2.0 with 1.x/0.8 retired and 0.9 deprecated; write-ahead journal; errors re-bound to ContractReason; credentials/webhooks re-targeted; SDK parity; 56/56 evolved battery + evidence matrix)"
+
+acceptance_findings:
+  - "Every M013 acceptance criterion in the R7 charter was reproduced by the Tech Lead against the exact delivery head before the merge: technology-neutral contract/offers/assurance/usage semantics under LOCK-114 (offers, usage terms, assurance obligations and requirements ride frozen-kind OpaqueReferences ONLY — grep-clean, zero imports from offers/usage/assurance, no second domain model; the boundary enforces the canonical reference kind per member, the canonical authority enforces value grammar and provenance); no network implementation objects in the API (DeliveryTransport is a pure injectable Callable seam, constructed nowhere in the surface — no sockets, adapters, transports, or provider SDK types leak into the API); the canonical contracts/ domain referenced and consumed through its public surface only (next_record/merge + public reads; zero modification; contract battery 54/54); deterministic, offline, seeded, fail-closed everywhere (grep-clean; the write-ahead idempotency crash-window cases fail closed at the boundary's durable hold; the same-content crash window closes through the canonical DUPLICATE discipline)."
+  - "Worker-executed delivery: the M013 implementation was delivered by dispatched worker session m013-devapi (chartered w21-b, monitored, and approved by the Tech Lead) — running in PARALLEL with Worker A (m003-offers), demonstrating the charter's 3-worker concurrency policy at two-worker scale with zero interference (disjoint file sets, both merged clean)."
+  - "The -7787-line deletion surface is the honest W046-era retirement, not scope loss: schema 1.x retired with the schema module's own BREAKING classification (new major version required), 0.8 retired, 0.9 deprecated with retained machinery surfaces; the retained/translated/demoted table is recorded in docs/M013-evidence.md per the migration matrix discipline. All 56 W046/W056 battery case structures retained case-for-case and re-targeted, plus two new LOCK-114 structural cases (the technology-neutral member-vocabulary audit and the typed-reference discipline audit)."
+  - "The 87-export public surface preserves the W046 API's externally observable contract where the matrix retains it (85 exports verbatim + the two new journal record families); the gateway's retained webhook family, observation-admission machinery (W056), and SDK parity machinery are unchanged in semantics."
+  - "Six judgment calls disclosed with invariant references in the evidence doc — audited by the Tech Lead; none weakens an invariant."
+
+accepted_scope:
+  - "M013 — Developer Connectivity API is ACCEPTED at the exact delivery head 69ef8dee1adcf8c8a6f5855c9056d0364a0fd7b9, merged as 8f4d58a23966a3af5242f37bab293a114cf5085a."
+  - "R7-CORE-001 remains the sole active program authorization; M013 is a chain-independent child (per the charter dependency model: M013 independent of the M002-M008 chain; M010/M011/M012 depend on it) — its acceptance does not move the current-child pointer (which advances M003 -> M004 under DEC-0103 in the same governance transition)."
+  - "Roadmap v2.0 records M013 COMPLETE under this decision with the exact merge SHA."
+  - "Execution state, execution ledger (M013 entry + LEDGER-RECON-016), current-state projection, resume protocol, and the root AGENTS/README projections are reconciled to this acceptance without rewriting any historical record."
+
+rejected_scope:
+  - "No new current child is designated by this decision (M004 — Eligibility and Policy is designated by DEC-0103 in the same transition)."
+  - "M010/M011/M012 (the vertical proofs) are NOT accepted or delivered; they become available as downstream children of this acceptance per the charter dependency model."
+  - "No Architecture or protocol semantic change: Architecture 1.1 stays FROZEN and sole normative; the protocol schemas are untouched."
+  - "No physical-world obligation is created or closed; W048 remains accepted-not-restored; the era-superseded batteries remain DEC-0099-disclosed skips."
+
+evidence:
+  - "docs/M013-evidence.md (delivered in the PR) records the verification matrix; the acceptance facts are recorded here and in the execution ledger."
+  - "SOFTWARE-class evidence only for all M013 criteria; the PHYSICAL class remains NOT-TESTABLE/OPEN per the R7 charter evidence policy."
+
+downstream_effect:
+  - "M010/M011/M012 — the vertical proofs (sharenet, roamlink, comos) become available as downstream children of this accepted API surface."
+  - "The developerapi/ 2.0 surface is the frozen API authority for the developer boundary; the offers/usage/assurance semantics it references are owned by their canonical domains (M003 accepted; M009 pending)."

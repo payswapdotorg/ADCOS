@@ -164,7 +164,7 @@ def main() -> int:
                 fail(errors, "dispatch-state.yaml cannot declare more than 9 active subagents")
 
     for marker in (
-        'roadmap_version: "1.9"',
+        'roadmap_version: "2.0"',
         'status: FROZEN_AUTHORITATIVE',
         'source_of_truth: repository_only',
         'mandatory_forward_target: "Architecture 1.1"',
@@ -181,7 +181,7 @@ def main() -> int:
         'work_item_contract: "spec/architect/work-items/R7-charter.md"',
         'prerequisite: M001_ARCHITECTURE_1_1_FREEZE',
         'program_state: R7_UNIVERSAL_CONNECTIVITY_COMMERCE_ACTIVE',
-        'active_work_item: M003',
+        'active_work_item: M004',
         'active_authorization: R7-CORE-001',
         'next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE',
     ):
@@ -227,6 +227,10 @@ def main() -> int:
                     fail(errors, "M001 is accepted (DEC-0100); it can never return to the active implementing state")
                 if awi == "M002":
                     fail(errors, "M002 is accepted (DEC-0102); it can never return to the active implementing state")
+                if awi == "M003":
+                    fail(errors, "M003 is accepted (DEC-0103); it can never return to the active implementing state")
+                if awi == "M013":
+                    fail(errors, "M013 is accepted (DEC-0113); it can never return to the active implementing state")
                 if execution.get("halted_reason") is not None:
                     fail(errors, "execution-state.yaml halted_reason must be null while implementing")
                 auth_root = ROOT / "spec/architect/authorizations"
@@ -390,6 +394,30 @@ def main() -> int:
                     fail(errors, "execution-ledger.yaml M002 entry must record the exact acceptance merge SHA")
                 if m002_entry.get("reviewed_sha") != "0112943c99c7fd3215bf7c8d2b0ebb740a282132":
                     fail(errors, "execution-ledger.yaml M002 entry must record the exact reviewed delivery head")
+            m003_entry = next((e for e in items if isinstance(e, dict) and e.get("work_item") == "M003"), None)
+            if not isinstance(m003_entry, dict):
+                fail(errors, "execution-ledger.yaml must contain the M003 acceptance entry")
+            else:
+                if m003_entry.get("lifecycle") != "accepted-merged":
+                    fail(errors, "execution-ledger.yaml M003 entry must be lifecycle accepted-merged")
+                if m003_entry.get("acceptance_decision") != "DEC-0103":
+                    fail(errors, "execution-ledger.yaml M003 entry must record acceptance decision DEC-0103")
+                if m003_entry.get("merge_sha") != "4090e032324fc4fa5fcc6ffe81a85c22eca331a3":
+                    fail(errors, "execution-ledger.yaml M003 entry must record the exact acceptance merge SHA")
+                if m003_entry.get("reviewed_sha") != "eace14349cbfae06235712778c578fbda0d4cffb":
+                    fail(errors, "execution-ledger.yaml M003 entry must record the exact reviewed delivery head")
+            m013_entry = next((e for e in items if isinstance(e, dict) and e.get("work_item") == "M013"), None)
+            if not isinstance(m013_entry, dict):
+                fail(errors, "execution-ledger.yaml must contain the M013 acceptance entry")
+            else:
+                if m013_entry.get("lifecycle") != "accepted-merged":
+                    fail(errors, "execution-ledger.yaml M013 entry must be lifecycle accepted-merged")
+                if m013_entry.get("acceptance_decision") != "DEC-0113":
+                    fail(errors, "execution-ledger.yaml M013 entry must record acceptance decision DEC-0113")
+                if m013_entry.get("merge_sha") != "8f4d58a23966a3af5242f37bab293a114cf5085a":
+                    fail(errors, "execution-ledger.yaml M013 entry must record the exact acceptance merge SHA")
+                if m013_entry.get("reviewed_sha") != "69ef8dee1adcf8c8a6f5855c9056d0364a0fd7b9":
+                    fail(errors, "execution-ledger.yaml M013 entry must record the exact reviewed delivery head")
 
     if isinstance(evidence, dict):
         obligations = evidence.get("obligations")

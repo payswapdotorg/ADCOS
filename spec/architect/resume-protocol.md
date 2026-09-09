@@ -24,10 +24,11 @@ A brand-new Architect, Tech Lead, worker, or implementation agent must resume fr
 
 ## Current checkpoint
 
-The latest reconciled software baseline is the pre-activation head
-`1e5c55f9916ff964d3bfc0761d04a8d5fd02c41b` (DEC-0100 acceptance head `4168f73`
-plus the fresh-session reconciliation repair); the DEC-0101 activation sits
-beyond it per the standing reconciliation convention.
+The latest reconciled software baseline is the M013 acceptance merge
+`8f4d58a23966a3af5242f37bab293a114cf5085a` (the M003 acceptance merge
+`4090e03` precedes it on main — the 3-worker pipeline's first parallel delivery
+round); the DEC-0103/DEC-0113 acceptance transition sits beyond it per the
+standing reconciliation convention.
 
 - R6 Provider Onboarding & Federation is complete under `DEC-0097`.
 - M001 — Architecture 1.1 Freeze is complete under `DEC-0100`: Architecture 1.1
@@ -39,9 +40,12 @@ beyond it per the standing reconciliation convention.
   (`spec/architect/authorizations/R7.yaml`) with the R7 charter
   (`spec/architect/work-items/R7-charter.md`) declaring the child work-item
   scopes M002-M014. **M002 — Connectivity Contract Core is ACCEPTED
-  (DEC-0102; head 0112943, merge 0ffdf47).** The current child is **M003 —
-  Offers and Provider Capability Exchange** (implementing). Per-child
-  acceptance decisions (DEC-0103 onward) are the serialization points.
+  (DEC-0102; head 0112943, merge 0ffdf47). M003 — Offers and Provider
+  Capability Exchange is ACCEPTED (DEC-0103; head eace143, merge 4090e03).**
+  **M013 — Developer Connectivity API is ACCEPTED (DEC-0113; head 69ef8de,
+  merge 8f4d58a2; chain-independent).** The current child is **M004 —
+  Eligibility and Policy** (implementing). Per-child acceptance decisions
+  (DEC-0104 onward) are the serialization points.
 - R4/W040 remains an independent physical-validation track and is not replaced by the software roadmap.
 - W048 remains accepted-not-restored and MUST NOT be recreated, mocked, or substituted implicitly.
 

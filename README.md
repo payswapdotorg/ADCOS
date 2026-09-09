@@ -77,8 +77,12 @@ program authorization (`R7-CORE-001`) with the R7 charter
 (`spec/architect/work-items/R7-charter.md`) declaring the child work-item
 scopes M002-M014. **M002 — Connectivity Contract Core is ACCEPTED (DEC-0102;
 head 0112943, merge 0ffdf47; the canonical `contracts/` domain is live).**
-**M003 — Offers and Provider Capability Exchange is the current child work
-item in implementation.** Per-child acceptance (DEC-0103 onward) is
+**M003 — Offers and Provider Capability Exchange is ACCEPTED (DEC-0103; head
+eace143, merge 4090e03; the provider-domain `offers/` model is live with its
+49/49 battery). M013 — Developer Connectivity API is ACCEPTED (DEC-0113; head
+69ef8de, merge 8f4d58a2; chain-independent).** **M004 — Eligibility and
+Policy is the current child work item in implementation.** Per-child
+acceptance (DEC-0104 onward) is
 mandatory and is the serialization point; the Tech Lead may decompose,
 dispatch, integrate and deliver within the authorized child scopes without
 further pre-implementation authorization ceremonies.

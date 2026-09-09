@@ -265,6 +265,15 @@ jobs:
           fi
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
 
+      - name: Run offers and provider capability exchange tests
+        run: |
+          if [ -f tools/offer_selftest.py ]; then
+            python3 tools/offer_selftest.py
+          else
+            echo "SKIP (pre-delivery, disclosed): tools/offer_selftest.py lands with the authorized M003 delivery (R7-CORE-001, DEC-0101)"
+          fi
+        continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
+
       - name: Run economic allocation tests
         run: python3 tools/allocation_selftest.py
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}

@@ -2,7 +2,8 @@
 # (bounded R7 program authorization, the DEC-0101 governance-compression class).
 # Issued by DEC-0101; ONE active authorization for the whole M002-M014 tranche.
 # Per-child acceptance decisions (DEC-0102+) close each child; this authorization
-# closes when the R7 gate completes.
+# closes when the R7 gate completes. Children closed so far: M002 (DEC-0102),
+# M003 (DEC-0103), M013 (DEC-0113).
 work_item: R7
 child_work_items:
   - M002
@@ -18,7 +19,7 @@ child_work_items:
   - M012
   - M013
   - M014
-current_child_work_item: M003
+current_child_work_item: M004
 status: active
 authorized: true
 type: implementation

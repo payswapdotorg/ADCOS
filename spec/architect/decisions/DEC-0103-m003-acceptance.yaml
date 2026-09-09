@@ -1,0 +1,57 @@
+# DEC-0103 — M003 acceptance: Offers and Provider Capability Exchange accepted; R7 child advances to M004
+# Sole-Architect governance decision (per-child acceptance, DEC-0101 serialization point).
+decision_id: DEC-0103
+date: "2026-09-09"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M003
+authorization: R7-CORE-001
+
+review_basis: "Tech Lead review of the exact M003 delivery head eace14349cbfae06235712778c578fbda0d4cffb (PR #27, branch m003-offer-exchange, base d022e06 the DEC-0102-accepted main head): all current-governance gates re-run locally on the exact head (current_spec_check PASS, tech_lead_guard PASS, architecture_drift_guard PASS with an implementation-only 21-file delta, fresh_session_check PASS at the pre-#27-merge pin d022e06, authorization_provenance PASS — the whole implementation delta covered by R7-CORE-001, byte-identical authorization inheritance from main), the M003 battery 49/49 PASS run 3x consecutively (exit-code-based, cross-PYTHONHASHSEED and cross-process determinism), the full battery suite green at the exact head in exact workflow order with exit-code-based detection (55 batteries PASS; the sole non-zero exits being the DEC-0099-disclosed era-superseded payment/eligibility/client skip guards; two initial text-flags investigated and confirmed false positives — a PASSING case description string in envelope and a timing-dependent thread-stderr print in the untouched backhaul battery), and PR-head CI green end-to-end (run 34394500718). The review is durably recorded in the PR #27 review timeline (review 5159096468); GitHub self-approval was unavailable (the single operator account owns both the PR and the review), so this decision is the authoritative acceptance record per repo convention."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 27
+  pr_head: eace14349cbfae06235712778c578fbda0d4cffb
+  branch: "m003-offer-exchange"
+  branch_point: d022e06f8c3d881d2cc484aa5899483c24ed5fe8
+  merge_sha: 4090e032324fc4fa5fcc6ffe81a85c22eca331a3
+  merged_at: "2026-09-09T19:44:13Z"
+  ci_run_at_head: 34394500718
+  ci_run_at_merge: 34396825502
+
+delivery_composition:
+  - commit: eace14349cbfae06235712778c578fbda0d4cffb
+    summary: "M003 single-commit delivery (the 3-worker pipeline's Worker A): the offers/ provider-domain offer model (model/exchange/bridge/serialization/errors + 49/49 battery + evidence matrix), the capabilities/discovery/marketplace harvest+refactor per the frozen classification matrix, and the three disclosed per-domain battery evolutions (capability 15->18, discovery 27->29, marketplace 46->48 with the case_32 allowed-imports amendment)"
+
+acceptance_findings:
+  - "Every M003 acceptance criterion in the R7 charter was reproduced by the Tech Lead against the exact delivery head before the merge: provider-domain capability advertisements, offers, validity, commitments and provenance under LOCK-118 (provenance mandatory on every externally asserted member, enforced structurally; commitments explicit AND bounded — the commitment window is structurally constrained inside the offer validity with a typed fail-closed error); NO global topology (LOCK-105, provider sovereignty — the exchange exposes catalog filters only, every query optionally provider-scoped, no node/link/path/graph surface, no cross-provider composition, offers ground only in their own provider's advertisements per LOCK-104); provider SDK/vendor types never enter the core model (grep-clean; standards remain mechanisms); deterministic, offline, seeded (injected WORK-033 clock seam, content-derived ids, canonical-JSON round-trips with tamper evidence, no wall clock/randomness/network/secrets per LOCK-119); battery green (49/49 x3) and the evidence doc records the verification matrix honestly (SOFTWARE 49/49; physical EVID-002..008 untouched and open)."
+  - "Worker-executed delivery: the M003 implementation was delivered by dispatched worker session m003-offers (chartered w21-a, monitored, and approved by the Tech Lead) — the second ADCOS delivery executed through the dispatch/review/approve loop, now at pipeline scale (two workers in parallel)."
+  - "Honest-limitation finding (the evidence discipline working as designed): the CI workflow does not run tools/offer_selftest.py at the delivery head — wiring a new battery step into .github/ is a control-plane change outside the implementation PR boundary (the M002 pre-wiring precedent). The worker disclosed this in docs/M003-evidence.md; the Tech Lead wires the existence-guarded battery step in THIS acceptance commit (governance action, the M002 contract-battery pattern)."
+  - "Battery evolution disclosure audited and verified minimal: capability 15->18 (+3 advertisement-seam cases), discovery 27->29 (+2 offer-view cases; the base_observation fixture helper gained a default-empty offer_references pass-through, legacy bytes byte-identical), marketplace 46->48 (+2 projection-bridge cases; ONE in-place amendment: case_32 _ALLOWED_IMPORT_MODULES gains offers+contracts — the sanctioned canonical composition targets, justification commented in place). No historical case was weakened or deleted."
+  - "The M002 canonical domain is consumed by reference exactly as required: from contracts import ContractError, Provenance, ValidityInterval, OpaqueReference only; contracts-domain errors wrapped at the boundary (exception isolation); tools/contract_selftest.py still 54/54 on the delivery head; zero contracts/ file modified (LOCK-101)."
+
+accepted_scope:
+  - "M003 — Offers and Provider Capability Exchange is ACCEPTED at the exact delivery head eace14349cbfae06235712778c578fbda0d4cffb, merged as 4090e032324fc4fa5fcc6ffe81a85c22eca331a3."
+  - "R7-CORE-001 remains the sole active program authorization (it closes only when the R7 gate completes); its current child advances M003 -> M004."
+  - "Roadmap advances to v2.0: M003 COMPLETE under this decision with the exact merge SHA; M004 — Eligibility and Policy is the current child in implementation."
+  - "The offer battery tools/offer_selftest.py is wired into the CI workflow by this acceptance commit (existence-guarded step, the M002 contract-battery pattern) so every future PR runs it."
+  - "Execution state, execution ledger (M003 entry + LEDGER-RECON-016), authorization child pointer, current-state projection, resume protocol, the R7 charter status, and the root AGENTS/README projections are reconciled to this acceptance without rewriting any historical record."
+
+rejected_scope:
+  - "M004 is NOT accepted or delivered by this decision; it becomes the current child work item under the existing R7-CORE-001 authorization (per-child acceptance remains mandatory)."
+  - "No Architecture or protocol semantic change: Architecture 1.1 stays FROZEN and sole normative."
+  - "No physical-world obligation is created or closed: EVID-002..008 remain OPEN and physical; R4/W040 remains independently in-review; W048 remains accepted-not-restored."
+  - "No rewriting of any historical acceptance record, ledger entry, decision, or battery history; the era-superseded batteries (payment/eligibility/client) remain DEC-0099-disclosed skips awaiting the M009/M014 commercial track."
+  - "Cross-provider composition, eligibility evaluation, NetworkPath handoff, and reservation/lease coordination are explicitly NOT delivered by M003 (M004/M006/M009 concerns; the demotions are recorded in the delivery and the evidence doc)."
+
+evidence:
+  - "docs/M003-evidence.md (delivered in the PR) records the verification matrix; the acceptance facts are recorded here and in the execution ledger."
+  - "SOFTWARE-class evidence only for all M003 criteria; the PHYSICAL class remains NOT-TESTABLE/OPEN per the R7 charter evidence policy."
+
+downstream_effect:
+  - "M004 — Eligibility and Policy is the current child (charter scope: policy/, eligibility/, tools/policy_selftest.py, the eligibility battery re-baseline may land there or under M009 per its DEC-0099 disclosure, docs/M004-evidence.md)."
+  - "M006+ (Execution Plan, cross-provider composition) may consume the accepted offers/ domain exactly as delivered; offers/ is now the canonical provider-domain offer authority (LOCK-101 discipline for its scope)."
+  - "The offers/ domain's reference shapes (offer_reference, pricing_reference, service_property_references) are the frozen composition surface that M004 eligibility and M006 execution plans build against."
