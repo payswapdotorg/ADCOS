@@ -5,13 +5,13 @@
 
 schema_version: 1
 package: "persistent-architect"
-last_updated: "2026-09-08"
+last_updated: "2026-09-09"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
   main_sha: bf3b7cebe0a22a07740bed1934a438be3c9cddc3
   main_sha_semantics: "Actual mainline at the time this transition branch was reconciled; the post-R6 governance reconciliation remains the semantic checkpoint, followed only by compensating cleanup commits before this PR."
-  lifecycle_ledger_snapshot_sha: a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19
+  lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
 versions:
   architecture_version_reference: "1.0"
@@ -29,12 +29,12 @@ versions:
   protocol_version_authority: "spec/schemas/protocol.json"
 
 execution:
-  mode: governed-transition-to-architecture-1.1
+  mode: awaiting-architect-decisions
   active_work_item: null
   active_authorization: null
   review_state: ACCEPTED_MERGED
   reviewed_delivery_sha: 58eced2f7864bd8d6e9cac658574d8c7b0b48965
-  halted_reason: null
+  halted_reason: "R6 is complete and no implementation authorization is active. The repository is in a governed Architecture 1.0 -> 1.1 transition and must not begin feature implementation until M001 — Architecture 1.1 Freeze is formally authorized and accepted."
   next_required_decisions:
     - "M001 — Architecture 1.1 Freeze must be created and authorized as the immediate transition Work Item before feature implementation proceeds."
     - "R7 follows M001 and MUST be implemented from the accepted Architecture 1.1 successor package, not from Architecture 1.0."
@@ -51,7 +51,7 @@ reconciliation:
   r4_status: "R4 remains parallel-after-R3 with W040 independently in-review and unaccepted."
   r6_status: "R6 complete under DEC-0097; WORK-057 accepted at 58eced2f7864bd8d6e9cac658574d8c7b0b48965 and merged as a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19."
   authorization_state: "No implementation authorization is active after closure of WORK-057-CORE-001 under DEC-0097."
-  mainline_reconciliation: "The post-R6 governance checkpoint was 88a73720d8ff28e95728a03e13db631ffdf9688f. Current main also contains later compensating cleanup commits; the next fresh-session run must reconcile against the actual merged main SHA before implementation."
+  mainline_reconciliation: "The post-R6 governance checkpoint was 88a73720d8ff28e95728a03e13db631ffdf9688f. Current main also contains later compensating cleanup commits; the ledger snapshot remains the last durable lifecycle baseline and must be advanced by an explicit reconciliation rather than silently rewritten."
   architecture_transition: "All forward implementation is governed toward Architecture 1.1. Architecture 1.0 remains historical/migration baseline until M001 promotes the 1.1 successor snapshots."
 
 decisions:
@@ -86,3 +86,5 @@ closed_work_items:
     prior_review_decision: DEC-0096
 
 open_prs: []
+open_acrs: []
+open_architectural_questions: []
