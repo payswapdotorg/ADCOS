@@ -231,7 +231,10 @@ def main() -> int:
                 )
             expected_check = case.get("expect_check")
             if expected_check is not None:
-                if "[%s" % expected_check not in output:
+                if not any(
+                    line.lstrip().startswith("[FAIL") and expected_check in line
+                    for line in output.splitlines()
+                ):
                     raise AssertionError(
                         "%s: expected failing check %s not present\n%s"
                         % (case["name"], expected_check, output)
