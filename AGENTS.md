@@ -23,8 +23,7 @@ ADCOS is self-describing. A new Architect, Tech Lead, worker, or implementation 
 
 ## Implementation-target rule
 
-Architecture 1.1 is the forward implementation target. Architecture 1.0 is a
-preserved legacy baseline only.
+**Architecture 1.1 is the mandatory forward implementation target.** Architecture 1.0 is a preserved legacy baseline only.
 
 New APIs, domain models, authority boundaries, Work Items, migrations and
 acceptance criteria MUST trace to Architecture 1.1 locks and target artifacts.
