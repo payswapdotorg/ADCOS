@@ -15,18 +15,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Reconcile live main baseline
+        run: git fetch --no-tags origin main
+
       - name: Run current governance specification checks
         run: python3 tools/current_spec_check.py
 
       - name: Run Tech Lead dispatch guard
         run: python3 tools/tech_lead_guard.py
 
+      - name: Run architecture drift guard
+        run: python3 tools/architecture_drift_guard.py
+
       - name: Run legacy frozen specification checks (compatibility audit)
         run: python3 tools/spec_check.py
         continue-on-error: true
-
-      - name: Reconcile live main before fresh-session check
-        run: git fetch --no-tags origin main
 
       - name: Run fresh-session handoff checks
         run: python3 tools/fresh_session_check.py --actual-main-sha "$(git rev-parse origin/main)"
@@ -198,11 +201,6 @@ jobs:
       - name: Run provider/buyer client runtime tests
         run: python3 tools/client_selftest.py
 
-      # Strict ARCH-08 provenance applies only when a PR contains a real
-      # implementation delta. Pure governance/specification PRs are allowed to
-      # change the persistent Architect package because that package is the
-      # object being governed; the check remains strict for any mixed PR by
-      # handing the full delta to spec_check.py --provenance.
       - name: Verify execution-authorization provenance (implementation PRs)
         if: github.event_name == 'pull_request'
         run: |
