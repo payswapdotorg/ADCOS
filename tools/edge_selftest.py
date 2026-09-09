@@ -49,6 +49,19 @@ from typing import Any, Dict, List, Optional, Tuple
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+
+def _active_authorization_covers(path: str) -> bool:
+    """Authorization-aware delta-shape consultation (the M001-evidence §4
+    duty for the post-M001 implementation era): a delta path covered by the
+    ACTIVE repository-local authorization (spec/architect/authorizations/,
+    the R7-CORE-001 program child scopes per DEC-0101) is sanctioned.
+    Fail-closed: no unique active authorization covers nothing."""
+    try:
+        from authorization_provenance import covers
+        return covers(path)
+    except Exception:
+        return False
+
 from identity import (  # noqa: E402
     NodeIdentity,
     ProfileSet,
@@ -2410,6 +2423,7 @@ def case_47_pr_delta_shape(results: List[Result]) -> None:
         and not c.startswith("appliance/") and not c.startswith("interop/")
         and not c.startswith("imt/") and not c.startswith("scale/")
         and c not in allowed_exact and not c.startswith(".github/")
+        and not _active_authorization_covers(c)
     ]
     if unexpected:
         results.append(fail(name, "delta beyond the sanctioned shape: %s" % unexpected))

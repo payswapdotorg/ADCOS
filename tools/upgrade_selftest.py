@@ -126,6 +126,19 @@ from typing import Any, Dict, List, Optional, Tuple
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
 
+
+def _active_authorization_covers(path: str) -> bool:
+    """Authorization-aware delta-shape consultation (the M001-evidence §4
+    duty for the post-M001 implementation era): a delta path covered by the
+    ACTIVE repository-local authorization (spec/architect/authorizations/,
+    the R7-CORE-001 program child scopes per DEC-0101) is sanctioned.
+    Fail-closed: no unique active authorization covers nothing."""
+    try:
+        from authorization_provenance import covers
+        return covers(path)
+    except Exception:
+        return False
+
 from upgrade import (  # noqa: E402
     EventKind,
     GateVerdict,
@@ -2043,8 +2056,13 @@ def case_36_frozen_spec_intact() -> Result:
         )
         changed = {line for line in docs_diff.stdout.splitlines() if line.strip()}
         allowed = {"docs/WORK-029-handoff.md"}  # the W023/024/025/028 handoff precedent
-        if not changed <= allowed:
-            return fail(name, "docs/ changes beyond the handoff: %r" % sorted(changed))
+        uncovered = {p for p in changed - allowed if not _active_authorization_covers(p)}
+        if uncovered:
+            return fail(
+                name,
+                "docs/ changes beyond the handoff and the active authorization: %r"
+                % sorted(uncovered),
+            )
         return ok(name, "spec/ byte-identical to origin/main; docs/ additions = the W029 handoff only")
     # Degraded mode (no origin/main ref in this checkout): the
     # working tree must still be clean over spec/ and docs/.

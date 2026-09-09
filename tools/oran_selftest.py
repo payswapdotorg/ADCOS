@@ -39,6 +39,19 @@ _ROOT = os.path.dirname(_HERE)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
+
+def _active_authorization_covers(path: str) -> bool:
+    """Authorization-aware delta-shape consultation (the M001-evidence §4
+    duty for the post-M001 implementation era): a delta path covered by the
+    ACTIVE repository-local authorization (spec/architect/authorizations/,
+    the R7-CORE-001 program child scopes per DEC-0101) is sanctioned.
+    Fail-closed: no unique active authorization covers nothing."""
+    try:
+        from authorization_provenance import covers
+        return covers(path)
+    except Exception:
+        return False
+
 from interop import (  # noqa: E402
     DEFAULT_ORAN_INTEROP_SESSION_ID,
     DEFAULT_PROFILE_PAYLOAD,
@@ -1720,6 +1733,7 @@ def case_35_pr_delta_shape(results: List[Result]) -> None:
         and not c.startswith("scale/")
         and c not in allowed_exact
         and not c.startswith(".github/")
+        and not _active_authorization_covers(c)
     ]
     if unexpected:
         results.append(fail(name, "delta beyond the sanctioned shape: %s" % unexpected))
