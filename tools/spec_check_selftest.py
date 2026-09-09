@@ -1,41 +1,48 @@
 #!/usr/bin/env python3
 """Mutation self-tests for tools/spec_check.py.
 
-The suite deliberately mutates one authoritative fixture at a time and
-asserts the checker fails/succeeds for the intended reason. When authoritative
-prose changes, update the mutation anchor deliberately rather than weakening
-spec_check itself.
+Baseline-relative mutation testing: every case copies the repository tree
+(minus .git), applies exactly one change, runs the checker, and asserts the
+effect of that change RELATIVE TO the unmutated baseline of the same tree.
 
-The fixture copier mirrors the repository tree so nested authoritative paths
-remain executable in an isolated temporary checkout.
+Why baseline-relative: tools/spec_check.py is the legacy frozen-specification
+compatibility audit. Under the Architecture 1.1 transition the live governance
+state has legitimately evolved beyond the legacy checker's frozen historical
+model (post-snapshot gate Work Items per ACR-013, evolved DEC record shapes),
+so the legacy checker may legitimately FAIL on the live repository — CI runs
+it as a non-blocking compatibility audit for exactly that reason. The
+self-test therefore must not require a globally clean repository. It verifies
+the property that actually matters: the checker still DETECTS and still ALLOWS
+exactly the mutations each case describes.
+
+  - positive case: the mutation introduces NO new failing check (no check may
+    transition PASS -> FAIL, SKIP -> FAIL, or absent -> FAIL vs baseline);
+  - negative case: the named check must be PASS at baseline and FAIL after
+    the mutation — a genuine detection caused by the mutation, never a
+    pre-existing failure masquerading as detection.
+
+When authoritative prose changes, update the mutation anchor deliberately
+rather than weakening spec_check itself. The fixture copier mirrors the full
+repository tree so nested authoritative paths remain executable in an
+isolated temporary checkout.
 """
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-COPY_ITEMS = [
-    "README.md",
-    "spec/architecture.md",
-    "spec/architecture-lock.md",
-    "spec/work-items.md",
-    "spec/dependency-graph.md",
-    "spec/governance.md",
-    "spec/change-control.md",
-    "spec/workflow.md",
-    "spec/schemas",
-    "spec/acr",
-    "spec/prompts",
-    "spec/architect",
-    "tools/spec_check.py",
-]
+COPY_IGNORE = shutil.ignore_patterns(".git", "__pycache__")
+
+CHECK_LINE_RE = re.compile(r"^\[(PASS|FAIL|SKIP)\s*\]\s+(\S+)")
+
 
 PROMPT_WITH_REFERENCE = """# WORK-000
 
@@ -67,12 +74,16 @@ Mutation-test fixture.
 """
 
 
-CASES = [
+CASES: List[dict] = [
     {
         "name": "missing-required-frozen-document",
         "ops": [("delete", "spec/architecture.md")],
-        "expect_exit": 1,
         "expect_check": "FILES-01",
+    },
+    {
+        "name": "missing-persistent-architect-artifact",
+        "ops": [("delete", "spec/architect/review-protocol.md")],
+        "expect_check": "ARCH-01",
     },
     {
         "name": "architecture-version-reference-in-process-doc-body",
@@ -85,8 +96,6 @@ CASES = [
                 "Architecture Version 1.0.\n\n## 4. Terminology",
             )
         ],
-        "expect_exit": 0,
-        "expect_check": None,
     },
     {
         # Positive: an ordinary prose reference in the root README must be
@@ -104,14 +113,10 @@ CASES = [
                 "Architecture Version 1.0.",
             )
         ],
-        "expect_exit": 0,
-        "expect_check": None,
     },
     {
         "name": "architecture-version-reference-in-new-prompt",
         "ops": [("create", "spec/prompts/WORK-000.md", PROMPT_WITH_REFERENCE)],
-        "expect_exit": 0,
-        "expect_check": None,
     },
     {
         "name": "architecture-version-status-prose-reference-sentence",
@@ -122,8 +127,6 @@ CASES = [
                 PROMPT_WITH_STATUS_PROSE_REFERENCE,
             )
         ],
-        "expect_exit": 0,
-        "expect_check": None,
     },
     {
         "name": "architecture-version-status-prose-reference-marker-line",
@@ -134,8 +137,6 @@ CASES = [
                 PROMPT_WITH_STATUS_MARKER_REFERENCE,
             )
         ],
-        "expect_exit": 0,
-        "expect_check": None,
     },
     {
         "name": "frozen-marker-removed",
@@ -147,7 +148,6 @@ CASES = [
                 "**DRAFT**",
             )
         ],
-        "expect_exit": 1,
         "expect_check": "MARK-02",
     },
     {
@@ -160,7 +160,6 @@ CASES = [
                 "`W038 → W039 → W040 → W001`",
             )
         ],
-        "expect_exit": 1,
         "expect_check": "DEPS-03",
     },
 ]
@@ -168,15 +167,8 @@ CASES = [
 
 def make_copy() -> Path:
     root = Path(tempfile.mkdtemp(prefix="adcos-selftest-"))
-    for item in COPY_ITEMS:
-        source = REPO_ROOT / item
-        destination = root / item
-        if source.is_dir():
-            shutil.copytree(source, destination, ignore=shutil.ignore_patterns("__pycache__"))
-        else:
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, destination)
-    return root
+    shutil.copytree(REPO_ROOT, root / "repo", ignore=COPY_IGNORE)
+    return root / "repo"
 
 
 def apply_ops(root: Path, ops: List[tuple]) -> None:
@@ -206,45 +198,102 @@ def apply_ops(root: Path, ops: List[tuple]) -> None:
             raise AssertionError("unknown operation %r" % (kind,))
 
 
-def run_checker(root: Path) -> subprocess.CompletedProcess:
-    return subprocess.run(
+def run_checker(root: Path) -> Tuple[int, Dict[str, str], str]:
+    result = subprocess.run(
         [sys.executable, str(root / "tools" / "spec_check.py")],
         capture_output=True,
         text=True,
         cwd=str(root),
         env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
     )
+    output = (result.stdout or "") + (result.stderr or "")
+    checks: Dict[str, str] = {}
+    for line in output.splitlines():
+        m = CHECK_LINE_RE.match(line)
+        if m:
+            checks[m.group(2)] = m.group(1)
+    return result.returncode, checks, output
+
+
+def new_failures(baseline: Dict[str, str], mutated: Dict[str, str]) -> List[str]:
+    """Check ids that are FAIL after the mutation but were not FAIL before."""
+    return sorted(
+        check
+        for check, verdict in mutated.items()
+        if verdict == "FAIL" and baseline.get(check) != "FAIL"
+    )
 
 
 def main() -> int:
+    baseline_root = make_copy()
+    try:
+        baseline_rc, baseline_checks, _ = run_checker(baseline_root)
+    finally:
+        shutil.rmtree(baseline_root.parent, ignore_errors=True)
+
     passed = 0
+    failures: List[str] = []
     for case in CASES:
         root = make_copy()
         try:
             apply_ops(root, case["ops"])
-            result = run_checker(root)
-            output = (result.stdout or "") + (result.stderr or "")
-            if result.returncode != case["expect_exit"]:
-                raise AssertionError(
-                    "%s: expected exit %s, got %s\n%s"
-                    % (case["name"], case["expect_exit"], result.returncode, output)
-                )
-            expected_check = case.get("expect_check")
+            rc, checks, output = run_checker(root)
+            expected_check: Optional[str] = case.get("expect_check")
+
             if expected_check is not None:
-                if not any(
-                    line.lstrip().startswith("[FAIL") and expected_check in line
-                    for line in output.splitlines()
-                ):
+                # Negative case: the named check must genuinely flip.
+                if baseline_checks.get(expected_check) != "PASS":
                     raise AssertionError(
-                        "%s: expected failing check %s not present\n%s"
-                        % (case["name"], expected_check, output)
+                        "%s: baseline must have %s PASS for the mutation to prove "
+                        "detection (baseline says %r); the case no longer tests "
+                        "what it claims"
+                        % (case["name"], expected_check, baseline_checks.get(expected_check))
+                    )
+                if checks.get(expected_check) != "FAIL":
+                    raise AssertionError(
+                        "%s: expected check %s to FAIL after the mutation, got %r\n%s"
+                        % (case["name"], expected_check, checks.get(expected_check), output)
+                    )
+                if rc == 0:
+                    raise AssertionError(
+                        "%s: checker must exit nonzero when %s fails"
+                        % (case["name"], expected_check)
+                    )
+            else:
+                # Positive case: the mutation must introduce no new failure.
+                regressed = new_failures(baseline_checks, checks)
+                if regressed:
+                    raise AssertionError(
+                        "%s: mutation introduced new failing check(s): %s\n%s"
+                        % (case["name"], ", ".join(regressed), output)
+                    )
+                if rc != baseline_rc:
+                    raise AssertionError(
+                        "%s: exit code changed without any check transition "
+                        "(baseline %d, mutated %d)\n%s"
+                        % (case["name"], baseline_rc, rc, output)
                     )
             passed += 1
+        except AssertionError as exc:
+            failures.append(str(exc))
         finally:
-            shutil.rmtree(root, ignore_errors=True)
+            shutil.rmtree(root.parent, ignore_errors=True)
 
-    print("spec_check selftest: %d/%d PASS" % (passed, len(CASES)))
-    return 0
+    for failure in failures:
+        print("[FAIL    ] selftest   %s" % failure.splitlines()[0])
+        for line in failure.splitlines()[1:]:
+            print("          %s" % line)
+    print(
+        "spec_check selftest: %d/%d PASS (baseline: %d/%s clean, rc=%d)"
+        % (
+            passed,
+            len(CASES),
+            sum(1 for v in baseline_checks.values() if v == "PASS"),
+            len(baseline_checks),
+            baseline_rc,
+        )
+    )
+    return 0 if not failures else 1
 
 
 if __name__ == "__main__":
