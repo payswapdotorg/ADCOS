@@ -20,6 +20,9 @@ jobs:
       - name: Run current governance specification checks
         run: python3 tools/current_spec_check.py
 
+      - name: Run Tech Lead dispatch guard
+        run: python3 tools/tech_lead_guard.py
+
       # Legacy frozen-surface validator. This checker predates the
       # post-snapshot governance schema and intentionally preserves historical
       # compatibility semantics. Its historical failures are retained as
@@ -133,11 +136,6 @@ jobs:
       - name: Run upgrade/rollback/compatibility manager tests
         run: python3 tools/upgrade_selftest.py
 
-      # Management and simulator frozen-surface cases historically inspect
-      # the PR delta. That delta does not exist on merged main, so those
-      # comprehensive batteries remain mandatory on pull requests; main
-      # validates their committed CI wiring directly instead of requiring a
-      # nonexistent main-vs-main diff.
       - name: Run management API tests
         if: github.event_name == 'pull_request'
         run: python3 tools/management_selftest.py
@@ -191,7 +189,6 @@ jobs:
       - name: Run economic allocation tests
         run: python3 tools/allocation_selftest.py
 
-      # Restored accepted commercial-phase implementation batteries.
       - name: Run payment provider adapter tests
         run: python3 tools/payment_selftest.py
 
@@ -215,9 +212,6 @@ jobs:
         run: |
           python3 tools/spec_check.py --provenance
 
-  # WORK-050 exact-head evidence remains an independent job so a legacy
-  # specification-audit failure cannot suppress the permanent implementation
-  # battery.
   platform-capability-runtime:
     name: Platform capability registry/evaluation/history battery (W050 exact-head)
     runs-on: ubuntu-latest
