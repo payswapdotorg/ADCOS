@@ -5,6 +5,9 @@ The suite deliberately mutates one authoritative fixture at a time and
 asserts the checker fails/succeeds for the intended reason. When authoritative
 prose changes, update the mutation anchor deliberately rather than weakening
 spec_check itself.
+
+The fixture copier mirrors the repository tree so nested authoritative paths
+remain executable in an isolated temporary checkout.
 """
 from __future__ import annotations
 
