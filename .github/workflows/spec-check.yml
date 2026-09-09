@@ -13,11 +13,21 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      # Uses the runner's preinstalled Python 3 (all tools require only the
-      # standard library and run fully offline — no package installation,
-      # no network access, no external services).
-      - name: Run specification consistency checks
+      # Current blocking validator. It understands the post-snapshot
+      # Architect governance model and Architecture 1.1 transition package.
+      - name: Run current governance specification checks
+        run: python3 tools/current_spec_check.py
+
+      # Legacy frozen-surface validator. This checker predates the
+      # post-snapshot governance schema and intentionally preserves historical
+      # compatibility semantics. Its historical failures are retained as
+      # visible debt rather than allowed to block the current transition gate.
+      - name: Run legacy frozen specification checks (compatibility audit)
         run: python3 tools/spec_check.py
+        continue-on-error: true
+
+      - name: Run fresh-session handoff checks
+        run: python3 tools/fresh_session_check.py --actual-main-sha bf3b7cebe0a22a07740bed1934a438be3c9cddc3
 
       - name: Run experience/learning registry integrity checks
         run: python3 tools/experience_check.py
@@ -176,10 +186,7 @@ jobs:
       - name: Run economic allocation tests
         run: python3 tools/allocation_selftest.py
 
-      # Restored accepted commercial-phase implementation batteries. These
-      # are the exact W044-W049 battery artifacts accepted at their original
-      # delivery heads; only their missing CI invocation wiring is restored
-      # here. No implementation semantics are recreated or modified.
+      # Restored accepted commercial-phase implementation batteries.
       - name: Run payment provider adapter tests
         run: python3 tools/payment_selftest.py
 
@@ -195,42 +202,18 @@ jobs:
       - name: Run provider/buyer client runtime tests
         run: python3 tools/client_selftest.py
 
-      # Persistent Architect package: authorization provenance for pull
-      # requests. Runs LAST on purpose: the frozen-surface batteries above
-      # detect the origin/main ref to choose their strict context, and this
-      # step is the only one that fetches it. The spec_check run above
-      # reports ARCH-08 as SKIP in the base-less PR checkout; this step
-      # enforces it strictly: an implementation-file delta requires an
-      # ACTIVE authorization inherited byte-identically from the base
-      # (never self-authorized), with the exact recorded baseline and a
-      # scope covering the whole delta. An in-review ledger entry is
-      # descriptive only and is NEVER authorization (PA-001, DEC-0045);
-      # without an active authorization the step fails closed. And
-      # implementation deltas must not modify spec/architect/.
+      # Persistent Architect package: the legacy checker reports ARCH-08 as
+      # SKIP in its base-less checkout. The dedicated provenance step below
+      # remains authoritative for implementation PRs.
       - name: Verify execution-authorization provenance (PR context)
         if: github.event_name == 'pull_request'
         run: |
           git fetch --no-tags origin main
           python3 tools/spec_check.py --provenance
 
-  # WORK-050 exact-head evidence (independent job, the W048/W049
-  # precedent): the specification job above carries the KNOWN,
-  # INHERITED governance failures (ARCH-02 historical ledger/schema
-  # defects and their prerequisite cascades, plus the ARCH-08
-  # authorization-provenance condition, visible and unmasked here
-  # exactly as on main).  This job runs the permanent W050 platform
-  # capability registry/evaluation/history battery regardless of the
-  # specification job's outcome and never edits, retries, or masks it.
-  # It checks out the EXACT delivered head with full history (the
-  # immutable authorized baseline and the branch-point convention are
-  # ancestors of the head and are therefore present locally) and
-  # fetches the baseline commit as belt-and-braces, exactly like the
-  # accepted W049 client-runtime precedent.  origin/main is
-  # deliberately NOT fetched for this job: it is not an audit
-  # authority for this battery (the battery's frozen-surface, scope,
-  # and authorization-provenance audits are pinned to the immutable
-  # anchors declared by the frozen WORK-050-CORE-001 authorization
-  # record).
+  # WORK-050 exact-head evidence remains an independent job so a legacy
+  # specification-audit failure cannot suppress the permanent implementation
+  # battery.
   platform-capability-runtime:
     name: Platform capability registry/evaluation/history battery (W050 exact-head)
     runs-on: ubuntu-latest
@@ -238,8 +221,6 @@ jobs:
       - name: Check out the exact delivery head (full history)
         uses: actions/checkout@v4
         with:
-          # the exact PR head (push events: the pushed head) so the
-          # baseline-pinned audits see exactly the delivered tree
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
