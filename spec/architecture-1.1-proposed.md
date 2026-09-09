@@ -1,8 +1,8 @@
 # ADCOS Architecture 1.1
 
-**Status:** PROPOSED FOR FREEZE  
-**Supersedes:** Architecture 1.0 after formal ACR acceptance  
-**Scope:** Normative architecture
+**Status:** ACCEPTED — FROZEN via ACR-014 (accepted proposal record; the normative content is canonical at `spec/architecture.md`)  
+**Supersedes:** Architecture 1.0, preserved at `spec/history/architecture-1.0.md`  
+**Scope:** Accepted Architecture 1.1 proposal record
 
 ## 1. Mission
 

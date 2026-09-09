@@ -9,13 +9,13 @@ last_updated: "2026-09-09"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: 40737a0c716eff3ad05753431c24c2717afb2a68
-  main_sha_semantics: "PR #24 Architect-accepted merge of the Architecture 1.1 transition package; the semantic checkpoint for the M001 activation."
+  main_sha: 725397ffd60e7d8f44c24c85c86037f43ff6c303
+  main_sha_semantics: "Mainline at the M001 delivery branch point: PR #24 merge (40737a0) + DEC-0098 activation (6ea3b69) + guard repair (51b8fd5) + DEC-0099 battery-mirror reconciliation (725397f, main CI green)."
   lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
 versions:
-  architecture_version_reference: "1.0"
-  architecture_version_authority: "preserved legacy baseline: spec/architecture.md"
+  architecture_version_reference: "1.1"
+  architecture_version_authority: "spec/architecture.md (FROZEN via ACR-014 with the M001 delivery; 1.0 preserved verbatim at spec/history/architecture-1.0.md)"
   forward_architecture_target: "1.1"
   forward_architecture_target_files:
     - "spec/architecture-1.1-proposed.md"
@@ -32,11 +32,12 @@ execution:
   mode: implementing
   active_work_item: M001
   active_authorization: M001-CORE-001
-  review_state: AUTHORIZED_PENDING_DELIVERY
+  review_state: IN_REVIEW
+  m001_delivery_branch: "m001-architecture-1.1-freeze"
   reviewed_delivery_sha: 58eced2f7864bd8d6e9cac658574d8c7b0b48965
   halted_reason: null
   next_required_decisions:
-    - "M001 — Architecture 1.1 Freeze is active under authorization M001-CORE-001 issued by DEC-0098; its governance-classified delivery PR must be reviewed and accepted (DEC-0099) before ACR-014 becomes ACCEPTED and the 1.1 successor snapshots are promoted."
+    - "M001 — Architecture 1.1 Freeze is in review: the delivery branch promotes the 1.1 successor snapshots, archives the 1.0 snapshot under spec/history/, and flips ACR-014 to ACCEPTED. Sole-Architect review of the exact delivery head and the DEC-0100 acceptance close M001."
     - "After M001 acceptance, R7 requires its own gate-specific Work Item authorization and MUST be implemented from the accepted Architecture 1.1 successor package."
     - "R4/W040 remains independently in-review and unaccepted; EVID-007 and EVID-008 remain open, physical, and W040-owned."
     - "W048 remains accepted-not-restored and cannot be restored implicitly."
@@ -52,7 +53,7 @@ reconciliation:
   r6_status: "R6 complete under DEC-0097; WORK-057 accepted at 58eced2f7864bd8d6e9cac658574d8c7b0b48965 and merged as a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19."
   authorization_state: "Exactly one implementation authorization is active: M001-CORE-001 (DEC-0098) for the Architecture 1.1 Freeze transition. All W-item authorizations remain closed."
   mainline_reconciliation: "PR #24 (the Architecture 1.1 transition package) was Architect-accepted and merged as 40737a0c716eff3ad05753431c24c2717afb2a68; this snapshot is reconciled to that mainline. The lifecycle ledger snapshot remains the last durable lifecycle baseline and is advanced by explicit reconciliation at M001 acceptance."
-  architecture_transition: "All forward implementation is governed toward Architecture 1.1. Architecture 1.0 remains the preserved legacy baseline until the M001 delivery promotes the 1.1 successor snapshots."
+  architecture_transition: "The M001 delivery promotes Architecture 1.1 as the sole normative forward architecture (spec/architecture.md FROZEN v1.1, LOCK-101..LOCK-120, M001-M014 registry, 1.1 dependency model); Architecture 1.0 is preserved verbatim under spec/history/ as superseded historical evidence."
 
 decisions:
   latest_work_item_acceptance: DEC-0097
@@ -71,8 +72,8 @@ in_review:
     branch: "m001-architecture-1.1-freeze"
     pr: null
     pr_head: null
-    baseline_sha: 40737a0c716eff3ad05753431c24c2717afb2a68
-    state: "authorized-pending-delivery"
+    baseline_sha: 725397ffd60e7d8f44c24c85c86037f43ff6c303
+    state: "in-review"
     areas:
       - "spec/"
       - "governance control plane"

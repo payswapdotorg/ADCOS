@@ -1,5 +1,7 @@
 # ADCOS Architecture 1.1 Work Items
 
+**Status:** ACCEPTED via ACR-014 (accepted proposal record; the canonical registry is `spec/work-items.md`)
+
 Implementation is dependency-driven. Historical 1.0 work items remain archived and are not rewritten.
 
 ## M001 — Architecture 1.1 Freeze

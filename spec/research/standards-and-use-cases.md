@@ -1,5 +1,7 @@
 # ADCOS Architecture Basis
 
+**Status:** FROZEN — accepted via ACR-014 as Architecture 1.1 research grounding
+
 The Architecture 1.1 direction is grounded in existing standards and systems rather than requiring ADCOS to replace them.
 
 ## Standards/system boundaries

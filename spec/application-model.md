@@ -1,5 +1,7 @@
 # ADCOS Application Model
 
+**Status:** FROZEN — accepted via ACR-014 as a governance artifact of Architecture 1.1
+
 ## Core relationship
 
 Applications are consumers of connectivity infrastructure.

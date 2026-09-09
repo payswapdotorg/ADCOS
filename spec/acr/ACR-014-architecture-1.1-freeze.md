@@ -1,8 +1,9 @@
 # ACR-014: Architecture 1.1 Freeze — application connectivity model
 
 ## Status
-PROPOSED (activation recorded by DEC-0098; synchronized updates and final
-ACCEPTED status land with the M001 delivery)
+ACCEPTED (approved via DEC-0098; synchronized updates delivered with the
+M001 delivery under authorization M001-CORE-001; acceptance of the exact
+delivery head is recorded as DEC-0100)
 
 ## Motivating experience / research
 - `spec/research/standards-and-use-cases.md` — the Architecture 1.1 direction is
@@ -96,11 +97,11 @@ authority (LOCK-117). Nothing in this ACR abandons or narrows the mission.
   reversing the promotion pointers; no information is destroyed.
 
 ## Architect decision
-DEC-0098 (2026-09-09, sole Architect, single-agent mode): approve the
-promotion path, activate Work Item M001 under repository-local authorization
-`M001-CORE-001` from baseline `40737a0c716eff3ad05753431c24c2717afb2a68`,
-and require the synchronized updates to land as the M001 delivery before
-ACR-014 becomes ACCEPTED.
+DEC-0098 (2026-09-09, sole Architect, single-agent mode): approved the
+promotion path and activated Work Item M001 under repository-local
+authorization `M001-CORE-001` from baseline `40737a0c716eff3ad05753431c24c2717afb2a68`.
+The synchronized updates are delivered by the M001 freeze delivery (this
+change); the exact delivery head is reviewed and accepted under DEC-0100.
 
 ## Resulting architecture version
 Architecture Version 1.1 (recorded in `spec/architecture.md` upon the M001

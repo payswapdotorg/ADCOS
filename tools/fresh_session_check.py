@@ -62,7 +62,14 @@ def main() -> int:
         "spec/architect/work-items/M001.md",
         "spec/architect/authorizations/M001.yaml",
         "spec/architect/decisions/DEC-0098-m001-activation.yaml",
+        "spec/architect/decisions/DEC-0099-m001-battery-reconciliation.yaml",
         "spec/acr/ACR-014-architecture-1.1-freeze.md",
+        "spec/history/README.md",
+        "spec/history/architecture-1.0.md",
+        "spec/history/architecture-lock-1.0.md",
+        "spec/history/work-items-1.0.md",
+        "spec/history/dependency-graph-1.0.md",
+        "docs/M001-evidence.md",
         "docs/tech-lead/ADCOS-TECH-LEAD-HANDOFF.md",
         "docs/tech-lead/worker-model.md",
         "docs/tech-lead/dispatch-state.yaml",
@@ -95,7 +102,7 @@ def main() -> int:
         if marker.lower() not in text.lower():
             failures.append(message)
 
-    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "Exactly one implementation authorization is active", "Architecture 1.0 remains a preserved historical/frozen"]:
+    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "Exactly one implementation authorization is active", "Architecture 1.0 is preserved historical evidence"]:
         if marker.lower() not in current.lower():
             failures.append(f"current-state.md missing transition checkpoint marker: {marker}")
 
@@ -110,6 +117,22 @@ def main() -> int:
     proposal = ROOT / "spec/architecture-1.1-proposed.md"
     if proposal.exists() and "mandatory forward implementation target" not in agents.lower():
         failures.append("agent bootstrap must identify Architecture 1.1 as the mandatory forward implementation target")
+
+    # post-freeze invariants: Architecture 1.1 is the canonical normative snapshot
+    arch = read("spec/architecture.md")
+    lock = read("spec/architecture-lock.md")
+    for marker in ("Architecture Version 1.1", "FROZEN", "ACR-014"):
+        if marker not in arch:
+            failures.append(f"spec/architecture.md missing the Architecture 1.1 freeze marker: {marker}")
+    for marker in ("LOCK-101", "LOCK-120"):
+        if marker not in lock:
+            failures.append(f"spec/architecture-lock.md missing the 1.1 lock marker: {marker}")
+    hist = ROOT / "spec/history/architecture-1.0.md"
+    if not hist.is_file():
+        failures.append("the preserved Architecture 1.0 snapshot is missing from spec/history/")
+    acr14 = read("spec/acr/ACR-014-architecture-1.1-freeze.md")
+    if "## Status\nACCEPTED" not in acr14:
+        failures.append("ACR-014 must record its ACCEPTED status")
 
     auth_root = ROOT / "spec/architect" / "authorizations"
     active = 0

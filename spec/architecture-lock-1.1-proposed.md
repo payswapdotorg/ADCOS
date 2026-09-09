@@ -1,6 +1,6 @@
 # ADCOS Architecture 1.1 — Normative Locks
 
-**Status:** PROPOSED FOR FREEZE
+**Status:** ACCEPTED — FROZEN via ACR-014 (accepted proposal record; the normative locks are canonical at `spec/architecture-lock.md`)
 
 1. **LOCK-101 Canonical Contract** — `ConnectivityContract` is the authority for acquired connectivity.
 2. **LOCK-102 Intent Independence** — application intent is technology-neutral and does not select implementation mechanisms.
