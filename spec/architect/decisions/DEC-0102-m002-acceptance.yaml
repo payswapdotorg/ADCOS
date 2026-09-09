@@ -1,0 +1,63 @@
+# DEC-0102 — M002 acceptance: Connectivity Contract Core accepted; R7 child advances to M003
+# Sole-Architect governance decision (per-child acceptance, DEC-0101 serialization point).
+decision_id: DEC-0102
+date: "2026-09-09"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M002
+authorization: R7-CORE-001
+
+review_basis: "Tech Lead review of the exact M002 delivery head 0112943c99c7fd3215bf7c8d2b0ebb740a282132 (PR #26, branch m002-contract-core, base 7d28d9d which contains the R7-CORE-001 authorization baseline 1e5c55f): all current-governance gates re-run locally on the exact head (current_spec_check PASS, tech_lead_guard PASS, architecture_drift_guard PASS with an implementation-only 25-file delta, fresh_session_check PASS, authorization_provenance PASS — the whole implementation delta covered by R7-CORE-001, baseline 1e5c55f, byte-identical authorization inheritance from main), the M002 battery 54/54 PASS (deterministic, offline, seeded, cross-hash-seed), the full battery suite green at the exact head with exit-code-based verification in exact workflow order (the sole non-zero exit being the DEC-0099-disclosed era-superseded client skip guard), and PR-head CI green end-to-end (run 34384904922, both jobs success — the first fully green run on the branch, reached after the CI-repair riders documented below). The review itself is durably recorded in the PR #26 review timeline; GitHub self-approval was unavailable (the single operator account owns both the PR and the review), so this decision is the authoritative acceptance record per repo convention."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 26
+  pr_head: 0112943c99c7fd3215bf7c8d2b0ebb740a282132
+  branch: "m002-contract-core"
+  branch_point: 7d28d9da0bc4eab8204b748f89185d229e868557
+  merge_sha: 0ffdf4775112c0b71b71f47f3688a50347ab4371
+  merged_at: "2026-09-09T18:12:38Z"
+  ci_run_at_head: 34384904922
+  ci_run_at_merge: 34386408652
+
+delivery_composition:
+  - commit: d4e6d40f607f2a86c91a3f87182f3694a7e2d9a4
+    summary: "M002 core: contracts/ canonical domain (model.py, store.py), tools/contract_selftest.py (54-case battery), docs/M002-evidence.md"
+  - commit: f261bb8bd62a3429bc6f069e386b6ce12f9c3b1e
+    summary: "authorization-aware battery-scope consultation repairs across 15 battery files (the M001-evidence §4 duty)"
+  - commit: bdd39210f44bca637cb90fa127512199f615adfc
+    summary: "CI-repair rider (reviewed + approved): case_42 echo-server check-before-latch race fix — root-caused with instrumented evidence, worker-executed, worker-stress-verified (3000-iteration in-process harness, 25 pre-fix failures to 0 post-fix)"
+  - commit: 1471781373247799aae154dd6b87eb212704be65
+    summary: "CI-repair rider (reviewed + approved): the same authorization-aware consultation repair class completed for the four PR-only batteries (management case_29/32, simulator case_38, conformance case_45/62, agent case_40), including the disclosed WORK-054/93ad413 exclusion amendment for case_29"
+  - commit: 0112943c99c7fd3215bf7c8d2b0ebb740a282132
+    summary: "CI-repair rider (reviewed + approved): imt case_33 Pattern-B completion + the scale case_37 type-crash fix (a latent defect in the f261bb8 repair itself, disclosed in the commit message)"
+
+acceptance_findings:
+  - "Every M002 acceptance criterion in the R7 charter was reproduced by the Tech Lead against the exact delivery head before the merge: the canonical ConnectivityContract domain implements the frozen 1.1 §3 field set (contract identity; principal and beneficiary scope; normalized requirements; accepted offer references; hard constraints; committed service properties; validity interval; usage and pricing terms; assurance obligations; permitted execution scope; termination and compensation rules; provenance; signature references), lease/expiry semantics with renewal audit trails, the contract-level lifecycle state machine (frozen 1.1 §11 reference lifecycle + §9 degraded/terminal states, exhaustive transition table), hard-constraint structural immutability (LOCK-108), and structural authority uniqueness (LOCK-117: execution artifacts as opaque data). Deterministic, offline, seeded; no wall clock, no randomness, no network; secrets never stored (LOCK-119); canonical-JSON round-trips; journal fold with idempotency; battery green (54/54); the evidence doc records the verification matrix (SOFTWARE 54/54; physical NOT-TESTABLE/OPEN; EVID-002..008 untouched)."
+  - "Worker-executed delivery loop (per the Tech Lead operating model): the M002 core and the f261b8 consultation repairs were implemented by the Tech Lead's predecessor session; the three CI-repair riders were implemented by a dispatched worker session (chartered, monitored, reviewed, and approved by the Tech Lead) — the first ADCOS delivery executed through the dispatch/review/approve loop the operator directed. Each rider is bounded, root-caused, disclosed in the PR body, and preserves every invariant."
+  - "Two defects were found in the branch's own earlier repair material and fixed honestly before acceptance: (1) the f261b8 scale case_37 Pattern-B block carried a latent str/Path TypeError (never executed anywhere before — CI died at earlier batteries and local pre-flights filtered on FAIL text); (2) the f261b8 imt case_33 repair left the .github sub-check in the delta-inclusion form. Both fixed at 0112943 with semantics preserved. The pre-flight lesson is recorded: battery verification must be exit-code-based (tracebacks and lowercase 'failed' are failures too)."
+  - "A genuine intermittent defect was found and fixed at the delivery boundary: case_42_b3_real_ipv6_loopback_conformance failed ~20% of runs (reproduced locally by the Tech Lead with the exact CI signature; always leg1) — root cause was a test-side check-before-latch race in the case's echo server (server_state latched only after conn.sendall returned, while the client asserts as soon as the echo becomes readable), NOT an engine defect; the engine is acquitted. The fix latches the received-payload evidence before the echo write (deterministic happens-before; no sleep, no retry; the case remains a real ::1 end-to-end round-trip)."
+
+accepted_scope:
+  - "M002 — Connectivity Contract Core is ACCEPTED at the exact delivery head 0112943c99c7fd3215bf7c8d2b0ebb740a282132, merged as 0ffdf4775112c0b71b71f47f3688a50347ab4371."
+  - "R7-CORE-001 remains the sole active program authorization (it closes only when the R7 gate completes); its current child advances M002 -> M003."
+  - "Roadmap advances to v1.9: M002 COMPLETE under this decision with the exact merge SHA; M003 — Offers and Provider Capability Exchange is the current child in implementation."
+  - "The current-governance checkers (tools/current_spec_check.py, tools/fresh_session_check.py) are evolved to the post-acceptance invariants and fail closed against pre-acceptance markers (implementing-M002, active_work_item: M002, roadmap v1.8)."
+  - "Execution state, execution ledger (M002 entry + LEDGER-RECON-015), authorization child pointer, current-state projection, resume protocol, the R7 charter status, and the root AGENTS/README projections are reconciled to this acceptance without rewriting any historical record."
+
+rejected_scope:
+  - "M003 is NOT accepted or delivered by this decision; it becomes the current child work item under the existing R7-CORE-001 authorization (per-child acceptance DEC-0103+ remains mandatory)."
+  - "No Architecture or protocol semantic change: Architecture 1.1 stays FROZEN and sole normative; ACR-014 stays ACCEPTED, not superseded."
+  - "No physical-world obligation is created or closed: EVID-002..008 remain OPEN and physical; R4/W040 remains independently in-review; W048 remains accepted-not-restored."
+  - "No rewriting of any historical acceptance record, ledger entry, decision, or battery history; the era-superseded batteries (payment/eligibility/client) remain DEC-0099-disclosed skips awaiting the M009/M014 commercial track."
+
+evidence:
+  - "docs/M002-evidence.md (delivered in the PR) records the verification matrix; the acceptance facts are recorded here and in the execution ledger."
+  - "SOFTWARE-class evidence only for all M002 criteria; the PHYSICAL class remains NOT-TESTABLE/OPEN per the R7 charter evidence policy."
+
+downstream_effect:
+  - "M003 — Offers and Provider Capability Exchange is the current child (charter scope: offers/, capabilities/, discovery/, marketplace/, docs/M003-evidence.md); the 3-worker pipeline recommended by the charter becomes available (A: M003->M008; B: M013 then M010/M011/M012; C: M009 then M014 preparation; downstream preparation may parallelize, downstream acceptance may not precede dependency acceptance)."
+  - "All successor work derives from the accepted contracts/ domain exactly as delivered (LOCK-101 canonical authority; M003's offer model references the contract domain, it does not re-implement or mutate it)."
+  - "The dispatch/review/approve worker loop is validated as the delivery mechanism for R7 children going forward."

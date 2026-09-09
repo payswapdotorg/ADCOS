@@ -2,7 +2,8 @@
 # This snapshot is a current-state projection, not historical delivery authority.
 # Current source of truth: spec/architect/roadmap.yaml + accepted decisions + ledger.
 # R7 ACTIVE under DEC-0101 (the bounded R7 program authorization R7-CORE-001);
-# M002 is the current child work item; per-child acceptance decisions follow.
+# M002 ACCEPTED under DEC-0102; M003 is the current child work item; per-child
+# acceptance decisions (DEC-0103+) remain the serialization points.
 
 schema_version: 1
 package: "persistent-architect"
@@ -10,8 +11,8 @@ last_updated: "2026-09-09"
 
 repository:
   canonical: "github.com/payswapdotorg/ADCOS"
-  main_sha: 1e5c55f9916ff964d3bfc0761d04a8d5fd02c41b
-  main_sha_semantics: "The pre-activation reconciled baseline: DEC-0100 acceptance head 4168f73 (push CI green run 34366545495) plus the fresh-session reconciliation repair 1e5c55f (push CI green run 34367311873). The DEC-0101 activation record sits beyond this baseline per the standing reconciliation convention enforced by tools/fresh_session_check.py (governance-only deltas between the snapshot and live main)."
+  main_sha: 0ffdf4775112c0b71b71f47f3688a50347ab4371
+  main_sha_semantics: "The M002 acceptance merge: PR #26 (head 0112943, branch m002-contract-core from the DEC-0101 activation state 7d28d9d which contains the R7-CORE-001 authorization baseline 1e5c55f), merged 0ffdf47 (push CI green run 34386408652). The DEC-0102 acceptance record sits beyond this baseline per the standing reconciliation convention enforced by tools/fresh_session_check.py (governance-only deltas between the snapshot and live main)."
   lifecycle_ledger_snapshot_sha: 7ae438d46041b228164cc8880be37dc21f972b6f
 
 versions:
@@ -31,17 +32,17 @@ versions:
 
 execution:
   mode: implementing
-  active_work_item: M002
+  active_work_item: M003
   active_authorization: R7-CORE-001
   review_state: ACCEPTED
   program_authorization: R7-CORE-001
   program_charter: "spec/architect/work-items/R7-charter.md"
   program_dependency_overlay: "spec/architect/dependency-overlays/R7.yaml"
-  current_child_work_item: M002
+  current_child_work_item: M003
   halted_reason: null
   next_required_decisions:
-    - "M002 — Connectivity Contract Core: implement and deliver under R7-CORE-001 (charter child scope: contracts/, tools/contract_selftest.py, docs/M002-evidence.md, plus the authorization-aware battery-scope consultation repairs); accept from repository evidence as DEC-0102 (exact reviewed head + merge SHA; per-child acceptance is mandatory)."
-    - "After M002 acceptance: exploit the 3-worker pipeline per the charter (A: M003->M008; B: M013 then M010/M011/M012; C: M009 then M014 preparation); downstream preparation may parallelize, downstream acceptance may not precede dependency acceptance."
+    - "M003 — Offers and Provider Capability Exchange: implement and deliver under R7-CORE-001 (charter child scope: offers/, capabilities/, discovery/, marketplace/, docs/M003-evidence.md); accept from repository evidence as DEC-0103 (exact reviewed head + merge SHA; per-child acceptance is mandatory)."
+    - "M002 is complete (DEC-0102; head 0112943, merge 0ffdf47): the 3-worker pipeline per the charter is now available (A: M003->M008; B: M013 then M010/M011/M012; C: M009 then M014 preparation); downstream preparation may parallelize, downstream acceptance may not precede dependency acceptance."
     - "Charter scope amendments (implementation paths outside declared child scopes) are lightweight decisions recorded in spec/architect/decisions/; no re-authorization ceremony."
     - "R4/W040 remains independently in-review and unaccepted; EVID-007 and EVID-008 remain open, physical, and W040-owned."
     - "W048 remains accepted-not-restored and cannot be restored implicitly."
@@ -57,9 +58,10 @@ reconciliation:
   r4_status: "R4 remains parallel-after-R3 with W040 independently in-review and unaccepted."
   r6_status: "R6 complete under DEC-0097; WORK-057 accepted at 58eced2f7864bd8d6e9cac658574d8c7b0b48965 and merged as a08ce85f133dbb76cd15a21d7c16f8a49fa7cc19."
   m001_status: "M001 complete under DEC-0100: PR #25 head 36bfd8e accepted and merged as 80292c24502200f84d11491ed12e9cec5e5baf11; ACR-014 ACCEPTED; pre-acceptance governance repairs recorded at 3e3ea3b (current_spec_check fail-closed aggregation + marker alignment; WORK-057 ledger projection appended; conformance case_63 frozen-authority mirror re-baselined to the acceptance merge)."
-  r7_status: "R7 ACTIVATED under DEC-0101: the bounded R7 program authorization R7-CORE-001 (baseline 1e5c55f) covers the charter child scopes M002-M014; M002 is the current child work item; per-child acceptance decisions (DEC-0102+) are the serialization points."
+  m002_status: "M002 complete under DEC-0102: PR #26 head 0112943 accepted and merged as 0ffdf4775112c0b71b71f47f3688a50347ab4371; the canonical ConnectivityContract domain (contracts/) is delivered with its 54/54 battery and evidence matrix; three reviewed CI-repair riders are recorded in the decision."
+  r7_status: "R7 ACTIVATED under DEC-0101: the bounded R7 program authorization R7-CORE-001 (baseline 1e5c55f) covers the charter child scopes M002-M014; M002 is accepted (DEC-0102, merge 0ffdf47); M003 is the current child work item; per-child acceptance decisions (DEC-0103+) are the serialization points."
   authorization_state: "R7-CORE-001 is the sole active implementation authorization (DEC-0101; program-level, child scopes per the R7 charter). M001-CORE-001 is closed by the DEC-0100 acceptance (status: accepted, authorized: false). All W-item authorizations remain closed."
-  mainline_reconciliation: "M001 was Architect-accepted and merged as 80292c2 (LEDGER-RECON-014 at the DEC-0100 acceptance; snapshot re-baselined to 4168f73 and then to the fresh-session reconciliation repair 1e5c55f, both push CI green). DEC-0101 (the R7 activation) sits beyond the 1e5c55f baseline per the standing reconciliation convention; the next reconciliation advances with the first child acceptance."
+  mainline_reconciliation: "M001 was Architect-accepted and merged as 80292c2 (LEDGER-RECON-014 at the DEC-0100 acceptance; snapshot re-baselined to 4168f73 and then to the fresh-session reconciliation repair 1e5c55f, both push CI green). DEC-0101 (the R7 activation) and the M002 delivery (PR #26: d4e6d40, f261bb8, bdd3921, 1471781, 0112943, merge 0ffdf47) advanced main beyond the 1e5c55f baseline; LEDGER-RECON-015 at this acceptance re-baselines the snapshot to 0ffdf47 (push CI green), and DEC-0102 itself sits beyond it per the standing reconciliation convention."
   architecture_transition: "Architecture 1.1 is the sole normative forward architecture (spec/architecture.md FROZEN v1.1, LOCK-101..LOCK-120, M001-M014 registry, 1.1 dependency model); Architecture 1.0 is preserved verbatim under spec/history/ as superseded historical evidence."
 
 decisions:
@@ -67,12 +69,13 @@ decisions:
   latest_w056_scope_amendment: DEC-0093
   latest_w056_delivery: c2b2c59fae4749b610b721b217e18cfa9b4aab25
   latest_w056_acceptance_merge: b11cf44db922811d2518c05685aee14127243264
-  latest_governance_decision: DEC-0101
+  latest_governance_decision: DEC-0102
   latest_w057_review: DEC-0097
   latest_m001_activation: DEC-0098
   latest_m001_scope_amendment: DEC-0099
   latest_m001_acceptance: DEC-0100
   latest_r7_activation: DEC-0101
+  latest_m002_acceptance: DEC-0102
   active_program_authorization: R7-CORE-001
   active_acr: null
   accepted_acrs:
@@ -90,6 +93,14 @@ in_review:
       - pilot/
 
 closed_work_items:
+  - work_item: M002
+    branch: "m002-contract-core"
+    pr: 26
+    pr_head: 0112943c99c7fd3215bf7c8d2b0ebb740a282132
+    baseline_sha: 1e5c55f9916ff964d3bfc0761d04a8d5fd02c41b
+    state: "accepted-merged"
+    review_decision: DEC-0102
+    merge_sha: 0ffdf4775112c0b71b71f47f3688a50347ab4371
   - work_item: M001
     branch: "m001-architecture-1.1-freeze"
     pr: 25

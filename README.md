@@ -75,8 +75,10 @@ sole normative forward architecture, 1.0 preserved under `spec/history/`).**
 **R7 — Universal Connectivity Commerce is ACTIVE** under DEC-0101 as a bounded
 program authorization (`R7-CORE-001`) with the R7 charter
 (`spec/architect/work-items/R7-charter.md`) declaring the child work-item
-scopes M002-M014. **M002 — Connectivity Contract Core is the current child
-work item in implementation.** Per-child acceptance (DEC-0102 onward) is
+scopes M002-M014. **M002 — Connectivity Contract Core is ACCEPTED (DEC-0102;
+head 0112943, merge 0ffdf47; the canonical `contracts/` domain is live).**
+**M003 — Offers and Provider Capability Exchange is the current child work
+item in implementation.** Per-child acceptance (DEC-0103 onward) is
 mandatory and is the serialization point; the Tech Lead may decompose,
 dispatch, integrate and deliver within the authorized child scopes without
 further pre-implementation authorization ceremonies.

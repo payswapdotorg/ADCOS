@@ -38,9 +38,10 @@ beyond it per the standing reconciliation convention.
   under DEC-0101** as a bounded program authorization: `R7-CORE-001`
   (`spec/architect/authorizations/R7.yaml`) with the R7 charter
   (`spec/architect/work-items/R7-charter.md`) declaring the child work-item
-  scopes M002-M014. The current child is **M002 — Connectivity Contract Core**
-  (implementing). Per-child acceptance decisions (DEC-0102 onward) are the
-  serialization points.
+  scopes M002-M014. **M002 — Connectivity Contract Core is ACCEPTED
+  (DEC-0102; head 0112943, merge 0ffdf47).** The current child is **M003 —
+  Offers and Provider Capability Exchange** (implementing). Per-child
+  acceptance decisions (DEC-0103 onward) are the serialization points.
 - R4/W040 remains an independent physical-validation track and is not replaced by the software roadmap.
 - W048 remains accepted-not-restored and MUST NOT be recreated, mocked, or substituted implicitly.
 

@@ -90,3 +90,4 @@ Migration convention: records DEC-0001 … DEC-0039 are the acceptances of WORK-
 2. A rendered verdict is never edited; later records supersede earlier ones via `resolved_by` where applicable.
 3. New records are added by the Architect in the same governance transition that they justify.
 4. `tools/spec_check.py` ARCH-04 verifies unique IDs, filename consistency, acceptance SHA/ledger consistency, and reference resolution.
+| DEC-0102 | acceptance | M002 | ACCEPTED | ACCEPTED | M002 acceptance: Connectivity Contract Core accepted at PR #26 head 0112943 (contracts/ canonical domain + 54/54 battery + evidence matrix + the authorization-aware consultation repairs), merged as 0ffdf47 after three reviewed CI-repair riders (case_42 echo-server latch race; the four PR-only batteries' consultation completion; imt/scale Pattern-B completion + latent type-crash fix); R7-CORE-001 stays active, child advances M002 -> M003; roadmap 1.8 -> 1.9 with M002 COMPLETE |
