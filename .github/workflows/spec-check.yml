@@ -27,9 +27,14 @@ jobs:
       - name: Run architecture drift guard (classify PR delta)
         id: drift
         run: |
-          python3 tools/architecture_drift_guard.py > drift-guard.out
-          cat drift-guard.out
-          if grep -q "governance-only delta" drift-guard.out; then
+          # write the classification artifact OUTSIDE the working tree: the
+          # implementation-domain batteries audit the tree for untracked
+          # files, and a scaffold file in the tree reads as an unauthorized
+          # repo delta on push events (empty tracked diff)
+          DRIFT_OUT="${RUNNER_TEMP:-/tmp}/drift-guard.out"
+          python3 tools/architecture_drift_guard.py > "$DRIFT_OUT"
+          cat "$DRIFT_OUT"
+          if grep -q "governance-only delta" "$DRIFT_OUT"; then
             echo "governance=true" >> "$GITHUB_OUTPUT"
           else
             echo "governance=false" >> "$GITHUB_OUTPUT"

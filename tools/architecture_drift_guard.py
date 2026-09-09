@@ -10,14 +10,28 @@ ROOT = Path(__file__).resolve().parents[1]
 
 CONTROL_PREFIXES = (
     "spec/architect/",
+    "spec/acr/",
+    "spec/history/",
     "docs/tech-lead/",
     ".github/",
 )
+# Control-plane = the governance/architecture authority domain per
+# spec/architect/authority-order.md (mission, architecture + locks, work-item
+# registry, dependency graph, governance/process docs) plus the transition
+# target package, the guard tooling itself, and the M001 transition evidence
+# record (M001 is a governance Work Item; M002+ evidence docs are
+# implementation deliveries and stay unclassified here).
 CONTROL_FILES = {
     "AGENTS.md",
     "README.md",
+    "spec/mission.md",
+    "spec/governance.md",
+    "spec/change-control.md",
+    "spec/workflow.md",
     "spec/architecture.md",
     "spec/architecture-lock.md",
+    "spec/work-items.md",
+    "spec/dependency-graph.md",
     "spec/architecture-1.1-proposed.md",
     "spec/architecture-lock-1.1-proposed.md",
     "spec/application-model.md",
@@ -26,6 +40,7 @@ CONTROL_FILES = {
     "spec/migration/classification-matrix.md",
     "spec/integration/vertical-proof.md",
     "spec/research/standards-and-use-cases.md",
+    "docs/M001-evidence.md",
     "tools/README.md",
     "tools/spec_check.py",
     "tools/spec_check_selftest.py",
