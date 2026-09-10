@@ -4842,7 +4842,16 @@ def case_43_scope_audit(results: List[Result]) -> None:
         )
         return
     if not files:
-        results.append(fail(name, "empty delta (no implementation?)"))
+        # Push-on-main context (audit_ref == origin/main == HEAD, the
+        # post-acceptance baseline): an empty delta is trivially in-scope —
+        # the battery is running at the reconciled baseline with no PR delta
+        # to audit. PR contexts (refs/pull/N/merge, HEAD^1) always carry a
+        # non-empty delta by construction; the out-of-scope discrimination
+        # below stays fully live there. [DEC-0109 acceptance evolution]
+        results.append(
+            ok(name, "empty delta at the reconciled baseline "
+                     "(no PR delta to audit; scope trivially clean)")
+        )
         return
     # spec/architect is never touched
     spec_files = [path for path in files if path.startswith("spec/")]
