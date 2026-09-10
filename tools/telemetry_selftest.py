@@ -40,7 +40,10 @@ the WORK-026 work-item contract to discriminating cases:
 - AUTHORITY: telemetry imports no other family
   (no topology mutation path exists)                -> case_18
 - AUTHORITY: no other module imports telemetry
-  (leaf family; no core leakage)                    -> case_19
+  (leaf family; no core leakage; the DAG-sanctioned
+  downstream consumers -- energy, upgrade, management,
+  simulator, agent, edge, and the M005 evidence seam
+  -- are pinned to the telemetry DATA surface)  -> case_19
 - AUTHORITY: promotion is deny-by-default and
   audited (real WORK-010 engine)                    -> case_20
 - AUTHORITY: born-bound ALLOW promotes; wrong
@@ -1005,6 +1008,24 @@ def case_19_no_core_leakage() -> Result:
         # validation, authorization, or serialization internals.
         if entry == "edge":
             continue
+        # M005 amendment (deliberate, flagged in its PR): the evidence
+        # family (the Architecture 1.1 typed-evidence domain, R7 child
+        # M005 under DEC-0101) is a dependency-graph-sanctioned
+        # DOWNSTREAM consumer of telemetry per the FROZEN migration
+        # classification matrix (spec/migration/classification-matrix.md:
+        # Telemetry is RETAIN with target authority "Assurance evidence"
+        # -- telemetry stays the owner of raw operational measurement,
+        # the typed evidence record is the 1.1 authority).  The seam is
+        # the single disclosed one-directional translation point
+        # (evidence/telemetry_seam.py::telemetry_observation_to_evidence)
+        # and the telemetry package itself stays byte-identical (pure
+        # RETAIN: no reverse import, no seam on the telemetry side, no
+        # gained responsibility).  Its telemetry usage is pinned below
+        # to the DATA surface only: telemetry.model (the frozen
+        # TelemetryObservation record).  It never touches the store,
+        # validation, authorization, or serialization internals.
+        if entry == "evidence":
+            continue
         for base, _dirs, files in os.walk(os.path.join(_ROOT, entry)):
             for filename in sorted(files):
                 if not filename.endswith(".py"):
@@ -1030,6 +1051,13 @@ def case_19_no_core_leakage() -> Result:
         "simulator": ("model", "store", "errors"),
         "agent": ("model", "store"),
         "edge": ("model", "store"),
+        # M005 (R7-CORE-001, DEC-0101; flagged in its PR): the evidence
+        # family consumes ONLY telemetry.model -- the frozen
+        # TelemetryObservation record -- through the single disclosed
+        # harvest seam (evidence/telemetry_seam.py).  Pure RETAIN on the
+        # telemetry side: the package is byte-identical and imports
+        # nothing new.
+        "evidence": ("model",),
     }
     for family, allowed_modules in _ALLOWED.items():
         for filename in sorted(os.listdir(os.path.join(_ROOT, family))):
@@ -1051,7 +1079,9 @@ def case_19_no_core_leakage() -> Result:
     return ok(
         name,
         "no core family imports telemetry; energy/upgrade/management/"
-        "simulator/agent/edge consume the pinned data surface only",
+        "simulator/agent/edge consume the pinned data surface only; "
+        "the M005 evidence seam consumes telemetry.model only (the "
+        "classification-matrix RETAIN -> Assurance-evidence sanction)",
     )
 
 
