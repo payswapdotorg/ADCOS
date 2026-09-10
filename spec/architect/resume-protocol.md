@@ -24,8 +24,8 @@ A brand-new Architect, Tech Lead, worker, or implementation agent must resume fr
 
 ## Current checkpoint
 
-The latest reconciled software baseline is the M004 acceptance merge
-`a52e1eefd352f4636ef368ff97b92682ff11c100` (the M003 acceptance merge
+The latest reconciled software baseline is the M005 acceptance merge
+`ccae48809bff22a973f6c3fba7a5b6345ede2c4c` (the M003 acceptance merge
 `4090e03` and the M013 acceptance merge `8f4d58a2` precede it on main — the
 3-worker pipeline's first parallel delivery round — with the DEC-0103/DEC-0113
 acceptance record 9e16cb0 between them and the M009 branch point); the
@@ -59,9 +59,13 @@ convention.
   completing the M010/M011/M012 tranche). M004 — Eligibility and Policy is
   ACCEPTED (DEC-0104; head 92f293b, merge a52e1ee; the policy battery
   evolved 74/74 -> 103/103 disclosed; a CHAIN-CHILD acceptance — the
-  pointer advances).** The current child is **M005 — Evidence and
-  Assurance** (already delivered at PR #33 head a0c4aff and verified at the
-  exact head; awaiting DEC-0105).
+  pointer advances). M005 — Evidence and Assurance is ACCEPTED (DEC-0105;
+  head a0c4aff, merge ccae488; the typed evidence-record domain — LOCK-106 —
+  and the closed-loop assurance evaluation — LOCK-107 with the FROZEN §9
+  state vocabulary; the telemetry harvest disclosed via the explicit seam;
+  the 97/97 battery CI-wired; the second chain-pointer move).** The current
+  child is **M006 — Execution Plan** (executionplans/ new, composition/
+  harvest per the R7 charter).
   Per-child acceptance decisions (DEC-0104 onward) are the serialization points.
 - R4/W040 remains an independent physical-validation track and is not replaced by the software roadmap.
 - W048 remains accepted-not-restored and MUST NOT be recreated, mocked, or substituted implicitly.

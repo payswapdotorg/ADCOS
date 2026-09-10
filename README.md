@@ -93,7 +93,9 @@ merge 6e3d09f; the 33/33 comos battery is CI-wired).**
 **M004 — Eligibility and Policy is ACCEPTED (DEC-0104; head 92f293b, merge
 a52e1ee; the policy battery evolved to 103/103).**
 **M005 — Evidence and
-Assurance is the current child work item (delivered at PR #33, awaiting DEC-0105).** Per-child
+Assurance is ACCEPTED (DEC-0105; head a0c4aff, merge ccae488; the 97/97
+assurance battery is CI-wired).**
+**M006 — Execution Plan is the current child work item.** Per-child
 acceptance (DEC-0104 onward) is
 mandatory and is the serialization point; the Tech Lead may decompose,
 dispatch, integrate and deliver within the authorized child scopes without

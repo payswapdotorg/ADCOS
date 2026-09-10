@@ -1,0 +1,45 @@
+# DEC-0105 — M005 acceptance: Evidence and Assurance accepted; the current-child pointer advances M005 → M006
+# Sole-Architect governance decision (per-child acceptance, DEC-0101 serialization point).
+decision_id: DEC-0105
+date: "2026-09-10"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M005
+authorization: R7-CORE-001
+
+review_basis: "Tech Lead review of the exact M005 delivery head a0c4aff3663a2a5ea1b13cc6a26a6bcde97c34b0 (PR #33, branch m005-assurance re-rooted to the then-live main head 45b71dd per the live-main rule — the initial 52b76ee-rooted push was caught and corrected mid-review with the single-commit delivery replayed cleanly, zero file overlap with the intervening M012 delta; the chain dependency M004 → M005 was satisfied by DEC-0104 minutes before this review was recorded): the assurance battery 97/97 PASS run 3x consecutively at the exact head (exit-code based, determinism verified), the full battery suite verified green at the head under CI semantics (62 tools in exact workflow order; the two non-zero exits are the documented baselines — spec_check.py the legacy compatibility audit continue-on-error, client_selftest.py the DEC-0099-disclosed containment/W048 skip), CI green end-to-end on the re-rooted head (run 34492278634), scope verified 13 files all inside the charter boundary (evidence/ five modules NEW — the typed evidence-record domain; assurance/ five modules NEW — the closed-loop assurance evaluation; tools/assurance_selftest.py NEW 2040 lines; docs/M005-evidence.md NEW 293 lines; tools/telemetry_selftest.py evolved +34/-2 disclosed — the telemetry harvest evolution, 34/34 PASS with all consumers intact), the structural invariants verified (LOCK-106 — claim/observation/commitment/attestation are distinct typed evidence records with content-derived deterministic IDs, immutable append-only storage, canonical-JSON round-trips, fail-closed typed errors on every validation; LOCK-107 — active canonical contracts evaluated against their assurance obligations using the typed evidence, the FROZEN spec/architecture.md §9 state vocabulary exactly (compliant/degraded/violated/unknown/failed/deliberately_terminated), deterministic given (contract, evidence set), instant-threshold stale-evidence detection on injected instants — never wall clock; LOCK-119 — deterministic/offline/seeded, no wall clock, no randomness, no network, no secrets (grep clean); LOCK-101 — contracts/ consumed by reference only, never modified, never duplicated, no second contract model; the telemetry harvest properly disclosed — evidence/telemetry_seam.py the single explicit translation point, telemetry retains raw operational measurement ownership (RETAIN classification per the frozen migration matrix), privacy fence and policy-gated topology-promotion semantics preserved, the telemetry public API surface intact for all battery consumers — conformance/telemetry/assurance batteries pass). The review is durably recorded in the PR #33 review timeline (review comment 5623768844); GitHub self-approval was unavailable (the single operator account owns both the PR and the review), so this decision is the authoritative acceptance record per repo convention (DEC-0102..DEC-0104 precedent)."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 33
+  branch: "m005-assurance"
+  baseline_sha: 45b71ddb1f1cc0b48f861681f1353dc78872fd2
+  pr_head: a0c4aff3663a2a5ea1b13cc6a26a6bcde97c34b0
+  reviewed_sha: a0c4aff3663a2a5ea1b13cc6a26a6bcde97c34b0
+  merge_sha: ccae48809bff22a973f6c3fba7a5b6345ede2c4c
+  merged_at: "2026-09-10T18:47:31Z"
+  ci_run: 34492278634
+  worker_session: "m005-assurance (charter w24a — the chain track's Worker; delivered through an exceptional ~1.2M-char session: a credential redaction fixed mid-flight, a stale-baseline push caught and re-rooted per the live-main rule, and a hung renderer recovered by a fresh-tab rebind)"
+
+acceptance_effects:
+  current_child_advances: "M005 → M006 (a chain-child acceptance — the second pointer move; M006 — Execution Plan is the next chain child: executionplans/ new, composition/ harvest per the R7 charter)"
+  roadmap_version: "2.5 -> 2.6 (M005 COMPLETE)"
+  authorization_state: "R7-CORE-001 stays ACTIVE (the bounded R7 program authorization closes only when the R7 gate completes)"
+  ci_wiring: "The assurance battery is CI-wired by this acceptance (existence-guarded step, the M002/M003/M010/M011/M012 pattern — control-plane action outside worker scope)"
+  ledger: "M005 accepted-merged entry appended + LEDGER-RECON-023 (snapshot baseline 8dcc87d -> ccae488)"
+
+verification_summary:
+  battery: "tools/assurance_selftest.py 97/97 x3 consecutive runs at the exact head"
+  full_suite: "62 tools green in exact CI workflow order at the head (CI semantics: spec_check legacy audit continue-on-error baseline documented; client battery the DEC-0099-disclosed skip)"
+  gates: "current_spec_check PASS; tech_lead_guard PASS; architecture_drift_guard PASS (implementation-only, 13 files); fresh_session_check PASS (pin 45b71dd == origin/main at review time); authorization_provenance PASS (13/13 delta files covered by R7-CORE-001)"
+  ci: "run 34492278634 SUCCESS on the PR head; the merge is a zero-overlap merge-commit into the post-DEC-0104 main (the M009 PR #29 precedent)"
+  scope: "13 files: evidence/ x5 NEW, assurance/ x5 NEW, tools/assurance_selftest.py NEW, docs/M005-evidence.md NEW, tools/telemetry_selftest.py evolved (disclosed harvest evolution) — all inside the charter boundary"
+
+physical_obligations: "EVID-002..EVID-008 remain OPEN and untouched; SOFTWARE-class deterministic evaluation only (no physical claim is made or implied)"
+
+standing_rules:
+  w048: "accepted-not-restored; MUST NOT be restored implicitly or explicitly"
+  architecture: "Architecture 1.1 remains the sole forward design source; no architecture or protocol semantic change is made by this decision"
+  history: "No work-item history is rewritten; the M005 ledger entry is appended, never converted"

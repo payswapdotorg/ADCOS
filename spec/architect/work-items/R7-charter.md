@@ -90,7 +90,7 @@ registry — not a re-authorization ceremony.
 - **Acceptance:** deterministic eligibility and policy evaluation around the canonical
   contract; zero provider-SDK leakage (LOCK-110 discipline at the policy boundary).
 
-### M005 — Evidence and Assurance
+### M005 — Evidence and Assurance — ACCEPTED (DEC-0105: PR #33 head a0c4aff, merge ccae488 — the current-child pointer advances to M006)
 
 - **Scope:** `assurance/`, `evidence/` (new), `telemetry/` (harvest),
   `tools/assurance_selftest.py`, `docs/M005-evidence.md`.
