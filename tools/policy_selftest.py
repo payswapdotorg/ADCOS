@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ADCOS policy engine self-test (WORK-010).
+"""ADCOS policy engine self-test (WORK-010 + the M004 evolution).
 
 Deterministic, offline verification of the policy package against the
 frozen WORK-010 requirements (spec/prompts/WORK-010.md): the 41
@@ -8,6 +8,27 @@ forbidden-API/imports checks, frozen-vocabulary presence, deny-by-
 default enforcement, equal-precedence fail-closed audit, secret-
 material rejection, no-state-mutation audit, no-5g/vendor-leakage
 audit, no-wall-clock audit, and a byte-identical determinism proof.
+
+M004 — Eligibility and Policy (R7-CORE-001 child, DEC-0101) evolved the
+battery to the refactored 1.1 surface (the disclosed M002/M003
+battery-evolution precedent): cases 1-74 retain their case-for-case
+WORK-010 semantics (the legacy engine is RETAINED untouched — every
+dependent battery stays green); cases 75-87 verify the M004 delivery —
+deterministic eligibility and policy evaluation AROUND the canonical
+contract.  The evaluations live in the eligibility family
+(``eligibility/contract_constraints.py`` — the policy half, guarding
+contract-domain actions; ``eligibility/contract_eligibility.py`` — the
+eligibility half, evaluating offer/contract references) as PURE-DATA
+snapshot evaluators that never import the canonical domains; THIS
+battery owns the composition seam that reads ``contracts/`` (M002) and
+resolves references through ``offers/`` (M003) BY REFERENCE (LOCK-101),
+proving the end-to-end pipeline.  The landing spot is disclosed in
+docs/M004-evidence.md: the M009-accepted payment battery freezes the
+policy family against any delta, so the matrix's single "Eligibility +
+contract constraints" target hosts both halves.  Technology-neutral at
+the boundary (LOCK-110), fail-closed typed errors, LOCK-118 provenance,
+LOCK-119 secrets, canonical-JSON round-trips, cross-process
+determinism.
 
 The central boundary is exercised throughout:
 
@@ -88,6 +109,78 @@ from policy import (  # noqa: E402
     validate_rule,
 )
 from policy.predicates import PredicateResult  # noqa: E402
+
+# M004 — the refactored 1.1 surface: the constraint/eligibility
+# evaluations live in the eligibility family (the matrix's single
+# "Eligibility + contract constraints" target authority) as pure-DATA
+# snapshot evaluators; the accepted canonical domains (contracts/ M002,
+# offers/ M003) are imported HERE for the battery-owned composition
+# that builds the snapshots from their public surfaces BY REFERENCE
+# (LOCK-101 — the evaluators themselves never import them).
+from eligibility.contract_constraints import (  # noqa: E402
+    ContractConstraintCondition,
+    ContractConstraintDecision,
+    ContractConstraintDecisionCode,
+    ContractConstraintEffect,
+    ContractConstraintError,
+    ContractConstraintReason,
+    ContractConstraintRule,
+    ContractConstraintSet,
+    ContractConstraintPredicateKind,
+    ContractConstraintContext,
+    OfferReferenceFacts,
+    ValidityWindow,
+    contract_constraint_decision_canonical_bytes,
+    contract_constraint_set_from_mapping,
+    evaluate_contract_constraints,
+)
+from eligibility.contract_eligibility import (  # noqa: E402
+    ContractEligibility,
+    ContractEligibilityError,
+    ContractEligibilityReason,
+    ContractEligibilityRuleset,
+    ContractReferenceFacts,
+    OfferReferenceEligibility,
+    OfferReferenceEligibilityFacts,
+    contract_eligibility_from_mapping,
+    contract_eligibility_ruleset_from_mapping,
+    evaluate_contract_reference_eligibility,
+    evaluate_offer_reference_eligibility,
+    offer_reference_eligibility_from_mapping,
+)
+from contracts import (  # noqa: E402
+    COMMAND_KINDS,
+    CONTRACT_STATES,
+    TERMINAL_STATES,
+    BeneficiaryScope,
+    ConnectivityPrincipal,
+    ContractStore,
+    CreateContract,
+    FailContract,
+    HardConstraint,
+    OpaqueReference,
+    Provenance,
+    SelectOffers,
+    TerminationRules,
+    ValidityInterval,
+)
+from offers import (  # noqa: E402
+    AdvertisementEntry,
+    AdvertisementRef,
+    OfferCommitment,
+    OfferExchange,
+    OfferPricing,
+    ServiceBoundary,
+    build_advertisement,
+    build_offer,
+    offer_reference,
+)
+
+#: The guarded action vocabulary: the exact projection of the CANONICAL
+#: M002 command vocabulary (LOCK-101 — computed here, at the composition
+#: boundary, directly from the canonical source; the evaluator modules
+#: treat actions as opaque strings and never enumerate them).
+CONTRACT_ACTIONS = tuple("contract.%s" % kind for kind in COMMAND_KINDS)
 
 
 Result = Tuple[str, bool, str]
@@ -2320,6 +2413,1562 @@ def case_74_promotion_binding_born_bound(results: List[Result]) -> None:
         )
 
 
+# --------------------------------------------------------------------------
+# M004 — Eligibility and Policy (R7-CORE-001 child, DEC-0101): the
+# refactored 1.1 surface around the canonical contract.
+#
+# Architecture (disclosed; see docs/M004-evidence.md): the constraint
+# and eligibility evaluations live in the eligibility family
+# (eligibility/contract_constraints.py + eligibility/
+# contract_eligibility.py — the matrix's single "Eligibility + contract
+# constraints" target authority) as PURE-DATA snapshot evaluators: they
+# never import the canonical domains (the family's frozen import
+# discipline) and consume caller-composed snapshots built from the
+# canonical public surfaces.  THIS battery owns the composition seam:
+# the helpers below read the canonical contract record (M002) and
+# resolve offer references through the M003 exchange BY REFERENCE
+# (LOCK-101), proving the end-to-end pipeline case-by-case.  The
+# legacy policy/ engine is RETAINED untouched (cases 1-74 unchanged;
+# the payment battery's frozen policy-family audit stays green).
+# --------------------------------------------------------------------------
+
+# Deterministic M004 instants (injected; never the wall clock).
+_M4_T0 = "2026-10-01T00:00:00Z"
+_M4_T_CREATE = "2026-09-30T10:00:00Z"
+_M4_T_SELECT = "2026-09-30T10:05:00Z"
+_M4_T_MID = "2026-10-15T00:00:00Z"
+_M4_T_LATE = "2026-10-25T00:00:00Z"
+_M4_T_END = "2026-11-01T00:00:00Z"
+_M4_T_PAST_END = "2026-12-01T00:00:00Z"
+
+# Canonical NodeID-shaped provider domain identities (test material).
+_M4_PROVIDER_A = "adcos:node:identity.sha256-hmac-dev.v1:" + "1" * 64
+_M4_PROVIDER_B = "adcos:node:identity.sha256-hmac-dev.v1:" + "2" * 64
+
+_M4_ISSUER_A = "provider:netpro-a"
+_M4_ISSUER_OPS = "issuer:platform-ops"
+
+
+def _m4_prov(issuer: str = _M4_ISSUER_A, *refs: str) -> Provenance:
+    return Provenance(issuer=issuer, decision_refs=tuple(refs))
+
+
+def _m4_entry() -> AdvertisementEntry:
+    return AdvertisementEntry(
+        capability_id="capability.core.multipath",
+        schema_version="1.2",
+        statement_digest="sha256:" + "a" * 64,
+        classification="known",
+    )
+
+
+def _m4_commitment(issuer: str = _M4_ISSUER_A) -> OfferCommitment:
+    return OfferCommitment(
+        kind="latency-bound-ms",
+        params={"max_ms": 150},
+        window=ValidityInterval(not_before=_M4_T0, not_after=_M4_T_END),
+        provenance=_m4_prov(issuer),
+    )
+
+
+def _m4_pricing(issuer: str = _M4_ISSUER_A) -> OfferPricing:
+    return OfferPricing(
+        currency="USD",
+        price_minor=250,
+        price_exponent=2,
+        billing_mode="flat",
+        provenance=_m4_prov(issuer),
+    )
+
+
+def _m4_boundary(
+    jurisdiction: str = "GH", issuer: str = _M4_ISSUER_A
+) -> ServiceBoundary:
+    return ServiceBoundary(
+        jurisdiction=jurisdiction,
+        geography_refs=("mpcell:v1:coarse-50000m:12:-1",),
+        provenance=_m4_prov(issuer),
+    )
+
+
+def _m4_advertisement(
+    provider: str = _M4_PROVIDER_A,
+    issuer: str = _M4_ISSUER_A,
+) -> "CapabilityAdvertisement":
+    return build_advertisement(
+        provider=provider,
+        entries=(_m4_entry(),),
+        validity=ValidityInterval(not_before=_M4_T0, not_after=_M4_T_END),
+        provenance=_m4_prov(issuer),
+    )
+
+
+def _m4_offer(
+    provider: str = _M4_PROVIDER_A,
+    key: str = "offer:netpro-basic-1",
+    advertisement_id: Optional[str] = None,
+    jurisdiction: str = "GH",
+    issuer: str = _M4_ISSUER_A,
+) -> "OfferRecord":
+    return build_offer(
+        provider=provider,
+        provider_offer_key=key,
+        schema_version=1,
+        advertisements=(
+            AdvertisementRef(
+                advertisement_id=advertisement_id or ("sha256:" + "a" * 64),
+                provenance=_m4_prov(issuer),
+            ),
+        ),
+        commitments=(_m4_commitment(issuer),),
+        pricing=_m4_pricing(issuer),
+        service_boundaries=(_m4_boundary(jurisdiction, issuer),),
+        validity=ValidityInterval(not_before=_M4_T0, not_after=_M4_T_END),
+        provenance=_m4_prov(issuer),
+    )
+
+
+def _m4_exchange(
+    *, with_offer: bool = True, jurisdiction: str = "GH"
+) -> "OfferExchange":
+    exchange = OfferExchange()
+    advertisement = _m4_advertisement()
+    exchange.register_advertisement(advertisement)
+    if with_offer:
+        offer = _m4_offer(advertisement_id=advertisement.advertisement_id, jurisdiction=jurisdiction)
+        exchange.register_offer(offer)
+    return exchange
+
+
+def _m4_ruleset(
+    providers: Tuple[str, ...] = (_M4_PROVIDER_A,),
+    jurisdictions: Tuple[str, ...] = ("GH",),
+    ruleset_id: str = "rs-platform-1",
+    version: int = 1,
+    valid_from: str = "",
+    valid_until: str = "",
+) -> ContractEligibilityRuleset:
+    return ContractEligibilityRuleset(
+        ruleset_id=ruleset_id,
+        version=version,
+        issuer=_M4_ISSUER_OPS,
+        permitted_providers=providers,
+        permitted_jurisdictions=jurisdictions,
+        valid_from=valid_from,
+        valid_until=valid_until,
+        decision_refs=("decision:platform-eligibility-v1",),
+    )
+
+
+def _m4_contract_create(principal_ref: str = "app:sharenet-gw-01") -> CreateContract:
+    return CreateContract(
+        principal=ConnectivityPrincipal(
+            principal_kind="APPLICATION", principal_ref=principal_ref
+        ),
+        beneficiaries=(
+            BeneficiaryScope(beneficiary_kind="DEVICE", beneficiary_ref="dev:pi-7f2a"),
+        ),
+        requirements=(
+            OpaqueReference(
+                ref_kind="intent-requirements",
+                value="intent:abc123",
+                provenance=_m4_prov("arch:sharenet"),
+            ),
+        ),
+        hard_constraints=(
+            HardConstraint(
+                kind="latency-bound", params={"max_ms": 150}, provenance=_m4_prov()
+            ),
+        ),
+        validity=ValidityInterval(not_before=_M4_T0, not_after=_M4_T_END),
+        service_properties=(
+            OpaqueReference(
+                ref_kind="service-property",
+                value="prop:committed-1",
+                provenance=_m4_prov(),
+            ),
+        ),
+        usage_pricing_terms=OpaqueReference(
+            ref_kind="usage-pricing-terms",
+            value="terms:comm-42",
+            provenance=_m4_prov("comm:ops"),
+        ),
+        assurance_obligations=(
+            OpaqueReference(ref_kind="assurance-obligation", value="oblig:evid-7"),
+        ),
+        execution_scope=(
+            OpaqueReference(ref_kind="execution-scope", value="scope:exec-default"),
+        ),
+        termination=TerminationRules(
+            conditions=("principal-requested", "constraint-violated"),
+            compensation=OpaqueReference(
+                ref_kind="compensation",
+                value="comp:rule-9",
+                provenance=_m4_prov("comm:ops"),
+            ),
+        ),
+        provenance=_m4_prov("arch:sharenet"),
+    )
+
+
+def _m4_selected_contract():
+    """The canonical composition fixture: a contract built through the
+    M002 store with the M003 exchange's offer reference bound
+    (INTENT -> OFFER_SELECTED).  Returns (store, exchange, offer,
+    contract)."""
+    exchange = _m4_exchange()
+    offer = _m4_offer(advertisement_id=exchange.advertisements()[0].advertisement_id)
+    exchange.register_offer(offer)
+    store = ContractStore()
+    created = store.submit(_m4_contract_create(), recorded_at=_M4_T_CREATE)
+    selected = store.submit(
+        SelectOffers(offers=(offer_reference(offer),)),
+        recorded_at=_M4_T_SELECT,
+        contract_id=created.contract.contract_id,
+    )
+    return store, exchange, offer, selected.contract
+
+
+# -- the battery-owned composition seam (LOCK-101: reads of the ------
+# -- canonical public surfaces; the evaluators see pure DATA only) ---
+
+
+def _m4_offer_facts_from_exchange(
+    exchange: OfferExchange, contract, *, at_instant: str
+) -> Tuple[OfferReferenceFacts, ...]:
+    """Compose the offer reference facts for one canonical contract by
+    resolving every accepted offer reference through the M003 exchange
+    at the injected instant (BY REFERENCE — the exchange owns offer
+    usability; an unresolvable/withdrawn/expired/superseded offer
+    composes as usable=False with the reference's own value, never a
+    crash, never a catalog mutation)."""
+    facts = []
+    for reference in contract.accepted_offers:
+        try:
+            record = exchange.resolve(reference, at_instant=at_instant)
+            facts.append(
+                OfferReferenceFacts(
+                    value=reference.value,
+                    offer_id=record.offer_id,
+                    provider=record.provider,
+                    jurisdictions=tuple(
+                        boundary.jurisdiction
+                        for boundary in record.service_boundaries
+                    ),
+                    usable=True,
+                )
+            )
+        except Exception:
+            facts.append(
+                OfferReferenceFacts(
+                    value=reference.value,
+                    offer_id=reference.value,
+                    provider="unresolved-offer-reference",
+                    jurisdictions=(),
+                    usable=False,
+                )
+            )
+    return tuple(facts)
+
+
+def _m4_context_from_contract(
+    contract,
+    action: str,
+    *,
+    evaluation_instant: str,
+    offer_facts: Optional[Tuple[OfferReferenceFacts, ...]] = None,
+) -> ContractConstraintContext:
+    """Compose the constraint context for one guarded action by READING
+    the canonical contract's public fields (LOCK-101: consume by
+    reference; the contract record is never mutated and its semantics
+    are never re-implemented).  The action is pinned HERE against the
+    canonical projection CONTRACT_ACTIONS (computed from
+    contracts.COMMAND_KINDS) — the vocabulary authority stays
+    canonical; the evaluator treats actions as opaque strings.
+
+    ``offer_facts`` is the composed offer reference material; when None
+    the context carries NO offer facts and every offer-fact condition
+    fails closed as a non-match (deny-by-default — absence of a fact
+    is never an approval)."""
+    if action not in CONTRACT_ACTIONS:
+        raise ValueError(
+            "action %r is not a member of the canonical M002 command "
+            "vocabulary projection (LOCK-101: the composition boundary "
+            "pins the guarded actions to contracts.COMMAND_KINDS)" % action
+        )
+    return ContractConstraintContext(
+        action=action,
+        principal_kind=contract.principal.principal_kind,
+        principal_ref=contract.principal.principal_ref,
+        beneficiary_kinds=tuple(
+            beneficiary.beneficiary_kind for beneficiary in contract.beneficiaries
+        ),
+        contract_state=contract.state,
+        hard_constraint_kinds=tuple(
+            constraint.kind for constraint in contract.hard_constraints
+        ),
+        validity=ValidityWindow(
+            not_before=contract.validity.not_before,
+            not_after=contract.validity.not_after,
+        ),
+        accepted_offer_values=tuple(
+            reference.value for reference in contract.accepted_offers
+        ),
+        offer_facts=offer_facts if offer_facts is not None else (),
+        evaluation_instant=evaluation_instant,
+    )
+
+
+def _m4_contract_facts(
+    contract,
+    offer_facts: Tuple[OfferReferenceFacts, ...],
+) -> ContractReferenceFacts:
+    """Compose the contract reference facts by READING the canonical
+    contract's public fields: the state (opaque DATA), the terminal
+    classification (derived from the canonical TERMINAL_STATES
+    vocabulary — consumed by reference), the validity window (read
+    verbatim), and the composed per-offer facts."""
+    return ContractReferenceFacts(
+        contract_id=contract.contract_id,
+        state=contract.state,
+        state_is_terminal=contract.state in TERMINAL_STATES,
+        validity=ValidityWindow(
+            not_before=contract.validity.not_before,
+            not_after=contract.validity.not_after,
+        ),
+        offer_facts=offer_facts,
+    )
+
+
+def _m4_constraint_set(
+    rules: Tuple[ContractConstraintRule, ...],
+    set_id: str = "cps-platform-1",
+    version: int = 1,
+    valid_from: str = "",
+    valid_until: str = "",
+) -> ContractConstraintSet:
+    return ContractConstraintSet(
+        set_id=set_id,
+        version=version,
+        rules=rules,
+        issuer=_M4_ISSUER_OPS,
+        valid_from=valid_from,
+        valid_until=valid_until,
+    )
+
+
+def _m4_rule(
+    rule_id: str,
+    action: str,
+    effect: str = ContractConstraintEffect.ALLOW,
+    subjects: Tuple[str, ...] = (),
+    conditions: Tuple[ContractConstraintCondition, ...] = (),
+    specificity: int = 0,
+    priority: int = 0,
+    valid_from: str = "",
+    valid_until: str = "",
+) -> ContractConstraintRule:
+    return ContractConstraintRule(
+        rule_id=rule_id,
+        action=action,
+        effect=effect,
+        subjects=subjects,
+        conditions=conditions,
+        specificity=specificity,
+        priority=priority,
+        valid_from=valid_from,
+        valid_until=valid_until,
+        issuer=_M4_ISSUER_OPS,
+        decision_refs=("decision:platform-constraints-v1",),
+    )
+
+
+def _m4_expect_constraint_error(
+    case: str, code: str, action: Callable[[], Any]
+) -> Result:
+    try:
+        action()
+    except ContractConstraintError as error:
+        if error.code == code:
+            return ok(case, "fail-closed %s: %s" % (code, error.detail[:80]))
+        return fail(
+            case, "expected code %s, got %s (%s)" % (code, error.code, error.detail[:80])
+        )
+    except Exception as error:  # noqa: BLE001
+        return fail(
+            case, "unexpected exception %s: %s" % (type(error).__name__, str(error)[:80])
+        )
+    return fail(case, "expected ContractConstraintError(%s); the input was accepted" % code)
+
+
+def _m4_expect_eligibility_error(
+    case: str, code: str, action: Callable[[], Any]
+) -> Result:
+    try:
+        action()
+    except ContractEligibilityError as error:
+        if error.code == code:
+            return ok(case, "fail-closed %s: %s" % (code, error.detail[:80]))
+        return fail(
+            case, "expected code %s, got %s (%s)" % (code, error.code, error.detail[:80])
+        )
+    except Exception as error:  # noqa: BLE001
+        return fail(
+            case, "unexpected exception %s: %s" % (type(error).__name__, str(error)[:80])
+        )
+    return fail(
+        case, "expected ContractEligibilityError(%s); the input was accepted" % code
+    )
+
+
+def case_75_m004_surface_and_vocabularies(results: List[Result]) -> None:
+    """75. M004 surface present with closed vocabularies; the guarded
+    action vocabulary is the exact projection of the CANONICAL M002
+    command vocabulary (LOCK-101: composed at the battery boundary
+    directly from contracts.COMMAND_KINDS — the evaluators treat
+    actions as opaque strings and never enumerate them); the legacy
+    frozen vocabularies are untouched; the legacy policy/ engine is
+    byte-identical to origin/main (RETAIN discipline)."""
+    name = "case_75_m004_surface_and_vocabularies"
+    import subprocess as _sp
+
+    problems: List[str] = []
+    if CONTRACT_ACTIONS != tuple("contract.%s" % kind for kind in COMMAND_KINDS):
+        problems.append("CONTRACT_ACTIONS drifted from the canonical M002 command vocabulary")
+    if set(ContractConstraintEffect.values()) != {"allow", "deny", "require-review"}:
+        problems.append("effect vocabulary drifted: %s" % sorted(ContractConstraintEffect.values()))
+    expected_codes = {
+        "allow", "deny", "default-deny", "require-review", "fail-closed",
+        "policy-expired", "policy-not-yet-valid", "missing-fact", "conflict",
+        "invalid-policy",
+    }
+    if set(ContractConstraintDecisionCode.values()) != expected_codes:
+        problems.append("decision-code vocabulary drifted: %s" % sorted(ContractConstraintDecisionCode.values()))
+    expected_predicates = {
+        "principal-kind", "principal-ref", "beneficiary-kind", "offer-provider",
+        "offer-jurisdiction", "constraint-kind", "contract-state", "validity-live",
+    }
+    if set(ContractConstraintPredicateKind.values()) != expected_predicates:
+        problems.append("predicate vocabulary drifted: %s" % sorted(ContractConstraintPredicateKind.values()))
+    if not all(
+        code.startswith("contract-constraint-") for code in (
+            ContractConstraintReason.INVALID_INPUT,
+            ContractConstraintReason.TEMPORAL_INVALID,
+            ContractConstraintReason.VOCABULARY,
+            ContractConstraintReason.SECRET_REJECTED,
+            ContractConstraintReason.PROVENANCE_REQUIRED,
+            ContractConstraintReason.ID_MISMATCH,
+        )
+    ):
+        problems.append("constraint reason namespace drifted")
+    if not all(
+        code.startswith("contract-eligibility-")
+        for code in (
+            ContractEligibilityReason.INVALID_INPUT,
+            ContractEligibilityReason.TEMPORAL_INVALID,
+            ContractEligibilityReason.VOCABULARY,
+            ContractEligibilityReason.SECRET_REJECTED,
+            ContractEligibilityReason.PROVENANCE_REQUIRED,
+        )
+    ):
+        problems.append("eligibility reason namespace drifted")
+    if not all(
+        not code.startswith(("contract-constraint-", "contract-eligibility-"))
+        for code in ContractEligibilityReason.denial_values()
+    ):
+        problems.append("denial DATA reasons must be unnamespaced outcome codes")
+    # the legacy frozen vocabularies are untouched (RETAIN discipline)
+    if len(Operation.values()) != 15 or len(Effect.values()) != 3:
+        problems.append("legacy vocabularies changed (Operation/Effect counts)")
+    if len(PredicateKind.values()) != 14 or len(PolicyDomain.values()) != 9:
+        problems.append("legacy vocabularies changed (PredicateKind/PolicyDomain counts)")
+    # the legacy policy/ tree is byte-identical to origin/main
+    r = _sp.run(
+        ["git", "diff", "origin/main", "--", "policy"],
+        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=10,
+    )
+    if r.stdout.strip():
+        problems.append("the legacy policy/ tree changed vs origin/main (RETAIN violated)")
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                name,
+                "CONTRACT_ACTIONS == projection of contracts.COMMAND_KINDS (%d actions); "
+                "M004 vocabularies closed; legacy vocabularies + policy/ tree untouched" % len(CONTRACT_ACTIONS),
+            )
+        )
+
+
+def case_76_contract_constraints_minimal_flow(results: List[Result]) -> None:
+    """76. Minimal allow around the canonical contract: an explicit rule
+    guards ``contract.select-offers``; the context is composed from the
+    canonical contract record by reference; the offer facts resolve
+    through the M003 exchange; the decision is ALLOW with the matched
+    rule id and policy version (audit trail)."""
+    name = "case_76_contract_constraints_minimal_flow"
+    _store, exchange, _offer, contract = _m4_selected_contract()
+    facts = _m4_offer_facts_from_exchange(exchange, contract, at_instant=_M4_T_MID)
+    context = _m4_context_from_contract(
+        contract,
+        "contract.select-offers",
+        evaluation_instant=_M4_T_MID,
+        offer_facts=facts,
+    )
+    rule = _m4_rule(
+        "allow-select",
+        "contract.select-offers",
+        conditions=(
+            ContractConstraintCondition(
+                predicate=ContractConstraintPredicateKind.PRINCIPAL_KIND,
+                arguments={"kind": "APPLICATION"},
+            ),
+            ContractConstraintCondition(
+                predicate=ContractConstraintPredicateKind.OFFER_PROVIDER,
+                arguments={"provider": _M4_PROVIDER_A},
+            ),
+        ),
+    )
+    constraint_set = _m4_constraint_set((rule,))
+    result = evaluate_contract_constraints(constraint_set, context)
+    problems: List[str] = []
+    if not (result.ok and result.code == ContractConstraintDecisionCode.ALLOW):
+        problems.append("expected ALLOW, got %r (%s)" % (result.code, result.detail))
+    elif result.decision is None:
+        problems.append("no decision record")
+    else:
+        if result.decision.matched_rule_ids != ("allow-select",):
+            problems.append("matched ids %r" % (result.decision.matched_rule_ids,))
+        if result.decision.policy_set_id != "cps-platform-1" or result.decision.policy_set_version != 1:
+            problems.append("policy identity/version missing from the audit trail")
+        if result.decision.action != "contract.select-offers":
+            problems.append("decision action drifted")
+    # the context facts are the contract's own reference facts (read, never re-implemented)
+    if context.contract_state != "OFFER_SELECTED":
+        problems.append("context state %r is not the contract's state" % context.contract_state)
+    if context.principal_ref != "app:sharenet-gw-01":
+        problems.append("context principal drifted")
+    if facts and (facts[0].provider != _M4_PROVIDER_A or facts[0].jurisdictions != ("GH",)):
+        problems.append("offer facts drifted from the M003 record")
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                name,
+                "ALLOW on contract.select-offers; matched=(allow-select,); facts read "
+                "off the canonical contract + M003 exchange by reference",
+            )
+        )
+
+
+def case_77_contract_constraints_deny_and_default_deny(results: List[Result]) -> None:
+    """77. Explicit deny wins; an action with no applicable rule denies
+    by default (every guarded contract action is privileged)."""
+    name = "case_77_contract_constraints_deny_and_default_deny"
+    _store, exchange, _offer, contract = _m4_selected_contract()
+    facts = _m4_offer_facts_from_exchange(exchange, contract, at_instant=_M4_T_MID)
+    context = _m4_context_from_contract(
+        contract, "contract.activate", evaluation_instant=_M4_T_MID, offer_facts=facts
+    )
+    deny_rule = _m4_rule("deny-activate", "contract.activate", effect=ContractConstraintEffect.DENY)
+    constraint_set = _m4_constraint_set((deny_rule,))
+    result = evaluate_contract_constraints(constraint_set, context)
+    problems: List[str] = []
+    if not (result.ok and result.code == ContractConstraintDecisionCode.DENY and result.decision is not None):
+        problems.append("explicit deny failed: %r %r" % (result.code, result.detail))
+    elif result.decision.effect != ContractConstraintEffect.DENY:
+        problems.append("deny decision effect drifted")
+    # no applicable rule -> DEFAULT_DENY (the decision-producing outcome)
+    unruled = _m4_context_from_contract(
+        contract, "contract.bind-artifact", evaluation_instant=_M4_T_MID, offer_facts=facts
+    )
+    result2 = evaluate_contract_constraints(constraint_set, unruled)
+    if not (result2.ok and result2.code == ContractConstraintDecisionCode.DEFAULT_DENY):
+        problems.append("expected DEFAULT_DENY, got %r %r" % (result2.code, result2.detail))
+    elif result2.decision is None or result2.decision.effect != ContractConstraintEffect.DENY:
+        problems.append("default-deny decision drifted")
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+    else:
+        results.append(
+            ok(name, "explicit DENY (matched=(deny-activate,)); unruled action -> DEFAULT_DENY")
+        )
+
+
+def case_78_contract_constraints_fail_closed(results: List[Result]) -> None:
+    """78. Fail-closed inputs: the evaluation instant is required and
+    must be well formed (no wall-clock fallback); a missing offer fact
+    is a non-match (DEFAULT_DENY with missing-fact recorded — the
+    harvested case_04 semantics); expired / not-yet-valid constraint
+    sets fail closed; an empty issuer, a permissive default effect and
+    a non-canonical action (at the composition boundary) are rejected
+    at construction."""
+    name = "case_78_contract_constraints_fail_closed"
+    _store, exchange, _offer, contract = _m4_selected_contract()
+    facts = _m4_offer_facts_from_exchange(exchange, contract, at_instant=_M4_T_MID)
+    rule = _m4_rule(
+        "allow-select",
+        "contract.select-offers",
+        conditions=(
+            ContractConstraintCondition(
+                predicate=ContractConstraintPredicateKind.OFFER_JURISDICTION,
+                arguments={"jurisdiction": "GH"},
+            ),
+        ),
+    )
+    constraint_set = _m4_constraint_set((rule,))
+    problems: List[str] = []
+    sub: List[Result] = []
+
+    # (a) the evaluation instant is required
+    context_no_instant = _m4_context_from_contract(
+        contract, "contract.select-offers", evaluation_instant=_M4_T_MID, offer_facts=facts
+    )
+    context_no_instant = ContractConstraintContext(
+        **{**context_no_instant.content(), "evaluation_instant": ""}
+    )
+    result = evaluate_contract_constraints(constraint_set, context_no_instant)
+    if not (not result.ok and result.code == ContractConstraintDecisionCode.FAIL_CLOSED):
+        problems.append("missing instant: %r" % (result.code,))
+    # (b) malformed instants fail closed: typed rejection at the context
+    # boundary (defense-in-depth — the legacy case_63 evaluation-time
+    # FAIL_CLOSED guarantee is enforced one boundary earlier here: a
+    # malformed instant can never even ENTER an evaluation)
+    for bad in ("not-a-date", "2026-13-01T00:00:00Z", "2026-01-01T25:00:00Z"):
+        sub.append(
+            _m4_expect_constraint_error(
+                "case_78b_malformed_instant_%s" % bad.replace(":", "").replace("-", "")[:12],
+                ContractConstraintReason.TEMPORAL_INVALID,
+                lambda bad=bad: ContractConstraintContext(
+                    **{**context_no_instant.content(), "evaluation_instant": bad}
+                ),
+            )
+        )
+    # (c) missing offer facts -> non-match -> DEFAULT_DENY + missing-fact recorded
+    context_missing = _m4_context_from_contract(
+        contract, "contract.select-offers", evaluation_instant=_M4_T_MID, offer_facts=None
+    )
+    result_missing = evaluate_contract_constraints(constraint_set, context_missing)
+    if not (
+        result_missing.ok
+        and result_missing.code == ContractConstraintDecisionCode.DEFAULT_DENY
+        and result_missing.decision is not None
+        and "missing-fact" in result_missing.decision.detail
+    ):
+        problems.append(
+            "missing fact: %r %r" % (result_missing.code, result_missing.detail)
+        )
+    # (d) constraint-set temporal fail-closed
+    expired = _m4_constraint_set((rule,), valid_from="2026-01-01T00:00:00Z", valid_until="2026-02-01T00:00:00Z")
+    context_valid = _m4_context_from_contract(
+        contract, "contract.select-offers", evaluation_instant=_M4_T_MID, offer_facts=facts
+    )
+    result_expired = evaluate_contract_constraints(expired, context_valid)
+    if not (not result_expired.ok and result_expired.code == ContractConstraintDecisionCode.POLICY_EXPIRED):
+        problems.append("expired policy: %r" % (result_expired.code,))
+    future = _m4_constraint_set((rule,), valid_from="2027-01-01T00:00:00Z", valid_until="2027-02-01T00:00:00Z")
+    result_future = evaluate_contract_constraints(future, context_valid)
+    if not (
+        not result_future.ok and result_future.code == ContractConstraintDecisionCode.POLICY_NOT_YET_VALID
+    ):
+        problems.append("future policy: %r" % (result_future.code,))
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    # (e) construction fail-closed: empty issuer / permissive default
+    sub.append(
+        _m4_expect_constraint_error(
+            "case_78e_empty_issuer", ContractConstraintReason.INVALID_INPUT,
+            lambda: ContractConstraintSet(set_id="anon", version=1, rules=(rule,), issuer=""),
+        )
+    )
+    sub.append(
+        _m4_expect_constraint_error(
+            "case_78g_permissive_default", ContractConstraintReason.VOCABULARY,
+            lambda: ContractConstraintSet(
+                set_id="permissive", version=1, rules=(), issuer=_M4_ISSUER_OPS,
+                default_effect=ContractConstraintEffect.ALLOW,
+            ),
+        )
+    )
+    # (f) a non-canonical action is rejected at the composition
+    # boundary (the vocabulary pin lives where the canonical projection
+    # is computed — LOCK-101: the evaluator itself stays opaque)
+    try:
+        _m4_context_from_contract(
+            contract, "contract.not-a-command", evaluation_instant=_M4_T_MID
+        )
+        sub.append(fail("case_78f_non_canonical_action", "the composition boundary accepted a non-canonical action"))
+    except ValueError:
+        sub.append(
+            ok(
+                "case_78f_non_canonical_action",
+                "non-canonical action rejected at the composition boundary "
+                "(the canonical M002 command vocabulary pin)",
+            )
+        )
+    results.extend(sub)
+    results.append(
+        ok(
+            name,
+            "instant required + malformed fail-closed; missing fact -> DEFAULT_DENY "
+            "(recorded); expired/not-yet-valid fail closed; empty issuer / permissive "
+            "default / non-canonical action rejected",
+        )
+    )
+
+
+def case_79_contract_constraints_precedence_conflict(results: List[Result]) -> None:
+    """79. Deterministic precedence + conflict (the harvested WORK-010
+    semantics): explicit deny beats allow at equal precedence; higher
+    specificity then higher priority wins; equal-precedence distinct
+    allows fail closed (CONFLICT); rule input order never leaks into
+    the outcome."""
+    name = "case_79_contract_constraints_precedence_conflict"
+    _store, exchange, _offer, contract = _m4_selected_contract()
+    facts = _m4_offer_facts_from_exchange(exchange, contract, at_instant=_M4_T_MID)
+    context = _m4_context_from_contract(
+        contract, "contract.create", evaluation_instant=_M4_T_MID, offer_facts=facts
+    )
+    problems: List[str] = []
+
+    # (a) deny beats allow at equal precedence
+    allow = _m4_rule("a1", "contract.create", effect=ContractConstraintEffect.ALLOW)
+    deny = _m4_rule("d1", "contract.create", effect=ContractConstraintEffect.DENY)
+    tie = evaluate_contract_constraints(_m4_constraint_set((allow, deny)), context)
+    if not (
+        tie.ok and tie.code == ContractConstraintDecisionCode.DENY
+        and tie.decision is not None
+        and tie.decision.matched_rule_ids == ("d1",)
+    ):
+        problems.append("tie: %r %r" % (tie.code, tie.decision and tie.decision.matched_rule_ids))
+    # (b) higher specificity wins
+    specific_deny = _m4_rule("d2", "contract.create", effect=ContractConstraintEffect.DENY, specificity=5)
+    plain_allow = _m4_rule("a2", "contract.create", effect=ContractConstraintEffect.ALLOW)
+    spec = evaluate_contract_constraints(_m4_constraint_set((specific_deny, plain_allow)), context)
+    if not (spec.ok and spec.code == ContractConstraintDecisionCode.DENY and spec.decision is not None and spec.decision.matched_rule_ids == ("d2",)):
+        problems.append("specificity: %r" % (spec.code,))
+    # (c) higher priority wins (specificity equal)
+    prio_allow = _m4_rule("a3", "contract.create", effect=ContractConstraintEffect.ALLOW, priority=5)
+    plain_deny = _m4_rule("d3", "contract.create", effect=ContractConstraintEffect.DENY)
+    prio = evaluate_contract_constraints(_m4_constraint_set((prio_allow, plain_deny)), context)
+    if not (prio.ok and prio.code == ContractConstraintDecisionCode.ALLOW and prio.decision is not None and prio.decision.matched_rule_ids == ("a3",)):
+        problems.append("priority: %r" % (prio.code,))
+    # (d) equal-precedence distinct allows -> CONFLICT (fail closed)
+    allow_b = _m4_rule("a1b", "contract.create", effect=ContractConstraintEffect.ALLOW)
+    conflict = evaluate_contract_constraints(_m4_constraint_set((allow, allow_b)), context)
+    if not (not conflict.ok and conflict.code == ContractConstraintDecisionCode.CONFLICT):
+        problems.append("conflict: %r" % (conflict.code,))
+    # (e) require-review never silently becomes allow
+    review = _m4_rule("rr1", "contract.create", effect=ContractConstraintEffect.REQUIRE_REVIEW)
+    rr = evaluate_contract_constraints(_m4_constraint_set((review,)), context)
+    if not (
+        not rr.ok
+        and rr.code == ContractConstraintDecisionCode.REQUIRE_REVIEW
+        and rr.decision is not None
+        and rr.decision.effect == ContractConstraintEffect.DENY
+    ):
+        problems.append("require-review: %r" % (rr.code,))
+    # (f) rule input order never leaks into the outcome (byte-identical decisions)
+    order_a = evaluate_contract_constraints(_m4_constraint_set((allow, deny, review)), context)
+    order_b = evaluate_contract_constraints(_m4_constraint_set((review, deny, allow)), context)
+    if (
+        order_a.decision is None
+        or order_b.decision is None
+        or contract_constraint_decision_canonical_bytes(order_a.decision)
+        != contract_constraint_decision_canonical_bytes(order_b.decision)
+    ):
+        problems.append("rule input order leaked into the decision")
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                name,
+                "deny>allow at equal precedence; specificity then priority; "
+                "equal-precedence distinct allows -> CONFLICT; require-review -> "
+                "DENY+FAIL_CLOSED; input order never leaks",
+            )
+        )
+
+
+def case_80_contract_constraints_temporal_subwindows(results: List[Result]) -> None:
+    """80. Temporal windows: a rule's own validity window is a
+    sub-interval of the set's window; an expired rule is skipped (the
+    live rule wins); the boundary convention is inclusive on both
+    edges."""
+    name = "case_80_contract_constraints_temporal_subwindows"
+    _store, exchange, _offer, contract = _m4_selected_contract()
+    facts = _m4_offer_facts_from_exchange(exchange, contract, at_instant=_M4_T_MID)
+    context = _m4_context_from_contract(
+        contract, "contract.create", evaluation_instant=_M4_T_MID, offer_facts=facts
+    )
+    live_allow = _m4_rule(
+        "live", "contract.create", effect=ContractConstraintEffect.ALLOW,
+        valid_from="2026-10-01T00:00:00Z", valid_until="2026-10-31T00:00:00Z",
+    )
+    expired_deny = _m4_rule(
+        "expired", "contract.create", effect=ContractConstraintEffect.DENY,
+        valid_until="2026-09-01T00:00:00Z",
+    )
+    result = evaluate_contract_constraints(
+        _m4_constraint_set((live_allow, expired_deny)), context
+    )
+    problems: List[str] = []
+    if not (
+        result.ok and result.code == ContractConstraintDecisionCode.ALLOW
+        and result.decision is not None
+        and result.decision.matched_rule_ids == ("live",)
+    ):
+        problems.append("expired rule not skipped: %r" % (result.code,))
+    # inclusive boundary convention: evaluate exactly at valid_from and valid_until
+    edge_rule = _m4_rule(
+        "edge", "contract.create", effect=ContractConstraintEffect.ALLOW,
+        valid_from=_M4_T_MID, valid_until=_M4_T_MID,
+    )
+    at_edge = evaluate_contract_constraints(_m4_constraint_set((edge_rule,)), context)
+    if not (at_edge.ok and at_edge.code == ContractConstraintDecisionCode.ALLOW):
+        problems.append("inclusive boundary convention drifted: %r" % (at_edge.code,))
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+    else:
+        results.append(
+            ok(name, "expired DENY rule skipped; live ALLOW wins; inclusive bounds at both edges")
+        )
+
+
+def case_81_contract_constraints_subject_and_conditions(results: List[Result]) -> None:
+    """81. Subject selectors and typed reference-fact conditions:
+    principal-kind / principal-ref / beneficiary-kind / constraint-kind
+    / contract-state / validity-live match the contract's own facts;
+    offer-provider / offer-jurisdiction match the M003-resolved offer
+    facts; every mismatch is a non-match (deny-by-default — an
+    out-of-vocabulary selector can never authorize anything)."""
+    name = "case_81_contract_constraints_subject_and_conditions"
+    _store, exchange, _offer, contract = _m4_selected_contract()
+    facts = _m4_offer_facts_from_exchange(exchange, contract, at_instant=_M4_T_MID)
+    context = _m4_context_from_contract(
+        contract, "contract.create", evaluation_instant=_M4_T_MID, offer_facts=facts
+    )
+    problems: List[str] = []
+
+    def _decision(conditions, subjects=()):
+        rule = _m4_rule("r", "contract.create", conditions=conditions, subjects=subjects)
+        return evaluate_contract_constraints(_m4_constraint_set((rule,)), context)
+
+    # every selector matches the contract's own facts
+    matching = (
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.PRINCIPAL_KIND, arguments={"kind": "APPLICATION"}),
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.PRINCIPAL_REF, arguments={"ref": "app:sharenet-gw-01"}),
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.BENEFICIARY_KIND, arguments={"kind": "DEVICE"}),
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.CONSTRAINT_KIND, arguments={"kind": "latency-bound"}),
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.CONTRACT_STATE, arguments={"state": "OFFER_SELECTED"}),
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.VALIDITY_LIVE, arguments={}),
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.OFFER_PROVIDER, arguments={"provider": _M4_PROVIDER_A}),
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.OFFER_JURISDICTION, arguments={"jurisdiction": "GH"}),
+    )
+    for condition in matching:
+        result = _decision((condition,))
+        if not (result.ok and result.code == ContractConstraintDecisionCode.ALLOW):
+            problems.append("matching condition %r denied" % condition.predicate)
+    # every mismatch is a non-match -> DEFAULT_DENY (including an
+    # out-of-vocabulary kind selector: deny-by-default holds — the
+    # canonical vocabulary authority stays with the canonical domains)
+    mismatches = (
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.PRINCIPAL_KIND, arguments={"kind": "GOVERNMENT"}),
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.PRINCIPAL_REF, arguments={"ref": "app:other-99"}),
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.BENEFICIARY_KIND, arguments={"kind": "NGO"}),
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.CONSTRAINT_KIND, arguments={"kind": "geography"}),
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.CONTRACT_STATE, arguments={"state": "SETTLED"}),
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.OFFER_PROVIDER, arguments={"provider": _M4_PROVIDER_B}),
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.OFFER_JURISDICTION, arguments={"jurisdiction": "NG"}),
+        ContractConstraintCondition(predicate=ContractConstraintPredicateKind.PRINCIPAL_KIND, arguments={"kind": "ROBOT"}),
+    )
+    for condition in mismatches:
+        result = _decision((condition,))
+        if not (result.ok and result.code == ContractConstraintDecisionCode.DEFAULT_DENY):
+            problems.append("mismatched condition %r did not default-deny: %r" % (condition.predicate, result.code))
+    # validity-live fails at an instant outside the contract window
+    outside = ContractConstraintContext(
+        **{**context.content(), "evaluation_instant": _M4_T_PAST_END}
+    )
+    live_rule = _m4_rule("live-only", "contract.create", conditions=(ContractConstraintCondition(predicate=ContractConstraintPredicateKind.VALIDITY_LIVE, arguments={}),))
+    result = evaluate_contract_constraints(_m4_constraint_set((live_rule,)), outside)
+    if not (result.ok and result.code == ContractConstraintDecisionCode.DEFAULT_DENY):
+        problems.append("validity-live outside window: %r" % (result.code,))
+    # subject selector: the rule applies only to its subject
+    subject_rule = _m4_rule("subject-only", "contract.create", subjects=("app:sharenet-gw-01",))
+    subject_ok = evaluate_contract_constraints(_m4_constraint_set((subject_rule,)), context)
+    if not (subject_ok.ok and subject_ok.code == ContractConstraintDecisionCode.ALLOW):
+        problems.append("subject match failed")
+    stranger = ContractConstraintContext(**{**context.content(), "principal_ref": "app:stranger-77"})
+    stranger_result = evaluate_contract_constraints(_m4_constraint_set((subject_rule,)), stranger)
+    if not (stranger_result.ok and stranger_result.code == ContractConstraintDecisionCode.DEFAULT_DENY):
+        problems.append("subject mismatch did not default-deny: %r" % (stranger_result.code,))
+    # predicate argument SHAPE grammar fails closed at construction
+    sub: List[Result] = []
+    sub.append(
+        _m4_expect_constraint_error(
+            "case_81h_bad_predicate_shape", ContractConstraintReason.INVALID_INPUT,
+            lambda: ContractConstraintCondition(
+                predicate=ContractConstraintPredicateKind.VALIDITY_LIVE, arguments={"kind": "USER"}
+            ),
+        )
+    )
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    results.extend(sub)
+    results.append(
+        ok(
+            name,
+            "8 matching selectors ALLOW; 8 mismatched (incl. out-of-vocabulary) + "
+            "out-of-window + stranger subject DEFAULT_DENY; bad predicate shape "
+            "rejected at construction",
+        )
+    )
+
+
+def case_82_m004_lock101_by_reference(results: List[Result]) -> None:
+    """82. LOCK-101 by-reference discipline: composition + evaluation
+    never mutate the canonical contract (identity, state,
+    hard-constraint fingerprint, canonical bytes byte-identical) or the
+    M003 exchange (catalog digest identical); a withdrawn offer composes
+    as usable=False (an eligibility FACT, never a catalog mutation) and
+    offer-fact conditions then fail closed; the contract stays
+    byte-identical across a failed composition."""
+    name = "case_82_m004_lock101_by_reference"
+    _store, exchange, offer, contract = _m4_selected_contract()
+    contract_bytes_before = contract.canonical_bytes()
+    fingerprint_before = contract.hard_constraint_fingerprint()
+    catalog_before = exchange.catalog_digest()
+    facts = _m4_offer_facts_from_exchange(exchange, contract, at_instant=_M4_T_MID)
+    ruleset = _m4_ruleset()
+    contract_facts = _m4_contract_facts(contract, facts)
+    eligibility = evaluate_contract_reference_eligibility(
+        contract_facts, ruleset, at_instant=_M4_T_MID
+    )
+    rule = _m4_rule("allow-select", "contract.select-offers")
+    constraint_set = _m4_constraint_set((rule,))
+    context = _m4_context_from_contract(
+        contract, "contract.select-offers", evaluation_instant=_M4_T_MID, offer_facts=facts
+    )
+    decision = evaluate_contract_constraints(constraint_set, context)
+    problems: List[str] = []
+    if contract.canonical_bytes() != contract_bytes_before:
+        problems.append("the contract record changed after composition + evaluation")
+    if contract.hard_constraint_fingerprint() != fingerprint_before:
+        problems.append("the hard-constraint fingerprint changed after composition + evaluation")
+    if contract.state != "OFFER_SELECTED":
+        problems.append("the contract state changed after composition + evaluation")
+    if exchange.catalog_digest() != catalog_before:
+        problems.append("the exchange catalog changed after composition + evaluation")
+    if not (decision.ok and eligibility.eligible):
+        problems.append("the composition did not evaluate cleanly")
+    # exception isolation (the snapshot discipline): a withdrawn offer
+    # composes as usable=False — never a crash, never a catalog mutation
+    exchange.withdraw_offer(
+        provider=offer.provider,
+        provider_offer_key=offer.provider_offer_key,
+        withdrawn_at=_M4_T_LATE,
+        reason="capacity reallocation",
+    )
+    late_facts = _m4_offer_facts_from_exchange(exchange, contract, at_instant=_M4_T_LATE)
+    if late_facts and late_facts[0].usable:
+        problems.append("a withdrawn offer composed as usable")
+    # offer-fact conditions fail closed on the unusable fact
+    late_context = _m4_context_from_contract(
+        contract, "contract.select-offers", evaluation_instant=_M4_T_LATE, offer_facts=late_facts
+    )
+    provider_rule = _m4_rule(
+        "allow-live-provider",
+        "contract.select-offers",
+        conditions=(
+            ContractConstraintCondition(
+                predicate=ContractConstraintPredicateKind.OFFER_PROVIDER,
+                arguments={"provider": _M4_PROVIDER_A},
+            ),
+        ),
+    )
+    late_decision = evaluate_contract_constraints(
+        _m4_constraint_set((provider_rule,)), late_context
+    )
+    if not (
+        late_decision.ok
+        and late_decision.code == ContractConstraintDecisionCode.DEFAULT_DENY
+    ):
+        problems.append("offer-fact condition matched an unusable offer: %r" % (late_decision.code,))
+    # the contract is still untouched by the failed resolution
+    if contract.canonical_bytes() != contract_bytes_before:
+        problems.append("the contract record changed after a failed offer-fact composition")
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                name,
+                "contract identity/state/fingerprint/bytes + exchange catalog byte-identical "
+                "across composition + evaluation; withdrawn offer composes usable=False and "
+                "offer-fact conditions fail closed",
+            )
+        )
+
+
+def case_83_offer_reference_eligibility(results: List[Result]) -> None:
+    """83. Offer-reference eligibility: the eligible path composes from
+    the M003 exchange's resolution; provider/jurisdiction rule denials
+    are decision DATA with deterministic reasons; an unusable offer is a
+    DENIAL (never a raised error); a stale ruleset raises typed errors
+    (the raised/DATA separation); empty permitted lists deny everything
+    (fail closed, never silently permit)."""
+    name = "case_83_offer_reference_eligibility"
+    exchange = _m4_exchange()
+    offer = _m4_offer(advertisement_id=exchange.advertisements()[0].advertisement_id)
+    exchange.register_offer(offer)
+    reference = OpaqueReference(
+        ref_kind="offer", value=offer.offer_id, provenance=_m4_prov(_M4_ISSUER_A)
+    )
+    # compose the offer facts through the M003 exchange (by reference)
+    from offers import resolve_offer_reference
+
+    record = resolve_offer_reference(exchange, reference, at_instant=_M4_T_MID)
+    facts = OfferReferenceEligibilityFacts(
+        value=reference.value,
+        offer_id=record.offer_id,
+        provider=record.provider,
+        jurisdictions=tuple(
+            boundary.jurisdiction for boundary in record.service_boundaries
+        ),
+        usable=True,
+    )
+    ruleset = _m4_ruleset()
+    outcome = evaluate_offer_reference_eligibility(facts, ruleset, at_instant=_M4_T_MID)
+    problems: List[str] = []
+    if not (
+        outcome.eligible and outcome.reasons == () and outcome.provider == _M4_PROVIDER_A
+        and outcome.jurisdictions == ("GH",)
+    ):
+        problems.append("eligible path drifted: %r %r" % (outcome.eligible, outcome.reasons))
+    # provider not permitted -> denial DATA
+    stranger_rules = _m4_ruleset(providers=(_M4_PROVIDER_B,))
+    denied_provider = evaluate_offer_reference_eligibility(
+        facts, stranger_rules, at_instant=_M4_T_MID
+    )
+    if denied_provider.eligible or denied_provider.reasons != (
+        ContractEligibilityReason.PROVIDER_NOT_PERMITTED,
+    ):
+        problems.append("provider denial: %r %r" % (denied_provider.eligible, denied_provider.reasons))
+    # jurisdiction not covered -> denial DATA
+    jurisdiction_rules = _m4_ruleset(jurisdictions=("NG",))
+    denied_jurisdiction = evaluate_offer_reference_eligibility(
+        facts, jurisdiction_rules, at_instant=_M4_T_MID
+    )
+    if denied_jurisdiction.eligible or denied_jurisdiction.reasons != (
+        ContractEligibilityReason.JURISDICTION_NOT_COVERED,
+    ):
+        problems.append("jurisdiction denial: %r" % (denied_jurisdiction.reasons,))
+    # both violated -> deterministic ordered reasons
+    both_rules = _m4_ruleset(providers=(_M4_PROVIDER_B,), jurisdictions=("NG",))
+    denied_both = evaluate_offer_reference_eligibility(
+        facts, both_rules, at_instant=_M4_T_MID
+    )
+    if denied_both.reasons != (
+        ContractEligibilityReason.PROVIDER_NOT_PERMITTED,
+        ContractEligibilityReason.JURISDICTION_NOT_COVERED,
+    ):
+        problems.append("merged denial reasons drifted: %r" % (denied_both.reasons,))
+    # an unusable (withdrawn) offer is a DENIAL — decision DATA, never raised
+    unusable_facts = OfferReferenceEligibilityFacts(
+        value=reference.value,
+        offer_id=reference.value,
+        provider="unresolved-offer-reference",
+        jurisdictions=(),
+        usable=False,
+    )
+    withdrawn_outcome = evaluate_offer_reference_eligibility(
+        unusable_facts, ruleset, at_instant=_M4_T_LATE
+    )
+    if withdrawn_outcome.eligible or withdrawn_outcome.reasons != (
+        ContractEligibilityReason.OFFER_NOT_USABLE,
+    ):
+        problems.append("unusable offer: %r %r" % (withdrawn_outcome.eligible, withdrawn_outcome.reasons))
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    sub: List[Result] = []
+    # stale ruleset never silently evaluates (raised typed error)
+    stale = _m4_ruleset(valid_from="2026-01-01T00:00:00Z", valid_until="2026-02-01T00:00:00Z")
+    sub.append(
+        _m4_expect_eligibility_error(
+            "case_83g_stale_ruleset", ContractEligibilityReason.TEMPORAL_INVALID,
+            lambda: evaluate_offer_reference_eligibility(
+                facts, stale, at_instant=_M4_T_MID
+            ),
+        )
+    )
+    # empty permitted lists deny everything (fail closed, never silently permit)
+    empty_rules = _m4_ruleset(providers=(), jurisdictions=())
+    empty_outcome = evaluate_offer_reference_eligibility(
+        facts, empty_rules, at_instant=_M4_T_MID
+    )
+    if empty_outcome.eligible or empty_outcome.reasons != (
+        ContractEligibilityReason.PROVIDER_NOT_PERMITTED,
+        ContractEligibilityReason.JURISDICTION_NOT_COVERED,
+    ):
+        sub.append(
+            fail(
+                "case_83h_empty_rulesets_fail_closed",
+                "empty permitted lists: %r %r" % (empty_outcome.eligible, empty_outcome.reasons),
+            )
+        )
+    else:
+        sub.append(
+            ok(
+                "case_83h_empty_rulesets_fail_closed",
+                "empty permitted provider/jurisdiction lists deny (never silently permit)",
+            )
+        )
+    # a jurisdiction-less usable offer cannot certify jurisdiction eligibility
+    no_jur_facts = OfferReferenceEligibilityFacts(
+        value=reference.value, offer_id=record.offer_id, provider=_M4_PROVIDER_A,
+        jurisdictions=(), usable=True,
+    )
+    no_jur_outcome = evaluate_offer_reference_eligibility(
+        no_jur_facts, ruleset, at_instant=_M4_T_MID
+    )
+    if no_jur_outcome.eligible or no_jur_outcome.reasons != (
+        ContractEligibilityReason.JURISDICTION_NOT_COVERED,
+    ):
+        sub.append(
+            fail(
+                "case_83i_absent_jurisdiction_fails_closed",
+                "absent jurisdiction facts: %r %r" % (no_jur_outcome.eligible, no_jur_outcome.reasons),
+            )
+        )
+    else:
+        sub.append(
+            ok(
+                "case_83i_absent_jurisdiction_fails_closed",
+                "absent jurisdiction facts deny (never silently certify)",
+            )
+        )
+    results.extend(sub)
+    results.append(
+        ok(
+            name,
+            "eligible composes via the M003 exchange; provider/jurisdiction denials are "
+            "ordered DATA; unusable offer is a DENIAL (offer-not-usable); stale ruleset "
+            "raises typed; empty/absent rule facts fail closed",
+        )
+    )
+
+
+def case_84_contract_eligibility_composition(results: List[Result]) -> None:
+    """84. Contract eligibility composition (end-to-end through the M002
+    store + M003 exchange + the battery composition seam): a contract
+    with no accepted offers denies (no-accepted-offers); after
+    SelectOffers the reference set is eligible; a terminal contract
+    denies (contract-terminal); an instant past the validity window
+    denies (contract-not-live merged with offer-not-usable in the fixed
+    deterministic order); the reason merge is deduplicated and
+    order-preserving."""
+    name = "case_84_contract_eligibility_composition"
+    store, exchange, offer, contract = _m4_selected_contract()
+    ruleset = _m4_ruleset()
+    problems: List[str] = []
+
+    # (a) INTENT with no accepted offers -> no-accepted-offers (a
+    # DISTINCT contract: different principal -> different derived
+    # identity; an identical create would be the store's idempotent no-op)
+    created = store.submit(
+        _m4_contract_create(principal_ref="app:roamlink-gw-02"),
+        recorded_at="2026-09-30T11:00:00Z",
+    )
+    intent_facts = _m4_offer_facts_from_exchange(exchange, created.contract, at_instant=_M4_T_MID)
+    intent_reference_facts = _m4_contract_facts(created.contract, intent_facts)
+    intent_outcome = evaluate_contract_reference_eligibility(
+        intent_reference_facts, ruleset, at_instant=_M4_T_MID
+    )
+    if intent_outcome.eligible or intent_outcome.reasons != (
+        ContractEligibilityReason.NO_ACCEPTED_OFFERS,
+    ):
+        problems.append("no-offers: %r" % (intent_outcome.reasons,))
+    # (b) OFFER_SELECTED with the live offer -> eligible
+    selected_facts = _m4_offer_facts_from_exchange(exchange, contract, at_instant=_M4_T_MID)
+    selected_reference_facts = _m4_contract_facts(contract, selected_facts)
+    selected_outcome = evaluate_contract_reference_eligibility(
+        selected_reference_facts, ruleset, at_instant=_M4_T_MID
+    )
+    if not (selected_outcome.eligible and selected_outcome.reasons == ()):
+        problems.append("selected: %r %r" % (selected_outcome.eligible, selected_outcome.reasons))
+    elif selected_outcome.contract_state != "OFFER_SELECTED":
+        problems.append("outcome state drifted")
+    elif len(selected_outcome.offer_outcomes) != 1 or not selected_outcome.offer_outcomes[0].eligible:
+        problems.append("per-offer outcome drifted")
+    # (c) terminal contract -> contract-terminal
+    failed = store.submit(
+        FailContract(recorded_at=_M4_T_MID, reason="constraint realization impossible"),
+        recorded_at=_M4_T_MID,
+        contract_id=contract.contract_id,
+    )
+    failed_facts = _m4_offer_facts_from_exchange(exchange, failed.contract, at_instant=_M4_T_MID)
+    failed_reference_facts = _m4_contract_facts(failed.contract, failed_facts)
+    terminal_outcome = evaluate_contract_reference_eligibility(
+        failed_reference_facts, ruleset, at_instant=_M4_T_MID
+    )
+    if terminal_outcome.eligible or terminal_outcome.reasons != (
+        ContractEligibilityReason.CONTRACT_TERMINAL,
+    ):
+        problems.append("terminal: %r" % (terminal_outcome.reasons,))
+    # (d) past the validity window -> contract-not-live (+ the offer is
+    # also past its own window -> unusable) in the fixed merge order
+    past_facts = _m4_offer_facts_from_exchange(exchange, contract, at_instant=_M4_T_PAST_END)
+    past_reference_facts = _m4_contract_facts(contract, past_facts)
+    past_outcome = evaluate_contract_reference_eligibility(
+        past_reference_facts, ruleset, at_instant=_M4_T_PAST_END
+    )
+    if past_outcome.eligible or past_outcome.reasons != (
+        ContractEligibilityReason.CONTRACT_NOT_LIVE,
+        ContractEligibilityReason.OFFER_NOT_USABLE,
+    ):
+        problems.append("past-window merge: %r" % (past_outcome.reasons,))
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                name,
+                "no-accepted-offers -> eligible -> contract-terminal -> "
+                "past-window (contract-not-live + offer-not-usable, fixed merge order); "
+                "reasons deduplicated and deterministic",
+            )
+        )
+
+
+def case_85_m004_lock110_technology_neutral(results: List[Result]) -> None:
+    """85. LOCK-110 at the policy boundary + the family import
+    discipline: the M004 modules import stdlib +
+    protocol.canonicalization + agent.clock (+ intra-family relatives)
+    ONLY — the canonical domains are consumed through composed
+    snapshots, never imported (LOCK-101's strongest form); no provider
+    SDK/vendor types or transport objects anywhere in the new surface
+    (AST audit)."""
+    name = "case_85_m004_lock110_technology_neutral"
+    import ast as _ast
+
+    allowed_modules = {
+        "__future__", "hashlib", "re", "dataclasses", "typing",
+    }
+    allowed_prefixes = ("protocol.canonicalization", "agent.clock")
+    modules = (
+        "eligibility/contract_constraints.py",
+        "eligibility/contract_eligibility.py",
+    )
+    problems: List[str] = []
+    for module_name in modules:
+        source = (REPO_ROOT / module_name).read_text(encoding="utf-8")
+        tree = _ast.parse(source)
+        for node in _ast.walk(tree):
+            if isinstance(node, _ast.Import):
+                for alias in node.names:
+                    root = alias.name.split(".")[0]
+                    if root not in allowed_modules:
+                        problems.append("%s imports %s" % (module_name, alias.name))
+            elif isinstance(node, _ast.ImportFrom):
+                module = node.module or ""
+                if module == "__future__" or node.level > 0:
+                    continue  # relative imports stay intra-family
+                if not any(
+                    module == prefix or module.startswith(prefix + ".")
+                    for prefix in allowed_prefixes
+                ):
+                    if module.split(".")[0] not in allowed_modules:
+                        problems.append("%s imports from %s" % (module_name, module))
+    # no SDK/vendor/transport tokens in the new surface CODE
+    for module_name in modules:
+        source = (REPO_ROOT / module_name).read_text(encoding="utf-8")
+        tree = _ast.parse(source)
+        code_tokens = set()
+        for node in _ast.walk(tree):
+            if isinstance(node, _ast.Name):
+                code_tokens.add(node.id.lower())
+            elif isinstance(node, _ast.Attribute):
+                code_tokens.add(node.attr.lower())
+            elif isinstance(node, _ast.ClassDef):
+                code_tokens.add(node.name.lower())
+            elif isinstance(node, _ast.FunctionDef):
+                code_tokens.add(node.name.lower())
+        for token in ("sdk", "vendor", "bearer", "esim", "radio", "modem", "wifi", "transport"):
+            if token in code_tokens:
+                problems.append("%s code carries %r token" % (module_name, token))
+    if problems:
+        results.append(fail(name, "; ".join(problems[:5])))
+    else:
+        results.append(
+            ok(
+                name,
+                "M004 modules import stdlib + protocol.canonicalization + agent.clock "
+                "only (canonical domains consumed via composed snapshots — never "
+                "imported); no SDK/vendor/transport tokens in code (LOCK-110)",
+            )
+        )
+
+
+def case_86_m004_lock119_and_round_trips(results: List[Result]) -> None:
+    """86. LOCK-119 + canonical round-trips: secret-shaped material is
+    rejected at construction; the constraint set, decision, ruleset and
+    outcomes round-trip byte-stably through canonical JSON; mutated
+    digests and unknown wire members fail closed (tamper evidence)."""
+    name = "case_86_m004_lock119_and_round_trips"
+    import json as _json
+
+    _store, exchange, _offer, contract = _m4_selected_contract()
+    facts = _m4_offer_facts_from_exchange(exchange, contract, at_instant=_M4_T_MID)
+    context = _m4_context_from_contract(
+        contract, "contract.select-offers", evaluation_instant=_M4_T_MID, offer_facts=facts
+    )
+    rule = _m4_rule("allow-select", "contract.select-offers")
+    constraint_set = _m4_constraint_set((rule,))
+    result = evaluate_contract_constraints(constraint_set, context)
+    decision = result.decision
+    ruleset = _m4_ruleset()
+    reference_facts = _m4_contract_facts(contract, facts)
+    outcome = evaluate_contract_reference_eligibility(
+        reference_facts, ruleset, at_instant=_M4_T_MID
+    )
+    problems: List[str] = []
+    if decision is None:
+        results.append(fail(name, "the constraint evaluation did not produce a decision"))
+        return
+
+    # canonical round-trips (byte-stable)
+    from protocol.canonicalization import canonical_json_bytes as _cjb
+
+    wire_set = _cjb(constraint_set.to_dict())
+    rebuilt_set = contract_constraint_set_from_mapping(_json.loads(wire_set.decode()))
+    if _cjb(rebuilt_set.to_dict()) != wire_set or rebuilt_set.digest() != constraint_set.digest():
+        problems.append("constraint set round-trip not byte-stable")
+    wire_decision = _cjb(decision.to_dict())
+    rebuilt_decision = ContractConstraintDecision.from_dict(_json.loads(wire_decision.decode()))
+    if _cjb(rebuilt_decision.to_dict()) != wire_decision:
+        problems.append("decision round-trip not byte-stable")
+    wire_ruleset = _cjb(ruleset.to_dict())
+    rebuilt_ruleset = contract_eligibility_ruleset_from_mapping(_json.loads(wire_ruleset.decode()))
+    if _cjb(rebuilt_ruleset.to_dict()) != wire_ruleset or rebuilt_ruleset.digest() != ruleset.digest():
+        problems.append("ruleset round-trip not byte-stable")
+    wire_outcome = _cjb(outcome.to_dict())
+    rebuilt_outcome = contract_eligibility_from_mapping(_json.loads(wire_outcome.decode()))
+    if _cjb(rebuilt_outcome.to_dict()) != wire_outcome:
+        problems.append("contract eligibility outcome round-trip not byte-stable")
+    offer_outcome = outcome.offer_outcomes[0]
+    wire_offer_outcome = _cjb(offer_outcome.to_dict())
+    rebuilt_offer_outcome = offer_reference_eligibility_from_mapping(
+        _json.loads(wire_offer_outcome.decode())
+    )
+    if _cjb(rebuilt_offer_outcome.to_dict()) != wire_offer_outcome:
+        problems.append("offer eligibility outcome round-trip not byte-stable")
+
+    # tamper evidence: mutated digests fail closed
+    sub: List[Result] = []
+    mutated = dict(_json.loads(wire_decision.decode()))
+    mutated["decision_id"] = "sha256:" + "0" * 64
+    sub.append(
+        _m4_expect_constraint_error(
+            "case_86g_mutated_decision_id", ContractConstraintReason.ID_MISMATCH,
+            lambda: ContractConstraintDecision.from_dict(mutated),
+        )
+    )
+    mutated_outcome = dict(_json.loads(wire_outcome.decode()))
+    mutated_outcome["evaluation_digest"] = "sha256:" + "0" * 64
+    sub.append(
+        _m4_expect_eligibility_error(
+            "case_86h_mutated_evaluation_digest", ContractEligibilityReason.INVALID_INPUT,
+            lambda: ContractEligibility.from_dict(mutated_outcome),
+        )
+    )
+    # unknown wire members fail closed
+    unknown_member = dict(_json.loads(wire_set.decode()))
+    unknown_member["mystery"] = 1
+    sub.append(
+        _m4_expect_constraint_error(
+            "case_86i_unknown_wire_member", ContractConstraintReason.INVALID_INPUT,
+            lambda: contract_constraint_set_from_mapping(unknown_member),
+        )
+    )
+    # LOCK-119: secret-shaped material rejected at construction (the
+    # M002/M003 discipline: secret-shaped VALUES and secret-named labels)
+    sub.append(
+        _m4_expect_constraint_error(
+            "case_86j_secret_subject_value", ContractConstraintReason.SECRET_REJECTED,
+            lambda: _m4_rule(
+                "r-guarded", "contract.create", subjects=("ghp_secretechmaterial00",)
+            ),
+        )
+    )
+    sub.append(
+        _m4_expect_constraint_error(
+            "case_86k_secret_condition_value", ContractConstraintReason.SECRET_REJECTED,
+            lambda: ContractConstraintCondition(
+                predicate=ContractConstraintPredicateKind.PRINCIPAL_REF,
+                arguments={"ref": "ghp_secretechmaterial00"},
+            ),
+        )
+    )
+    sub.append(
+        _m4_expect_eligibility_error(
+            "case_86l_secret_ruleset_issuer", ContractEligibilityReason.SECRET_REJECTED,
+            lambda: ContractEligibilityRuleset(
+                ruleset_id="rs2", version=1, issuer="sk_livematerial000000",
+                permitted_providers=(_M4_PROVIDER_A,), permitted_jurisdictions=("GH",),
+                decision_refs=("decision:platform-eligibility-v1",),
+            ),
+        )
+    )
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    results.extend(sub)
+    results.append(
+        ok(
+            name,
+            "constraint set/decision/ruleset/outcomes round-trip byte-stably; mutated "
+            "digests + unknown wire members fail closed; secret-shaped subject "
+            "values, condition values and issuers rejected (LOCK-119)",
+        )
+    )
+
+
+def case_87_m004_determinism(results: List[Result]) -> None:
+    """87. Determinism: byte-identical decision/outcome bytes across
+    repeated evaluations; identical digests across PYTHONHASHSEED
+    0/1/12345 subprocesses (the pure-DATA evaluators, independent of
+    any canonical import); no wall clock / randomness / network tokens
+    in the M004 modules."""
+    name = "case_87_m004_determinism"
+    _store, exchange, _offer, contract = _m4_selected_contract()
+    facts = _m4_offer_facts_from_exchange(exchange, contract, at_instant=_M4_T_MID)
+    context = _m4_context_from_contract(
+        contract, "contract.select-offers", evaluation_instant=_M4_T_MID, offer_facts=facts
+    )
+    rule = _m4_rule("allow-select", "contract.select-offers")
+    constraint_set = _m4_constraint_set((rule,))
+    ruleset = _m4_ruleset()
+    first = evaluate_contract_constraints(constraint_set, context).decision
+    second = evaluate_contract_constraints(constraint_set, context).decision
+    reference_facts = _m4_contract_facts(contract, facts)
+    eligibility_first = evaluate_contract_reference_eligibility(
+        reference_facts, ruleset, at_instant=_M4_T_MID
+    )
+    eligibility_second = evaluate_contract_reference_eligibility(
+        reference_facts, ruleset, at_instant=_M4_T_MID
+    )
+    problems: List[str] = []
+    if first is None or second is None:
+        results.append(fail(name, "no decision produced"))
+        return
+    if contract_constraint_decision_canonical_bytes(first) != contract_constraint_decision_canonical_bytes(second):
+        problems.append("decision bytes differ across repeated evaluations")
+    if first.decision_id != second.decision_id:
+        problems.append("decision ids differ across repeated evaluations")
+    if eligibility_first.evaluation_digest != eligibility_second.evaluation_digest:
+        problems.append("eligibility digests differ across repeated evaluations")
+
+    # cross-process determinism under PYTHONHASHSEED 0/1/12345: the
+    # child builds the pure-DATA records directly (no canonical-domain
+    # imports — the evaluators are independently deterministic)
+    import subprocess as _sp
+    import os as _os
+
+    child = (
+        "import sys; sys.path.insert(0, %r)\n" % (str(REPO_ROOT),)
+        + """
+from eligibility.contract_constraints import (
+    ContractConstraintRule, ContractConstraintSet, ContractConstraintContext,
+    OfferReferenceFacts, ValidityWindow, evaluate_contract_constraints,
+)
+from eligibility.contract_eligibility import (
+    ContractEligibilityRuleset, ContractReferenceFacts,
+    evaluate_contract_reference_eligibility,
+)
+PROVIDER_A = "adcos:node:identity.sha256-hmac-dev.v1:" + "1" * 64
+T_MID = "2026-10-15T00:00:00Z"
+facts = (OfferReferenceFacts(
+    value="sha256:" + "a" * 64, offer_id="sha256:" + "b" * 64,
+    provider=PROVIDER_A, jurisdictions=("GH",), usable=True,
+),)
+context = ContractConstraintContext(
+    action="contract.select-offers", principal_kind="APPLICATION",
+    principal_ref="app:sharenet-gw-01", beneficiary_kinds=("DEVICE",),
+    contract_state="OFFER_SELECTED", hard_constraint_kinds=("latency-bound",),
+    validity=ValidityWindow(not_before="2026-10-01T00:00:00Z", not_after="2026-11-01T00:00:00Z"),
+    accepted_offer_values=("sha256:" + "b" * 64,), offer_facts=facts,
+    evaluation_instant=T_MID,
+)
+rule = ContractConstraintRule(
+    rule_id="allow-select", action="contract.select-offers", effect="allow",
+    issuer="issuer:platform-ops", decision_refs=("decision:platform-constraints-v1",),
+)
+ps = ContractConstraintSet(set_id="cps-platform-1", version=1, rules=(rule,), issuer="issuer:platform-ops")
+decision = evaluate_contract_constraints(ps, context).decision
+reference_facts = ContractReferenceFacts(
+    contract_id="sha256:" + "c" * 64, state="OFFER_SELECTED", state_is_terminal=False,
+    validity=ValidityWindow(not_before="2026-10-01T00:00:00Z", not_after="2026-11-01T00:00:00Z"),
+    offer_facts=facts,
+)
+ruleset = ContractEligibilityRuleset(
+    ruleset_id="rs-platform-1", version=1, issuer="issuer:platform-ops",
+    permitted_providers=(PROVIDER_A,), permitted_jurisdictions=("GH",),
+    decision_refs=("decision:platform-eligibility-v1",),
+)
+outcome = evaluate_contract_reference_eligibility(reference_facts, ruleset, at_instant=T_MID)
+print(decision.decision_id, outcome.evaluation_digest)
+"""
+    )
+    digests = set()
+    for seed in ("0", "1", "12345"):
+        env = dict(_os.environ)
+        env["PYTHONHASHSEED"] = seed
+        run = _sp.run(
+            [sys.executable, "-c", child],
+            capture_output=True, text=True, env=env, timeout=120,
+        )
+        if run.returncode != 0:
+            problems.append("PYTHONHASHSEED=%s child failed: %s" % (seed, run.stderr[-200:]))
+            break
+        digests.add(run.stdout.strip())
+    if len(digests) > 1:
+        problems.append("cross-process digests differ: %s" % sorted(digests))
+
+    # clock/network discipline in the M004 modules (text audit)
+    for module_name in (
+        "eligibility/contract_constraints.py",
+        "eligibility/contract_eligibility.py",
+    ):
+        text = (REPO_ROOT / module_name).read_text(encoding="utf-8")
+        for token in (
+            "time.monotonic", "time.perf_counter", "time.time", "datetime.now",
+            "datetime.utcnow", "datetime.today", "import random", "import uuid",
+            "import socket", "import urllib", "import requests", "import http",
+            "os.urandom",
+        ):
+            if token in text:
+                problems.append("%s contains %r" % (module_name, token))
+    if problems:
+        results.append(fail(name, "; ".join(problems[:5])))
+    else:
+        results.append(
+            ok(
+                name,
+                "decision/outcome bytes identical across runs; identical digests across "
+                "PYTHONHASHSEED 0/1/12345 subprocesses (pure-DATA evaluators, no "
+                "canonical imports); no wall-clock/randomness/network tokens in the "
+                "M004 modules",
+            )
+        )
+
+
 def main() -> int:
     results: List[Result] = []
     # Required adversarial verification cases (1-41 from the prompt).
@@ -2403,8 +4052,23 @@ def main() -> int:
     # WORK-026 ("policy-controlled authority") regression case: the
     # telemetry topology-promotion operation and its born binding.
     case_74_promotion_binding_born_bound(results)
+    # M004 — Eligibility and Policy (R7-CORE-001 child, DEC-0101): the
+    # refactored 1.1 surface around the canonical contract.
+    case_75_m004_surface_and_vocabularies(results)
+    case_76_contract_constraints_minimal_flow(results)
+    case_77_contract_constraints_deny_and_default_deny(results)
+    case_78_contract_constraints_fail_closed(results)
+    case_79_contract_constraints_precedence_conflict(results)
+    case_80_contract_constraints_temporal_subwindows(results)
+    case_81_contract_constraints_subject_and_conditions(results)
+    case_82_m004_lock101_by_reference(results)
+    case_83_offer_reference_eligibility(results)
+    case_84_contract_eligibility_composition(results)
+    case_85_m004_lock110_technology_neutral(results)
+    case_86_m004_lock119_and_round_trips(results)
+    case_87_m004_determinism(results)
 
-    print("ADCOS policy self-test (WORK-010)")
+    print("ADCOS policy self-test (WORK-010 + M004)")
     print("=" * 72)
     for name, ok_flag, detail in results:
         print("[%s] %-72s %s" % ("ok  " if ok_flag else "FAIL", name, detail))
