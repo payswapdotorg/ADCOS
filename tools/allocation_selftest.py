@@ -219,9 +219,14 @@ from allocation import (  # noqa: E402
     AllocationEvidenceIndex,
     AllocationReasonCode,
     AllocationSnapshot,
+    AllocationState,
     AllocationSubjectState,
     AllocationTransaction,
     BillableUsageSnapshot,
+    EconomicPolicy,
+    FactFamily,
+    FactIndex,
+    FactReference,
     BPS_DENOMINATOR,
     CommandOutcome,
     CommandStatus,
@@ -359,6 +364,7 @@ _EXPECTED_API = sorted([
     "AllocationLedger",
     "AllocationReasonCode",
     "AllocationSnapshot",
+    "AllocationState",
     "AllocationStore",
     "AllocationSubjectState",
     "AllocationTransaction",
@@ -368,7 +374,11 @@ _EXPECTED_API = sorted([
     "COMPENSATION_KIND_BY_ACTION",
     "CommandOutcome",
     "CommandStatus",
+    "EconomicPolicy",
     "ExternalReferenceSnapshot",
+    "FactFamily",
+    "FactIndex",
+    "FactReference",
     "FileAllocationStore",
     "GENESIS_RECORD_ID",
     "JOURNAL_RECORD_KIND",
@@ -407,6 +417,7 @@ _EXPECTED_API = sorted([
     "find_duplicate_payment_reference",
     "fold_state",
     "journal_bytes_for",
+    "matches_contract_id_grammar",
     "policy_registry_digest",
     "record_list_digest",
     "resolve_payment_reference",
@@ -420,6 +431,7 @@ _EXPECTED_API = sorted([
     "validate_event_instant",
     "validate_payload_shape",
     "validate_policy_effective",
+    "validate_contract_id",
     "validate_split_bounds",
     "validate_usage_finality",
 ])
@@ -5069,6 +5081,144 @@ def case_60_determinism_proofs(results: List[Result]) -> None:
 # ---------------------------------------------------------------------------
 
 
+
+
+# ---------------------------------------------------------------------------
+# M009 contract-binding cases (the LOCK-113 re-bind: the usage
+# facts and settlement citations carry canonical contract
+# references)
+# ---------------------------------------------------------------------------
+
+
+def case_61_contract_bound_usage_facts(results: List[Result]) -> None:
+    name = "case_61_contract_bound_usage_facts"
+    problems: List[str] = []
+    contract_id = "sha256:" + "a" * 64
+    # a contract-bound billable-final snapshot: the binding member
+    # carries the canonical contract id (the M009 LOCK-113 DATA)
+    snapshot = BillableUsageSnapshot(
+        usage_transaction_id=contract_id,
+        usage_state=USAGE_STATE_FINAL,
+        gross_amount_micros=800,
+        statement_id="sha256:" + "b" * 64,
+        billable_quantity=400,
+        unit_price_micros=2,
+        billable_unit="MB",
+        tariff_provenance="contract-usage-pricing-terms-read",
+        sealed_at="2026-09-01T13:05:00Z",
+        contract_id=contract_id,
+    )
+    if snapshot.to_dict().get("contract_id") != contract_id:
+        problems.append("the binding member is not serialized")
+    if BillableUsageSnapshot.from_dict(snapshot.to_dict()).contract_id != (
+        contract_id
+    ):
+        problems.append("the binding did not round-trip")
+    # an unbound legacy snapshot stays constructible (the M006
+    # composition-track consumers; empty binding)
+    legacy = BillableUsageSnapshot(
+        usage_transaction_id="tx-legacy-1",
+        usage_state=USAGE_STATE_FINAL,
+        gross_amount_micros=800,
+        statement_id="sha256:" + "c" * 64,
+        sealed_at="2026-09-01T13:05:00Z",
+    )
+    if legacy.contract_id != "":
+        problems.append("the legacy mode is not unbound")
+    # fail-closed: a malformed binding
+    try:
+        BillableUsageSnapshot(
+            usage_transaction_id="tx-1",
+            usage_state=USAGE_STATE_FINAL,
+            gross_amount_micros=800,
+            statement_id="sha256:" + "d" * 64,
+            sealed_at="2026-09-01T13:05:00Z",
+            contract_id="not-a-contract",
+        )
+        problems.append("a malformed binding accepted")
+    except AllocationError as error:
+        if error.reason != AllocationReasonCode.INVALID_INPUT:
+            problems.append("wrong reason %r" % error.reason)
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    results.append(
+        ok(name, "billable-final facts carry the canonical contract "
+                 "binding (LOCK-113); malformed bindings fail closed; the "
+                 "legacy unbound citations stay constructible")
+    )
+
+
+def case_62_fact_family_surface(results: List[Result]) -> None:
+    name = "case_62_fact_family_surface"
+    problems: List[str] = []
+    # the era symbol surface re-established on the M009 semantics
+    if FactFamily.values() != (
+        "usage-final", "commercial", "settlement", "payment-provider",
+    ):
+        problems.append("family vocabulary drifted")
+    if FactFamily.allocation_creating_families() != ("usage-final",):
+        problems.append("the allocation-creating family")
+    if AllocationState.values() != ("PLANNED", "SETTLED"):
+        problems.append("AllocationState is not the account-state vocabulary")
+    if EconomicPolicy.__name__ != "PolicyVersion":
+        problems.append("EconomicPolicy is not the policy-version alias")
+    contract_id = "sha256:" + "e" * 64
+    fact = FactReference(
+        reference_id="sha256:" + "f" * 64,
+        family=FactFamily.USAGE_FINAL,
+        provenance="usage-ledger",
+        usage_state="BILLABLE_FINAL",
+        transaction_id=contract_id,
+        contract_id=contract_id,
+        amount=800,
+        quantity=400,
+        unit="MB",
+        finalized_at="2026-09-01T13:05:00Z",
+    )
+    if fact.is_allocation_creating() is not True:
+        problems.append("a usage-final fact not allocation-creating")
+    external = FactReference(
+        reference_id="pay-1",
+        family=FactFamily.PAYMENT_PROVIDER,
+        provenance="external-payment-observation",
+    )
+    if external.is_allocation_creating() is not False:
+        problems.append("a payment fact marked allocation-creating")
+    index = FactIndex([fact, external])
+    if len(index) != 2 or len(index.by_family(FactFamily.USAGE_FINAL)) != 1:
+        problems.append("family index construction")
+    if index.by_family(FactFamily.USAGE_FINAL)[0].contract_id != contract_id:
+        problems.append("the contract binding member")
+    # fail-closed: an unknown family
+    try:
+        FactReference(reference_id="x", family="vendor", provenance="p")
+        problems.append("an unknown family accepted")
+    except AllocationError as error:
+        if error.reason != AllocationReasonCode.INVALID_INPUT:
+            problems.append("wrong reason %r" % error.reason)
+    # fail-closed: a malformed binding
+    try:
+        FactReference(
+            reference_id="x", family=FactFamily.COMMERCIAL,
+            provenance="p", contract_id="not-a-contract",
+        )
+        problems.append("a malformed binding accepted")
+    except AllocationError as error:
+        if error.reason != AllocationReasonCode.INVALID_INPUT:
+            problems.append("wrong reason %r" % error.reason)
+    # canonical round-trip
+    if FactIndex.from_dict(index.to_dict()).to_dict() != index.to_dict():
+        problems.append("family index round-trip")
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    results.append(
+        ok(name, "the fact family surface: era symbols carrying the M009 "
+                 "family-classified citation semantics (LOCK-113)")
+    )
+
+
 def main() -> int:
     results: List[Result] = []
     for case in (
@@ -5132,6 +5282,8 @@ def main() -> int:
         case_58_pr_delta_shape,
         case_59_fresh_world_independence,
         case_60_determinism_proofs,
+        case_61_contract_bound_usage_facts,
+        case_62_fact_family_surface,
     ):
         case(results)
     failures = [result for result in results if not result[1]]

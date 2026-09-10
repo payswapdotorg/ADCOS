@@ -50,6 +50,15 @@ outside the injectable store seam.
 from __future__ import annotations
 
 from .errors import CommercialError, CommercialReasonCode
+from .contract_binding import (
+    CONTRACT_STATE_FLOOR_BY_ACTION,
+    CONTRACT_STATE_RANK,
+    ContractCitation,
+    ContractReferenceIndex,
+    contract_state_rank,
+    validate_contract_binding,
+    validate_contract_id,
+)
 from .references import (
     Reference,
     ReferenceFamily,
@@ -117,6 +126,14 @@ __all__ = [
     # error model
     "CommercialError",
     "CommercialReasonCode",
+    # M009 canonical contract binding (LOCK-113)
+    "CONTRACT_STATE_FLOOR_BY_ACTION",
+    "CONTRACT_STATE_RANK",
+    "ContractCitation",
+    "ContractReferenceIndex",
+    "contract_state_rank",
+    "validate_contract_binding",
+    "validate_contract_id",
     # external reference boundary
     "Reference",
     "ReferenceFamily",

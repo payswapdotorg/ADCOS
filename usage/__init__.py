@@ -61,6 +61,20 @@ from .evidence import (
     DELIVERY_ELIGIBLE_STATES,
     RESERVATION_PHASE_STATES,
 )
+from .families import (
+    EvidenceFamily,
+    EvidenceIndex,
+    EvidenceReference,
+    UsageState,
+    matches_contract_id_grammar,
+    validate_contract_id,
+)
+from .contract_binding import (
+    CONTRACT_DELIVERY_ELIGIBLE_STATES,
+    CONTRACT_RESERVATION_PHASE_STATES,
+    ContractCommercialSnapshot,
+    contract_commercial_snapshot,
+)
 from .model import (
     USAGE_TRANSITIONS,
     CompensationRecord,
@@ -132,6 +146,18 @@ __all__ = [
     "UsageEvidenceIndex",
     "DELIVERY_ELIGIBLE_STATES",
     "RESERVATION_PHASE_STATES",
+    # M009 family-classified citation surface (LOCK-113 re-bind)
+    "EvidenceFamily",
+    "EvidenceIndex",
+    "EvidenceReference",
+    "UsageState",
+    "matches_contract_id_grammar",
+    "validate_contract_id",
+    # M009 canonical contract binding
+    "CONTRACT_DELIVERY_ELIGIBLE_STATES",
+    "CONTRACT_RESERVATION_PHASE_STATES",
+    "ContractCommercialSnapshot",
+    "contract_commercial_snapshot",
     # value model
     "USAGE_TRANSITIONS",
     "CompensationRecord",

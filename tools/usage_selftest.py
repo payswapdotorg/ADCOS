@@ -198,9 +198,15 @@ import usage  # noqa: E402
 from usage import (  # noqa: E402
     CommandStatus,
     CompensationRecord,
+    CONTRACT_DELIVERY_ELIGIBLE_STATES,
+    CONTRACT_RESERVATION_PHASE_STATES,
+    ContractCommercialSnapshot,
     DeliveryEvidence,
     CommercialTransactionSnapshot,
+    EvidenceFamily,
+    EvidenceIndex,
     EvidenceKind,
+    EvidenceReference,
     QuantityClass,
     SealedBillableStatement,
     UsageAction,
@@ -211,9 +217,30 @@ from usage import (  # noqa: E402
     UsageLedger,
     UsageObservationRecord,
     UsageReasonCode,
+    UsageState,
     UsageTransaction,
     UsageTransactionState,
     USAGE_TRANSITIONS,
+    contract_commercial_snapshot,
+    matches_contract_id_grammar,
+    validate_contract_id,
+)
+import contracts  # noqa: E402
+from contracts import (  # noqa: E402
+    CONTRACT_STATES,
+    ActivateContract,
+    BeneficiaryScope,
+    ConnectivityPrincipal,
+    ContractStore,
+    CreateContract,
+    HardConstraint,
+    OpaqueReference,
+    Provenance,
+    RecordDelivery,
+    RecordExecutionActivation,
+    SelectOffers,
+    TerminationRules,
+    ValidityInterval,
 )
 from usage.digest import (
     command_ledger_digest,
@@ -287,9 +314,15 @@ _EXPECTED_API = sorted([
     "CommandStatus",
     "CompensationRecord",
     "CommercialTransactionSnapshot",
+    "CONTRACT_DELIVERY_ELIGIBLE_STATES",
+    "CONTRACT_RESERVATION_PHASE_STATES",
+    "ContractCommercialSnapshot",
     "DELIVERY_ELIGIBLE_STATES",
     "DeliveryEvidence",
+    "EvidenceFamily",
+    "EvidenceIndex",
     "EvidenceKind",
+    "EvidenceReference",
     "FileUsageStore",
     "GENESIS_RECORD_ID",
     "JOURNAL_RECORD_KIND",
@@ -311,8 +344,10 @@ _EXPECTED_API = sorted([
     "UsageReasonCode",
     "UsageStore",
     "UsageTransaction",
+    "UsageState",
     "UsageTransactionState",
     "apply_record",
+    "contract_commercial_snapshot",
     "assemble_digest_stream",
     "command_content",
     "command_ledger_digest",
@@ -328,6 +363,8 @@ _EXPECTED_API = sorted([
     "find_duplicate_observation",
     "fold_state",
     "journal_bytes_for",
+    "matches_contract_id_grammar",
+    "validate_contract_id",
     "record_list_digest",
     "resolve_observation_evidence",
     "state_digest",
@@ -384,11 +421,16 @@ _FORBIDDEN_TOKENS = (
 
 #: The sanctioned absolute-import allowlist for the usage family
 #: (stdlib value types + the accepted seams: WORK-003
-#: canonicalization and the WORK-033 clock seam; the evidence
-#: index is injected, so NO authority family is importable).
+#: canonicalization and the WORK-033 clock seam; plus, since the
+#: M009 re-bind, the canonical contracts domain -- consumed
+#: through its PUBLIC surface for the frozen state-vocabulary
+#: citation and the content-derived id grammar, never
+#: instantiated or mutated by the usage family; every other
+#: authority family stays injected, not importable).
 _ALLOWED_IMPORT_PREFIXES = (
     "protocol.",
     "agent.clock",
+    "contracts",
 )
 _ALLOWED_IMPORT_MODULES = {
     "__future__",
@@ -399,6 +441,7 @@ _ALLOWED_IMPORT_MODULES = {
     "typing",
     "protocol",
     "agent.clock",
+    "contracts",
 }
 
 
@@ -4264,6 +4307,499 @@ def case_49_walk_valid_pre_delivery_replay_forgery(
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# M009 contract-binding cases (the LOCK-113 re-bind; canonical
+# contract citations on the usage evidence boundary)
+# ---------------------------------------------------------------------------
+
+
+def _m009_contract_store(*, through: str = "delivery"):
+    """Drive one REAL canonical ConnectivityContract through the
+    M002 public surface (the contract cited by the M009 usage
+    evidence boundary; every state read through the public
+    reads)."""
+    store = ContractStore()
+    created = store.submit(
+        CreateContract(
+            principal=ConnectivityPrincipal(
+                principal_kind="APPLICATION", principal_ref="app:m009-usage"
+            ),
+            beneficiaries=(
+                BeneficiaryScope(
+                    beneficiary_kind="DEVICE", beneficiary_ref="dev:m009-1"
+                ),
+            ),
+            requirements=(
+                OpaqueReference(
+                    ref_kind="intent-requirements",
+                    value="intent:m009-usage-1",
+                    provenance=Provenance(issuer="arch:m009"),
+                ),
+            ),
+            hard_constraints=(
+                HardConstraint(
+                    kind="latency-bound",
+                    params={"max_ms": 150},
+                    provenance=Provenance(issuer="prov:netpro"),
+                ),
+            ),
+            validity=ValidityInterval(
+                not_before="2026-09-01T00:00:00Z",
+                not_after="2026-10-01T00:00:00Z",
+            ),
+            service_properties=(
+                OpaqueReference(
+                    ref_kind="service-property",
+                    value="prop:m009-1",
+                    provenance=Provenance(issuer="prov:netpro"),
+                ),
+            ),
+            usage_pricing_terms=OpaqueReference(
+                ref_kind="usage-pricing-terms",
+                value="terms:m009-1",
+                provenance=Provenance(issuer="comm:ops"),
+            ),
+            assurance_obligations=(
+                OpaqueReference(
+                    ref_kind="assurance-obligation",
+                    value="oblig:m009-1",
+                    provenance=Provenance(issuer="assur:m005"),
+                ),
+            ),
+            execution_scope=(
+                OpaqueReference(
+                    ref_kind="execution-scope",
+                    value="scope:m009-1",
+                    provenance=Provenance(issuer="arch:m009"),
+                ),
+            ),
+            termination=TerminationRules(
+                conditions=("principal-requested",),
+                compensation=OpaqueReference(
+                    ref_kind="compensation",
+                    value="comp:m009-1",
+                    provenance=Provenance(issuer="comm:ops"),
+                ),
+            ),
+            provenance=Provenance(
+                issuer="arch:m009", decision_refs=("dec:m009-usage",)
+            ),
+        ),
+        recorded_at="2026-09-01T11:00:00Z",
+    )
+    cid = created.contract.contract_id
+    store.submit(
+        SelectOffers(
+            offers=(
+                OpaqueReference(
+                    ref_kind="offer",
+                    value="offer:m009-1",
+                    provenance=Provenance(issuer="prov:netpro"),
+                ),
+            )
+        ),
+        recorded_at="2026-09-01T11:05:00Z", contract_id=cid,
+    )
+    if through in ("active", "execution", "delivery"):
+        store.submit(
+            ActivateContract(
+                activated_at="2026-09-01T11:10:00Z",
+                signature_refs=(
+                    OpaqueReference(
+                        ref_kind="signature",
+                        value="sig:m009-1",
+                        provenance=Provenance(issuer="arch:m009"),
+                    ),
+                ),
+            ),
+            recorded_at="2026-09-01T11:10:00Z", contract_id=cid,
+        )
+    if through in ("execution", "delivery"):
+        store.submit(
+            RecordExecutionActivation(recorded_at="2026-09-01T11:15:00Z"),
+            recorded_at="2026-09-01T11:15:00Z", contract_id=cid,
+        )
+    if through == "delivery":
+        store.submit(
+            RecordDelivery(recorded_at="2026-09-01T11:20:00Z"),
+            recorded_at="2026-09-01T11:20:00Z", contract_id=cid,
+        )
+    return store, cid
+
+
+def case_50_contract_binding_construction(results: List[Result]) -> None:
+    name = "case_50_contract_binding_construction"
+    problems: List[str] = []
+    store, cid = _m009_contract_store(through="execution")
+    if store.contract(cid).state != "EXECUTION_ACTIVE":
+        problems.append("canonical contract state read")
+        results.append(fail(name, "; ".join(problems)))
+        return
+    # the contract-cited snapshot: the account key IS the canonical
+    # contract id; the commercial state cites the canonical state
+    snapshot = ContractCommercialSnapshot(
+        transaction_id=cid,
+        commercial_state=store.contract(cid).state,
+        unit_price_micros=_TARIFF_UNIT_MICROS,
+        billable_unit="byte",
+        tariff_provenance="contract-usage-pricing-terms-read",
+    )
+    if snapshot.is_delivery_eligible() is not True:
+        problems.append("EXECUTION_ACTIVE must be delivery-eligible")
+    if snapshot.is_reservation_phase() is not False:
+        problems.append("EXECUTION_ACTIVE must not be reservation phase")
+    if snapshot.contract_id() != cid:
+        problems.append("the contract citation member")
+    if snapshot.to_dict().get("binding") != "contract":
+        problems.append("the binding marker")
+    # fail-closed: a non-contract account key
+    problem = _expect_usage_error(
+        name, UsageReasonCode.INVALID_INPUT,
+        lambda: ContractCommercialSnapshot(
+                transaction_id="tx-not-a-contract",
+                commercial_state="EXECUTION_ACTIVE",
+            unit_price_micros=1,
+            billable_unit="MB",
+            tariff_provenance="x",
+        ),
+    )
+    if problem:
+        problems.append("a non-canonical id accepted: %s" % problem)
+    # fail-closed: a non-canonical state
+    problem = _expect_usage_error(
+        name, UsageReasonCode.INVALID_INPUT,
+        lambda: ContractCommercialSnapshot(
+            transaction_id=cid,
+            commercial_state="USAGE_ACCRUING",
+            unit_price_micros=1,
+            billable_unit="MB",
+            tariff_provenance="x",
+        ),
+    )
+    if problem:
+        problems.append("a W051 state accepted: %s" % problem)
+    # the grammar helpers
+    if matches_contract_id_grammar(cid) is not True:
+        problems.append("grammar match")
+    if matches_contract_id_grammar("sha256:" + "0" * 63) is not False:
+        problems.append("grammar short id accepted")
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    results.append(
+        ok(name, "contract-cited snapshots validate the canonical id + "
+                 "state; non-contract citations fail closed")
+    )
+
+
+def case_51_contract_binding_eligibility_gate(results: List[Result]) -> None:
+    name = "case_51_contract_binding_eligibility_gate"
+    problems: List[str] = []
+    # the canonical-state vocabulary subsets
+    if CONTRACT_DELIVERY_ELIGIBLE_STATES != (
+        "EXECUTION_ACTIVE", "DELIVERY", "ASSURED", "DEGRADED",
+        "USAGE_FINAL", "SETTLEMENT_PENDING", "SETTLED",
+    ):
+        problems.append("delivery-eligible canonical states drifted")
+    if CONTRACT_RESERVATION_PHASE_STATES != (
+        "INTENT", "OFFER_SELECTED", "CONTRACT_ACTIVE",
+    ):
+        problems.append("reservation-phase canonical states drifted")
+    for state in CONTRACT_DELIVERY_ELIGIBLE_STATES:
+        if state not in CONTRACT_STATES:
+            problems.append("non-canonical state %r" % state)
+    for state in CONTRACT_RESERVATION_PHASE_STATES:
+        if state not in CONTRACT_STATES:
+            problems.append("non-canonical state %r" % state)
+    # the gate behavior through the real admission path: a
+    # contract at CONTRACT_ACTIVE (the canonical reservation
+    # phase) rejects delivered observations RESERVATION_NOT_USAGE
+    # (the evidence citation itself is VALID -- the rejection is
+    # the eligibility gate alone)
+    ledger = UsageLedger(
+        store=MemoryUsageStore(),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=UsageEvidenceIndex(
+            evidence=[
+                DeliveryEvidence(
+                    evidence_id="sha256:" + "5" * 63 + "e",
+                    transaction_id="sha256:" + "5" * 64,
+                    delivered_quantity=500,
+                    window_start=_W1,
+                    window_end=_W3,
+                    evidence_kind=EvidenceKind.DELIVERED,
+                    provenance="platform-journal",
+                )
+            ],
+            transactions=[
+                ContractCommercialSnapshot(
+                    transaction_id="sha256:" + "5" * 64,
+                    commercial_state="CONTRACT_ACTIVE",
+                    unit_price_micros=_TARIFF_UNIT_MICROS,
+                    billable_unit="byte",
+                    tariff_provenance="contract-usage-pricing-terms-read",
+                )
+            ],
+        ),
+    )
+    problem = _expect_usage_error(
+        name, UsageReasonCode.RESERVATION_NOT_USAGE,
+        lambda: ledger.observe_usage(
+            command_id="m009-01",
+            transaction_id="sha256:" + "5" * 64,
+            quantity_class=QuantityClass.DELIVERED,
+            quantity=100,
+            evidence_id="sha256:" + "5" * 63 + "e",
+            window_start=_W1,
+            window_end=_W2,
+            actor="meter", source="usage-collector",
+        ),
+    )
+    if problem:
+        problems.append("CONTRACT_ACTIVE admitted usage: %s" % problem)
+    # a contract at INTENT (pre-selection) rejects
+    # TRANSACTION_NOT_DELIVERING
+    ledger2 = UsageLedger(
+        store=MemoryUsageStore(),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=UsageEvidenceIndex(
+            evidence=[
+                DeliveryEvidence(
+                    evidence_id="sha256:" + "6" * 63 + "e",
+                    transaction_id="sha256:" + "6" * 64,
+                    delivered_quantity=500,
+                    window_start=_W1,
+                    window_end=_W3,
+                    evidence_kind=EvidenceKind.DELIVERED,
+                    provenance="platform-journal",
+                )
+            ],
+            transactions=[
+                ContractCommercialSnapshot(
+                    transaction_id="sha256:" + "6" * 64,
+                    commercial_state="INTENT",
+                    unit_price_micros=_TARIFF_UNIT_MICROS,
+                    billable_unit="byte",
+                    tariff_provenance="contract-usage-pricing-terms-read",
+                )
+            ],
+        ),
+    )
+    problem = _expect_usage_error(
+        name, UsageReasonCode.TRANSACTION_NOT_DELIVERING,
+        lambda: ledger2.observe_usage(
+            command_id="m009-02",
+            transaction_id="sha256:" + "6" * 64,
+            quantity_class=QuantityClass.DELIVERED,
+            quantity=100,
+            evidence_id="sha256:" + "6" * 63 + "e",
+            window_start=_W1,
+            window_end=_W2,
+            actor="meter", source="usage-collector",
+        ),
+    )
+    if problem:
+        problems.append("INTENT admitted usage: %s" % problem)
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    results.append(
+        ok(name, "canonical reservation/INTENT states fail closed exactly "
+                 "like the legacy W051 phases (LOCK-113 gate re-based)")
+    )
+
+
+def case_52_contract_bound_golden_run(results: List[Result]) -> None:
+    name = "case_52_contract_bound_golden_run"
+    # the full contract-bound golden run: a REAL canonical
+    # contract (M002 public surface, EXECUTION_ACTIVE) cited by
+    # the evidence index; delivered observations cite the
+    # contract id; the sealed statement binds to the contract
+    # (the account key IS the contract citation)
+    store, cid = _m009_contract_store(through="execution")
+    runtime, peer, session_id, manager, integrator, shared = _usage_world()
+    entries = _wifi_journal_events(integrator)
+    evidence: List[DeliveryEvidence] = []
+    for first, second in zip(entries, entries[1:]):
+        first_total = first.payload["rx_bytes"] + first.payload["tx_bytes"]
+        second_total = second.payload["rx_bytes"] + second.payload["tx_bytes"]
+        evidence.append(
+            DeliveryEvidence(
+                evidence_id="sha256:"
+                + hashlib.sha256(
+                    canonical_json_bytes(
+                        {
+                            "kind": "delivery-evidence-window",
+                            "from_event": first.event_id,
+                            "to_event": second.event_id,
+                        }
+                    )
+                ).hexdigest(),
+                transaction_id=cid,
+                delivered_quantity=second_total - first_total,
+                window_start=first.observed_at,
+                window_end=second.observed_at,
+                evidence_kind=EvidenceKind.DELIVERED,
+                provenance="platform-journal",
+            )
+        )
+    index = UsageEvidenceIndex(
+        evidence=evidence,
+        transactions=[
+            ContractCommercialSnapshot(
+                transaction_id=cid,
+                commercial_state=store.contract(cid).state,
+                unit_price_micros=_TARIFF_UNIT_MICROS,
+                billable_unit="byte",
+                tariff_provenance="contract-usage-pricing-terms-read",
+            )
+        ],
+    )
+    ledger = UsageLedger(
+        store=MemoryUsageStore(),
+        clock=StepClock(_UT0, _USTEP),
+        evidence_index=index,
+    )
+    # pair each evidence id with its window bounds (the index
+    # sorts ids lexicographically; the pairing stays structural)
+    evidence_records = {
+        record.evidence_id: (record.window_start, record.window_end)
+        for record in index.evidence_ids() and []
+    }
+    evidence_records = {
+        evidence_id: (
+            index.evidence(evidence_id).window_start,
+            index.evidence(evidence_id).window_end,
+        )
+        for evidence_id in index.evidence_ids()
+    }
+    first_id = index.evidence_ids()[0]
+    first_bounds = evidence_records[first_id]
+    ledger.observe_usage(
+        command_id="m009-03", transaction_id=cid,
+        quantity_class=QuantityClass.DELIVERED, quantity=120,
+        evidence_id=first_id, window_start=first_bounds[0],
+        window_end=first_bounds[1],
+        actor="meter", source="usage-collector",
+    )
+    ledger.observe_usage(
+        command_id="m009-04", transaction_id=cid,
+        quantity_class=QuantityClass.RESERVED, quantity=500,
+        actor="meter", source="reservation-service",
+    )
+    ledger.seal_billable(
+        command_id="m009-05", transaction_id=cid,
+        actor="billing", source="usage-ledger",
+    )
+    account = ledger.transaction(cid)
+    if account.state != "BILLABLE_FINAL":
+        results.append(fail(name, "the contract-bound account did not seal"))
+        return
+    if account.transaction_id != cid or account.statement.transaction_id != cid:
+        results.append(fail(name, "the usage record is not bound to the contract"))
+        return
+    if account.statement.unit_price_micros != _TARIFF_UNIT_MICROS:
+        results.append(fail(name, "the tariff did not bind to the contract citation"))
+        return
+    # canonical round-trip preserves the contract binding
+    reloaded = UsageEvidenceIndex.from_dict(index.to_dict())
+    if type(reloaded.transaction(cid)).__name__ != "ContractCommercialSnapshot":
+        results.append(fail(name, "the binding was lost in the round-trip"))
+        return
+    if reloaded.transaction(cid).commercial_state != "EXECUTION_ACTIVE":
+        results.append(fail(name, "the canonical state was lost in the round-trip"))
+        return
+    results.append(
+        ok(name, "the contract-bound golden run: usage records cite the "
+                 "canonical contract; the sealed statement binds to it; "
+                 "round-trips preserve the binding")
+    )
+
+
+def case_53_family_surface(results: List[Result]) -> None:
+    name = "case_53_family_surface"
+    problems: List[str] = []
+    # the era symbol surface re-established on the M009 semantics
+    if EvidenceFamily.values() != (
+        "delivery-evidence", "commercial", "session", "network-path", "payment",
+    ):
+        problems.append("family vocabulary drifted")
+    if UsageState.values() != ("OBSERVING", "BILLABLE_FINAL"):
+        problems.append("UsageState is not the account-state vocabulary")
+    reference = EvidenceReference(
+        reference_id="sha256:" + "7" * 64,
+        family=EvidenceFamily.COMMERCIAL,
+        provenance="contract-store-public-read",
+        commercial_state="EXECUTION_ACTIVE",
+        contract_id="sha256:" + "7" * 64,
+        session_ref="session-1",
+    )
+    if reference.is_usage_eligible() is not False:
+        problems.append("COMMERCIAL family marked usage-eligible")
+    family_index = EvidenceIndex(
+        [
+            reference,
+            EvidenceReference(
+                reference_id="ev-1", family=EvidenceFamily.DELIVERY_EVIDENCE,
+                provenance="platform-journal", instant=_W1,
+            ),
+            EvidenceReference(
+                reference_id=_external_id("payment-observation", "payment-1"),
+                family=EvidenceFamily.PAYMENT,
+                provenance="external-payment-observation",
+            ),
+        ]
+    )
+    if len(family_index) != 3 or len(
+        family_index.by_family(EvidenceFamily.DELIVERY_EVIDENCE)
+    ) != 1:
+        problems.append("family index construction")
+    if family_index.by_family(EvidenceFamily.COMMERCIAL)[0].contract_id != (
+        "sha256:" + "7" * 64
+    ):
+        problems.append("the contract binding member")
+    # fail-closed: an unknown family
+    problem = _expect_usage_error(
+        name, UsageReasonCode.INVALID_INPUT,
+        lambda: EvidenceReference(
+            reference_id="x", family="vendor", provenance="p"
+        ),
+    )
+    if problem:
+        problems.append("an unknown family accepted: %s" % problem)
+    # fail-closed: a malformed contract binding
+    problem = _expect_usage_error(
+        name, UsageReasonCode.INVALID_INPUT,
+        lambda: EvidenceReference(
+            reference_id="x", family=EvidenceFamily.COMMERCIAL,
+            provenance="p", contract_id="not-a-contract",
+        ),
+    )
+    if problem:
+        problems.append("a malformed binding accepted: %s" % problem)
+    # fail-closed: fabricated citation resolution
+    problem = _expect_usage_error(
+        name, UsageReasonCode.EVIDENCE_UNKNOWN,
+        lambda: family_index.reference("sha256:" + "9" * 64),
+    )
+    if problem:
+        problems.append("a fabricated citation resolved: %s" % problem)
+    # canonical round-trip
+    if EvidenceIndex.from_dict(family_index.to_dict()).to_dict() != (
+        family_index.to_dict()
+    ):
+        problems.append("family index round-trip")
+    if problems:
+        results.append(fail(name, "; ".join(problems)))
+        return
+    results.append(
+        ok(name, "the family surface: era symbols carrying the M009 "
+                 "family-classified citation semantics (LOCK-113)")
+    )
+
+
+
+
 def main() -> int:
     results: List[Result] = []
     for case in (
@@ -4315,7 +4851,13 @@ def main() -> int:
         case_46_walk_valid_recomputed_observation_tamper,
         case_47_walk_valid_recomputed_seal_tamper,
         case_48_walk_valid_recomputed_compensation_tamper,
+
+
         case_49_walk_valid_pre_delivery_replay_forgery,
+        case_50_contract_binding_construction,
+        case_51_contract_binding_eligibility_gate,
+        case_52_contract_bound_golden_run,
+        case_53_family_surface,
     ):
         case(results)
     failures = [result for result in results if not result[1]]

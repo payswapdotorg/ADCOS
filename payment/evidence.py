@@ -39,6 +39,20 @@ from typing import Any, Dict, Tuple
 
 from .errors import PaymentError, PaymentReasonCode
 
+_HEX_DIGITS = frozenset("0123456789abcdef")
+
+
+def _is_canonical_contract_id(value: str) -> bool:
+    """True iff ``value`` matches the canonical contract-id
+    grammar (``sha256:`` + 64 lowercase hex digits, the M002
+    content-derived identity form — a grammar citation, not a
+    second vocabulary; pure string predicate so the family
+    import discipline stays stdlib + the accepted seams)."""
+    if not value.startswith("sha256:"):
+        return False
+    tail = value[len("sha256:"):]
+    return len(tail) == 64 and all(ch in _HEX_DIGITS for ch in tail)
+
 
 def _require_text(value: object, label: str) -> str:
     if not isinstance(value, str) or not value:
@@ -119,6 +133,17 @@ class CommercialCitation:
     reference_id: str
     family: str
     provenance: str
+    #: M009 canonical contract binding (LOCK-113): the canonical
+    #: contract the cited authority is bound to (the commercial
+    #: reconciliation account's contract, the usage account's
+    #: contract, the allocation account's contract).  Empty only
+    #: for legacy unbound citations (the composition-track
+    #: consumers); when non-empty it MUST match the canonical
+    #: contract-id grammar (fail closed at construction).  The
+    #: citation model records the binding as DATA — payment
+    #: movement stays external; the boundary never owns the
+    #: contract, the usage account, or the allocation.
+    contract_id: str = ""
     commercial_state: str = ""
     transaction_id: str = ""
     usage_state: str = ""
@@ -144,6 +169,13 @@ class CommercialCitation:
                 % (self.family, list(CitationFamily.values())),
             )
         _require_text(self.provenance, "provenance")
+        if self.contract_id and not _is_canonical_contract_id(self.contract_id):
+            raise PaymentError(
+                PaymentReasonCode.INVALID_INPUT,
+                "contract_id must be a canonical contract id "
+                "(sha256:<64 lowercase hex>, the M002 content-derived "
+                "grammar; LOCK-113 binding DATA): %r" % (self.contract_id,),
+            )
         for label, value in (
             ("commercial_state", self.commercial_state),
             ("transaction_id", self.transaction_id),
@@ -184,6 +216,7 @@ class CommercialCitation:
             "reference_id": self.reference_id,
             "family": self.family,
             "provenance": self.provenance,
+            "contract_id": self.contract_id,
             "commercial_state": self.commercial_state,
             "transaction_id": self.transaction_id,
             "usage_state": self.usage_state,

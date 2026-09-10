@@ -1150,11 +1150,14 @@ class PayoutInstruction:
         _require_text(self.usage_record_id, "usage_record_id")
         _require_text(self.instruction_id, "instruction_id")
         _require_text(self.transaction_id, "transaction_id")
-        if self.allocation_state not in ("ALLOCATED", "SETTLED"):
+        # M009 re-bind: the current W053/M009 allocation-account states
+        # are PLANNED / SETTLED (the era "ALLOCATED" name maps onto
+        # PLANNED -- the immutable allocation snapshot exists).
+        if self.allocation_state not in ("PLANNED", "SETTLED"):
             raise PaymentError(
                 PaymentReasonCode.EVENT_INVALID,
                 "payout emission basis allocation_state %r must be "
-                "ALLOCATED or SETTLED" % self.allocation_state,
+                "PLANNED or SETTLED" % self.allocation_state,
             )
         for label, value in (
             ("billable_amount", self.billable_amount),

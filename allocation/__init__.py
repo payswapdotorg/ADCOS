@@ -66,6 +66,15 @@ store seam.
 from __future__ import annotations
 
 from .errors import AllocationError, AllocationReasonCode
+from .facts import (
+    AllocationState,
+    EconomicPolicy,
+    FactFamily,
+    FactIndex,
+    FactReference,
+    matches_contract_id_grammar,
+    validate_contract_id,
+)
 from .evidence import (
     AllocationEvidenceIndex,
     BillableUsageSnapshot,
@@ -156,6 +165,14 @@ __all__ = [
     # error model
     "AllocationError",
     "AllocationReasonCode",
+    # M009 family-classified fact surface (LOCK-113 re-bind)
+    "AllocationState",
+    "EconomicPolicy",
+    "FactFamily",
+    "FactIndex",
+    "FactReference",
+    "matches_contract_id_grammar",
+    "validate_contract_id",
     # external evidence boundary
     "AllocationEvidenceIndex",
     "BillableUsageSnapshot",
