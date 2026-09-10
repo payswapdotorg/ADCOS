@@ -31,6 +31,16 @@ Two evidence layers, both derived (never canonical state):
   stream (the byte-stable fingerprint of one full composed run;
   the battery's PYTHONHASHSEED and repeat-run proofs compare
   these streams byte for byte).
+
+M006 harvest note (R7-CORE-001, DEC-0101): this fail-closed
+orchestration discipline -- drive only the OWNING authority at
+each edge, record NOT_ENTERED downstream of any blocked edge,
+never skip or fabricate -- is the chain-orchestration pattern
+harvested onto the 1.1 authority by ``executionplans/`` (LOCK-109:
+the execution-plan translation is the canonical bridge; the
+WORK-054 chain itself remains this layer's frozen conformance
+surface).  No behavior change, no public-API change (see the
+package docstring and ``docs/M006-evidence.md`` for the seam).
 """
 
 from __future__ import annotations

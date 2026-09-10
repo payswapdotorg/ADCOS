@@ -24,6 +24,16 @@ orchestrator) drives the real authorities and emits
 ``EdgeOutcome`` records; this module defines the frozen
 vocabulary, the ordered edges, and the deterministic trace
 document (WORK-003 canonical JSON digest).
+
+M006 harvest note (R7-CORE-001, DEC-0101): this ordered typed
+edge model — every stage attributed to its owning surface with
+fail-closed outcomes — is the chain-orchestration pattern
+harvested onto the 1.1 authority by ``executionplans/`` (LOCK-109:
+the execution-plan translation is the canonical bridge; its typed
+execution sequence and derived conformance evidence live there).
+This module stays frozen WORK-054 material: no behavior change,
+no public-API change (see the package docstring and
+``docs/M006-evidence.md`` for the disclosed seam).
 """
 
 from __future__ import annotations
