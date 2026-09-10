@@ -120,7 +120,7 @@ registry — not a re-authorization ceremony.
   impossible realizations enter explicit degraded/failed states or explicit
   renegotiation.
 
-### M009 — Usage and Commercial Reconciliation
+### M009 — Usage and Commercial Reconciliation — ACCEPTED (DEC-0109: PR #29 head 5a807cd, merge c985b88)
 
 - **Scope:** `usage/`, `commercial/`, `allocation/`, `payment/` (harvest + re-bind),
   the era-superseded battery re-baselines assigned to the M009/M014 commercial track

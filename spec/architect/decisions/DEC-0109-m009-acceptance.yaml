@@ -1,0 +1,50 @@
+# DEC-0109 — M009 acceptance: Usage and Commercial Reconciliation accepted; R7 child M004 unchanged (M009 is a non-pointer chain child)
+# Sole-Architect governance decision (per-child acceptance, DEC-0101 serialization point).
+decision_id: DEC-0109
+date: "2026-09-10"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M009
+authorization: R7-CORE-001
+
+review_basis: "Tech Lead review of the exact M009 delivery head 5a807cdfc0c402ffa88818faf1127c708f7fd1c9 (PR #29, branch m009-usage-commercial, base 9e16cb0 the DEC-0103/DEC-0113-accepted main head): all current-governance gates re-run locally on the exact head (current_spec_check PASS, tech_lead_guard PASS, architecture_drift_guard PASS with an implementation-only 22-file delta, fresh_session_check PASS at the pre-#29-merge pin 9e16cb0, authorization_provenance PASS — the whole implementation delta covered by R7-CORE-001, byte-identical authorization inheritance from main), the six batteries run 3x consecutively with exit-code-based detection (usage 53/53, commercial 41/41, allocation 62/62, payment 44/44, eligibility 46/46, contract 54/54 — the M002 regression clean), the structural invariants verified (LOCK-113: usage/contract_binding.py and commercial/contract_binding.py import the canonical contracts/ surface, no second contract model in the delta; the payment boundary records contract-citing references with zero execution-authority symbols; LOCK-119 clean), the scope verified 22/22 files inside the w22c authorization with spec/, .github/, contracts/ and tools/client_selftest.py untouched, the legacy frozen spec_check compatibility audit reproduced on clean main (FAIL 8/17 at 9e16cb0) against the PR head (FAIL 7/17) — the identically-by-construction R7-authorization blindness, continue-on-error in CI, the same class as the accepted PR #27 residual — and PR-head CI green end-to-end (run 34431097389). The review is durably recorded in the PR #29 review timeline (review 5162196343); GitHub self-approval was unavailable (the single operator account owns both the PR and the review), so this decision is the authoritative acceptance record per repo convention."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 29
+  pr_head: 5a807cdfc0c402ffa88818faf1127c708f7fd1c9
+  branch: "m009-usage-commercial"
+  branch_point: 9e16cb045c61037953c6e57656c9ef6d2bff30f4
+  merge_sha: c985b8876b7d215a7af6a2fdaca5f78eb51fdf58
+  merged_at: "2026-09-10T03:20:41Z"
+  ci_runs:
+    pr_head: 34431097389
+  commits:
+    - "485ef6c — usage/commercial/allocation/payment contract re-bind checkpoint + payment/eligibility battery re-baselines"
+    - "0c95f3a — battery evolution onto the contract-bound surfaces (the M002/M013 precedent)"
+    - "5a807cd — the 393-line evidence record (docs/M009-evidence.md)"
+
+delivered:
+  - "usage/, commercial/, allocation/, payment/ harvested and re-bound to the canonical contracts/ domain (LOCK-113): usage records and settlement references carry canonical contract references; usage/contract_binding.py and commercial/contract_binding.py import the canonical surface — never a second contract model"
+  - "payment movement stays external: the payment boundary records contract-citing references only; zero payment-execution authority in the core (verified structurally)"
+  - "no commercial authority migration into networking: the implementation-only 22-file delta touches zero connectivity/networking code (architecture_drift_guard PASS)"
+  - "the DEC-0099-disclosed era-superseded battery re-baselines: tools/payment_selftest.py 44/44 and tools/eligibility_selftest.py 46/46 run again on genuinely re-established surfaces (usage/families.py re-exports the frozen EvidenceFamily vocabulary); skip guards removed only where the surface exists — the honest re-baseline, disclosed in the PR body and the evidence doc"
+  - "battery evolution: usage 49 -> 53/53, commercial 38 -> 41/41, allocation 60 -> 62/62; docs/M009-evidence.md (393-line verification matrix, SOFTWARE-class per case)"
+  - "tools/client_selftest.py untouched (M014 track material; W048 containment/sharing stays accepted-not-restored)"
+
+acceptance_findings:
+  - "All five charter acceptance criteria verified at the exact head by independent checkout (not trust in the worker report)"
+  - "The verification comment on PR #29 posted by the worker after the Tech Lead gap-callout (delivery-complete artifact)"
+  - "Append-only history: three commits, no rebase/force-push/amend; base 9e16cb0 exact"
+  - "The residual legacy spec_check failure is pre-existing on main and identical by construction (documented R7-authorization blindness; continue-on-error step in CI; the same accepted class as PR #27)"
+  - "The payment/eligibility CI precondition guards become permanently-true pass-throughs with this acceptance; the acceptance commit converts them to direct runs (control-plane governance action, the M002 CI-wiring precedent) while the client battery guard stays (M014 track)"
+
+control_plane_actions:
+  - "CI workflow: payment and eligibility battery steps converted from DEC-0099 precondition-guarded skips to direct runs (the guards' condition is now permanently true — the M009 re-baseline re-established the W044-era import surface); the client battery guard stays until M014"
+  - "R7-CORE-001 stays active; the current-child pointer stays M004 (DEC-0103 designation; M009 is a chain child that does not move the pointer — the M013 precedent)"
+  - "Roadmap 2.0 -> 2.1 (M009 COMPLETE); execution-state re-baselined to the acceptance merge c985b88; ledger gains the M009 accepted-merged entry + LEDGER-RECON-017; checker evolution (current_spec_check + fresh_session_check: M009 ledger-entry validation with exact SHAs, M009 never-active guard, roadmap v2.1 marker)"
+  - "Worker session m009-usage (charter w22c, dispatched under the 3-worker pipeline) marked done after delivery — the second round-2 delivery accepted"
+
+history_rule: "No work-item history rewritten; the M009 ledger entry is appended, never converted. No frozen architecture document modified. No physical obligation created or closed (SOFTWARE-class evidence only; EVID-002..008 untouched and open)."

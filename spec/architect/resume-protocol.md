@@ -24,11 +24,13 @@ A brand-new Architect, Tech Lead, worker, or implementation agent must resume fr
 
 ## Current checkpoint
 
-The latest reconciled software baseline is the M013 acceptance merge
-`8f4d58a23966a3af5242f37bab293a114cf5085a` (the M003 acceptance merge
-`4090e03` precedes it on main — the 3-worker pipeline's first parallel delivery
-round); the DEC-0103/DEC-0113 acceptance transition sits beyond it per the
-standing reconciliation convention.
+The latest reconciled software baseline is the M009 acceptance merge
+`c985b8876b7d215a7af6a2fdaca5f78eb51fdf58` (the M003 acceptance merge
+`4090e03` and the M013 acceptance merge `8f4d58a2` precede it on main — the
+3-worker pipeline's first parallel delivery round — with the DEC-0103/DEC-0113
+acceptance record 9e16cb0 between them and the M009 branch point); the
+DEC-0109 acceptance transition sits beyond it per the standing reconciliation
+convention.
 
 - R6 Provider Onboarding & Federation is complete under `DEC-0097`.
 - M001 — Architecture 1.1 Freeze is complete under `DEC-0100`: Architecture 1.1
@@ -43,9 +45,13 @@ standing reconciliation convention.
   (DEC-0102; head 0112943, merge 0ffdf47). M003 — Offers and Provider
   Capability Exchange is ACCEPTED (DEC-0103; head eace143, merge 4090e03).**
   **M013 — Developer Connectivity API is ACCEPTED (DEC-0113; head 69ef8de,
-  merge 8f4d58a2; chain-independent).** The current child is **M004 —
-  Eligibility and Policy** (implementing). Per-child acceptance decisions
-  (DEC-0104 onward) are the serialization points.
+  merge 8f4d58a2; chain-independent). M009 — Usage and Commercial
+  Reconciliation is ACCEPTED (DEC-0109; head 5a807cd, merge c985b88; the
+  usage/commercial/allocation/payment domains re-bound to the canonical
+  contracts/ domain; the payment 44/44 and eligibility 46/46 DEC-0099
+  re-baselines landed).** The current child is **M004 —
+  Eligibility and Policy** (implementing; M009 does not move the pointer).
+  Per-child acceptance decisions (DEC-0104 onward) are the serialization points.
 - R4/W040 remains an independent physical-validation track and is not replaced by the software roadmap.
 - W048 remains accepted-not-restored and MUST NOT be recreated, mocked, or substituted implicitly.
 

@@ -80,7 +80,11 @@ head 0112943, merge 0ffdf47; the canonical `contracts/` domain is live).**
 **M003 — Offers and Provider Capability Exchange is ACCEPTED (DEC-0103; head
 eace143, merge 4090e03; the provider-domain `offers/` model is live with its
 49/49 battery). M013 — Developer Connectivity API is ACCEPTED (DEC-0113; head
-69ef8de, merge 8f4d58a2; chain-independent).** **M004 — Eligibility and
+69ef8de, merge 8f4d58a2; chain-independent).** **M009 — Usage and Commercial
+Reconciliation is ACCEPTED (DEC-0109; head 5a807cd, merge c985b88; the
+usage/commercial/allocation/payment domains re-bound to the canonical
+contracts/ domain with the payment 44/44 and eligibility 46/46 DEC-0099
+re-baselines landed).** **M004 — Eligibility and
 Policy is the current child work item in implementation.** Per-child
 acceptance (DEC-0104 onward) is
 mandatory and is the serialization point; the Tech Lead may decompose,

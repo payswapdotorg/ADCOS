@@ -278,30 +278,20 @@ jobs:
         run: python3 tools/allocation_selftest.py
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
 
-      # Era-superseded battery (DEC-0099 disclosure): the W044-era payment
-      # battery imports usage symbols (EvidenceFamily et al.) that the
-      # accepted W052 UsageLedger rewrite no longer exports. It targets the
-      # superseded W044-W049-era commercial surface and is re-baselined under
-      # the Architecture 1.1 commercial track (M009/M014). Skip visibly with
-      # the precondition guard; never silently.
+      # DEC-0109 (M009 acceptance): the payment battery was re-baselined onto
+      # the M009 contract-bound surfaces (payment 44/44; the W044-era import
+      # surface re-established by usage/families.py). The DEC-0099
+      # precondition guard is retired — the step is a direct run now
+      # (converted by the acceptance commit, the M002 CI-wiring precedent).
       - name: Run payment provider adapter tests
-        run: |
-          if python3 -c "from usage import EvidenceFamily" 2>/dev/null; then
-            python3 tools/payment_selftest.py
-          else
-            echo "SKIP (disclosed, DEC-0099): payment battery targets the superseded W044-era usage surface (accepted W052 rewrite + W048 accepted-not-restored); re-baseline under the Architecture 1.1 M009 commercial track."
-          fi
+        run: python3 tools/payment_selftest.py
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
 
-      # Era-superseded battery (DEC-0099 disclosure): same superseded
-      # W044-era usage surface as the payment battery above.
+      # DEC-0109 (M009 acceptance): the eligibility battery was re-baselined
+      # onto the M009 contract-bound surfaces (eligibility 46/46); the
+      # DEC-0099 precondition guard is retired with the same conversion.
       - name: Run eligibility policy tests
-        run: |
-          if python3 -c "from usage import EvidenceFamily" 2>/dev/null; then
-            python3 tools/eligibility_selftest.py
-          else
-            echo "SKIP (disclosed, DEC-0099): eligibility battery targets the superseded W044-era usage surface (accepted W052 rewrite + W048 accepted-not-restored); re-baseline under the Architecture 1.1 M009 commercial track."
-          fi
+        run: python3 tools/eligibility_selftest.py
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
 
       - name: Run developer API/SDK/webhook tests

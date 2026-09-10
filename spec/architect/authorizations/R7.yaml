@@ -83,6 +83,9 @@ scope:
   - "docs/M008-evidence.md"
   # M009 — Usage and Commercial Reconciliation (incl. the DEC-0099-disclosed
   # era-superseded battery re-baselines assigned to the commercial track)
+  # [ACCEPTED 2026-09-10 under DEC-0109: PR #29 head 5a807cd, merge c985b88;
+  #  the payment 44/44 and eligibility 46/46 re-baselines landed; the current-child
+  #  pointer stays M004 — M009 is a chain child, the M013 precedent]
   - "usage/"
   - "commercial/"
   - "allocation/"
