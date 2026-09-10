@@ -322,12 +322,62 @@ touched. The drift guard classifies the delta implementation-only; the
 provenance gate verifies full coverage by R7-CORE-001 (`adapters/`, `tools/`,
 `docs/M007-evidence.md` are all declared M007 scope entries).
 
-## 6. Evidence classes (honest disclosure)
+## 6. The disclosed blocking conflict (charter stop-condition)
+
+**`tools/payment_selftest.py` case_38_scope_audit fails on this delivery —
+by frozen construction, not by any M007 defect — and the fix is outside this
+worker's boundary.** Precise facts:
+
+- The payment battery (the M009/DEC-0109 re-baseline) freezes 31 legacy
+  authority families byte-identical in its `_SIBLING_PREFIXES` audit
+  (`agent, identity, sessions, routing, networkpath, transport, platform,
+  policy, protocol, topology, management, mobile, conformance, **adapters**,
+  appliance, capabilities, discovery, edge, energy, federation, imt, intent,
+  interop, mobility, multipath, resources, scale, services, simulator,
+  telemetry, upgrade`): `git diff --name-only <audit-ref> -- <prefixes>`
+  must be EMPTY. The gate has NO authorization exemption — unlike the same
+  case's FIRST gate, which consults the active authorization
+  (`_active_authorization_covers`, the docs/M001-evidence §4
+  authorization-aware battery-scope consultation duty).
+- M007's charter scope IS `adapters/` (R7-CORE-001; machine-verified by
+  `authorization_provenance.py` PASS), so any real M007 delivery changes
+  `adapters/` and trips the frozen-family gate: verified on the exact
+  GitHub-direction PR-merge simulation (first parent = `origin/main`
+  2b25090, second parent = the delivery head) —
+  `case_38_scope_audit: accepted authority families changed vs HEAD^1:
+  adapters/__init__ .py (+ the eight new adapters files)` → payment
+  **43/44**; every other battery and gate green on the same simulation.
+- Every accepted R7 child so far dodged the gate by scope geography:
+  M002 `contracts/`, M003 `offers/capabilities/discovery/marketplace/`,
+  M004 `eligibility/`, M005 `assurance/evidence/`, M006
+  `executionplans/composition/` — none in the frozen list. M007
+  (`adapters/`) is the FIRST child delivered inside a frozen family; M008
+  (`sessions/multipath/mobility/`) and M014
+  (`federation/scale/upgrade/identity/`) will hit the same gate.
+- The conflict is therefore a charter **scope-amendment** decision for the
+  Tech Lead: the natural repair (disclosed, NOT implemented — outside this
+  worker's boundary: "You MUST NOT change … any other battery") is to make
+  the payment sibling gate authorization-aware exactly as its own first
+  gate already is (consult `_active_authorization_covers` before failing on
+  a frozen family, so R7-covered children can deliver inside legacy
+  families), or to retire `adapters` from the frozen list for the R7 era.
+  `tools/payment_selftest.py` is inside the R7 program authorization's
+  declared `tools/` shared-battery-surface scope, so the decision is the
+  Tech Lead's to record per the charter's scope-amendment path.
+- Everything else in the verification bar is green on the delivery head
+  (§7): the full CI-order suite, all governance gates, the merge-commit
+  drift/provenance classification. The ONE non-green blocking step is this
+  payment case; the legacy `spec_check.py` compatibility audit remains
+  `continue-on-error` (rc=1 identically on clean `origin/main`, pre-existing
+  baseline behavior).
+
+## 7. Evidence classes (honest disclosure)
 
 - All M007 acceptance criteria: **SOFTWARE** class (deterministic offline
   battery, 70/70 PASS on the delivery head; every blocking battery and
-  governance gate in the CI suite green on the delivery head — see the PR
-  body for the numbered results; the one non-green step, the legacy
+  governance gate in the CI suite green on the delivery head EXCEPT the
+  disclosed payment-battery conflict of §6 — see the PR body for the
+  numbered results; the other non-green step, the legacy
   `spec_check.py` compatibility audit, is `continue-on-error: true` in the
   CI workflow: it fails (rc=1) on the pre-delivery baseline as well, and
   its ARCH-08 verdict cannot see the R7 program authorization by frozen
@@ -346,7 +396,7 @@ provenance gate verifies full coverage by R7-CORE-001 (`adapters/`, `tools/`,
   federation are NOT delivered here and never claimed; the M006 segment
   vocabulary is consumed as accepted (DEC-0106) without modification.
 
-## 7. Delivery provenance
+## 8. Delivery provenance
 
 - Branch: `m007-adapters` from the baseline `2b25090` (the DEC-0106-accepted
   M006 state); append-only delivery history.
@@ -356,7 +406,10 @@ provenance gate verifies full coverage by R7-CORE-001 (`adapters/`, `tools/`,
   (PR event class, incl. management + simulator + the existence-guarded
   accepted batteries + the exact-head platformcaps job), on the delivery
   head with exit-code-based detection — see the PR body for the numbered
-  results.
+  results; the sole failing step is the §6 payment conflict (43/44, the
+  frozen-family gate), re-verified on the exact GitHub-direction
+  PR-merge simulation; the legacy spec_check rc=1 is the pre-existing
+  `continue-on-error` baseline (identical on clean origin/main).
 - Governance gates on the delivery head: `authorization_provenance.py` PASS,
   `current_spec_check.py` PASS, `tech_lead_guard.py` PASS,
   `architecture_drift_guard.py` PASS (implementation-only classification),
@@ -364,5 +417,9 @@ provenance gate verifies full coverage by R7-CORE-001 (`adapters/`, `tools/`,
 - Accepted sibling batteries at this head: contract 54/54, offer 49/49,
   developerapi 56/56, usage 53/53, commercial 41/41, sharenet 33/33,
   roamlink 56/56, comos 33/33, assurance 97/97, executionplan 36/36,
-  payment 44/44, eligibility 46/46, policy 103/103 (the accepted counts
-  re-verified on this head by the full-suite run).
+  eligibility 46/46, policy 103/103, and the adapter-domain families
+  ran 46/46, wifi 36/36, backhaul 48/48, mesh 38/38, fivegc 31/31,
+  ipintegration 45/45, distcore 40/40 (the family subpackages stay
+  byte-identical; the accepted counts re-verified on this head by the
+  full-suite run). payment 44/44 → **43/44** solely on the §6 frozen-family
+  gate (every other payment case green).
