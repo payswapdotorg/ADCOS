@@ -104,8 +104,28 @@ T_VALID_TO = "2026-11-01T00:00:00Z"
 _SPEC_FLOW_FILE = REPO_ROOT / "spec" / "integration" / "vertical-proof.md"
 
 #: The declared delivery scope (the PR delta shape; the drift guard
-#: classifies the same delta independently).
+#: classifies the same delta independently).  Later authorized R7 child
+#: deliveries (roamlink/, comos/, M004-M014 domains and their batteries)
+#: are sanctioned by the ACTIVE repository-local authorization through the
+#: authorization-aware consultation (the M002-era battery-scope repair
+#: pattern; see tools/authorization_provenance.py ``covers``).
 _DECLARED_SCOPE = ("sharenet/", "tools/sharenet_selftest.py", "docs/M010-evidence.md")
+
+
+def _active_authorization_covers(path: str) -> bool:
+    """Consult the ACTIVE repository-local authorization
+    (spec/architect/authorizations/): a path covered by the active
+    authorization's declared scope is sanctioned battery-surface
+    material even when it is outside THIS battery's frozen delivery
+    scope (the authorization-aware consultation the M002-era repairs
+    established).  Fail-closed: no unique active authorization covers
+    nothing."""
+    try:
+        from authorization_provenance import covers  # type: ignore
+        return covers(path)
+    except Exception:
+        return False
+
 
 #: The import roots the harness tree may depend on: the accepted
 #: canonical authorities (contracts, offers, developerapi), the
@@ -1604,16 +1624,19 @@ def case_31_pr_delta_shape() -> Result:
         path
         for path in paths
         if not any(path.startswith(scope) for scope in _DECLARED_SCOPE)
+        and not _active_authorization_covers(path)
     ]
     if violations:
         return fail(
             "case_31_pr_delta_shape",
-            "delta escapes the declared scope: %s" % violations[:4],
+            "delta escapes the declared scope and the active authorization: %s"
+            % violations[:4],
         )
     return ok(
         "case_31_pr_delta_shape",
         "delta confined to sharenet/ + tools/sharenet_selftest.py + "
-        "docs/M010-evidence.md (%d paths)" % len(paths),
+        "docs/M010-evidence.md, or sanctioned by the active authorization "
+        "(%d paths)" % len(paths),
     )
 
 
