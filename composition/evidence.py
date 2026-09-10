@@ -21,6 +21,17 @@ canonical JSON form: ``"sha256:" + sha256(canonical_json_bytes(
 content))`` -- the same convention every composed authority uses,
 so composition digests correlate with (and only cite) authority-
 sourced identities.
+
+M006 harvest note (R7-CORE-001, DEC-0101): this derived-only,
+digest-carrying, SOFTWARE-class evidence discipline with its
+mandatory honesty boundaries is the conformance-evidence
+pattern harvested onto the 1.1 authority by ``executionplans/``
+(LOCK-109; see ``executionplans/conformance.py`` — the plan
+conformance document inherits exactly this discipline: derived
+evidence, canonical digest, disclaimer, never an authority).
+This module stays frozen WORK-054 material: no behavior change,
+no public-API change (see the package docstring and
+``docs/M006-evidence.md`` for the disclosed seam).
 """
 
 from __future__ import annotations

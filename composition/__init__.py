@@ -53,6 +53,25 @@ no filesystem writes.  Every injected clock is the WORK-033
 ``StepClock``/``FixedClock`` seam; every digest is the WORK-003
 canonical-JSON SHA-256 convention; every report is byte-stable
 under PYTHONHASHSEED variation.
+
+M006 harvest disclosure (R7-CORE-001 charter child M006,
+DEC-0101): the chain-orchestration and conformance-evidence
+patterns of this package are HARVESTED onto the Architecture 1.1
+authority by the ``executionplans/`` domain (LOCK-109: the
+execution-plan translation is the canonical bridge from the
+canonical ``ConnectivityContract`` to capability-oriented provider
+mechanisms; the patterns live on, refactored, in
+``executionplans/conformance.py``).  This package remains exactly
+the WORK-054 System Composition Conformance layer it was: the
+frozen authority rules above are preserved verbatim
+(DEC-0085/DEC-0086), no second authority is created, and WORK-048
+stays accepted-not-restored (detected, fail-closed, never
+implicitly restored).  The harvest seam is one-way
+(``executionplans/`` imports no composition code; this package
+gains no new dependency), and the delta on this package is
+disclosure-only: no behavior, no public-API, and no import change.
+The full harvest disclosure lives in ``executionplans/conformance.py``
+and ``docs/M006-evidence.md``.
 """
 
 from __future__ import annotations
