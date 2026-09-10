@@ -83,7 +83,7 @@ untouched.
     (the M007-not-implemented honesty, the BLOCKED_MISSING_AUTHORITY chain
     state, the one-way harvest direction, and the no-second-authority
     statement travel with every document).
-  - `executionplans/__init__.py` — the public surface (35 names).
+  - `executionplans/__init__.py` — the public surface (26 names).
 - **`composition/` (HARVEST — disclosed, DOCSTRING-ONLY)** — the R7 charter
   M006 scope entry `composition/ (harvest)`: the chain-orchestration and
   conformance-evidence patterns of the WORK-054 layer are harvested onto the
