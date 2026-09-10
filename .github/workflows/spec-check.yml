@@ -324,6 +324,18 @@ jobs:
           fi
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
 
+      # M012 battery (DEC-0112 acceptance wiring — the M002/M003/M010/M011
+      # existence-guard pattern: skips visibly until the delivery lands on
+      # main, then runs)
+      - name: Run COMOS vertical-proof tests
+        run: |
+          if [ -f tools/comos_selftest.py ]; then
+            python3 tools/comos_selftest.py
+          else
+            echo "SKIP (disclosed): comos battery not yet on main (M012 track)"
+          fi
+        continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
+
       # Era-superseded battery (DEC-0099 disclosure): the W049-era client
       # battery imports containment.CapabilityMatrix and sharing.* whose
       # subject material is W048 accepted-not-restored.

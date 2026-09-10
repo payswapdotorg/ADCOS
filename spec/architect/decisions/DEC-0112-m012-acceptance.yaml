@@ -1,0 +1,45 @@
+# DEC-0112 — M012 acceptance: Vertical Proof — COMOS accepted; R7 child M004 unchanged (M012 is a chain-independent vertical proof)
+# Sole-Architect governance decision (per-child acceptance, DEC-0101 serialization point).
+decision_id: DEC-0112
+date: "2026-09-10"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M012
+authorization: R7-CORE-001
+
+review_basis: "Tech Lead review of the exact M012 delivery head 201ceb8e8e8bab0b1f2643e1e69a2ac29666c988 (PR #32, branch m012-comos-proof, base 52b76ee — the live main head at delivery time, correctly rooted at the DEC-0111 acceptance state with zero overlap with any sibling delta; no re-root was needed, unlike the M011 delivery): the M012 battery 33/33 PASS run 3x consecutively at the exact head (exit-code based, determinism verified), the full battery suite verified green at the head under CI semantics (62 tools in exact workflow order — the same count and semantics as the DEC-0111 verification; the two non-zero exits are the documented baselines: spec_check.py the legacy compatibility audit continue-on-error with its selftest-pinned baseline, client_selftest.py the DEC-0099-disclosed containment/W048 skip), CI green end-to-end on the PR head (run 34464289398, the spec-check workflow SUCCESS), scope verified 7 files — all NEW, all inside the charter boundary (comos/ five modules: __init__.py, application.py, evidence.py, seams.py, vertical.py; tools/comos_selftest.py; docs/M012-evidence.md; zero files outside the boundary; the battery's own case_31_pr_delta_shape asserts the same 7-path delta and passes clean — the M011-era sharenet case_31 scope consultation is already in place and this delta trips nothing), the structural invariants verified (LOCK-120 — COMOS retains identity, communication bundles, channel semantics and delivery semantics: the harness models COMOS as an EXTERNAL application boundary with an opaque principal and technology-neutral requirements, never implementing COMOS's communication semantics, battery case-covered and reviewer-verified; LOCK-102-style opaque technology-neutral requirement references at the requirements submission; LOCK-119 — deterministic/offline/seeded, no wall clock, no randomness, no network, no secrets, the battery self-audits the forbidden-call surface; the 6-step frozen flow of spec/integration/vertical-proof.md (ACR-014 FROZEN) covered case-by-case including the constraint-aware offer selection at the seam, the contract-creation attribution with typed references, the requirements-submission and execution path, and the application-authority boundary; the golden scenario matrix matches the frozen expectations exactly — case_33), the simulation-seam discipline verified (the pending children M004-M008 mechanics are clearly-labeled deterministic doubles in comos/seams.py — 42 labeled seam/double references — never imported as authority, with the fail-loud re-composition duty recorded; reviewer grep confirms zero imports of policy/, eligibility/, assurance/, executionplans/, segments/, replan/ in comos/ or the battery), and the accepted authorities composed by reference (contracts/, offers/, commercial/, usage/, developerapi/ — verified by import surface and the battery case_32 authority-digest streams). The review is durably recorded in the PR #32 review timeline (review comment 5617383772); GitHub self-approval was unavailable (the single operator account owns both the PR and the review), so this decision is the authoritative acceptance record per repo convention (DEC-0102..DEC-0111 precedent)."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 32
+  branch: "m012-comos-proof"
+  baseline_sha: 52b76eedc320d1b8119ddeed03f46450b3472c29
+  pr_head: 201ceb8e8e8bab0b1f2643e1e69a2ac29666c988
+  reviewed_sha: 201ceb8e8e8bab0b1f2643e1e69a2ac29666c988
+  merge_sha: 6e3d09f4f860371437e6f819466a8c177dfadde4
+  merged_at: "2026-09-10T10:45:02Z"
+  ci_run: 34464289398
+  worker_session: "m012-comos (charter w23b — the vertical-proof tranche's Worker B; recovered mid-flight through the resident stack's capacity-assault and fresh-tab rebind patterns after two server-side session stalls)"
+
+acceptance_effects:
+  current_child_unchanged: "M004 (M012 is a chain-independent vertical proof, the M013/M010/M011 precedent — vertical proofs do not move the current-child pointer; with M012 accepted the whole M010/M011/M012 vertical-proof tranche is complete)"
+  roadmap_version: "2.3 -> 2.4 (M012 COMPLETE — the vertical-proof tranche M010/M011/M012 fully accepted)"
+  authorization_state: "R7-CORE-001 stays ACTIVE (the bounded R7 program authorization closes only when the R7 gate completes)"
+  ci_wiring: "The comos battery is CI-wired by this acceptance (existence-guarded step, the M002/M003/M010/M011 pattern — control-plane action outside worker scope)"
+  ledger: "M012 accepted-merged entry appended + LEDGER-RECON-021 (snapshot baseline 52b76ee -> 6e3d09f)"
+
+verification_summary:
+  battery: "tools/comos_selftest.py 33/33 x3 consecutive runs at the exact head"
+  full_suite: "62 tools green in exact CI workflow order at the head (CI semantics: spec_check legacy audit continue-on-error baseline documented; client battery the DEC-0099-disclosed skip)"
+  gates: "current_spec_check PASS; tech_lead_guard PASS; architecture_drift_guard PASS (implementation-only, 7 files); fresh_session_check PASS (pin 52b76ee == origin/main at review time); authorization_provenance PASS (7/7 delta files covered by R7-CORE-001)"
+  ci: "run 34464289398 SUCCESS on the PR head; the merge is a clean merge-commit of a branch rooted at the main head (52b76ee)"
+  scope: "7 files: comos/ x5, tools/comos_selftest.py, docs/M012-evidence.md — all NEW, all inside the charter scope boundary; no disclosed repairs needed"
+
+physical_obligations: "EVID-002..EVID-008 remain OPEN and untouched; SOFTWARE-class vertical proof only (deterministic simulation battery — no physical claim is made or implied)"
+
+standing_rules:
+  w048: "accepted-not-restored; MUST NOT be restored implicitly or explicitly"
+  architecture: "Architecture 1.1 remains the sole forward design source; no architecture or protocol semantic change is made by this decision"
+  history: "No work-item history is rewritten; the M012 ledger entry is appended, never converted"
