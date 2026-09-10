@@ -86,7 +86,9 @@ usage/commercial/allocation/payment domains re-bound to the canonical
 contracts/ domain with the payment 44/44 and eligibility 46/46 DEC-0099
 re-baselines landed).** **M010 — Vertical Proof — ShareNet is ACCEPTED
 (DEC-0110; head d5be84e, merge d0d26d3; the 33/33 sharenet battery is
-CI-wired).** **M004 — Eligibility and
+CI-wired).** **M011 — Vertical Proof — RoamLink is ACCEPTED (DEC-0111;
+head fb4a921, merge c0f23c8; the 56/56 roamlink battery is CI-wired).**
+**M004 — Eligibility and
 Policy is the current child work item in implementation.** Per-child
 acceptance (DEC-0104 onward) is
 mandatory and is the serialization point; the Tech Lead may decompose,

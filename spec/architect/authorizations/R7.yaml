@@ -95,6 +95,9 @@ scope:
   # [M010 ACCEPTED 2026-09-10 under DEC-0110: PR #30 head d5be84e, merge d0d26d3;
   #  the 33/33 sharenet battery CI-wired; the current-child pointer stays M004 —
   #  chain-independent vertical proof, the M013 precedent]
+  # [M011 ACCEPTED 2026-09-10 under DEC-0111: PR #31 head fb4a921, merge c0f23c8;
+  #  the 56/56 roamlink battery CI-wired; the current-child pointer stays M004 —
+  #  chain-independent vertical proof, the M013/M010 precedent]
   - "sharenet/"
   - "roamlink/"
   - "comos/"

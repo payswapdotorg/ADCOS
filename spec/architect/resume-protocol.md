@@ -24,8 +24,8 @@ A brand-new Architect, Tech Lead, worker, or implementation agent must resume fr
 
 ## Current checkpoint
 
-The latest reconciled software baseline is the M010 acceptance merge
-`d0d26d330b3101b963e8eadca01f164fb48c3fb9` (the M003 acceptance merge
+The latest reconciled software baseline is the M011 acceptance merge
+`c0f23c813ea98742316863f21532c4ce2fe5398a` (the M003 acceptance merge
 `4090e03` and the M013 acceptance merge `8f4d58a2` precede it on main — the
 3-worker pipeline's first parallel delivery round — with the DEC-0103/DEC-0113
 acceptance record 9e16cb0 between them and the M009 branch point); the
@@ -49,8 +49,12 @@ convention.
   Reconciliation is ACCEPTED (DEC-0109; head 5a807cd, merge c985b88). M010 —
   Vertical Proof — ShareNet is ACCEPTED (DEC-0110; head d5be84e, merge
   d0d26d3; the 8-step frozen flow harness with disclosed deterministic
-  seams; the 33/33 battery CI-wired).** The current child is **M004 —
-  Eligibility and Policy** (implementing; neither M009 nor M010 moves the pointer).
+  seams; the 33/33 battery CI-wired). M011 — Vertical Proof — RoamLink is
+  ACCEPTED (DEC-0111; head fb4a921, merge c0f23c8; the 6-step frozen flow
+  harness with disclosed deterministic seams; the 56/56 battery CI-wired;
+  cohort.py the SDK-only application boundary — LOCK-120).** The current
+  child is **M004 — Eligibility and Policy** (implementing; neither M009,
+  M010, nor M011 moves the pointer).
   Per-child acceptance decisions (DEC-0104 onward) are the serialization points.
 - R4/W040 remains an independent physical-validation track and is not replaced by the software roadmap.
 - W048 remains accepted-not-restored and MUST NOT be recreated, mocked, or substituted implicitly.
