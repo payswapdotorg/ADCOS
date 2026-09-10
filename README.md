@@ -84,7 +84,9 @@ eace143, merge 4090e03; the provider-domain `offers/` model is live with its
 Reconciliation is ACCEPTED (DEC-0109; head 5a807cd, merge c985b88; the
 usage/commercial/allocation/payment domains re-bound to the canonical
 contracts/ domain with the payment 44/44 and eligibility 46/46 DEC-0099
-re-baselines landed).** **M004 — Eligibility and
+re-baselines landed).** **M010 — Vertical Proof — ShareNet is ACCEPTED
+(DEC-0110; head d5be84e, merge d0d26d3; the 33/33 sharenet battery is
+CI-wired).** **M004 — Eligibility and
 Policy is the current child work item in implementation.** Per-child
 acceptance (DEC-0104 onward) is
 mandatory and is the serialization point; the Tech Lead may decompose,

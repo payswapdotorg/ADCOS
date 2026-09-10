@@ -302,6 +302,17 @@ jobs:
         run: python3 tools/marketplace_selftest.py
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
 
+      # M010 battery (DEC-0110 acceptance wiring — the M002/M003 existence-guard
+      # pattern: skips visibly until the delivery lands on main, then runs)
+      - name: Run ShareNet vertical-proof tests
+        run: |
+          if [ -f tools/sharenet_selftest.py ]; then
+            python3 tools/sharenet_selftest.py
+          else
+            echo "SKIP (disclosed): sharenet battery not yet on main (M010 track)"
+          fi
+        continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
+
       # Era-superseded battery (DEC-0099 disclosure): the W049-era client
       # battery imports containment.CapabilityMatrix and sharing.* whose
       # subject material is W048 accepted-not-restored.

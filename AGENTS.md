@@ -48,7 +48,9 @@ live with its 49/49 battery). M013 — Developer Connectivity API is ACCEPTED
 and Commercial Reconciliation is ACCEPTED (DEC-0109; head 5a807cd, merge
 c985b88; usage/commercial/allocation/payment re-bound to the canonical
 contracts/ domain; the payment 44/44 and eligibility 46/46 DEC-0099
-re-baselines landed). M004 —
+re-baselines landed). M010 — Vertical Proof — ShareNet is ACCEPTED
+(DEC-0110; head d5be84e, merge d0d26d3; the 33/33 sharenet battery is
+CI-wired). M004 —
 Eligibility and Policy is the current child. Implementation proceeds only within the active authorization's declared
 scope; each child work item is accepted only from repository evidence per the
 charter's acceptance rules.

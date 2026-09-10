@@ -1,0 +1,46 @@
+# DEC-0110 — M010 acceptance: Vertical Proof — ShareNet accepted; R7 child M004 unchanged (M010 is a chain-independent vertical proof)
+# Sole-Architect governance decision (per-child acceptance, DEC-0101 serialization point).
+decision_id: DEC-0110
+date: "2026-09-10"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M010
+authorization: R7-CORE-001
+
+review_basis: "Tech Lead review of the exact M010 delivery head d5be84ed93674dc6d5001e27472baf596198f812 (PR #30, branch m010-sharenet-proof, base 9e16cb0 the charter-cut baseline — cut before the M009 merge, so the PR merges clean into main 748148a with zero file overlap): the M010 battery 33/33 PASS run 3x consecutively at the exact head (exit-code-based), the full battery suite verified green at the merge state (contract 54, offer 49, developerapi 56, usage 53, commercial 41, allocation 62, payment 44, eligibility 46, sharenet 33), CI green end-to-end on the fresh merge (run 34436045987, after the LEDGER-RECON-018 baseline re-pin repaired the fresh-session pin — the earlier PR CI failure was governance-state, not delivery content, root-caused and documented), scope verified 7/7 files inside the w22b authorization (all NEW: sharenet/ six files, tools/sharenet_selftest.py, docs/M010-evidence.md; spec/, .github/, and every accepted domain tree untouched), the structural invariants verified (LOCK-108 hard-constraint preservation at the failover seam, case-covered; LOCK-120 the ShareNet external-application boundary — the content/P2P/publisher/economics matches are boundary declarations, not implementations; LOCK-119 clean), the simulation-seam discipline verified (sharenet/seams.py: the disclosed NOT-YET-accepted children's doubles, clearly labeled, never imported as authority), and the accepted authorities composed by reference (contracts/, offers/, developerapi/ imported in application.py, evidence.py, seams.py, vertical.py). The review is durably recorded in the PR #30 review timeline (review 5162617413); GitHub self-approval was unavailable (the single operator account owns both the PR and the review), so this decision is the authoritative acceptance record per repo convention."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 30
+  pr_head: d5be84ed93674dc6d5001e27472baf596198f812
+  branch: "m010-sharenet-proof"
+  branch_point: 9e16cb045c61037953c6e57656c9ef6d2bff30f4
+  merge_sha: d0d26d330b3101b963e8eadca01f164fb48c3fb9
+  merged_at: "2026-09-10T04:30:00Z"
+  ci_runs:
+    pr_head: 34436045987
+  commits:
+    - "d5be84e — the 8-step frozen flow on the accepted M002/M003/M013 authorities with disclosed deterministic seams"
+
+delivered:
+  - "sharenet/ (six modules, all NEW): the deterministic vertical-proof harness proving the 8-step frozen ShareNet flow — intent submission, multi-provider offer advertisement, eligibility/evidence evaluation (seam), single contract creation (real contracts/), execution via providers (seam), degradation/failure injection, replan/failover with hard-constraint preservation (LOCK-108), usage/assurance evidence attribution"
+  - "tools/sharenet_selftest.py (NEW) — the 33-case M010 battery covering every step of the 8-step flow, the degradation AND failure paths, constraint preservation, and evidence attribution"
+  - "docs/M010-evidence.md — the verification matrix (SOFTWARE-class per case)"
+  - "LOCK-120 discipline: ShareNet modeled as an external application boundary (opaque principal identity, technology-neutral intent); zero ShareNet application semantics implemented"
+  - "Simulation-seam discipline: the pending children (M004-M008) are clearly-labeled deterministic test doubles; only contracts/, offers/, developerapi/ are composed as authority"
+
+acceptance_findings:
+  - "All four charter acceptance criteria verified at the exact head + merge state by independent checkout"
+  - "The verification comment on PR #30 posted by the worker (03:55:42Z) with the full verification numbers"
+  - "Append-only: one commit, no rebase/force-push/amend; branch cut at the charter-time main head 9e16cb0 (pre-M009), zero-overlap merge into the post-M009 main"
+  - "The PR CI initial failure (fresh-session pin) was governance-state (the DEC-0109 rider's implementation-domain file advancing main beyond the snapshot pin), root-caused and repaired by LEDGER-RECON-018 before this acceptance — the delivery content was never at fault"
+
+control_plane_actions:
+  - "CI wiring: the sharenet battery step added to spec-check.yml (existence-guarded, the M002/M003 pattern — the control-plane action outside the worker's scope)"
+  - "R7-CORE-001 stays active; the current-child pointer stays M004 (M010 is a chain-independent vertical proof, the M013 precedent)"
+  - "Roadmap 2.1 -> 2.2 (M010 COMPLETE); execution-state re-baselined to the acceptance merge d0d26d3; ledger gains the M010 accepted-merged entry + LEDGER-RECON-019; checker evolution (current_spec_check + fresh_session_check: M010 ledger-entry validation with exact SHAs, M010 never-active guard, roadmap v2.2 markers)"
+  - "Worker session m010-sharenet (charter w22b) marked done after delivery — the round-2 Worker B delivery accepted"
+
+history_rule: "No work-item history rewritten; the M010 ledger entry is appended, never converted. No frozen architecture document modified. No physical obligation created or closed (SOFTWARE-class vertical proof; EVID-002..008 untouched and open). W048 remains accepted-not-restored."

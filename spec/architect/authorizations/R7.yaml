@@ -92,6 +92,9 @@ scope:
   - "payment/"
   - "docs/M009-evidence.md"
   # M010/M011/M012 — Vertical proofs
+  # [M010 ACCEPTED 2026-09-10 under DEC-0110: PR #30 head d5be84e, merge d0d26d3;
+  #  the 33/33 sharenet battery CI-wired; the current-child pointer stays M004 —
+  #  chain-independent vertical proof, the M013 precedent]
   - "sharenet/"
   - "roamlink/"
   - "comos/"

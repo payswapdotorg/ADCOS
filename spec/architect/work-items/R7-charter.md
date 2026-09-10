@@ -132,7 +132,7 @@ registry — not a re-authorization ceremony.
   contract (LOCK-113); payment movement stays external; no commercial authority
   migration into networking.
 
-### M010 / M011 / M012 — Vertical Proofs (ShareNet / RoamLink / COMOS)
+### M010 / M011 / M012 — Vertical Proofs (ShareNet / RoamLink / COMOS) — M010 ACCEPTED (DEC-0110: PR #30 head d5be84e, merge d0d26d3); M011 in flight; M012 available
 
 - **Scope:** `sharenet/`, `roamlink/`, `comos/` (new vertical harnesses),
   `docs/M010-evidence.md`, `docs/M011-evidence.md`, `docs/M012-evidence.md`.
