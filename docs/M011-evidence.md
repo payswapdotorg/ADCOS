@@ -307,13 +307,44 @@ CI-wiring precedent); the delivery PR deliberately does not modify
 ## 7. Out-of-scope discipline (nothing else changed)
 
 The M011 delta contains exactly: `roamlink/` (5 new modules),
-`tools/roamlink_selftest.py` (new), `docs/M011-evidence.md` (new) — 7 files.
+`tools/roamlink_selftest.py` (new), `docs/M011-evidence.md` (new) — 7 files —
+plus ONE disclosed battery-scope repair (see §7.1): a 26-line addition to
+`tools/sharenet_selftest.py` (case_31's authorization-aware consultation).
 No control-plane surface, no `spec/` file, no `.github/` file, no canonical
 domain file (`contracts/`, `offers/`, `usage/`, `commercial/`,
 `developerapi/` — consumed, never modified), no other battery, no W048
 material, no historical record.  The drift guard classifies the delta
 implementation-only; the provenance gate verifies full coverage by R7-CORE-
-001's declared scope (byte-identical authorization inheritance from main).
+001's declared scope (byte-identical authorization inheritance from main;
+the `tools/` prefix covers the repaired battery).
+
+### 7.1 The disclosed sharenet battery-scope repair (case_31)
+
+The M010 delivery's `tools/sharenet_selftest.py` case_31 enforced its PR
+shape with a FROZEN scope list (`sharenet/` + its battery + its evidence
+doc) — regressing from the repository's established authorization-aware
+pattern (the M002-era "authorization-aware battery-scope consultation
+repairs across the battery surface", named in the R7-CORE-001 acceptance
+criteria; the same consultation `tools/developerapi_selftest.py` case_41,
+`tools/commercial_selftest.py` case_35 and the M009-re-baselined
+payment/eligibility batteries all use).  As shipped, that frozen check
+structurally fails on EVERY later authorized R7 child PR (any delta outside
+the M010 three-file scope is a violation) — the M011 delivery is the first
+to hit it: `git diff origin/main...HEAD` on this PR returns this branch's
+8 files, none of which start with `sharenet/`.
+
+The repair (a separate append-only commit, clearly separable from the
+M011 delivery commit): case_31 now also accepts paths covered by the
+ACTIVE repository-local authorization (`authorization_provenance.covers`,
+the exact M009/M013 consultation pattern), preserving every original
+property — the M010 PR shape itself still passes (its files are in the
+frozen scope), a clean main still passes (no delta), fail-closed is
+preserved (no active authorization covers nothing), and the frozen scope
+remains the first-class check.  Root cause, evidence and the separable
+commit are disclosed here and in the PR body for Tech Lead adjudication:
+the repair is within R7-CORE-001's declared `tools/` scope, but outside
+this charter's three-file M011 list — it is disclosed as the minimal
+precedented unblock, not silently smuggled.
 
 ## 8. Evidence classes (honest disclosure)
 
@@ -353,6 +384,6 @@ implementation-only; the provenance gate verifies full coverage by R7-CORE-
   `authorization_provenance` PASS on the delivery head.
 - Full suite: the entire blocking battery set green on the delivery head in
   the exact `.github/workflows/spec-check.yml` order (including the PR-only
-  management and simulator batteries); the sole remaining tolerated skip is
-  the DEC-0099-disclosed client battery (containment surface gone — M014
-  track).
+  management and simulator batteries, and the wired sharenet battery 33/33
+  after the §7.1 repair); the sole remaining tolerated skip is the
+  DEC-0099-disclosed client battery (containment surface gone — M014 track).
