@@ -4,8 +4,8 @@
 # Per-child acceptance decisions (DEC-0102+) close each child; this authorization
 # closes when the R7 gate completes. Children closed so far: M002 (DEC-0102),
 # M003 (DEC-0103), M013 (DEC-0113), M009 (DEC-0109), M010 (DEC-0110),
-# M011 (DEC-0111), M012 (DEC-0112), M004 (DEC-0104 — the chain-child pointer
-# advanced M004 -> M005; M005 is delivered at PR #33 and awaits DEC-0105).
+# M011 (DEC-0111), M012 (DEC-0112), M004 (DEC-0104), M005 (DEC-0105),
+# M006 (DEC-0106 — the chain-child pointer advanced M006 -> M007).
 work_item: R7
 child_work_items:
   - M002
@@ -21,7 +21,7 @@ child_work_items:
   - M012
   - M013
   - M014
-current_child_work_item: M006
+current_child_work_item: M007
 status: active
 authorized: true
 type: implementation
@@ -107,6 +107,12 @@ scope:
   #  the policy battery evolved 74/74 -> 103/103 (disclosed); the current-child
   #  pointer ADVANCES M004 -> M005 (chain-child acceptance — M005 is already
   #  delivered at PR #33 and awaits DEC-0105)]
+  # [M005 ACCEPTED 2026-09-10 under DEC-0105: PR #33 head a0c4aff, merge ccae488;
+  #  the 97/97 assurance battery CI-wired (existence-guard); the current-child
+  #  pointer ADVANCES M005 -> M006 (chain-child acceptance)]
+  # [M006 ACCEPTED 2026-09-10 under DEC-0106: PR #35 head 764007b, merge 1f9f509;
+  #  the 36/36 executionplan battery CI-wired (existence-guard); the current-child
+  #  pointer ADVANCES M006 -> M007 (chain-child acceptance)]
   - "sharenet/"
   - "roamlink/"
   - "comos/"

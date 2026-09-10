@@ -1,0 +1,45 @@
+# DEC-0106 — M006 acceptance: Execution Plan accepted; the current-child pointer advances M006 → M007
+# Sole-Architect governance decision (per-child acceptance, DEC-0101 serialization point).
+decision_id: DEC-0106
+date: "2026-09-10"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M006
+authorization: R7-CORE-001
+
+review_basis: "Tech Lead review of the exact M006 delivery head 764007bb6ec068628a861e0d3f1fe5eec53a1eae (PR #35, branch m006-execplan, base db2f003 — the live DEC-0105-accepted main head, correctly rooted at dispatch; two commits: the delivery plus an evidence-doc correction): the executionplan battery 36/36 PASS run 3x consecutively at the exact head (exit-code based, determinism verified), the full battery suite verified green at the head under CI semantics (62 tools in exact workflow order; the two non-zero exits are the documented baselines — spec_check.py the legacy compatibility audit continue-on-error, client_selftest.py the DEC-0099-disclosed containment/W048 skip), CI green end-to-end on the head (run 34529290730), scope verified 11 files all inside the charter boundary (executionplans/ five modules NEW — __init__.py 114, conformance.py 157, errors.py 91, model.py 774, translation.py 506 lines; tools/executionplan_selftest.py NEW 2335 lines; docs/M006-evidence.md NEW 293 lines; the composition/ four-file delta which is DISCLOSURE-ONLY — docstring harvest notes with zero behavior, zero public-API, and zero import changes, reviewer-verified line-by-line), the structural invariants verified (LOCK-109 — executionplans/translation.py the canonical bridge from the canonical ConnectivityContract to capability-oriented provider mechanisms, typed execution sequence, deterministic, fail-closed; the harvest discipline — the WORK-054 composition/ chain-orchestration and conformance-evidence patterns live on refactored in executionplans/conformance.py, the seam one-way (executionplans/ imports no composition code, grep clean), composition/ gains no new dependency, the frozen authority rules preserved verbatim (DEC-0085/DEC-0086), W048 stays accepted-not-restored; LOCK-119 — deterministic/offline/seeded, no wall clock, no randomness, no network (grep clean)). The review is durably recorded in the PR #35 review timeline (review comment 5625538491); GitHub self-approval was unavailable (the single operator account owns both the PR and the review), so this decision is the authoritative acceptance record per repo convention."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 35
+  branch: "m006-execplan"
+  baseline_sha: db2f003d0db087c59dcde46569b9445ed3fe8e03
+  pr_head: 764007bb6ec068628a861e0d3f1fe5eec53a1eae
+  reviewed_sha: 764007bb6ec068628a861e0d3f1fe5eec53a1eae
+  merge_sha: 1f9f509eda02b6c98dc624a321caa125586d05e0
+  merged_at: "2026-09-10T21:15:09Z"
+  ci_run: 34529290730
+  worker_session: "m006-execplan (charter w24b — delivered through the durable recover-capacity assault attempt 3 after the earlier capacity-rollback window; mid-flight workspace restart recovered by the resident nanny's stall detection)"
+
+acceptance_effects:
+  current_child_advances: "M006 -> M007 (a chain-child acceptance — the third pointer move; M007 — Path Segments is the next chain child: segments/ per the R7 charter)"
+  roadmap_version: "2.6 -> 2.7 (M006 COMPLETE)"
+  authorization_state: "R7-CORE-001 stays ACTIVE (the bounded R7 program authorization closes only when the R7 gate completes)"
+  ci_wiring: "The executionplan battery is CI-wired by this acceptance (existence-guarded step, the established pattern)"
+  ledger: "M006 accepted-merged entry appended + LEDGER-RECON-024 (snapshot baseline db2f003 -> 1f9f509)"
+
+verification_summary:
+  battery: "tools/executionplan_selftest.py 36/36 x3 consecutive runs at the exact head"
+  full_suite: "62 tools green in exact CI workflow order at the head (CI semantics: the two documented non-blocking baselines)"
+  gates: "current_spec_check PASS; tech_lead_guard PASS; architecture_drift_guard PASS (implementation-only, 11 files); fresh_session_check PASS (pin db2f003 == origin/main at review time); authorization_provenance PASS (11/11 covered)"
+  ci: "run 34529290730 SUCCESS on the PR head; the merge is a clean merge-commit of a branch rooted at the main head"
+  scope: "11 files: executionplans/ x5 NEW, tools/executionplan_selftest.py NEW, docs/M006-evidence.md NEW, composition/ x4 disclosure-only harvest notes — all inside the charter boundary"
+
+physical_obligations: "EVID-002..EVID-008 remain OPEN and untouched; SOFTWARE-class deterministic evaluation only"
+
+standing_rules:
+  w048: "accepted-not-restored; MUST NOT be restored implicitly or explicitly"
+  architecture: "Architecture 1.1 remains the sole forward design source; no architecture or protocol semantic change is made by this decision"
+  history: "No work-item history is rewritten; the M006 ledger entry is appended, never converted"

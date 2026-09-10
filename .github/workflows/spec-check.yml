@@ -347,6 +347,17 @@ jobs:
           fi
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
 
+      # M006 battery (DEC-0106 acceptance wiring — the established
+      # existence-guard pattern)
+      - name: Run execution-plan tests
+        run: |
+          if [ -f tools/executionplan_selftest.py ]; then
+            python3 tools/executionplan_selftest.py
+          else
+            echo "SKIP (disclosed): executionplan battery not yet on main (M006 track)"
+          fi
+        continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
+
       # Era-superseded battery (DEC-0099 disclosure): the W049-era client
       # battery imports containment.CapabilityMatrix and sharing.* whose
       # subject material is W048 accepted-not-restored.

@@ -98,7 +98,7 @@ registry — not a re-authorization ceremony.
   LOCK-106) and contract-level closed-loop assurance evaluation (LOCK-107) with the
   frozen assurance state vocabulary.
 
-### M006 — Execution Plan
+### M006 — Execution Plan — ACCEPTED (DEC-0106: PR #35 head 764007b, merge 1f9f509 — the current-child pointer advances to M007)
 
 - **Scope:** `executionplans/` (new), `composition/` (harvest),
   `tools/executionplan_selftest.py`, `docs/M006-evidence.md`.

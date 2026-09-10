@@ -24,8 +24,8 @@ A brand-new Architect, Tech Lead, worker, or implementation agent must resume fr
 
 ## Current checkpoint
 
-The latest reconciled software baseline is the M005 acceptance merge
-`ccae48809bff22a973f6c3fba7a5b6345ede2c4c` (the M003 acceptance merge
+The latest reconciled software baseline is the M006 acceptance merge
+`1f9f509eda02b6c98dc624a321caa125586d05e0` (the M003 acceptance merge
 `4090e03` and the M013 acceptance merge `8f4d58a2` precede it on main — the
 3-worker pipeline's first parallel delivery round — with the DEC-0103/DEC-0113
 acceptance record 9e16cb0 between them and the M009 branch point); the
@@ -63,9 +63,12 @@ convention.
   head a0c4aff, merge ccae488; the typed evidence-record domain — LOCK-106 —
   and the closed-loop assurance evaluation — LOCK-107 with the FROZEN §9
   state vocabulary; the telemetry harvest disclosed via the explicit seam;
-  the 97/97 battery CI-wired; the second chain-pointer move).** The current
-  child is **M006 — Execution Plan** (executionplans/ new, composition/
-  harvest per the R7 charter).
+  the 97/97 battery CI-wired; the second chain-pointer move). M006 —
+  Execution Plan is ACCEPTED (DEC-0106; head 764007b, merge 1f9f509; the
+  LOCK-109 canonical execution-plan translation; the composition/ harvest
+  disclosed one-way; the 36/36 battery CI-wired; the third chain-pointer
+  move).** The current child is **M007 — Path Segments** (segments/ per the
+  R7 charter).
   Per-child acceptance decisions (DEC-0104 onward) are the serialization points.
 - R4/W040 remains an independent physical-validation track and is not replaced by the software roadmap.
 - W048 remains accepted-not-restored and MUST NOT be recreated, mocked, or substituted implicitly.
