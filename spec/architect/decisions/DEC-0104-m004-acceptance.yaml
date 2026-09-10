@@ -1,0 +1,45 @@
+# DEC-0104 — M004 acceptance: Eligibility and Policy accepted; the current-child pointer advances M004 → M005
+# Sole-Architect governance decision (per-child acceptance, DEC-0101 serialization point).
+decision_id: DEC-0104
+date: "2026-09-10"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M004
+authorization: R7-CORE-001
+
+review_basis: "Tech Lead review of the exact M004 delivery head 92f293bfcdf7794a1dcd090d2545db28e7bc0f96 (PR #34, branch m004-eligibility-policy, base 45b71dd — the live DEC-0112-accepted main head, correctly rooted at dispatch; the delivery survived a three-session capacity-rollback window through the resident stack's durable recover-capacity assault): the evolved policy battery 103/103 PASS run 3x consecutively at the exact head (exit-code based; the battery's disclosed evolution from the 74/74 charter-era baseline per the charter's own battery-evolution clause), the full battery suite verified green at the head under CI semantics (62 tools in exact workflow order; the two non-zero exits are the documented baselines — spec_check.py the legacy compatibility audit continue-on-error, client_selftest.py the DEC-0099-disclosed containment/W048 skip), CI green end-to-end on the PR head (run 34514607860), scope verified 4 files all inside the charter boundary (eligibility/contract_constraints.py NEW 1452 lines — the typed constraint-decision domain; eligibility/contract_eligibility.py NEW 1007 lines — the deterministic eligibility evaluation; tools/policy_selftest.py evolved +1670/-3 disclosed; docs/M004-evidence.md NEW 192 lines; tools/eligibility_selftest.py untouched per the charter's explicit exclusion — it stays skipped behind its CI guard), the structural invariants verified (LOCK-101 — the evaluation is a pure function of typed reference facts: OfferReferenceFacts, ValidityWindow; the battery composes REAL canonical contracts via the accepted contracts API (ContractStore, CreateContract, HardConstraint, OpaqueReference, …) at the composition seam; no second contract model, no re-implementation of contract/offer semantics (reviewer-verified: zero ConnectivityContract/build_contract definitions in eligibility/); LOCK-110 — zero provider-SDK leakage: providers appear as opaque reference values only, module-docstring codified; LOCK-119 — deterministic, offline, injected instants via agent.clock.parse_utc, canonical-JSON round-trips via protocol.canonicalization, no wall clock/no randomness/no network/no secrets (grep clean); fail-closed typed errors throughout), and the evaluation consumes offers/contract references by reference per the charter (eligibility evaluates references; it never re-implements offer semantics). The review is durably recorded in the PR #34 review timeline (review comment 5623626173); GitHub self-approval was unavailable (the single operator account owns both the PR and the review), so this decision is the authoritative acceptance record per repo convention (DEC-0102..DEC-0112 precedent)."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 34
+  branch: "m004-eligibility-policy"
+  baseline_sha: 45b71ddb1f1cc0b48f861681f1353dc78872fd2
+  pr_head: 92f293bfcdf7794a1dcd090d2545db28e7bc0f96
+  reviewed_sha: 92f293bfcdf7794a1dcd090d2545db28e7bc0f96
+  merge_sha: a52e1eefd352f4636ef368ff97b92682ff11c100
+  merged_at: "2026-09-10T18:37:19Z"
+  ci_run: 34514607860
+  worker_session: "m004-policy (charter w22a — Worker A of the chain track; delivered through the durable recover-capacity assault after three capacity-rollback session destructions)"
+
+acceptance_effects:
+  current_child_advances: "M004 → M005 (a chain-child acceptance — the first pointer move since DEC-0103; M005 — Evidence and Assurance is ALREADY DELIVERED at PR #33 head a0c4aff (verified by the Tech Lead at the exact head: battery 97/97 x3, full suite green, gates 5/5, CI green) and awaits its DEC-0105 acceptance on this dependency now being satisfied)"
+  roadmap_version: "2.4 -> 2.5 (M004 COMPLETE)"
+  authorization_state: "R7-CORE-001 stays ACTIVE (the bounded R7 program authorization closes only when the R7 gate completes)"
+  ci_wiring: "none needed — the policy battery is the evolution of an already-wired battery (the M002-era step runs tools/policy_selftest.py directly); the eligibility battery stays skipped per its DEC-0099 disclosure"
+  ledger: "M004 accepted-merged entry appended + LEDGER-RECON-022 (snapshot baseline 45b71dd -> a52e1ee)"
+
+verification_summary:
+  battery: "tools/policy_selftest.py 103/103 x3 consecutive runs at the exact head (evolved from 74/74; disclosed)"
+  full_suite: "62 tools green in exact CI workflow order at the head (CI semantics: spec_check legacy audit continue-on-error baseline documented; client battery the DEC-0099-disclosed skip)"
+  gates: "current_spec_check PASS; tech_lead_guard PASS; architecture_drift_guard PASS (implementation-only, 4 files); fresh_session_check PASS (pin 45b71dd == origin/main at review time); authorization_provenance PASS (4/4 delta files covered by R7-CORE-001)"
+  ci: "run 34514607860 SUCCESS on the PR head; the merge is a clean merge-commit of a branch rooted at the main head (45b71dd)"
+  scope: "4 files: eligibility/ x2 NEW, tools/policy_selftest.py evolved (disclosed), docs/M004-evidence.md NEW — all inside the charter boundary; tools/eligibility_selftest.py untouched per the charter's explicit exclusion"
+
+physical_obligations: "EVID-002..EVID-008 remain OPEN and untouched; SOFTWARE-class deterministic evaluation only (no physical claim is made or implied)"
+
+standing_rules:
+  w048: "accepted-not-restored; MUST NOT be restored implicitly or explicitly"
+  architecture: "Architecture 1.1 remains the sole forward design source; no architecture or protocol semantic change is made by this decision"
+  history: "No work-item history is rewritten; the M004 ledger entry is appended, never converted"

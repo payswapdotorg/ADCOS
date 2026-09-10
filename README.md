@@ -90,8 +90,10 @@ CI-wired).** **M011 — Vertical Proof — RoamLink is ACCEPTED (DEC-0111;
 head fb4a921, merge c0f23c8; the 56/56 roamlink battery is CI-wired).**
 **M012 — Vertical Proof — COMOS is ACCEPTED (DEC-0112; head 201ceb8e,
 merge 6e3d09f; the 33/33 comos battery is CI-wired).**
-**M004 — Eligibility and
-Policy is the current child work item in implementation.** Per-child
+**M004 — Eligibility and Policy is ACCEPTED (DEC-0104; head 92f293b, merge
+a52e1ee; the policy battery evolved to 103/103).**
+**M005 — Evidence and
+Assurance is the current child work item (delivered at PR #33, awaiting DEC-0105).** Per-child
 acceptance (DEC-0104 onward) is
 mandatory and is the serialization point; the Tech Lead may decompose,
 dispatch, integrate and deliver within the authorized child scopes without

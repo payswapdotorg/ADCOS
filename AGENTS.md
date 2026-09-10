@@ -53,8 +53,10 @@ re-baselines landed). M010 — Vertical Proof — ShareNet is ACCEPTED
 CI-wired). M011 — Vertical Proof — RoamLink is ACCEPTED (DEC-0111; head
 fb4a921, merge c0f23c8; the 56/56 roamlink battery is CI-wired). M012 —
 Vertical Proof — COMOS is ACCEPTED (DEC-0112; head 201ceb8e, merge
-6e3d09f; the 33/33 comos battery is CI-wired). M004 —
-Eligibility and Policy is the current child. Implementation proceeds only within the active authorization's declared
+6e3d09f; the 33/33 comos battery is CI-wired). M004 — Eligibility and
+Policy is ACCEPTED (DEC-0104; head 92f293b, merge a52e1ee; the policy
+battery evolved to 103/103; the current child advances to M005). M005 —
+Evidence and Assurance is the current child (delivered at PR #33, awaiting DEC-0105). Implementation proceeds only within the active authorization's declared
 scope; each child work item is accepted only from repository evidence per the
 charter's acceptance rules.
 

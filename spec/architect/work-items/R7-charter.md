@@ -82,7 +82,7 @@ registry — not a re-authorization ceremony.
 - **Acceptance:** provider-domain capability advertisements, offers, validity,
   commitments and provenance under LOCK-118; no global topology (LOCK-105).
 
-### M004 — Eligibility and Policy
+### M004 — Eligibility and Policy — ACCEPTED (DEC-0104: PR #34 head 92f293b, merge a52e1ee — the current-child pointer advances to M005)
 
 - **Scope:** `policy/`, `eligibility/`, `tools/policy_selftest.py`,
   `tools/eligibility_selftest.py` (era-superseded battery re-baseline may land here

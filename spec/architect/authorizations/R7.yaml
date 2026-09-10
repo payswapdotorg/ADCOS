@@ -3,7 +3,9 @@
 # Issued by DEC-0101; ONE active authorization for the whole M002-M014 tranche.
 # Per-child acceptance decisions (DEC-0102+) close each child; this authorization
 # closes when the R7 gate completes. Children closed so far: M002 (DEC-0102),
-# M003 (DEC-0103), M013 (DEC-0113).
+# M003 (DEC-0103), M013 (DEC-0113), M009 (DEC-0109), M010 (DEC-0110),
+# M011 (DEC-0111), M012 (DEC-0112), M004 (DEC-0104 — the chain-child pointer
+# advanced M004 -> M005; M005 is delivered at PR #33 and awaits DEC-0105).
 work_item: R7
 child_work_items:
   - M002
@@ -19,7 +21,7 @@ child_work_items:
   - M012
   - M013
   - M014
-current_child_work_item: M004
+current_child_work_item: M005
 status: active
 authorized: true
 type: implementation
@@ -101,6 +103,10 @@ scope:
   # [M012 ACCEPTED 2026-09-10 under DEC-0112: PR #32 head 201ceb8e, merge 6e3d09f;
   #  the 33/33 comos battery CI-wired; the current-child pointer stays M004 —
   #  chain-independent vertical proof completing the M010/M011/M012 tranche]
+  # [M004 ACCEPTED 2026-09-10 under DEC-0104: PR #34 head 92f293b, merge a52e1ee;
+  #  the policy battery evolved 74/74 -> 103/103 (disclosed); the current-child
+  #  pointer ADVANCES M004 -> M005 (chain-child acceptance — M005 is already
+  #  delivered at PR #33 and awaits DEC-0105)]
   - "sharenet/"
   - "roamlink/"
   - "comos/"
