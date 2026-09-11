@@ -50,6 +50,7 @@ from resilience.errors import ResilienceError, ResilienceReason
 from resilience.journal import fold_events, reconnect_evidence
 from resilience.model import (
     RUNTIME_RECONNECTABLE_STATES,
+    RUNTIME_TERMINAL_STATES,
     RuntimeEvent,
     RuntimeReconnect,
     RuntimeSession,
@@ -69,6 +70,21 @@ __all__ = [
 #: The issuer recorded on runtime events produced by the replan-kernel
 #: composition (LOCK-118: the drive cites the decision it applies).
 RUNTIME_DRIVEN_ISSUER = "resilience:runtime-replan-drive"
+
+
+def _require_not_terminal(session: RuntimeSession, operation: str) -> None:
+    """Fail closed with the SPECIFIC typed terminal reason BEFORE any
+    operation-specific state gate: a terminal runtime session never
+    transitions, and ``resilience-session-terminal`` (the vocabulary's
+    own terminal reason — "FAILED/TERMINATED sessions never
+    transition") must surface uniformly across every lifecycle
+    operation, never masked by a generic transition error."""
+    if session.state in RUNTIME_TERMINAL_STATES:
+        raise ResilienceError(
+            ResilienceReason.SESSION_TERMINAL,
+            "runtime session is terminal in %s; terminal runtime sessions never "
+            "transition (the %s operation is rejected)" % (session.state, operation),
+        )
 
 
 class RuntimeStore:
@@ -219,6 +235,7 @@ class RuntimeStore:
         (both required — activating without naming the realization is a
         silent-replacement shape)."""
         session = self.session(runtime_id)
+        _require_not_terminal(session, "activation")
         if session.state != "PENDING":
             raise ResilienceError(
                 ResilienceReason.TRANSITION_ILLEGAL,
@@ -266,6 +283,7 @@ class RuntimeStore:
         equal the session's current ones — enforced by the fold) and
         the CANDIDATE new references."""
         session = self.session(runtime_id)
+        _require_not_terminal(session, "reconnect initiation")
         if session.state not in RUNTIME_RECONNECTABLE_STATES:
             raise ResilienceError(
                 ResilienceReason.TRANSITION_ILLEGAL,
@@ -319,6 +337,7 @@ class RuntimeStore:
         BOTH the old AND the new references (the WORK-012 evidence
         shape)."""
         session = self.session(runtime_id)
+        _require_not_terminal(session, "reconnect completion")
         if session.state != "RECONNECTING":
             raise ResilienceError(
                 ResilienceReason.SILENT_REPLACEMENT,
@@ -362,6 +381,7 @@ class RuntimeStore:
         not complete; the session keeps its pre-change references and
         carries the typed reason."""
         session = self.session(runtime_id)
+        _require_not_terminal(session, "reconnect failure")
         if session.state != "RECONNECTING":
             raise ResilienceError(
                 ResilienceReason.TRANSITION_ILLEGAL,
@@ -430,6 +450,7 @@ class RuntimeStore:
         """DEGRADED -> ACTIVE: the EXPLICIT degraded-mode exit —
         journaled, typed provenance, never silent."""
         session = self.session(runtime_id)
+        _require_not_terminal(session, "degraded recovery")
         if session.state != "DEGRADED":
             raise ResilienceError(
                 ResilienceReason.TRANSITION_ILLEGAL,
