@@ -121,22 +121,22 @@ def main() -> int:
         (resume, "M001 — Architecture 1.1 Freeze", "resume protocol must identify the 1.1 transition gate"),
         (roadmap, "mandatory_forward_target: \"Architecture 1.1\"", "roadmap must declare 1.1 as mandatory forward target"),
         (roadmap, "next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE", "roadmap must put R7 as the active gate"),
-        (roadmap, 'roadmap_version: "2.7"', "roadmap must be advanced to the post-M006-acceptance version 2.7"),
+        (roadmap, 'roadmap_version: "2.8"', "roadmap must be advanced to the post-M007-acceptance version 2.8"),
         (roadmap, "program_state: R7_UNIVERSAL_CONNECTIVITY_COMMERCE_ACTIVE", "roadmap must record the R7-active program state"),
     ]
     for text, marker, message in required_markers:
         if marker.lower() not in text.lower():
             failures.append(message)
 
-    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "the sole active implementation authorization", "Architecture 1.0 is preserved historical evidence", "R7 — Universal Connectivity Commerce", "M002 — Connectivity Contract Core", "M003 — Offers and Provider Capability Exchange", "M013 — Developer Connectivity API", "M009 — Usage and Commercial Reconciliation", "M010 — Vertical Proof — ShareNet", "M011 — Vertical Proof — RoamLink", "M012 — Vertical Proof — COMOS", "M004 — Eligibility and Policy", "M005 — Evidence and Assurance", "M006 — Execution Plan", "M007 — Path Segments"]:
+    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "the sole active implementation authorization", "Architecture 1.0 is preserved historical evidence", "R7 — Universal Connectivity Commerce", "M002 — Connectivity Contract Core", "M003 — Offers and Provider Capability Exchange", "M013 — Developer Connectivity API", "M009 — Usage and Commercial Reconciliation", "M010 — Vertical Proof — ShareNet", "M011 — Vertical Proof — RoamLink", "M012 — Vertical Proof — COMOS", "M004 — Eligibility and Policy", "M005 — Evidence and Assurance", "M006 — Execution Plan", "M007 — Provider/Standard Adapters", "M008 — Replan and Failover"]:
         if marker.lower() not in current.lower():
             failures.append(f"current-state.md missing R7-active checkpoint marker: {marker}")
 
-    for marker in ['roadmap_version: "2.7"', "program_state: R7_UNIVERSAL_CONNECTIVITY_COMMERCE_ACTIVE", "execution_mode: implementing", "active_work_item: M007", "active_authorization: R7-CORE-001", "next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE", "completion_decision: DEC-0100", "activation_decision: DEC-0101"]:
+    for marker in ['roadmap_version: "2.8"', "program_state: R7_UNIVERSAL_CONNECTIVITY_COMMERCE_ACTIVE", "execution_mode: implementing", "active_work_item: M008", "active_authorization: R7-CORE-001", "next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE", "completion_decision: DEC-0100", "activation_decision: DEC-0101"]:
         if marker not in roadmap:
             failures.append(f"roadmap.yaml missing current authoritative marker: {marker}")
 
-    for marker in ["mode: implementing", "active_work_item: M007", "active_authorization: R7-CORE-001", "current_child_work_item: M007", "program_authorization: R7-CORE-001", "R7-CORE-001"]:
+    for marker in ["mode: implementing", "active_work_item: M008", "active_authorization: R7-CORE-001", "current_child_work_item: M008", "program_authorization: R7-CORE-001", "R7-CORE-001"]:
         if marker not in execution:
             failures.append(f"execution-state.yaml missing R7-active marker: {marker}")
 

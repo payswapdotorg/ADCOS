@@ -97,7 +97,11 @@ Assurance is ACCEPTED (DEC-0105; head a0c4aff, merge ccae488; the 97/97
 assurance battery is CI-wired).**
 **M006 — Execution Plan is ACCEPTED (DEC-0106; head 764007b, merge
 1f9f509; the 36/36 executionplan battery is CI-wired).**
-**M007 — Path Segments is the current child work item.** Per-child
+**M007 — Provider/Standard Adapters is ACCEPTED (DEC-0107; head 1636b15,
+merge cc93bb4; the adapter battery expanded to 70/70 — the CI step already
+wired and green at the merged head; one disclosed payment-battery
+frozen-family repair ratified).**
+**M008 — Replan and Failover is the current child work item.** Per-child
 acceptance (DEC-0104 onward) is
 mandatory and is the serialization point; the Tech Lead may decompose,
 dispatch, integrate and deliver within the authorized child scopes without

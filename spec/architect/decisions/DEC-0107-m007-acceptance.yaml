@@ -1,0 +1,45 @@
+# DEC-0107 — M007 acceptance: Provider/Standard Adapters accepted; the current-child pointer advances M007 → M008
+# Sole-Architect governance decision (per-child acceptance, DEC-0101 serialization point).
+decision_id: DEC-0107
+date: "2026-09-11"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M007
+authorization: R7-CORE-001
+
+review_basis: "Tech Lead review of the exact M007 delivery head 1636b15f8d639f0896b2b42567d6e2da99b53678 (PR #36, branch m007-adapters, base 2b25090 — the live DEC-0106-accepted main head, correctly rooted at dispatch; three commits: the delivery a511ee6, the evidence disclosure 4806d3b, and the disclosed repair 1636b15): the adapter battery 70/70 PASS run 3x consecutively at the exact head (exit-code based, determinism verified), the payment battery 44/44 at the repaired state (the repair resolves the DISCLOSED frozen-family conflict: case_38's scope audit gains the authorization-aware frozen-family consultation — the M002-era pattern ratified by DEC-0111 for the sharenet battery case_31; sibling paths covered by the ACTIVE authorization R7-CORE-001 are sanctioned, fail-closed otherwise; covered by the R7-CORE-001 tools/ scope entry), the full battery suite verified green at the head under CI semantics (69 tool invocations in exact workflow order; the two non-zero exits are the documented baselines — spec_check.py the legacy compatibility audit continue-on-error, client_selftest.py the DEC-0099-disclosed containment/W048 skip), CI green end-to-end on the head (run 34575262098), scope verified 12 files all inside the charter boundary (adapters/capability.py NEW 1360 lines — the capability-exchange translation seam + reference semantics core; adapters/reference/ x7 NEW — __init__ plus the backhaul/fivegc/ip/mesh/ran/wifi reference adapters; adapters/__init__.py +49 exports-only; tools/adapter_selftest.py expanded 56 -> 70 cases; docs/M007-evidence.md NEW 425 lines; tools/payment_selftest.py the 16-line disclosed-repair delta only), the structural invariants verified (LOCK-112 — reference adapters wrap existing standard/provider mechanisms, nothing reinvented; LOCK-110 — provider-native SDK types never cross the adapter boundary into the core, the core imports no adapter implementation and branches on no technology name, grep clean; the WORK-016 compatibility seam — the old public API preserved for its existing consumers, the explicit disclosed translation from the WORK-016 AdapterContract operations onto the 1.1 capability-oriented surface; LOCK-119 — deterministic/offline/seeded, no wall clock, no randomness, no network; the frozen-family conflict DISCLOSED at the evidence commit per the charter stop-condition BEFORE acceptance — the delivery disclosed, the Tech Lead built the repair at the integration station, the DEC-0111 precedent pattern). The review is durably recorded in the PR #36 review timeline (review comment 5176171774); GitHub self-approval was unavailable (the single operator account owns both the PR and the review), so this decision is the authoritative acceptance record per repo convention."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 36
+  branch: "m007-adapters"
+  baseline_sha: 2b25090ddc3800c38dc995e1f0628746e9615529
+  pr_head: 1636b15f8d639f0896b2b42567d6e2da99b53678
+  reviewed_sha: 1636b15f8d639f0896b2b42567d6e2da99b53678
+  merge_sha: cc93bb4992151ba01b6c892e2bbf1c277d7716a4
+  merged_at: "2026-09-11T07:49:45Z"
+  ci_run: 34575262098
+  worker_session: "m007-adapters (charter w24c — delivered through the capacity-churn window; the frozen-family conflict disclosed at the evidence commit per the charter stop-condition; the repair built at the integration station by the Tech Lead after the sandbox reset, verified at the exact repaired head before merge)"
+
+acceptance_effects:
+  current_child_advances: "M007 -> M008 (a chain-child acceptance — the fourth pointer move; M008 — Replan and Failover is the next chain child: replan/ new plus the mobility/multipath/sessions harvest per the R7 charter)"
+  roadmap_version: "2.7 -> 2.8 (M007 COMPLETE)"
+  authorization_state: "R7-CORE-001 stays ACTIVE (the bounded R7 program authorization closes only when the R7 gate completes)"
+  ci_wiring: "The adapter battery step is ALREADY WIRED in the CI workflow and already ran the expanded 70-case battery green at the merged head (run 34575262098) — this acceptance records the wired-and-green state; no workflow change is required (the pre-existing step, no existence-guard needed — the battery file pre-dated the delivery and the expansion is in-place)"
+  ledger: "M007 accepted-merged entry appended + LEDGER-RECON-025 (snapshot baseline 2b25090 -> cc93bb4)"
+
+verification_summary:
+  battery: "tools/adapter_selftest.py 70/70 x3 consecutive runs at the exact head"
+  full_suite: "69 tool invocations green in exact CI workflow order at the head (CI semantics: the two documented non-blocking baselines)"
+  gates: "current_spec_check PASS; tech_lead_guard PASS; architecture_drift_guard PASS (implementation-only, 12 files); fresh_session_check PASS (pin 2b25090 == origin/main at review time); authorization_provenance PASS (12/12 covered)"
+  ci: "run 34575262098 SUCCESS on the PR head; the merge is a clean merge-commit of a branch rooted at the main head"
+  scope: "12 files: adapters/capability.py NEW, adapters/reference/ x7 NEW, adapters/__init__.py exports-only, tools/adapter_selftest.py (battery expanded 56 -> 70), docs/M007-evidence.md NEW, tools/payment_selftest.py (the 16-line disclosed-repair delta) — all inside the charter boundary"
+
+physical_obligations: "EVID-002..EVID-008 remain OPEN and untouched; SOFTWARE-class deterministic evaluation only"
+
+standing_rules:
+  w048: "accepted-not-restored; MUST NOT be restored implicitly or explicitly"
+  architecture: "Architecture 1.1 remains the sole forward design source; no architecture or protocol semantic change is made by this decision"
+  history: "No work-item history is rewritten; the M007 ledger entry is appended, never converted"

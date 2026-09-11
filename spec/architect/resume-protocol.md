@@ -24,8 +24,8 @@ A brand-new Architect, Tech Lead, worker, or implementation agent must resume fr
 
 ## Current checkpoint
 
-The latest reconciled software baseline is the M006 acceptance merge
-`1f9f509eda02b6c98dc624a321caa125586d05e0` (the M003 acceptance merge
+The latest reconciled software baseline is the M007 acceptance merge
+`cc93bb4992151ba01b6c892e2bbf1c277d7716a4` (the M003 acceptance merge
 `4090e03` and the M013 acceptance merge `8f4d58a2` precede it on main — the
 3-worker pipeline's first parallel delivery round — with the DEC-0103/DEC-0113
 acceptance record 9e16cb0 between them and the M009 branch point); the
@@ -67,8 +67,14 @@ convention.
   Execution Plan is ACCEPTED (DEC-0106; head 764007b, merge 1f9f509; the
   LOCK-109 canonical execution-plan translation; the composition/ harvest
   disclosed one-way; the 36/36 battery CI-wired; the third chain-pointer
-  move).** The current child is **M007 — Path Segments** (segments/ per the
-  R7 charter).
+  move). M007 — Provider/Standard Adapters is ACCEPTED (DEC-0107; head
+  1636b15, merge cc93bb4; LOCK-112 reference adapters around existing
+  standard/provider mechanisms; LOCK-110 provider-SDK isolation; the
+  battery expanded 56 -> 70 cases, already wired and green at the merged
+  head; one disclosed payment-battery frozen-family repair ratified — the
+  DEC-0111 precedent; the fourth chain-pointer move).** The current child
+  is **M008 — Replan and Failover** (replan/ new, mobility/, multipath/,
+  sessions/ harvest per the R7 charter).
   Per-child acceptance decisions (DEC-0104 onward) are the serialization points.
 - R4/W040 remains an independent physical-validation track and is not replaced by the software roadmap.
 - W048 remains accepted-not-restored and MUST NOT be recreated, mocked, or substituted implicitly.

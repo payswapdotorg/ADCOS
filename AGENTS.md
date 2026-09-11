@@ -59,8 +59,12 @@ battery evolved to 103/103; the current child advances to M005). M005 — Eviden
 ACCEPTED (DEC-0105; head a0c4aff, merge ccae488; the 97/97 assurance
 battery is CI-wired; the current child advances to M006). M006 — Execution
 Plan is ACCEPTED (DEC-0106; head 764007b, merge 1f9f509; the 36/36
-executionplan battery is CI-wired; the current child advances to M007).
-M007 — Path Segments is the current child. Implementation proceeds only within the active authorization's declared
+executionplan battery is CI-wired; the current child advances to M007). M007 —
+Provider/Standard Adapters is ACCEPTED (DEC-0107; head 1636b15, merge
+cc93bb4; the adapter battery expanded to 70/70 — already wired and green
+at the merged head; one disclosed payment-battery frozen-family repair
+ratified; the current child advances to M008). M008 — Replan and
+Failover is the current child. Implementation proceeds only within the active authorization's declared
 scope; each child work item is accepted only from repository evidence per the
 charter's acceptance rules.
 

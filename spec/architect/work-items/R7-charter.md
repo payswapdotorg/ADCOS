@@ -105,7 +105,7 @@ registry — not a re-authorization ceremony.
 - **Acceptance:** contract-to-execution-plan translation (LOCK-109) and execution
   segments; plans may not weaken hard constraints (LOCK-108).
 
-### M007 — Provider/Standard Adapters
+### M007 — Provider/Standard Adapters — ACCEPTED (DEC-0107: PR #36 head 1636b15, merge cc93bb4 — the current-child pointer advances to M008)
 
 - **Scope:** `adapters/` (harvest + refactor), `tools/adapter_selftest.py`,
   `docs/M007-evidence.md`.
