@@ -2013,6 +2013,13 @@ def case_20_frozen_core_unchanged() -> Result:
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
     changed = [line for line in delta.stdout.splitlines() if line.strip()]
+    if not changed:
+        # DEC-0109 guard (the case_21 sibling pattern): post-acceptance /
+        # completed-main state — no client/ delta vs origin/main; the frozen
+        # modules are trivially identical to the completed main. The exact
+        # PR-delta shape check below stays for in-flight delivery contexts.
+        return ok(name, "no client/ delta vs origin/main (post-acceptance "
+                  "state); the frozen W049 core is the completed main")
     if set(changed) != {"client/convergence.py"}:
         return fail(name, "the client delta is not exactly the convergence "
                           "module: %s" % changed)

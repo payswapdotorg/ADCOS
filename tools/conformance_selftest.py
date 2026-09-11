@@ -2152,7 +2152,12 @@ _W055_AUTHORIZED_PATHS = (
 # deliveries fail closed on any unauthorized canonical-spec change. The
 # re-baseline is recorded as direct mainline-integrity reconciliation in the
 # M001 acceptance evidence (docs/M001-evidence.md §7).
-_FROZEN_AUTHORITY_BASELINE = "80292c24502200f84d11491ed12e9cec5e5baf11"
+# DEC-0109 re-baseline (the DEC-0100 battery-mirror-reconciliation class):
+# the frozen-authority mirror advances to the R7-COMPLETED acceptance merge
+# 344cd64 (the M014 delivery merge completing the gate) — the completed main
+# is the new frozen normal; the authorization-aware consultation stays for
+# in-flight deliveries under any FUTURE active authorization.
+_FROZEN_AUTHORITY_BASELINE = "344cd64e8396c7e388e31a50635ddff16bb4ea14"
 
 
 def _w055_origin_main_available() -> bool:
