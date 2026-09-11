@@ -2071,6 +2071,499 @@ def case_39_relay_sabotage_fails_convergence(results: List[Result]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# 40-45: M014 convergence evolution (disclosed): the battery gains the
+# converged-scenario cases for scale/convergence.py — the multi-domain
+# convergence harness over the M014 citation ledgers, the per-tick
+# admission rate limits, and the citation-revocation propagation rounds
+# (the R7 charter M014 scope: "tools/scale_selftest.py — evolve the scale
+# battery to the converged state (disclosed evolution, the established
+# pattern)").  Every pre-existing case above is PRESERVED verbatim; the
+# new cases append after the accepted 39.
+# ---------------------------------------------------------------------------
+
+from scale.convergence import (  # noqa: E402  (the disclosed evolution)
+    DEFAULT_CITATION_RATE_LIMIT,
+    PROPAGATION_STATES,
+    ConvergenceCitationPlan,
+    ConvergenceRevocationPlan,
+    ConvergenceScenarioSpec,
+    convergence_summary,
+    run_convergence_scenario,
+    verify_convergence_replay,
+)
+from scale import delivery_distances as _convergence_distances  # noqa: E402
+from federation.convergence import (  # noqa: E402
+    ChildCitation,
+    cite_settlement_reference,
+    cite_vertical_proof,
+)
+from protocol.canonicalization import canonical_json_bytes as _convergence_canonical  # noqa: E402
+
+_CONV_T0 = "2026-09-01T00:00:00Z"
+
+
+def _convergence_citations() -> Tuple[ChildCitation, ...]:
+    """Three typed child-authority citations (by-reference DATA built
+    from canonical payloads — the commercial/vertical-proof seams)."""
+    return (
+        cite_settlement_reference(
+            subject_ref="usage-ledger/settlement-conv-1",
+            canonical_payload=_convergence_canonical({"settlement": "c1"}),
+            issuer="m014-scale-battery", cited_at=_CONV_T0,
+        ),
+        cite_vertical_proof(
+            proof_kind="sharenet", subject_ref="pattern/conv-alpha",
+            issuer="m014-scale-battery", cited_at=_CONV_T0,
+            canonical_payload=_convergence_canonical({"pattern": "alpha"}),
+        ),
+        cite_settlement_reference(
+            subject_ref="usage-ledger/settlement-conv-2",
+            canonical_payload=_convergence_canonical({"settlement": "c2"}),
+            issuer="m014-scale-battery", cited_at=_CONV_T0,
+        ),
+    )
+
+
+def _convergence_spec(
+    shape: str = TopologyShape.RING,
+    domain_count: int = 6,
+    rate_limit: int = DEFAULT_CITATION_RATE_LIMIT,
+) -> ConvergenceScenarioSpec:
+    """The canonical convergence scenario: 6 domains, six planned
+    citation admissions (the first citation admitted at domains 0, 1
+    and 4), one revocation of that citation at its origin domain 0."""
+    c1, c2, c3 = _convergence_citations()
+    return ConvergenceScenarioSpec(
+        scenario_id="convergence-canonical",
+        seed=7,
+        start_instant=_CONV_T0,
+        tick_seconds=60,
+        horizon_ticks=12,
+        domain_count=domain_count,
+        shape=shape,
+        citations=(
+            ConvergenceCitationPlan(at_tick=0, domain_index=0, citation=c1),
+            ConvergenceCitationPlan(at_tick=1, domain_index=1, citation=c1),
+            ConvergenceCitationPlan(at_tick=1, domain_index=2, citation=c2),
+            ConvergenceCitationPlan(at_tick=2, domain_index=3, citation=c3),
+            ConvergenceCitationPlan(at_tick=2, domain_index=4, citation=c1),
+            ConvergenceCitationPlan(at_tick=3, domain_index=5, citation=c2),
+        ),
+        revocations=(
+            ConvergenceRevocationPlan(
+                at_tick=4, domain_index=0, citation_id=c1.citation_id,
+                reason="battery-convergence-revocation",
+            ),
+        ),
+        citation_rate_limit=rate_limit,
+    )
+
+
+def case_40_convergence_scenario(results: List[Result]) -> None:
+    """The converged citation scenario: real per-domain citation
+    ledgers, a revocation propagated in explicit relay rounds, the
+    round count PREDICTED from the topology, and byte-identical
+    replay."""
+    name = "case_40_convergence_scenario"
+    spec = _convergence_spec()
+    result = run_convergence_scenario(spec)
+    if result.citation_count != 6:
+        results.append(fail(name, "citation admissions drifted: %d"
+                            % result.citation_count))
+        return
+    if result.revoked_citation_count != 3:
+        results.append(fail(
+            name, "the revoked-citation count is %d (the cited material is "
+                  "held at domains 0, 1 and 4)" % result.revoked_citation_count,
+        ))
+        return
+    if result.domain_count != 6 or result.relationship_count != 6:
+        results.append(fail(name, "the real federation world is not a "
+                                  "6-domain ring"))
+        return
+    if len(result.propagation) != 1:
+        results.append(fail(name, "expected one propagation record"))
+        return
+    record = result.propagation[0]
+    distances = _convergence_distances(
+        topology_edges(TopologyShape.RING, 6), 6, 0,
+    )
+    expected_rounds = max(distances[index] for index in (0, 1, 4))
+    if record.predicted_rounds != expected_rounds:
+        results.append(fail(
+            name, "predicted rounds %d != the graph distance %d"
+                  % (record.predicted_rounds, expected_rounds),
+        ))
+        return
+    if record.observed_rounds != record.predicted_rounds:
+        results.append(fail(
+            name, "observed %d != predicted %d (fail-closed divergence)"
+                  % (record.observed_rounds, record.predicted_rounds),
+        ))
+        return
+    if record.confirmed_at_tick != record.issued_at_tick + expected_rounds:
+        results.append(fail(name, "the confirmation tick is not issue+rounds"))
+        return
+    states = [state for _, _, state in record.states]
+    if states[0] != "pending" or "propagated" not in states:
+        results.append(fail(name, "the propagation states skipped the "
+                                  "pending -> propagated discipline"))
+        return
+    if not states[-1] == "confirmed" or states.count("confirmed") != 3:
+        results.append(fail(
+            name, "every holder domain must hold the confirmed revocation "
+                  "(got %r)" % states,
+        ))
+        return
+    if not verify_convergence_replay(spec, result):
+        results.append(fail(name, "the replay is not byte-identical"))
+        return
+    summary = convergence_summary(result)
+    if (summary["citation_count"] != 6
+            or summary["revoked_citation_count"] != 3
+            or summary["run_digest"] != result.run_digest
+            or len(summary["ledger_digests"]) != 6):
+        results.append(fail(name, "the convergence summary drifted"))
+        return
+    results.append(ok(name, "6 admissions over real per-domain ledgers; "
+                            "revocation confirmed in %d topology-predicted "
+                            "rounds; byte-identical replay"
+                            % expected_rounds))
+
+
+def case_41_convergence_spec_validation(results: List[Result]) -> None:
+    """The convergence spec fails closed: out-of-world domains,
+    revocations without an origin admission, rate bursts beyond the
+    policy, plans beyond the horizon, malformed members."""
+    name = "case_41_convergence_spec_validation"
+    c1, _c2, _c3 = _convergence_citations()
+
+    def expect_spec_invalid(label: str, builder) -> bool:
+        try:
+            builder()
+        except ScaleError as error:
+            if error.reason == ScaleReasonCode.SPEC_INVALID:
+                return True
+            results.append(fail(
+                name, "%s: wrong reason %r" % (label, error.reason),
+            ))
+            return False
+        results.append(fail(name, "%s: the spec was accepted" % label))
+        return False
+
+    probes = (
+        ("domain outside the world", lambda: ConvergenceScenarioSpec(
+            scenario_id="bad", seed=1, start_instant=_CONV_T0,
+            tick_seconds=60, horizon_ticks=1, domain_count=6,
+            shape=TopologyShape.RING,
+            citations=(ConvergenceCitationPlan(
+                at_tick=0, domain_index=9, citation=c1),),
+        )),
+        ("revocation without admission", lambda: ConvergenceScenarioSpec(
+            scenario_id="bad", seed=1, start_instant=_CONV_T0,
+            tick_seconds=60, horizon_ticks=1, domain_count=6,
+            shape=TopologyShape.RING,
+            revocations=(ConvergenceRevocationPlan(
+                at_tick=0, domain_index=0, citation_id="m014:cite:sha256:"
+                "nope", reason="x"),),
+        )),
+        ("admission beyond the horizon", lambda: ConvergenceScenarioSpec(
+            scenario_id="bad", seed=1, start_instant=_CONV_T0,
+            tick_seconds=60, horizon_ticks=1, domain_count=6,
+            shape=TopologyShape.RING,
+            citations=(ConvergenceCitationPlan(
+                at_tick=5, domain_index=0, citation=c1),),
+        )),
+        ("negative seed", lambda: ConvergenceScenarioSpec(
+            scenario_id="bad", seed=-1, start_instant=_CONV_T0,
+            tick_seconds=60, horizon_ticks=1, domain_count=6,
+            shape=TopologyShape.RING,
+        )),
+        ("zero tick seconds", lambda: ConvergenceScenarioSpec(
+            scenario_id="bad", seed=1, start_instant=_CONV_T0,
+            tick_seconds=0, horizon_ticks=1, domain_count=6,
+            shape=TopologyShape.RING,
+        )),
+        ("zero rate limit", lambda: ConvergenceScenarioSpec(
+            scenario_id="bad", seed=1, start_instant=_CONV_T0,
+            tick_seconds=60, horizon_ticks=1, domain_count=6,
+            shape=TopologyShape.RING, citation_rate_limit=0,
+        )),
+        ("untyped citation plan", lambda: ConvergenceScenarioSpec(
+            scenario_id="bad", seed=1, start_instant=_CONV_T0,
+            tick_seconds=60, horizon_ticks=1, domain_count=6,
+            shape=TopologyShape.RING,
+            citations=(("not", "a", "plan"),),
+        )),
+    )
+    for label, builder in probes:
+        if not expect_spec_invalid(label, builder):
+            return
+    results.append(ok(name, "7 malformed convergence specs rejected "
+                            "spec-invalid (fail closed at validation time)"))
+
+
+def case_42_convergence_determinism(results: List[Result]) -> None:
+    """The convergence surface is deterministic and input-order
+    independent: the spec digest ignores plan input order; two runs
+    are byte-identical; the propagation vocabulary is frozen."""
+    name = "case_42_convergence_determinism"
+    spec = _convergence_spec()
+    if PROPAGATION_STATES != ("pending", "propagated", "confirmed"):
+        results.append(fail(name, "the propagation vocabulary drifted"))
+        return
+    reversed_spec = ConvergenceScenarioSpec(
+        scenario_id=spec.scenario_id, seed=spec.seed,
+        start_instant=spec.start_instant, tick_seconds=spec.tick_seconds,
+        horizon_ticks=spec.horizon_ticks, domain_count=spec.domain_count,
+        shape=spec.shape,
+        citations=tuple(reversed(spec.citations)),
+        revocations=tuple(reversed(spec.revocations)),
+        citation_rate_limit=spec.citation_rate_limit,
+    )
+    if reversed_spec.spec_digest() != spec.spec_digest():
+        results.append(fail(name, "the spec digest depends on input order"))
+        return
+    first = run_convergence_scenario(spec)
+    second = run_convergence_scenario(spec)
+    if first.run_digest != second.run_digest:
+        results.append(fail(name, "two identical runs diverged"))
+        return
+    reversed_result = run_convergence_scenario(reversed_spec)
+    if reversed_result.run_digest != first.run_digest:
+        results.append(fail(name, "input order changed the run"))
+        return
+    if not verify_convergence_replay(reversed_spec, reversed_result):
+        results.append(fail(name, "the reversed-order replay diverged"))
+        return
+    if first.spec_digest != spec.spec_digest():
+        results.append(fail(name, "the result does not carry the spec digest"))
+        return
+    results.append(ok(name, "spec digests and run digests are input-order "
+                            "independent and replay-stable"))
+
+
+def case_43_convergence_journal_honesty(results: List[Result]) -> None:
+    """The convergence journal is honest evidence only: every event
+    kind is a member of the FROZEN W039 taxonomy (reused, never
+    extended), the sequence is strictly increasing, the admission
+    observations carry the citation identity and authority, and the
+    propagation rounds are journaled explicitly."""
+    name = "case_43_convergence_journal_honesty"
+    result = run_convergence_scenario(_convergence_spec())
+    frozen_kinds = set(ScaleEventType.values())
+    kinds = {event.kind for event in result.journal}
+    unknown = kinds - frozen_kinds
+    if unknown:
+        results.append(fail(
+            name, "journal kinds outside the frozen taxonomy: %s"
+                  % sorted(unknown),
+        ))
+        return
+    sequences = [event.sequence for event in result.journal]
+    if sequences != sorted(sequences) or len(set(sequences)) != len(sequences):
+        results.append(fail(name, "the journal sequence is not strictly "
+                                  "increasing"))
+        return
+    started = [
+        event for event in result.journal
+        if event.kind == ScaleEventType.SCENARIO_STARTED
+    ]
+    if (len(started) != 1
+            or started[0].payload.get("converged") != "m014"
+            or started[0].payload.get("scenario_id") != "convergence-canonical"):
+        results.append(fail(name, "the convergence start marker drifted"))
+        return
+    admissions = [
+        event for event in result.journal
+        if event.kind == ScaleEventType.OBSERVATION
+        and event.payload.get("kind") == "convergence-citation-admitted"
+    ]
+    if len(admissions) != 6:
+        results.append(fail(name, "admission observations drifted: %d"
+                            % len(admissions)))
+        return
+    authorities = {event.payload.get("authority") for event in admissions}
+    if not authorities <= {"commercial", "vertical-proof"}:
+        results.append(fail(
+            name, "admission authorities outside the citation seams: %s"
+                  % sorted(str(item) for item in authorities),
+        ))
+        return
+    issued = [
+        event for event in result.journal
+        if event.kind == ScaleEventType.REVOCATION_ISSUED
+    ]
+    relayed = [
+        event for event in result.journal
+        if event.kind == ScaleEventType.REVOCATION_RELAYED
+    ]
+    propagated = [
+        event for event in result.journal
+        if event.kind == ScaleEventType.REVOCATION_PROPAGATED
+    ]
+    if (len(issued) != 1 or len(relayed) != 2 or len(propagated) != 1):
+        results.append(fail(
+            name, "the propagation rounds are not journaled explicitly "
+                  "(issued=%d relayed=%d propagated=%d)"
+                  % (len(issued), len(relayed), len(propagated)),
+        ))
+        return
+    if propagated[0].payload.get("predicted_rounds") != 2:
+        results.append(fail(name, "the predicted-rounds payload drifted"))
+        return
+    completed = [
+        event for event in result.journal
+        if event.kind == ScaleEventType.SCENARIO_COMPLETED
+    ]
+    if (len(completed) != 1
+            or completed[0].payload.get("citation_count") != 6
+            or completed[0].payload.get("revoked_citation_count") != 3):
+        results.append(fail(name, "the completion counts drifted"))
+        return
+    results.append(ok(name, "the frozen event taxonomy reused verbatim "
+                            "(never extended); admissions, relay rounds and "
+                            "the convergence verdict journaled explicitly"))
+
+
+def case_44_convergence_topology_rounds(results: List[Result]) -> None:
+    """The propagation round count is PREDICTED from the real topology
+    and the observation must match across shapes (ring vs hub-spoke vs
+    full-mesh vs cliques) — the fail-closed convergence bound."""
+    name = "case_44_convergence_topology_rounds"
+    for shape in (TopologyShape.RING, TopologyShape.HUB_SPOKE,
+                  TopologyShape.FULL_MESH, TopologyShape.CLIQUES):
+        spec = _convergence_spec(shape=shape)
+        result = run_convergence_scenario(spec)
+        record = result.propagation[0]
+        distances = _convergence_distances(
+            topology_edges(shape, 6), 6, 0,
+        )
+        expected = max(distances[index] for index in (0, 1, 4))
+        if record.predicted_rounds != expected:
+            results.append(fail(
+                name, "shape %s: predicted %d != graph distance %d"
+                      % (shape, record.predicted_rounds, expected),
+            ))
+            return
+        if record.observed_rounds != record.predicted_rounds:
+            results.append(fail(
+                name, "shape %s: observed %d diverged from predicted %d"
+                      % (shape, record.observed_rounds, record.predicted_rounds),
+            ))
+            return
+        if result.revoked_citation_count != 3:
+            results.append(fail(
+                name, "shape %s: the holder set drifted (%d revoked)"
+                      % (shape, result.revoked_citation_count),
+            ))
+            return
+        if len(result.ledger_digests) != 6:
+            results.append(fail(
+                name, "shape %s: the per-domain ledger digests drifted"
+                      % shape,
+            ))
+            return
+    ring = run_convergence_scenario(_convergence_spec(TopologyShape.RING))
+    mesh = run_convergence_scenario(_convergence_spec(TopologyShape.FULL_MESH))
+    if (ring.propagation[0].observed_rounds != 2
+            or mesh.propagation[0].observed_rounds != 1):
+        results.append(fail(
+            name, "the shape-dependent round counts are not the graph "
+                  "distances (ring=2, mesh=1)",
+        ))
+        return
+    results.append(ok(name, "ring=2, hub-spoke/full-mesh/cliques=1 rounds — "
+                            "always the topology distance to the farthest "
+                            "holder, observed == predicted"))
+
+
+def case_45_convergence_rate_envelope(results: List[Result]) -> None:
+    """The per-domain per-tick citation admission rate envelope: the
+    default limit is 8, a burst of exactly 8 admissions at one domain
+    and tick is admitted, and a 9th admission is a spec error at
+    validation time (never a runtime surprise)."""
+    name = "case_45_convergence_rate_envelope"
+    if DEFAULT_CITATION_RATE_LIMIT != 8:
+        results.append(fail(name, "the default citation rate limit drifted"))
+        return
+    burst = tuple(
+        ConvergenceCitationPlan(
+            at_tick=0, domain_index=0,
+            citation=cite_settlement_reference(
+                subject_ref="usage-ledger/burst-%d" % index,
+                canonical_payload=_convergence_canonical({"i": index}),
+                issuer="m014-scale-battery", cited_at=_CONV_T0,
+            ),
+        )
+        for index in range(8)
+    )
+    spec = ConvergenceScenarioSpec(
+        scenario_id="rate-envelope", seed=1, start_instant=_CONV_T0,
+        tick_seconds=60, horizon_ticks=2, domain_count=6,
+        shape=TopologyShape.RING, citations=burst,
+    )
+    result = run_convergence_scenario(spec)
+    if result.citation_count != 8:
+        results.append(fail(name, "the 8-admission burst was not admitted"))
+        return
+    ninth = burst + (
+        ConvergenceCitationPlan(
+            at_tick=0, domain_index=0,
+            citation=cite_settlement_reference(
+                subject_ref="usage-ledger/burst-8",
+                canonical_payload=_convergence_canonical({"i": 8}),
+                issuer="m014-scale-battery", cited_at=_CONV_T0,
+            ),
+        ),
+    )
+    try:
+        ConvergenceScenarioSpec(
+            scenario_id="rate-envelope-bad", seed=1, start_instant=_CONV_T0,
+            tick_seconds=60, horizon_ticks=2, domain_count=6,
+            shape=TopologyShape.RING, citations=ninth,
+        )
+        results.append(fail(
+            name, "a 9-admission burst at one domain+tick was accepted",
+        ))
+        return
+    except ScaleError as error:
+        if error.reason != ScaleReasonCode.SPEC_INVALID:
+            results.append(fail(
+                name, "wrong reason for the burst: %r" % error.reason,
+            ))
+            return
+    # an explicit tighter policy is enforced the same way (2 allowed,
+    # the 3rd admission at the same domain+tick is a spec error)
+    tight = tuple(
+        ConvergenceCitationPlan(
+            at_tick=0, domain_index=1,
+            citation=cite_settlement_reference(
+                subject_ref="usage-ledger/tight-%d" % index,
+                canonical_payload=_convergence_canonical({"t": index}),
+                issuer="m014-scale-battery", cited_at=_CONV_T0,
+            ),
+        )
+        for index in range(3)
+    )
+    try:
+        ConvergenceScenarioSpec(
+            scenario_id="tight-bad", seed=1, start_instant=_CONV_T0,
+            tick_seconds=60, horizon_ticks=2, domain_count=6,
+            shape=TopologyShape.RING, citations=tight, citation_rate_limit=2,
+        )
+        results.append(fail(
+            name, "the tighter policy did not reject the 3rd admission",
+        ))
+        return
+    except ScaleError:
+        pass
+    results.append(ok(name, "8-per-domain-per-tick default; exactly-8 "
+                            "admitted; the 9th and policy violations are "
+                            "spec errors at validation time"))
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 
@@ -2117,6 +2610,14 @@ def main() -> int:
         case_37_pr_delta_shape,
         case_38_ci_wiring_all_tools,
         case_39_relay_sabotage_fails_convergence,
+        # the M014 convergence evolution (disclosed): the new
+        # converged-scenario cases appended after the accepted 39
+        case_40_convergence_scenario,
+        case_41_convergence_spec_validation,
+        case_42_convergence_determinism,
+        case_43_convergence_journal_honesty,
+        case_44_convergence_topology_rounds,
+        case_45_convergence_rate_envelope,
     ):
         case(results)
     passed = sum(1 for _, ok_flag, _ in results if ok_flag)

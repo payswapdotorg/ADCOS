@@ -2239,7 +2239,11 @@ def case_62_w055_pr_delta_scope(results: List[Result]) -> None:
 def case_63_frozen_authorities_untouched(results: List[Result]) -> None:
     """61. the frozen authorities consumed by the suite are untouched
     by the delivery (protocol/, upgrade/, spec/ root, schemas; the
-    spec/architect package vs the owning ref)."""
+    spec/architect package vs the owning ref) — except frozen-root
+    paths covered by the ACTIVE repository-local authorization (the
+    M002 pattern-C amendment class: sanctioned successor work is
+    admitted and disclosed in the verdict line, never silently; every
+    uncovered path still fails closed)."""
     name = "case_63_frozen_authorities_untouched"
     frozen_roots = (
         "protocol/", "upgrade/", "spec/schemas/",
@@ -2249,6 +2253,7 @@ def case_63_frozen_authorities_untouched(results: List[Result]) -> None:
         "spec/dependency-graph.md",
     )
     problems: List[str] = []
+    authorized_successor: List[str] = []
     for root in frozen_roots:
         proc = subprocess.run(
             ["git", "diff", "--name-only", _FROZEN_AUTHORITY_BASELINE, "HEAD", "--",
@@ -2257,8 +2262,29 @@ def case_63_frozen_authorities_untouched(results: List[Result]) -> None:
         )
         if proc.returncode != 0:
             problems.append("diff failed for %s" % root)
-        elif proc.stdout.strip():
-            problems.append("frozen surface changed: %s" % proc.stdout.strip())
+            continue
+        changed = [l for l in proc.stdout.splitlines() if l.strip()]
+        if not changed:
+            continue
+        # authorization-aware frozen-authority consultation (the M002
+        # pattern-C amendment class, 1471781; the docs/M001-evidence.md
+        # §4 recorded duty): a frozen-root delta path covered by the
+        # ACTIVE repository-local authorization (the R7-CORE-001
+        # program child scopes per DEC-0101 — e.g. the M014 upgrade/
+        # harvest+harden charter scope) is sanctioned successor work,
+        # collected and disclosed in the verdict line below — never
+        # silently swallowed; every uncovered path still fails closed
+        # (fail-closed consultation: no active authorization covers
+        # nothing).
+        uncovered = [
+            path for path in changed
+            if not _active_authorization_covers(path)
+        ]
+        if uncovered:
+            problems.append(
+                "frozen surface changed: %s" % "\n".join(uncovered))
+        else:
+            authorized_successor.extend(changed)
     # The Architect package is compared against the owning ref: the PR
     # base when origin/main is available (CI merge context), else the
     # authorized baseline (local delivery context).
@@ -2283,9 +2309,11 @@ def case_63_frozen_authorities_untouched(results: List[Result]) -> None:
     results.append(ok(
         name,
         "protocol/, upgrade/, spec root documents, and spec/schemas/ are "
-        "byte-identical to the authorized baseline; spec/architect/ "
-        "differs only from its owning ref (%s), never from this delivery"
-        % architect_ref,
+        "byte-identical to the authorized baseline (authorized successor "
+        "surfaces admitted by the ACTIVE authorization: %s); "
+        "spec/architect/ differs only from its owning ref (%s), never "
+        "from this delivery"
+        % (", ".join(sorted(authorized_successor)) or "none", architect_ref),
     ))
 
 
