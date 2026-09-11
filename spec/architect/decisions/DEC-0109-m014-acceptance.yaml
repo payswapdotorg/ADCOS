@@ -1,0 +1,58 @@
+# DEC-0109 — M014 acceptance: Production Federation accepted; the R7 gate COMPLETES; R8 is unlocked not activated
+# Sole-Architect governance decision (per-child acceptance, DEC-0101 serialization point; the R7 gate completion review).
+decision_id: DEC-0109
+date: "2026-09-11"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M014
+authorization: R7-CORE-001
+
+review_basis: "Tech Lead review of the exact M014 delivery head 689035e3803e308f2bb89cd11bc373d897b77416 (PR #38, branch m014-federation, base 8516d50 — the live DEC-0108 governance head, correctly rooted at dispatch; ten append-only worker-authored commits, no rebase/force-push): the client battery (the DEC-0099 re-baseline) 24/24 PASS run 3x consecutively with byte-identical logs — the W048-era containment skip honestly replaced, W048's forbidden surfaces verified never restored (case_20 audits the frozen package cores byte-identical to origin/main; case_22's evidence-doc honesty gate satisfied by docs/M014-evidence.md landing in the same delivery); the scale battery 45/45 x3 (39 preserved + 6 convergence cases, the disclosed evolution); the conformance battery 63/63 at the repaired head — the disclosed case_63 frozen-authority repair verified as the M002 pattern-C / DEC-0111 / DEC-0107 precedent class (authorization-aware consultation, every uncovered path fails closed, protocol/ and the spec root documents unreachable by the amendment); the full workflow suite executed in exact CI order at the head (68 steps, 67 rc=0; the single non-zero = the documented legacy spec_check.py continue-on-error baseline); CI green end-to-end on the head (run 34602351992, both jobs); scope verified 9 files — the five NEW convergence surfaces (federation/convergence.py 2027, identity/convergence.py 896, upgrade/convergence.py 432, scale/convergence.py 692, client/convergence.py 944 lines — every accepted child authority consumed BY REFERENCE, no child reimplemented or weakened), tools/client_selftest.py (the re-baseline), tools/scale_selftest.py (+6 disclosed cases), tools/conformance_selftest.py (the disclosed repair inside the R7-CORE-001 tools/ scope entry), docs/M014-evidence.md NEW (520 lines); the governance gates 5/5 (current_spec_check, tech_lead_guard, architecture_drift_guard implementation-only 9 files, fresh_session_check, authorization_provenance 9/9 covered); LOCK-117 production hardening verified (rate limits, revocation, credential lifecycle, compatibility surfaces — deterministic, typed, fail-closed); LOCK-119 clean. The review is durably recorded in the PR #38 review timeline (review comment 5178999423); GitHub self-approval was unavailable (the single operator account owns both the PR and the review), so this decision is the authoritative acceptance record per repo convention. R7 GATE COMPLETION REVIEW (this decision): all THIRTEEN chain children verified accepted from repository evidence — M002 (DEC-0102, 0ffdf47), M003 (DEC-0103, 4090e03), M004 (DEC-0104, a52e1ee), M005 (DEC-0105, ccae488), M006 (DEC-0106, 1f9f509), M007 (DEC-0107, cc93bb4), M008 (DEC-0108, ce65c88), M009 (DEC-0109, c985b88), M010 (DEC-0110, d0d26d3), M011 (DEC-0111, c0f23c8), M012 (DEC-0112, 6e3d09f), M013 (DEC-0113, 8f4d58a2), M014 (this decision, 344cd64); the full battery suite green at the completed head; the convergence verified by reference across every child domain; the bounded R7-CORE-001 program authorization closes with this completion."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 38
+  branch: "m014-federation"
+  baseline_sha: 8516d5003ef0539e0ab89e6e1d752297e4249685
+  pr_head: 689035e3803e308f2bb89cd11bc373d897b77416
+  reviewed_sha: 689035e3803e308f2bb89cd11bc373d897b77416
+  merge_sha: 344cd64e8396c7e388e31a50635ddff16bb4ea14
+  merged_at: "2026-09-11T13:11:01Z"
+  ci_run: 34602351992
+  worker_session: "m014-federation (charter w25 — delivered through local subagent rounds 1-4 with session-interruption recovery; the append-only branch carries the full progress; the final suite verification completed at the Tech Lead station after the round-4 interruption, on the exact worker-authored head)"
+
+acceptance_effects:
+  current_child_advances: "M014 -> NONE: the R7 work_item_chain M002..M014 is COMPLETE (all thirteen children accepted); the R7-CORE-001 program authorization CLOSES with this acceptance (status accepted, authorized false — the M001-CORE-001 closure pattern)"
+  r7_gate_completion: "R7_UNIVERSAL_CONNECTIVITY_COMMERCE COMPLETE under this decision (completion_decision DEC-0109, completion_merge_sha 344cd64): the objective — heterogeneous connectivity resources normalized into programmable offers selected by intent, policy, evidence, availability, geography, quality, and price under the accepted Architecture 1.1 contract model — is delivered through the thirteen accepted children and their CI-wired batteries"
+  r8_unlock: "R8_RESILIENCE_MOBILITY_AND_SCALE becomes the next gate, UNLOCKED and NOT ACTIVATED (the DEC-0100 pattern: activation requires its own gate-specific Work Item contract, dependency overlay, evidence obligations, and repository-local implementation authorization)"
+  roadmap_version: "2.9 -> 2.10 (M014 COMPLETE; R7 COMPLETE)"
+  execution_mode: "implementing -> awaiting-architect-decisions (no active work item, no active authorization — the post-DEC-0100 halt pattern)"
+  ci_wiring: "The client battery DEC-0099 containment guard is RETIRED by this acceptance — the workflow step converts to a direct run (the payment/eligibility precedent at the M009 acceptance: guards convert at the acceptance that lands the re-baseline); the client battery runs green 24/24 at the completed head"
+  ledger: "M014 accepted-merged entry appended + LEDGER-RECON-027 (snapshot baseline ce65c88 -> the completion rider head d1a0adc — through the completion merge 344cd64 and the battery-reconciliation rider, the RECON-018 rider class)"
+
+verification_summary:
+  battery: "tools/client_selftest.py 24/24 x3 byte-identical (the DEC-0099 re-baseline); tools/scale_selftest.py 45/45 x3 (the disclosed evolution); tools/conformance_selftest.py 63/63 at the repaired head (the disclosed authorization-aware frozen-authority repair)"
+  full_suite: "68 workflow steps in exact CI order at the head — 67 rc=0; the single non-zero exit is the documented legacy spec_check.py compatibility audit baseline (continue-on-error: true)"
+  gates: "current_spec_check PASS; tech_lead_guard PASS; architecture_drift_guard PASS (implementation-only, 9 files); fresh_session_check PASS (pin ce65c88, origin/main 8516d50 beyond it per the standing governance-only range rule); authorization_provenance PASS (9/9 covered)"
+  ci: "run 34602351992 SUCCESS on the PR head (both jobs); the merge is a clean merge-commit of a branch rooted at the main head"
+  scope: "9 files: federation/convergence.py NEW 2027, identity/convergence.py NEW 896, upgrade/convergence.py NEW 432, scale/convergence.py NEW 692, client/convergence.py NEW 944, tools/client_selftest.py (re-baseline), tools/scale_selftest.py (+6 disclosed cases), tools/conformance_selftest.py (the disclosed repair), docs/M014-evidence.md NEW 520 — the charter boundary honored with the one disclosed repair inside the R7-CORE-001 tools/ scope entry"
+
+r7_gate_completion_review:
+  children_accepted: "13/13 — M002 (DEC-0102), M003 (DEC-0103), M004 (DEC-0104), M005 (DEC-0105), M006 (DEC-0106), M007 (DEC-0107), M008 (DEC-0108), M009 (DEC-0109), M010 (DEC-0110), M011 (DEC-0111), M012 (DEC-0112), M013 (DEC-0113), M014 (DEC-0109 this decision)"
+  convergence: "verified by reference: the M014 convergence surfaces cite every accepted child authority; no child weakened or reimplemented (client battery case_20 audits the frozen cores byte-identical)"
+  batteries: "the full suite green at the completed head under CI semantics; every child battery CI-wired at its acceptance"
+  authorization_closure: "R7-CORE-001 closes (the sole active implementation authorization rule preserved: zero active authorizations remain)"
+
+repairs_recorded:
+  - commit: "this acceptance commit (the DEC-0100 repairs-at-acceptance pattern)"
+    summary: "conformance case_63 frozen-authority mirror re-baselined 80292c2 -> 344cd64 (the R7-completed acceptance merge — the DEC-0100 battery-mirror-reconciliation class: the completed main is the new frozen normal; the authorization-aware consultation stays for future in-flight deliveries); client battery case_20 gains the post-acceptance empty-delta guard (the case_21 sibling pattern: no client/ delta vs origin/main at the completed state — the exact PR-delta shape check stays for in-flight delivery contexts)"
+    verified: "conformance 63/63 and client 24/24 at the exact DEC-0109 head under the push-event ref condition; the full suite re-run green"
+
+physical_obligations: "EVID-002..EVID-008 remain OPEN and untouched; SOFTWARE-class deterministic evaluation only; R4/W040 remains independently in-review and unaccepted"
+
+standing_rules:
+  w048: "accepted-not-restored; MUST NOT be restored implicitly or explicitly; the M014 client re-baseline never restored its surfaces (verified)"
+  architecture: "Architecture 1.1 remains the sole forward design source; R8 MUST be designed and implemented from the accepted Architecture 1.1 package only"
+  history: "No work-item history is rewritten; the M014 ledger entry is appended, never converted"

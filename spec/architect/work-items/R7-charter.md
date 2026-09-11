@@ -2,7 +2,7 @@
 
 **Gate-specific Work Item contract (DEC-0101 governance-compression class).**
 **Authorization: R7-CORE-001 (bounded R7 program authorization, DEC-0101). Baseline: `1e5c55f9916ff964d3bfc0761d04a8d5fd02c41b`.**
-**Status: ACTIVE — M002 accepted (DEC-0102, merge 0ffdf47); M003 accepted (DEC-0103, merge 4090e03); M013 accepted (DEC-0113, merge 8f4d58a2, chain-independent); child M004 in implementation; per-child acceptance mandatory.**
+**Status: COMPLETE (DEC-0109) — ALL THIRTEEN children accepted: M002 (DEC-0102, 0ffdf47), M003 (DEC-0103, 4090e03), M004 (DEC-0104, a52e1ee), M005 (DEC-0105, ccae488), M006 (DEC-0106, 1f9f509), M007 (DEC-0107, cc93bb4), M008 (DEC-0108, ce65c88), M009 (DEC-0109, c985b88), M010 (DEC-0110, d0d26d3), M011 (DEC-0111, c0f23c8), M012 (DEC-0112, 6e3d09f), M013 (DEC-0113, 8f4d58a2), M014 (DEC-0109, 344cd64 — the convergence child). The R7-CORE-001 program authorization is CLOSED with the gate completion.**
 
 ## Objective
 
@@ -150,7 +150,7 @@ registry — not a re-authorization ceremony.
 - **Acceptance:** technology-neutral contract/offers/assurance/usage semantics
   (LOCK-114); no network implementation objects in the API; no second domain model.
 
-### M014 — Production Federation
+### M014 — Production Federation — ACCEPTED (DEC-0109: PR #38 head 689035e, merge 344cd64 — the convergence child completing the R7 gate)
 
 - **Scope:** `federation/`, `scale/`, `upgrade/`, `identity/`, `client/` (harvest +
   harden; `tools/client_selftest.py` re-baseline per the DEC-0099 disclosure),

@@ -1,12 +1,12 @@
 # ADCOS implementation authorization record — R7 Universal Connectivity Commerce
 # (bounded R7 program authorization, the DEC-0101 governance-compression class).
 # Issued by DEC-0101; ONE active authorization for the whole M002-M014 tranche.
-# Per-child acceptance decisions (DEC-0102+) close each child; this authorization
-# closes when the R7 gate completes. Children closed so far: M002 (DEC-0102),
+# Per-child acceptance decisions (DEC-0102+) closed each child; this authorization
+# CLOSED with the R7 gate completion (DEC-0109). Children closed: M002 (DEC-0102),
 # M003 (DEC-0103), M013 (DEC-0113), M009 (DEC-0109), M010 (DEC-0110),
 # M011 (DEC-0111), M012 (DEC-0112), M004 (DEC-0104), M005 (DEC-0105),
-# M006 (DEC-0106), M007 (DEC-0107), M008 (DEC-0108 — the chain-child
-# pointer advanced M008 -> M014, the LAST chain child).
+# M006 (DEC-0106), M007 (DEC-0107), M008 (DEC-0108), M014 (DEC-0109 — the
+# convergence child; ALL THIRTEEN children accepted; the gate COMPLETED).
 work_item: R7
 child_work_items:
   - M002
@@ -22,15 +22,19 @@ child_work_items:
   - M012
   - M013
   - M014
-current_child_work_item: M014
-status: active
-authorized: true
+current_child_work_item: null
+status: accepted
+authorized: false
 type: implementation
 authorization_id: "R7-CORE-001"
 authorization_decision: DEC-0101
 scope_amendment_chain: []
 superseded_by: null
 supersession_decision: null
+acceptance_decision: DEC-0109
+acceptance_mode: "R7 gate completion (all thirteen children accepted; the program authorization closes with the gate)"
+accepted_delivery_sha: 689035e3803e308f2bb89cd11bc373d897b77416
+acceptance_merge_sha: 344cd64e8396c7e388e31a50635ddff16bb4ea14
 baseline_sha: 1e5c55f9916ff964d3bfc0761d04a8d5fd02c41b
 review_basis: "DEC-0101 activated R7 as a bounded program authorization from the DEC-0100 acceptance head 4168f73 plus the fresh-session reconciliation repair 1e5c55f (live main, push CI green run 34367311873). M001 is accepted (DEC-0100, merge 80292c2, ACR-014 ACCEPTED); Architecture 1.1 is the sole normative forward architecture; the 1.1 successor dependency model governs M002-M014. The gate-specific contract is the R7 charter (spec/architect/work-items/R7-charter.md); the dependency overlay is spec/architect/dependency-overlays/R7.yaml."
 dependencies:

@@ -119,24 +119,25 @@ def main() -> int:
         (worker_model, "maximum active descendant", "worker model must record the active descendant limit"),
         (resume, "Fresh-session guarantee", "resume protocol must define fresh-session sufficiency"),
         (resume, "M001 — Architecture 1.1 Freeze", "resume protocol must identify the 1.1 transition gate"),
+        (resume, "THE R7 GATE IS COMPLETE", "resume protocol must record the R7 gate completion (DEC-0109)"),
         (roadmap, "mandatory_forward_target: \"Architecture 1.1\"", "roadmap must declare 1.1 as mandatory forward target"),
-        (roadmap, "next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE", "roadmap must put R7 as the active gate"),
-        (roadmap, 'roadmap_version: "2.9"', "roadmap must be advanced to the post-M008-acceptance version 2.9"),
-        (roadmap, "program_state: R7_UNIVERSAL_CONNECTIVITY_COMMERCE_ACTIVE", "roadmap must record the R7-active program state"),
+        (roadmap, "next_gate: R8_RESILIENCE_MOBILITY_AND_SCALE", "roadmap must put R8 as the next gate after the R7 completion"),
+        (roadmap, 'roadmap_version: "2.10"', "roadmap must be advanced to the post-M014-acceptance/R7-completion version 2.10"),
+        (roadmap, "program_state: R8_UNLOCKED_NOT_ACTIVATED", "roadmap must record the R8-unlocked-not-activated program state"),
     ]
     for text, marker, message in required_markers:
         if marker.lower() not in text.lower():
             failures.append(message)
 
-    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "the sole active implementation authorization", "Architecture 1.0 is preserved historical evidence", "R7 — Universal Connectivity Commerce", "M002 — Connectivity Contract Core", "M003 — Offers and Provider Capability Exchange", "M013 — Developer Connectivity API", "M009 — Usage and Commercial Reconciliation", "M010 — Vertical Proof — ShareNet", "M011 — Vertical Proof — RoamLink", "M012 — Vertical Proof — COMOS", "M004 — Eligibility and Policy", "M005 — Evidence and Assurance", "M006 — Execution Plan", "M007 — Provider/Standard Adapters", "M008 — Replan and Failover", "M014 — Production Federation"]:
+    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "the sole active implementation authorization", "Architecture 1.0 is preserved historical evidence", "R7 — Universal Connectivity Commerce", "M002 — Connectivity Contract Core", "M003 — Offers and Provider Capability Exchange", "M013 — Developer Connectivity API", "M009 — Usage and Commercial Reconciliation", "M010 — Vertical Proof — ShareNet", "M011 — Vertical Proof — RoamLink", "M012 — Vertical Proof — COMOS", "M004 — Eligibility and Policy", "M005 — Evidence and Assurance", "M006 — Execution Plan", "M007 — Provider/Standard Adapters", "M008 — Replan and Failover", "M014 — Production Federation", "R7 — Universal Connectivity Commerce is COMPLETE", "R8 — Resilience, Mobility and Scale"]:
         if marker.lower() not in current.lower():
             failures.append(f"current-state.md missing R7-active checkpoint marker: {marker}")
 
-    for marker in ['roadmap_version: "2.9"', "program_state: R7_UNIVERSAL_CONNECTIVITY_COMMERCE_ACTIVE", "execution_mode: implementing", "active_work_item: M014", "active_authorization: R7-CORE-001", "next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE", "completion_decision: DEC-0100", "activation_decision: DEC-0101"]:
+    for marker in ['roadmap_version: "2.10"', "program_state: R8_UNLOCKED_NOT_ACTIVATED", "execution_mode: awaiting-architect-decisions", "active_work_item: null", "active_authorization: null", "next_gate: R8_RESILIENCE_MOBILITY_AND_SCALE", "completion_decision: DEC-0100", "activation_decision: DEC-0101", "completion_decision: DEC-0109", "completion_merge_sha: 344cd64e8396c7e388e31a50635ddff16bb4ea14"]:
         if marker not in roadmap:
             failures.append(f"roadmap.yaml missing current authoritative marker: {marker}")
 
-    for marker in ["mode: implementing", "active_work_item: M014", "active_authorization: R7-CORE-001", "current_child_work_item: M014", "program_authorization: R7-CORE-001", "R7-CORE-001"]:
+    for marker in ["mode: awaiting-architect-decisions", "active_work_item: null", "active_authorization: null", "current_child_work_item: null", "m014_acceptance_decision: DEC-0109", "R7-CORE-001"]:
         if marker not in execution:
             failures.append(f"execution-state.yaml missing R7-active marker: {marker}")
 

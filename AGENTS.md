@@ -67,8 +67,14 @@ ratified; the current child advances to M008). M008 — Replan and
 Failover is ACCEPTED (DEC-0108; head 8c7d685, merge ce65c88; the 38/38
 replan battery is CI-wired; the sessions/mobility/multipath harvest
 disclosed docstring-only with the one-way seam; the current child advances
-to M014 — the LAST chain child). M014 — Production Federation is the
-current child. Implementation proceeds only within the active authorization's declared
+to M014 — the LAST chain child). M014 — Production Federation is ACCEPTED
+(DEC-0109; head 689035e, merge 344cd64; the five convergence surfaces
+consuming every accepted child authority BY REFERENCE; the client battery
+DEC-0099 re-baseline 24/24 with W048 never restored; the scale battery
+evolved 45/45). THE R7 GATE IS COMPLETE — all thirteen children accepted;
+the R7-CORE-001 program authorization is CLOSED; R8 (Resilience, Mobility
+and Scale) is the next gate, UNLOCKED and NOT ACTIVATED; no implementation
+authorization is active. Implementation proceeds only within the active authorization's declared
 scope; each child work item is accepted only from repository evidence per the
 charter's acceptance rules.
 

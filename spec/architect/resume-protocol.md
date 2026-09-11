@@ -24,8 +24,8 @@ A brand-new Architect, Tech Lead, worker, or implementation agent must resume fr
 
 ## Current checkpoint
 
-The latest reconciled software baseline is the M008 acceptance merge
-`ce65c88fd5fe632613be1cedf3c8c1519990a825` (the M003 acceptance merge
+The latest reconciled software baseline is the M014 acceptance merge completing
+the R7 gate `344cd64e8396c7e388e31a50635ddff16bb4ea14` (the M003 acceptance merge
 `4090e03` and the M013 acceptance merge `8f4d58a2` precede it on main — the
 3-worker pipeline's first parallel delivery round — with the DEC-0103/DEC-0113
 acceptance record 9e16cb0 between them and the M009 branch point); the
@@ -78,9 +78,16 @@ convention.
   declared tie-breaking, the realization-state vocabulary; the sessions/
   mobility/ multipath harvest disclosed docstring-only with the one-way seam;
   the 38/38 battery CI-wired; the fifth chain-pointer move).** The current child
-  is **M014 — Production Federation** (federation/, scale/, upgrade/, identity/,
-  client/ harvest+harden per the R7 charter — the LAST chain child; after its
-  acceptance the R7 gate completion review closes the program).
+  is CLOSED. M014 — Production Federation is ACCEPTED (DEC-0109; head 689035e,
+  merge 344cd64; the five convergence surfaces consuming every accepted child
+  authority BY REFERENCE; the client battery DEC-0099 re-baseline 24/24 with
+  W048 never restored; the scale battery evolved 45/45) — THE R7 GATE IS COMPLETE
+  (all thirteen children M002-M014 accepted; the R7-CORE-001 program
+  authorization is CLOSED). R8 — Resilience, Mobility and Scale is the next gate,
+  UNLOCKED and NOT ACTIVATED: activation requires its own gate-specific Work
+  Item contract, dependency overlay, evidence obligations, and repository-local
+  implementation authorization (the DEC-0101 precedent); no implementation
+  authorization is active.
   Per-child acceptance decisions (DEC-0104 onward) are the serialization points.
 - R4/W040 remains an independent physical-validation track and is not replaced by the software roadmap.
 - W048 remains accepted-not-restored and MUST NOT be recreated, mocked, or substituted implicitly.

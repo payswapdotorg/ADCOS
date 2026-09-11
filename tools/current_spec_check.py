@@ -164,7 +164,7 @@ def main() -> int:
                 fail(errors, "dispatch-state.yaml cannot declare more than 9 active subagents")
 
     for marker in (
-        'roadmap_version: "2.9"',
+        'roadmap_version: "2.10"',
         'status: FROZEN_AUTHORITATIVE',
         'source_of_truth: repository_only',
         'mandatory_forward_target: "Architecture 1.1"',
@@ -175,15 +175,17 @@ def main() -> int:
         'completion_decision: DEC-0100',
         'completion_merge_sha: 80292c24502200f84d11491ed12e9cec5e5baf11',
         'id: R7_UNIVERSAL_CONNECTIVITY_COMMERCE',
-        'status: ACTIVE',
+        'status: COMPLETE',
+        'completion_decision: DEC-0109',
         'activation_decision: DEC-0101',
         'authorization: "R7-CORE-001"',
         'work_item_contract: "spec/architect/work-items/R7-charter.md"',
         'prerequisite: M001_ARCHITECTURE_1_1_FREEZE',
-        'program_state: R7_UNIVERSAL_CONNECTIVITY_COMMERCE_ACTIVE',
-        'active_work_item: M014',
-        'active_authorization: R7-CORE-001',
-        'next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE',
+        'program_state: R8_UNLOCKED_NOT_ACTIVATED',
+        'execution_mode: awaiting-architect-decisions',
+        'active_work_item: null',
+        'active_authorization: null',
+        'next_gate: R8_RESILIENCE_MOBILITY_AND_SCALE',
     ):
         if marker not in roadmap_text:
             fail(errors, f"roadmap.yaml missing mandatory post-acceptance marker: {marker}")
@@ -207,8 +209,8 @@ def main() -> int:
                 if execution.get("active_authorization") is not None:
                     fail(errors, "execution-state.yaml active_authorization must be null while halted awaiting architect decisions")
                 halted = execution.get("halted_reason")
-                if not isinstance(halted, str) or not halted or "R7" not in halted:
-                    fail(errors, "execution-state.yaml halted_reason must explain the R7 gate authorization requirement")
+                if not isinstance(halted, str) or not halted or "R8" not in halted:
+                    fail(errors, "execution-state.yaml halted_reason must explain the R8 gate authorization requirement")
             elif mode == "implementing":
                 # post-acceptance implementing state: exactly one active
                 # authorization file matching the declared work item — either
@@ -249,6 +251,8 @@ def main() -> int:
                     fail(errors, "M007 is accepted (DEC-0107); it can never return to the active implementing state")
                 if awi == "M008":
                     fail(errors, "M008 is accepted (DEC-0108); it can never return to the active implementing state")
+                if awi == "M014":
+                    fail(errors, "M014 is accepted (DEC-0109, completing the R7 gate); it can never return to the active implementing state")
                 if execution.get("halted_reason") is not None:
                     fail(errors, "execution-state.yaml halted_reason must be null while implementing")
                 auth_root = ROOT / "spec/architect/authorizations"
@@ -282,8 +286,8 @@ def main() -> int:
             else:
                 fail(errors, f"execution-state.yaml execution.mode must be awaiting-architect-decisions or implementing, got {mode!r}")
             decisions_text = "\n".join(str(x) for x in execution.get("next_required_decisions", []))
-            if "R7" not in decisions_text:
-                fail(errors, "execution-state.yaml does not identify R7 as the immediate next gate")
+            if "R8" not in decisions_text:
+                fail(errors, "execution-state.yaml does not identify R8 as the immediate next gate")
             if not isinstance(state.get("open_acrs"), list):
                 fail(errors, "execution-state.yaml open_acrs must be a list")
             if not isinstance(state.get("open_architectural_questions"), list):
@@ -308,6 +312,26 @@ def main() -> int:
                 fail(errors, "M001 authorization acceptance gate must record the exact accepted delivery head")
             if "acceptance_merge_sha: 80292c24502200f84d11491ed12e9cec5e5baf11" not in ma:
                 fail(errors, "M001 authorization acceptance gate must record the exact acceptance merge")
+
+        # R7 program-authorization closure invariants (independent of mode:
+        # fail closed against the pre-completion ACTIVE markers)
+        r7_auth = ROOT / "spec/architect/authorizations/R7.yaml"
+        if not r7_auth.is_file():
+            fail(errors, "R7-CORE-001 authorization file missing")
+        else:
+            ra = r7_auth.read_text(encoding="utf-8")
+            if not re.search(r"^status:\s*accepted\s*$", ra, re.MULTILINE):
+                fail(errors, "R7 authorization must be status accepted after the DEC-0109 gate completion")
+            if not re.search(r"^authorized:\s*false\s*$", ra, re.MULTILINE):
+                fail(errors, "R7 authorization must be authorized false after the DEC-0109 gate completion")
+            if "acceptance_decision: DEC-0109" not in ra:
+                fail(errors, "R7 authorization acceptance gate must record DEC-0109")
+            if "accepted_delivery_sha: 689035e3803e308f2bb89cd11bc373d897b77416" not in ra:
+                fail(errors, "R7 authorization acceptance gate must record the exact accepted delivery head")
+            if "acceptance_merge_sha: 344cd64e8396c7e388e31a50635ddff16bb4ea14" not in ra:
+                fail(errors, "R7 authorization acceptance gate must record the exact acceptance merge")
+            if "current_child_work_item: M014" in ra:
+                fail(errors, "R7 authorization current_child_work_item must be null after the gate completion")
 
     wi_dir = ROOT / "spec/architect/work-items"
     if not wi_dir.is_dir():
@@ -520,6 +544,18 @@ def main() -> int:
                     fail(errors, "execution-ledger.yaml M008 entry must record the exact acceptance merge SHA")
                 if m008_entry.get("reviewed_sha") != "8c7d685d5eacea66c71b1a8aa706bd05c809c78c":
                     fail(errors, "execution-ledger.yaml M008 entry must record the exact reviewed delivery head")
+            m014_entry = next((e for e in items if isinstance(e, dict) and e.get("work_item") == "M014"), None)
+            if not isinstance(m014_entry, dict):
+                fail(errors, "execution-ledger.yaml must contain the M014 acceptance entry")
+            else:
+                if m014_entry.get("lifecycle") != "accepted-merged":
+                    fail(errors, "execution-ledger.yaml M014 entry must be lifecycle accepted-merged")
+                if m014_entry.get("acceptance_decision") != "DEC-0109":
+                    fail(errors, "execution-ledger.yaml M014 entry must record acceptance decision DEC-0109")
+                if m014_entry.get("merge_sha") != "344cd64e8396c7e388e31a50635ddff16bb4ea14":
+                    fail(errors, "execution-ledger.yaml M014 entry must record the exact acceptance merge SHA")
+                if m014_entry.get("reviewed_sha") != "689035e3803e308f2bb89cd11bc373d897b77416":
+                    fail(errors, "execution-ledger.yaml M014 entry must record the exact reviewed delivery head")
             m009_entry = next((e for e in items if isinstance(e, dict) and e.get("work_item") == "M009"), None)
             if not isinstance(m009_entry, dict):
                 fail(errors, "execution-ledger.yaml must contain the M009 acceptance entry")

@@ -104,8 +104,14 @@ frozen-family repair ratified).**
 **M008 — Replan and Failover is ACCEPTED (DEC-0108; head 8c7d685, merge
 ce65c88; the 38/38 replan battery is CI-wired; the sessions/mobility/
 multipath harvest disclosed docstring-only with the one-way seam).**
-**M014 — Production Federation is the current child work item (the last
-chain child — its acceptance is followed by the R7 gate completion review).** Per-child
+**M014 — Production Federation is ACCEPTED (DEC-0109; head 689035e, merge
+344cd64; the five convergence surfaces consuming every accepted child
+authority BY REFERENCE; the client battery DEC-0099 re-baseline 24/24 with
+W048 never restored; the scale battery evolved 45/45).**
+**R7 — Universal Connectivity Commerce is COMPLETE (DEC-0109): all thirteen
+children M002–M014 accepted; the R7-CORE-001 program authorization is CLOSED.
+R8 — Resilience, Mobility and Scale is the next gate, UNLOCKED and NOT
+ACTIVATED; no implementation authorization is active.** Per-child
 acceptance (DEC-0104 onward) is
 mandatory and is the serialization point; the Tech Lead may decompose,
 dispatch, integrate and deliver within the authorized child scopes without
