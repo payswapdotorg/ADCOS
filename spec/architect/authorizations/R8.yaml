@@ -4,7 +4,8 @@
 # authorization for the whole M015-M019 tranche. Per-child acceptance decisions
 # (DEC-0115+) close each child; this authorization CLOSES with the R8 gate
 # completion (the convergence child M019 accepted and the completion review
-# recorded).
+# recorded). Children closed so far: M015 (DEC-0115 — the chain-child pointer
+# advanced M015 -> M016).
 work_item: R8
 child_work_items:
   - M015
@@ -12,7 +13,7 @@ child_work_items:
   - M017
   - M018
   - M019
-current_child_work_item: M015
+current_child_work_item: M016
 status: active
 authorized: true
 type: implementation
@@ -40,7 +41,8 @@ authority_outputs:
   - "The M015-M019 resilience hardening tranche delivered and accepted per child from repository evidence"
   - "The execution-runtime resilience, local-first/offline, disaster-recovery, credential-lifecycle, and convergence surfaces on the canonical 1.1 authority"
 scope:
-  # M015 — Execution Resilience Runtime (current child)
+  # M015 — Execution Resilience Runtime (ACCEPTED under DEC-0115: PR #39 head
+  # 95a65a5, merge d77a561 — the current-child pointer advances to M016)
   - "resilience/"
   - "docs/M015-evidence.md"
   # Shared battery surface: every current/future per-child battery and the
@@ -50,7 +52,7 @@ scope:
   # architecture_drift_guard, spec_check_selftest, tools/README.md) against
   # implementation-PR modification, so this prefix cannot reach them.
   - "tools/"
-  # M016 — Local-First and Offline Operation
+  # M016 — Local-First and Offline Operation (current child)
   - "localfirst/"
   - "docs/M016-evidence.md"
   # M017 — Disaster Recovery and State Reconciliation
@@ -62,6 +64,15 @@ scope:
   # M019 — Resilience Convergence and Scale Hardening (the convergence child;
   # resilience/ is the M015-owned shared prefix)
   - "docs/M019-evidence.md"
+  # [M015 ACCEPTED 2026-09-11 under DEC-0115: PR #39 head 95a65a5, merge d77a561;
+  #  the 36/36 resilience battery CI-wired (the DEC-0114 existence guard
+  #  activated by the delivery merge) and green at the accepted head; delivered
+  #  across two worker sessions on the append-only branch under the continuation
+  #  charter with two disclosed in-scope resilience/ defect fixes (559b803,
+  #  b27bda8), each its own append-only commit; the current-child pointer
+  #  ADVANCES M015 -> M016 — the FIRST R8 chain-child acceptance (the
+  #  authorization stays ACTIVE; M016's battery is CI-wired at the acceptance
+  #  with a pre-delivery existence guard, the DEC-0114 M015 wiring precedent)]
 authorization_rules:
   - "Implementation PRs must classify as implementation-only (tools/architecture_drift_guard.py) and be fully covered by this scope (tools/authorization_provenance.py, byte-identical authorization inheritance from main)."
   - "The baseline-range semantics of the bounded program authorization apply: the baseline 28b3150 may precede the PR branch point only through control-plane-only commits or commits covered by this authorization's own scope."

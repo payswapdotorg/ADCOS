@@ -1,0 +1,59 @@
+# DEC-0115 — M015 acceptance: Execution Resilience Runtime accepted; the current-child pointer advances M015 → M016
+# Sole-Architect governance decision (per-child acceptance, the DEC-0114 R8 serialization point; the FIRST R8 chain-child acceptance).
+decision_id: DEC-0115
+date: "2026-09-11"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M015
+authorization: R8-CORE-001
+
+review_basis: "Tech Lead review of the exact M015 delivery head 95a65a54076b1401ea8ca414faa49a383ee2eb5f (PR #39, branch m015-resilience, base b0145f1 — the live DEC-0114 R8-activation head, correctly rooted at dispatch; five append-only worker-authored commits, no rebase/force-push/amending, delivered across TWO worker sessions under the continuation charter — see continuation_disclosure): the resilience battery (tools/resilience_selftest.py, 36 deterministic offline seeded cases covering the charter's (a)-(j) acceptance matrix) 36/36 PASS run 3x consecutively with byte-identical logs at the exact head (2026-09-11T20:02-20:07Z); the full workflow suite executed in exact CI order at the head — ALL green with exactly the one documented non-zero exit (the legacy spec_check.py compatibility audit baseline, continue-on-error: true); CI green end-to-end on the exact delivery head (run 34641812859, both jobs) and on the merge commit (run 34643002311); scope verified 9 files — resilience/ x7 NEW (errors.py 107, model.py 1203, journal.py 346, runtime.py 739, handover.py 384, failover.py 334, __init__.py 160 lines — the execution-runtime resilience domain composing the accepted R7 authorities BY REFERENCE: contracts/, replan/, executionplans/, evidence/ consumed, never reimplemented/weakened/forked/bypassed; the legacy sessions/mobility/multipath reservoir un-imported and unmodified source material), tools/resilience_selftest.py NEW (3225 lines), docs/M015-evidence.md NEW (307-line SOFTWARE-class matrix) — every delta file covered by the R8-CORE-001 M015 scope entries; the governance gates 5/5 (current_spec_check, tech_lead_guard, architecture_drift_guard implementation-only 9 files, fresh_session_check with --actual-main-sha b0145f1, authorization_provenance); the structural invariants verified (LOCK-108 — verbatim constraint-set equality enforced through the consumed M008 gates with typed per-kind weakened-constraint rejection across the handover/failover transitions, 12 per-kind battery cases; LOCK-111 — deterministic declared recorded tie-breaking, input-order independence; the M008 realization-state vocabulary consumed additively, never redefined; LOCK-106 evidence typing; LOCK-117 opaque references; LOCK-118 provenance; LOCK-119 no wall-clock/randomness/network, AST-audited, secrets never echoed; one-way imports — no accepted authority imports resilience/); the two disclosed in-scope resilience/ defect fixes verified (559b803 the terminal typed-reason uniformity fix — the _require_not_terminal guard surfacing resilience-session-terminal uniformly before the lifecycle state gates; b27bda8 the failover plan-gate typed-reason discrimination fix — the consumed M006 plan-constraint-weakened code maps onto this surface's own resilience-constraint-weakened, deterministic detail preserved — each its own append-only commit, each exposed by a battery case, never a weakened case); the accepted sibling batteries at their accepted counts on this head. The review is durably recorded in the PR #39 review timeline (review comment 5183035516, COMMENTED state); GitHub self-approval was unavailable (the single operator account owns both the PR and the review), so this decision is the authoritative acceptance record per repo convention."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 39
+  branch: "m015-resilience"
+  baseline_sha: b0145f1feaf42b6dffdf3772aa4380ce71029a67
+  pr_head: 95a65a54076b1401ea8ca414faa49a383ee2eb5f
+  reviewed_sha: 95a65a54076b1401ea8ca414faa49a383ee2eb5f
+  merge_sha: d77a56197b0450ee04c61b356389cf8800aac288
+  merged_at: "2026-09-11T20:12:47Z"
+  ci_run: 34641812859
+  merge_ci_run: 34643002311
+  worker_session: "m015-resilience (charter the M015 continuation charter — delivered across TWO worker sessions on the append-only branch: milestone 1 by a prior session interrupted mid-delivery whose cloud pod outlived its tab and landed the package push at 8949002; milestone 2 by the continuation session dispatched under the continuation charter — verify milestone 1, deliver the battery + the evidence doc + the two disclosed defect fixes + the PR; no rebase, no force-push, no amending; the GLM-5.3 capacity peak destroyed 8+ sessions during the delivery window — the known destruction-cycle — and one zombie session was voided per the boot rules before the continuation dispatch)"
+
+continuation_disclosure:
+  milestone_1: "8949002 (2026-09-11T17:51:25Z, the prior worker session — its cloud sandbox survived the site-side tab destruction and pushed the complete resilience/ package, 7 files, 3273 lines, exactly as the git-delivery gold standard prescribes; the branch appeared on GitHub with no PR yet — battery and evidence doc missing)"
+  milestone_2: "559b803, b27bda8, 77b4aa9, 95a65a5 (2026-09-11T19:51-19:52Z, the continuation session under the continuation charter rewritten at the Tech Lead station: branch from the EXISTING m015-resilience HEAD 8949002, append-only, never re-root; verify milestone 1 end to end; deliver milestone 2 — the 36-case battery, the evidence record, the PR modeled on the M008/M014 precedent — plus the defect-fix clause scoped to resilience/ with each fix its own disclosed append-only commit, and the branch-advancement fallback making future destruction-cycle re-dispatches idempotent)"
+  capacity_context: "the GLM-5.3 capacity peak destroyed 8+ dispatched sessions during the M015 delivery window (the known destruction-cycle); the then-live session fe1ec859 showed the boot-rule #23 zombie signature (an empty assistant placeholder, zero server-side events, a pure-template sandbox) and was VOIDED with a registry void record before the continuation dispatch; the continuation-charter pattern recovered the delivery — the milestone-1 package was never lost (the append-only branch carried it), and nothing was rebased, force-pushed, or amended"
+
+acceptance_effects:
+  current_child_advances: "M015 -> M016 (the FIRST R8 chain-child acceptance — the first pointer move of the R8 tranche; M016 — Local-First and Offline Operation is the next child: localfirst/ NEW, tools/localfirst_selftest.py, docs/M016-evidence.md per the R8 charter; the R8-CORE-001 program authorization STAYS ACTIVE — it closes only with the R8 gate completion at the M019 acceptance, the DEC-0108 mid-chain precedent)"
+  roadmap_version: "2.11 -> 2.12 (M015 COMPLETE; the R8 gate stays ACTIVE with M016 the current child)"
+  authorization_state: "R8-CORE-001 stays ACTIVE (the bounded R8 program authorization; the current-child binding advances M015 -> M016 in R8.yaml)"
+  ci_wiring: "The M016 local-first battery is CI-wired by this acceptance with a pre-delivery existence guard (a visible skip until the authorized M016 delivery lands — the M002/contract precedent, exactly the M015 wiring DEC-0114 added; the guard message references the authorized M016 delivery R8-CORE-001 DEC-0115); the M015 resilience battery step (wired by DEC-0114, activated by the delivery merge) runs green 36/36 at the accepted head"
+  ledger: "M015 accepted-merged entry appended + LEDGER-RECON-029 (snapshot baseline 28b3150 -> the M015 acceptance merge d77a561 — through the DEC-0114 activation commit b0145f1 and the PR #39 delivery merge, the DEC-0109/DEC-0114 RECON semantics; this governance commit sits beyond the new pin per the standing reconciliation convention)"
+
+verification_summary:
+  battery: "tools/resilience_selftest.py 36/36 x3 consecutive runs with byte-identical logs at the exact delivery head 95a65a5 (2026-09-11T20:02-20:07Z); cross-PYTHONHASHSEED determinism verified in-battery (case_30/case_31)"
+  full_suite: "the full workflow suite in exact CI order at the head — ALL green with exactly the one documented non-zero exit: the legacy spec_check.py compatibility audit baseline (continue-on-error: true); every other battery at its accepted count (contract 54/54, offer 49/49, developerapi 56/56, usage 53/53, commercial 41/41, sharenet 33/33, roamlink 56/56, comos 33/33, assurance 97/97, executionplan 36/36, adapter 70/70, replan 38/38, payment 44/44, eligibility 46/46, policy 103/103, client 24/24, scale 45/45, conformance 63/63)"
+  gates: "current_spec_check PASS; tech_lead_guard PASS; architecture_drift_guard PASS (implementation-only, 9 files); fresh_session_check PASS (--actual-main-sha b0145f1 at review time); authorization_provenance PASS (9/9 covered)"
+  ci: "run 34641812859 SUCCESS on the exact delivery head 95a65a5; the merge-commit run 34643002311 SUCCESS on d77a561; the merge is a clean merge-commit of a branch rooted at the main head b0145f1"
+  scope: "9 files: resilience/ x7 NEW (errors.py 107, model.py 1203, journal.py 346, runtime.py 739, handover.py 384, failover.py 334, __init__.py 160), tools/resilience_selftest.py NEW (3225 lines, 36 cases), docs/M015-evidence.md NEW (307 lines) — the charter boundary honored exactly; the two disclosed defect fixes are in-scope resilience/ repairs, each its own append-only commit (559b803, b27bda8)"
+
+delivery_repairs_disclosed:
+  - commit: 559b8034ed83066d7ec4c166a221911bddc706e4
+    summary: "the terminal typed-reason uniformity fix (resilience/runtime.py): the delivered store surfaced resilience-session-terminal for terminal sessions on enter_degraded/fail/terminate but resilience-transition-illegal on activate/initiate_reconnect/complete_reconnect/fail_reconnect/recover_degraded (the operation-specific state gates masked terminality); the fix adds the _require_not_terminal guard at the top of the five masking lifecycle operations — exposed by the battery's terminal probes (case_03/case_21)"
+    verified: "in-scope resilience/ repair, its own append-only commit, disclosed in docs/M015-evidence.md §4 before acceptance; the battery green at the fixed head"
+  - commit: b27bda89e980a64548a9aa65b1d246977a3dc97a
+    summary: "the failover plan-gate typed-reason discrimination fix (resilience/failover.py): the delivered wrap mapped EVERY consumed M006 plan-gate failure onto resilience-constraint-mismatch, including the weakened-constraint rejection — while the vocabulary reserves resilience-constraint-weakened for exactly that class and the charter's acceptance criterion requires the typed weakened-constraint rejection across the failover transition; the fix discriminates the consumed plan-constraint-weakened code onto this surface's own resilience-constraint-weakened (deterministic detail preserved) — exposed by the per-kind forged-plan probes (case_08..case_19)"
+    verified: "in-scope resilience/ repair, its own append-only commit, disclosed in docs/M015-evidence.md §4 before acceptance; the battery green at the fixed head"
+
+physical_obligations: "EVID-002..EVID-008 remain OPEN and untouched; SOFTWARE-class deterministic evaluation only; R4/W040 remains independently in-review and unaccepted"
+
+standing_rules:
+  w048: "accepted-not-restored; MUST NOT be restored implicitly or explicitly"
+  architecture: "Architecture 1.1 remains the sole forward design source; the R8 charter by-reference consumption rule is an acceptance criterion at every remaining R8 child (no accepted authority reimplemented, weakened, forked, or bypassed)"
+  history: "No work-item history is rewritten; the M015 ledger entry is appended, never converted; the M008 docstring-only disclosures in sessions/, mobility/, multipath/ stay exactly as accepted"

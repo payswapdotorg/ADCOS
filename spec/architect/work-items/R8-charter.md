@@ -2,7 +2,7 @@
 
 **Gate-specific Work Item contract (DEC-0114 governance-compression class, the DEC-0101 precedent).**
 **Authorization: R8-CORE-001 (bounded R8 program authorization, DEC-0114). Baseline: `28b31500a928f2f75582bfb79039e315187d72b2`.**
-**Status: ACTIVE — the R8 implementation tranche M015-M019 is open; M015 — Execution Resilience Runtime is the current child.**
+**Status: ACTIVE — the R8 implementation tranche M015-M019 is open; M015 — Execution Resilience Runtime is ACCEPTED (DEC-0115; head 95a65a5, merge d77a561 — the current-child pointer advances to M016); M016 — Local-First and Offline Operation is the current child.**
 
 ## Objective
 
@@ -85,7 +85,7 @@ Scope prefixes outside the declared list require a lightweight charter
 **scope-amendment decision** recorded in the decisions registry — not a
 re-authorization ceremony.
 
-### M015 — Execution Resilience Runtime (current child)
+### M015 — Execution Resilience Runtime — ACCEPTED (DEC-0115: PR #39 head 95a65a5, merge d77a561 — the current-child pointer advances to M016)
 
 - **Scope:** `resilience/` (NEW — the execution-runtime resilience domain),
   `tools/resilience_selftest.py` (NEW battery), `docs/M015-evidence.md`, plus
@@ -109,7 +109,7 @@ re-authorization ceremony.
   `resilience/` may import the accepted authorities; no accepted authority
   imports `resilience/`.
 
-### M016 — Local-First and Offline Operation
+### M016 — Local-First and Offline Operation (current child)
 
 - **Scope:** `localfirst/` (NEW), `tools/localfirst_selftest.py` (NEW battery),
   `docs/M016-evidence.md`.

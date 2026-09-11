@@ -168,7 +168,7 @@ def main() -> int:
                 fail(errors, "dispatch-state.yaml cannot declare more than 9 active subagents")
 
     for marker in (
-        'roadmap_version: "2.11"',
+        'roadmap_version: "2.12"',
         'status: FROZEN_AUTHORITATIVE',
         'source_of_truth: repository_only',
         'mandatory_forward_target: "Architecture 1.1"',
@@ -195,7 +195,7 @@ def main() -> int:
         'work_item_chain: [M015, M016, M017, M018, M019]',
         'program_state: R8_RESILIENCE_MOBILITY_AND_SCALE_ACTIVE',
         'execution_mode: implementing',
-        'active_work_item: M015',
+        'active_work_item: M016',
         'active_authorization: R8-CORE-001',
         'next_gate: R9_FUTURE_ACCESS_TECHNOLOGY',
     ):
@@ -265,6 +265,8 @@ def main() -> int:
                     fail(errors, "M008 is accepted (DEC-0108); it can never return to the active implementing state")
                 if awi == "M014":
                     fail(errors, "M014 is accepted (DEC-0109, completing the R7 gate); it can never return to the active implementing state")
+                if awi == "M015":
+                    fail(errors, "M015 is accepted (DEC-0115, the first R8 chain-child acceptance); it can never return to the active implementing state")
                 if execution.get("halted_reason") is not None:
                     fail(errors, "execution-state.yaml halted_reason must be null while implementing")
                 auth_root = ROOT / "spec/architect/authorizations"
@@ -360,8 +362,8 @@ def main() -> int:
                 fail(errors, "R8 authorization must record the DEC-0114 issuance decision")
             if "baseline_sha: 28b31500a928f2f75582bfb79039e315187d72b2" not in r8a:
                 fail(errors, "R8 authorization must record the exact activation baseline (the DEC-0109 head)")
-            if "current_child_work_item: M015" not in r8a:
-                fail(errors, "R8 authorization must bind M015 as the current child work item")
+            if "current_child_work_item: M016" not in r8a:
+                fail(errors, "R8 authorization must bind M016 as the current child work item after the DEC-0115 M015 acceptance")
             for child in ("M015", "M016", "M017", "M018", "M019"):
                 if f"  - {child}" not in r8a:
                     fail(errors, f"R8 authorization child_work_items must declare {child}")
@@ -589,6 +591,18 @@ def main() -> int:
                     fail(errors, "execution-ledger.yaml M014 entry must record the exact acceptance merge SHA")
                 if m014_entry.get("reviewed_sha") != "689035e3803e308f2bb89cd11bc373d897b77416":
                     fail(errors, "execution-ledger.yaml M014 entry must record the exact reviewed delivery head")
+            m015_entry = next((e for e in items if isinstance(e, dict) and e.get("work_item") == "M015"), None)
+            if not isinstance(m015_entry, dict):
+                fail(errors, "execution-ledger.yaml must contain the M015 acceptance entry")
+            else:
+                if m015_entry.get("lifecycle") != "accepted-merged":
+                    fail(errors, "execution-ledger.yaml M015 entry must be lifecycle accepted-merged")
+                if m015_entry.get("acceptance_decision") != "DEC-0115":
+                    fail(errors, "execution-ledger.yaml M015 entry must record acceptance decision DEC-0115")
+                if m015_entry.get("merge_sha") != "d77a56197b0450ee04c61b356389cf8800aac288":
+                    fail(errors, "execution-ledger.yaml M015 entry must record the exact acceptance merge SHA")
+                if m015_entry.get("reviewed_sha") != "95a65a54076b1401ea8ca414faa49a383ee2eb5f":
+                    fail(errors, "execution-ledger.yaml M015 entry must record the exact reviewed delivery head")
             m009_entry = next((e for e in items if isinstance(e, dict) and e.get("work_item") == "M009"), None)
             if not isinstance(m009_entry, dict):
                 fail(errors, "execution-ledger.yaml must contain the M009 acceptance entry")
