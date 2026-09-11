@@ -255,12 +255,24 @@ def orchestrate_failover(
     # the consumed M006 LOCK-108 gate (BY REFERENCE): the plan must
     # preserve the contract's hard constraints verbatim before any of
     # its alternatives may be read (double verification — the kernel
-    # re-validates the candidates regardless)
+    # re-validates the candidates regardless).  The consumed gate's
+    # typed weakened-constraint rejection (plan-constraint-weakened)
+    # surfaces as this surface's OWN typed weakened-constraint reason
+    # (the vocabulary's own semantics for a handover/failover candidate
+    # that drops, relaxes or re-interprets a hard contract constraint);
+    # every other plan-gate failure (fingerprint mismatch, attribution,
+    # offer binding, window) surfaces as the constraint-mismatch wrap.
     try:
         _consumed_verify_plan(plan, contract)
     except Exception as error:  # ExecutionPlanError (ValueError subclass)
+        consumed_code = getattr(error, "code", "")
+        reason = (
+            ResilienceReason.CONSTRAINT_WEAKENED
+            if consumed_code == "plan-constraint-weakened"
+            else ResilienceReason.CONSTRAINT_MISMATCH
+        )
         raise ResilienceError(
-            ResilienceReason.CONSTRAINT_MISMATCH,
+            reason,
             "the execution plan failed the consumed M006 LOCK-108 gate: %s"
             % getattr(error, "detail", error),
         ) from None
