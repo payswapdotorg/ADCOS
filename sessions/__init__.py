@@ -24,6 +24,18 @@ A session references the accepted WORK-011 route decision; it never
 recomputes, repairs, or silently replaces the route. Route changes are
 explicit reconnect lifecycle events that record old and new route
 references.
+
+Harvest disclosure (R7 charter M008 scope: ``sessions/`` (harvest)):
+this WORK-012 session lifecycle discipline — the explicit reconnect
+events recording old AND new route references, never a silent
+replacement — is harvested onto the Architecture 1.1 authority as the
+execution-state surface the M008 replan engine operates over, THROUGH
+``replan/execution_state.py`` (consumed by reference, one-way: the
+frozen public API above is preserved verbatim for every existing
+consumer, and this package never imports ``replan/``; the authority
+rules of this module are preserved and mechanically enforced on the
+replan side — a reconnect event missing either side of the route
+change fails closed there as ``replan-silent-replacement``).
 """
 
 from __future__ import annotations

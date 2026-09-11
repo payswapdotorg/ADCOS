@@ -34,6 +34,17 @@ preserves the existing ``session_id`` (a handover is a state transition
 on an existing session through the WORK-012 reconnect contract and the
 WORK-013 multipath contract, never the creation of a replacement
 session).
+
+Harvest disclosure (R7 charter M008 scope: ``mobility/`` (harvest)):
+this WORK-014 handover model is harvested onto the Architecture 1.1
+authority as one of the alternative models the M008 replan engine
+selects among, THROUGH ``replan/execution_state.py`` (the open
+PREPARED handover transactions are read by reference, one-way: the
+frozen public API above is preserved verbatim for every existing
+consumer, and this package never imports ``replan/``; the authority
+boundaries of this module are preserved — the replan side never
+prepares, commits or cancels a handover itself, it only selects among
+the alternatives this store carries).
 """
 
 from __future__ import annotations
