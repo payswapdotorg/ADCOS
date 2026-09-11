@@ -23,8 +23,9 @@ DEC-0099 disclosure), `tools/scale_selftest.py`, `docs/M014-evidence.md`.
 Every harvest seam is a **NEW `convergence.py` module inside the package**;
 the frozen package cores are preserved byte-identical (the delta touches no
 frozen file — verified by `git diff --name-only origin/main HEAD`, exactly
-eight paths: the five NEW convergence modules, the two batteries, and this
-record).
+nine paths: the five NEW convergence modules, the two batteries, the one
+disclosed conformance frozen-authority consultation repair (§7 judgment
+call 7), and this record).
 
 - **`federation/convergence.py` (NEW, 2027 lines)** — the convergence
   child's provider-domain surface: the WORK-015 federation package
@@ -418,6 +419,33 @@ no randomness, no UUIDs, no network; no real sockets; no secrets stored
    enforcement claims.** A `rate-limited` denial fails closed typed at
    the admission point; the surfaces make no QoS or policing claim
    (that would be physical-world evidence — out of scope, §8).
+7. **One disclosed stale-checker repair outside the charter's
+   implementation scope: `tools/conformance_selftest.py` case_63**
+   (the conformance frozen-authority mirror). Root cause: case_63
+   asserts `protocol/`, `upgrade/`, the spec root documents and
+   `spec/schemas/` are byte-identical to the W055-era frozen-authority
+   baseline `80292c2` — a hardcoded historical scope that predates the
+   R7 program and cannot see the M014 charter's authorized
+   `upgrade/` harvest+harden scope; the delivery's
+   `upgrade/convergence.py` therefore tripped it exactly like the M002
+   delivery tripped the same battery's case_62/case_45 (the recorded
+   stale-checker class). The repair follows the M002 1471781
+   precedent (pattern C, the docs/M001-evidence.md §4 recorded duty:
+   "resolution is assigned to authorization-aware battery scope
+   consultation in the post-M001 implementation era"): a frozen-root
+   delta path covered by the ACTIVE repository-local authorization is
+   admitted and DISCLOSED in the verdict line; every uncovered path
+   still fails closed, and the truly frozen surfaces stay frozen
+   (`protocol/`, the spec root documents and `spec/schemas/` are in no
+   R7 scope entry — verified: `authorization_provenance.covers`
+   returns False for them). The battery file is inside the R7-CORE-001
+   authorization's declared shared battery surface (the `tools/`
+   prefix, whose CONTROL_FILES carve-out protects the governance
+   checkers — `conformance_selftest.py` is not one), and the repair
+   weakens no invariant: the fail-closed consultation, the uncovered
+   fail, and the frozen-authority baseline are all preserved; the
+   amendment is disclosed here, in the commit message, and in the PR
+   body for the sole-Architect review.
 
 ## 8. Out-of-scope discipline (nothing else changed)
 
@@ -425,15 +453,19 @@ The M014 delta contains only: `federation/convergence.py`,
 `identity/convergence.py`, `upgrade/convergence.py`,
 `scale/convergence.py`, `client/convergence.py` (all NEW),
 `tools/client_selftest.py` (the DEC-0099 re-baseline),
-`tools/scale_selftest.py` (the disclosed evolution), and
-`docs/M014-evidence.md` (this record). No control-plane surface, no
+`tools/scale_selftest.py` (the disclosed evolution),
+`tools/conformance_selftest.py` (the ONE disclosed stale-checker
+consultation repair — §7 judgment call 7, the M002 1471781 precedent
+class), and `docs/M014-evidence.md` (this record). No control-plane surface, no
 `spec/` file, no `.github/` file, no protocol schema, and no frozen-core
 modification in any of the five packages (all consumed by reference
 only — verified in the batteries' frozen-core, one-way-harvest and
 PR-delta cases). The drift guard classifies the delta
 implementation-only; the provenance gate verifies full coverage by
-R7-CORE-001 (all eight delta paths are declared M014 scope entries in
-the active authorization).
+R7-CORE-001 (all nine delta paths are declared scope entries — the
+five package prefixes, the two batteries, and this record in the M014
+charter scope; the conformance repair under the authorization's shared
+battery-surface `tools/` entry, outside the CONTROL_FILES carve-out).
 
 ## 9. Evidence classes (honest disclosure)
 
@@ -461,8 +493,9 @@ the active authorization).
 
 - Branch: `m014-federation` from the baseline `8516d50` (the
   DEC-0108-accepted M008 state); append-only delivery history (the
-  five convergence-surface commits, the two battery commits, and this
-  evidence-record commit).
+  five convergence-surface commits, the two battery commits, the
+  evidence-record commit, and the disclosed conformance consultation
+  repair with its evidence addendum).
 - Batteries on the delivery head: `python3 tools/client_selftest.py` →
   PASS (24/24) ×3 byte-identical; `python3 tools/scale_selftest.py` →
   PASS (45/45) ×3 byte-identical (the case_10 wall-clock text
@@ -479,7 +512,8 @@ the active authorization).
   convention).
 - Frozen sibling batteries at this head (re-run green at their accepted
   counts in the full suite): federation 52/52, identity 19/19, upgrade
-  41/41 — plus the accepted counts recorded for every other battery in
+  41/41, conformance 63/63 (with the §7 judgment call 7 consultation
+  repair) — plus the accepted counts recorded for every other battery in
   the PR verification comment (contract, offer, assurance,
   executionplan, adapter, replan, payment, eligibility, session,
   mobility, multipath, sharenet, roamlink, comos, and the rest of the
