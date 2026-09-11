@@ -1,0 +1,36 @@
+# ADCOS gate-specific dependency overlay — R8 / Resilience, Mobility and Scale
+# Governed by DEC-0114 (the R8 activation and governance-compression decision,
+# the DEC-0101 precedent class). Representation only; no new runtime authority.
+version: 1
+status: active
+gate: R8_RESILIENCE_MOBILITY_AND_SCALE
+charter: "spec/architect/work-items/R8-charter.md"
+authorization: "R8-CORE-001"
+architecture_version: "1.1"
+protocol_version: "1.0"
+baseline_sha: "28b31500a928f2f75582bfb79039e315187d72b2"
+
+hard_dependencies:
+  - R7
+
+dependency_model: "the M015 -> M016 -> M017 -> M019 chain with M018 chain-independent from the accepted R7 state; M019 converges M015+M016+M017+M018; R7 (COMPLETE under DEC-0109, all thirteen children) is the sole hard dependency"
+
+forbidden_dependencies:
+  - WORK-048
+
+rules:
+  - "R7 must remain COMPLETE (DEC-0109) for the whole tranche; it is the sole hard dependency (every accepted R7 child authority is a composition substrate consumed BY REFERENCE)."
+  - "Per-M-item acceptance is mandatory before any dependent M-item may be accepted; dependency advancement never precedes acceptance (the acceptance gate, not a pre-implementation gate, is the serialization point)."
+  - "M018 is chain-independent: it branches from the accepted R7 state (the M014 identity/federation surfaces) and may be accepted in any order relative to M015-M017 (the M013 precedent class); M016 requires M015; M017 requires M015 and M016; M019 requires M015+M016+M017+M018."
+  - "Downstream preparation may proceed in parallel (the worker pipeline), but downstream acceptance is blocked until its declared dependencies are accepted; no false downstream acceptance."
+  - "WORK-048 is accepted-not-restored and must not be restored implicitly or explicitly under any child scope."
+  - "WORK-040 remains independent physical evidence and is not a software prerequisite for any M-item."
+  - "EVID-002..EVID-008 remain open physical obligations, unaffected by R8 software evidence."
+  - "Architecture 1.0 is not a forward design source; the migration classification matrix governs how legacy material is harvested (Session/Multipath/Mobility RETAIN; Transport/Routing/Topology DEMOTE)."
+  - "Provider-specific implementations stay behind adapter boundaries; provider SDK types never enter the core."
+  - "Protocol Version 1.0 wire semantics are frozen; any protocol semantic change requires the ACR/change-control process."
+
+execution_order:
+  prerequisite: "R7 COMPLETE under DEC-0109 (merge 344cd64 completing the chain, acceptance head 28b3150)"
+  active_child: "M015 — Execution Resilience Runtime"
+  successor_chain: "M016 -> M017 (worker A, the resilience chain); M018 chain-independent (worker B); M019 converges M015+M016+M017+M018 last (worker C preparation)"

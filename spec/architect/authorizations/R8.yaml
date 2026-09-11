@@ -1,0 +1,74 @@
+# ADCOS implementation authorization record — R8 Resilience, Mobility and Scale
+# (bounded R8 program authorization, the DEC-0114 governance-compression class —
+# the DEC-0101/R7-CORE-001 precedent). Issued by DEC-0114; ONE active
+# authorization for the whole M015-M019 tranche. Per-child acceptance decisions
+# (DEC-0115+) close each child; this authorization CLOSES with the R8 gate
+# completion (the convergence child M019 accepted and the completion review
+# recorded).
+work_item: R8
+child_work_items:
+  - M015
+  - M016
+  - M017
+  - M018
+  - M019
+current_child_work_item: M015
+status: active
+authorized: true
+type: implementation
+authorization_id: "R8-CORE-001"
+authorization_decision: DEC-0114
+scope_amendment_chain: []
+superseded_by: null
+supersession_decision: null
+acceptance_decision: null
+acceptance_mode: null
+accepted_delivery_sha: null
+acceptance_merge_sha: null
+baseline_sha: 28b31500a928f2f75582bfb79039e315187d72b2
+review_basis: "DEC-0114 activated R8 as a bounded program authorization from the DEC-0109 R7-completion head 28b3150 (live main, push CI green run 34606619436). R7 is COMPLETE (DEC-0109: all thirteen children M002-M014 accepted; the R7-CORE-001 program authorization closed); Architecture 1.1 is the sole normative forward architecture; the accepted R7 child authorities are the composition substrate consumed BY REFERENCE. The gate-specific contract is the R8 charter (spec/architect/work-items/R8-charter.md); the dependency overlay is spec/architect/dependency-overlays/R8.yaml."
+dependencies:
+  - R7
+authority_inputs:
+  - "spec/mission.md (permanent Mission Authority)"
+  - "Architecture 1.1 FROZEN (spec/architecture.md, spec/architecture-lock.md, LOCK-101..LOCK-120, ACR-014/DEC-0100)"
+  - "The accepted R7 delivery state (DEC-0102..DEC-0109/DEC-0113: contracts/, offers/, eligibility/, policy/, evidence/, assurance/, executionplans/, adapters/, replan/, usage/, commercial/, allocation/, payment/, sharenet/, roamlink/, comos/, developerapi/, federation/, identity/, upgrade/, scale/, client/ and their batteries)"
+  - "spec/migration/classification-matrix.md (the migration policy for harvesting legacy material: Session/Multipath/Mobility RETAIN; Transport/Routing/Topology DEMOTE)"
+  - "spec/architect/work-items/R8-charter.md (the gate contract: child scopes, acceptance criteria, the by-reference consumption rule, evidence/worker/migration policies)"
+  - "spec/architect/dependency-overlays/R8.yaml (the gate overlay)"
+authority_outputs:
+  - "The M015-M019 resilience hardening tranche delivered and accepted per child from repository evidence"
+  - "The execution-runtime resilience, local-first/offline, disaster-recovery, credential-lifecycle, and convergence surfaces on the canonical 1.1 authority"
+scope:
+  # M015 — Execution Resilience Runtime (current child)
+  - "resilience/"
+  - "docs/M015-evidence.md"
+  # Shared battery surface: every current/future per-child battery and the
+  # authorization-aware battery-scope consultation repairs. The drift guard's
+  # CONTROL_FILES independently freeze the governance checkers (spec_check,
+  # current_spec_check, fresh_session_check, tech_lead_guard,
+  # architecture_drift_guard, spec_check_selftest, tools/README.md) against
+  # implementation-PR modification, so this prefix cannot reach them.
+  - "tools/"
+  # M016 — Local-First and Offline Operation
+  - "localfirst/"
+  - "docs/M016-evidence.md"
+  # M017 — Disaster Recovery and State Reconciliation
+  - "recovery/"
+  - "docs/M017-evidence.md"
+  # M018 — Credential and Key Lifecycle Operations
+  - "credentials/"
+  - "docs/M018-evidence.md"
+  # M019 — Resilience Convergence and Scale Hardening (the convergence child;
+  # resilience/ is the M015-owned shared prefix)
+  - "docs/M019-evidence.md"
+authorization_rules:
+  - "Implementation PRs must classify as implementation-only (tools/architecture_drift_guard.py) and be fully covered by this scope (tools/authorization_provenance.py, byte-identical authorization inheritance from main)."
+  - "The baseline-range semantics of the bounded program authorization apply: the baseline 28b3150 may precede the PR branch point only through control-plane-only commits or commits covered by this authorization's own scope."
+  - "Per-child acceptance is mandatory (one durable decision per child: DEC-0115+); acceptance is the sole serialization point."
+  - "The by-reference consumption rule (R8 charter) is an acceptance criterion: no accepted authority reimplemented, weakened, forked, or bypassed."
+  - "Scope prefixes outside the declared list require a lightweight charter scope-amendment decision recorded in the decisions registry."
+  - "This authorization closes only with the R8 gate completion (the M019 acceptance and the completion review, the DEC-0109/R7 precedent)."
+acceptance_criteria:
+  - "Per child: the deterministic battery green on the exact reviewed head (x3 byte-identical, the standing determinism bar), the full existing battery suite green, the evidence doc (docs/M01x-evidence.md) verification matrix + lock-conformance mapping + disclosed deviations, implementation-only delta fully scope-covered, and the sole Architect's durable acceptance decision recording the exact reviewed head + merge SHA."
+  - "M019 additionally requires the convergence review: every R8 child authority consumed by reference, the end-to-end fault-injection drill green, and the gate completion recorded (roadmap R8 COMPLETE, the authorization closed)."

@@ -73,8 +73,12 @@ consuming every accepted child authority BY REFERENCE; the client battery
 DEC-0099 re-baseline 24/24 with W048 never restored; the scale battery
 evolved 45/45). THE R7 GATE IS COMPLETE — all thirteen children accepted;
 the R7-CORE-001 program authorization is CLOSED; R8 (Resilience, Mobility
-and Scale) is the next gate, UNLOCKED and NOT ACTIVATED; no implementation
-authorization is active. Implementation proceeds only within the active authorization's declared
+and Scale) is ACTIVE under DEC-0114: the bounded R8 program authorization
+R8-CORE-001 (spec/architect/authorizations/R8.yaml, baseline 28b3150, the R8
+charter at spec/architect/work-items/R8-charter.md) covers the child scopes
+M015-M019 with M015 — Execution Resilience Runtime the current child and
+per-child acceptance decisions (DEC-0115+) mandatory; every accepted R7
+authority is consumed BY REFERENCE (the R8 charter consumption rule). Implementation proceeds only within the active authorization's declared
 scope; each child work item is accepted only from repository evidence per the
 charter's acceptance rules.
 

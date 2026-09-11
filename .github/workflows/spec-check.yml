@@ -369,6 +369,20 @@ jobs:
           fi
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
 
+      # M015 — Execution Resilience Runtime battery (R8-CORE-001, DEC-0114).
+      # Pre-delivery existence guard: the battery lands with the authorized
+      # M015 delivery; until then the step skips visibly (never silently) and
+      # activates automatically on the delivery merge. The M002/contract
+      # precedent (DEC-0101 wiring).
+      - name: Run execution resilience runtime tests
+        run: |
+          if [ -f tools/resilience_selftest.py ]; then
+            python3 tools/resilience_selftest.py
+          else
+            echo "SKIP (pre-delivery, disclosed): tools/resilience_selftest.py lands with the authorized M015 delivery (R8-CORE-001, DEC-0114)"
+          fi
+        continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
+
       # M014 acceptance wiring (DEC-0109): the client battery DEC-0099
       # containment guard is RETIRED — the honest convergence re-baseline
       # (24/24) landed with the accepted M014 delivery; the step converts

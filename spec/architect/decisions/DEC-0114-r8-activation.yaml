@@ -1,0 +1,52 @@
+# DEC-0114 — R8 activation and governance compression: one bounded program
+# authorization for the M015-M019 resilience hardening tranche
+# Sole-Architect governance decision, single-agent mode (Architect + Tech Lead).
+# Durable activation record; per-child acceptance decisions follow (DEC-0115+).
+# The DEC-0101 precedent class: governance compression for the R8 gate.
+decision_id: DEC-0114
+date: "2026-09-11"
+type: governance
+status: ACCEPTED
+owner: "Architect"
+work_item: R8
+authorization: R8-CORE-001
+
+review_basis: "Live main 28b31500a928f2f75582bfb79039e315187d72b2 (the DEC-0109 acceptance commit completing the R7 gate, push CI green run 34606619436; preceded by the M014 completion rider d1a0adc reconciling the acceptance-station batteries), the R7 completion chain (DEC-0109: M014 accepted at head 689035e merged 344cd64, ALL THIRTEEN children accepted, the R7-CORE-001 program authorization CLOSED), the frozen Architecture 1.1 package (spec/architecture.md, LOCK-101..LOCK-120), spec/architect/roadmap.yaml v2.10 R8 gate (UNLOCKED, prerequisite R7 satisfied by DEC-0109), the migration classification matrix (Session/Multipath/Mobility RETAIN execution capabilities; Transport/Routing/Topology DEMOTE), the governance-autonomy Architect advancement mandate (every unlocked gate advances autonomously; user confirmation is not a governance dependency), the standing authority-uniqueness invariant (at most one active implementation authorization), and local verification of current_spec_check, tech_lead_guard, architecture_drift_guard and fresh_session_check on the pre-decision head."
+
+decision: ACCEPTED
+
+evidence:
+  - "R7 is COMPLETE under DEC-0109 (roadmap v2.10: all thirteen chain children M002-M014 accepted and merged; the R7-CORE-001 program authorization closed with status accepted / authorized false; live main push CI green at 28b3150 run 34606619436; 0 open PRs; all delivery branches present)."
+  - "All four current-governance gates re-run locally on the pre-decision head 28b3150: current_spec_check PASS, tech_lead_guard PASS, architecture_drift_guard PASS (governance-only: 0 files), fresh_session_check PASS (the standing reconciliation convention — the d1a0adc snapshot reconciles to live main through the governance-only DEC-0109 range)."
+  - "The R8 activation predicates of roadmap v2.10 are satisfied by this decision: the gate-specific Work Item contract (the R8 charter, spec/architect/work-items/R8-charter.md), the dependency overlay (spec/architect/dependency-overlays/R8.yaml), the evidence policy (charter + authorization evidence classes), and the repository-local implementation authorization (R8-CORE-001, this decision)."
+  - "The R8 children are gate-specific execution units under the governance-autonomy Post-snapshot rule: durable contract (this charter), explicit dependencies against accepted history (the overlay), exact authorization before implementation (R8-CORE-001), explicit acyclic overlay, no frozen architecture or protocol semantic changed implicitly, no historical record rewritten; the frozen 1.1 successor registry (M001-M014) is untouched."
+
+findings:
+  - "R8 is UNLOCKED with its R7 prerequisite satisfied by DEC-0109, but no gate-specific contract, overlay, or authorization existed — the repository sat at the post-gate-completion halt point (the post-M001-acceptance halt pattern): activation of the next gate is the Architect's sanctioned autonomous advancement, and the operator's standing directive to complete the entire roadmap aligns."
+  - "The R8 objective decomposes into five coherent hardening surfaces with a clean dependency topology: the execution-runtime resilience (M015), local-first/offline operation (M016), disaster recovery and reconciliation (M017), credential lifecycle operations (M018, chain-independent), and the convergence drill (M019) — the M014 by-reference consumption discipline carries over unchanged."
+  - "The per-work-item pre-implementation ceremony chain would add five more governance events before the tranche could proceed, while per-item ACCEPTANCE already provides the serialization point that actually protects the architecture — the DEC-0101 compression finding reproduces exactly."
+  - "The repository's resilience-relevant legacy reservoir (sessions/ 2737 lines with the WORK-012 explicit-reconnect discipline, mobility/ 2167, multipath/ 1590, edge/ 2982, appliance/ 2510 — all RETAIN/DEMOTE-classified) is harvest material for the R8 child scopes per the frozen matrix; the accepted M008 replan/ kernel (LOCK-108/LOCK-111, the realization-state vocabulary) and the accepted M014 convergence surfaces (federation/identity/upgrade/scale/client hardening) are the composition substrate."
+
+blockers: []
+required_corrections: []
+
+accepted_scope:
+  - "R8 — Resilience, Mobility and Scale is ACTIVATED as the current program gate: roadmap 2.10 -> 2.11 records R8 ACTIVE with program state R8_RESILIENCE_MOBILITY_AND_SCALE_ACTIVE, active work item M015, active authorization R8-CORE-001, next gate R9_FUTURE_ACCESS_TECHNOLOGY."
+  - "The R8 implementation charter (spec/architect/work-items/R8-charter.md) is the gate-specific Work Item contract: mission objective, the by-reference consumption rule, architectural invariants (LOCK-101..LOCK-120), child work-item scopes and acceptance criteria (M015-M019), dependency model, evidence policy, migration policy, 3-worker concurrency policy, acceptance rules, and the R8 out-of-scope boundary (no R9 surface, no control plane, no physical evidence conversion)."
+  - "R8-CORE-001 is issued as the sole active implementation authorization (baseline 28b3150): a bounded R8 program authorization whose scope is the union of the charter child scopes (resilience/, localfirst/, recovery/, credentials/, the five evidence docs) plus the shared battery surface (tools/); per-child acceptance remains mandatory; at most one authorization stays active."
+  - "The Tech Lead is empowered to decompose, dispatch (within the 3x3/9/depth-2 machine-checked dispatch limits), branch, integrate, test, verify and deliver implementation PRs against the authorized child scopes without further pre-implementation authorization ceremonies; scope amendments outside the declared prefixes are lightweight decisions recorded in the registry."
+  - "Stale state projections are repaired: README.md and AGENTS.md next-gate projections, current-state.md R8-active projection, resume-protocol.md checkpoint, roadmap.yaml current_state, and the R8 battery CI wiring (the M015 resilience battery step with a pre-delivery existence guard, the M002/contract precedent)."
+  - "The current-governance checkers evolve in lockstep to validate the R8-active state and fail closed against the pre-activation markers (synchronized updates, the DEC-0098/DEC-0101 pattern): v2.11 markers, the R8 gate ACTIVE invariants, the halted-state R9 requirements for the post-R8 halt, and the required-file additions (R8.yaml authorization, R8 charter, R8 overlay, this decision)."
+
+rejected_scope:
+  - "This decision does not accept any child work item; M015-M019 acceptance happens per child from repository evidence (DEC-0115 onward)."
+  - "This decision does not weaken any invariant: locks stay frozen, control-plane mixing stays forbidden, provenance stays fail-closed, per-item acceptance stays mandatory, and the one-active-authorization invariant is preserved (the program authorization is singular; R7-CORE-001 is closed)."
+  - "No R9 activation, no WORK-048 restoration, no W040/EVID-007/EVID-008 disturbance, no protocol semantic change, no mission change, no frozen registry (spec/work-items.md) modification."
+  - "No legacy implementation is reclassified as 1.1-complete by this decision; the migration matrix continues to govern harvesting; the M008 docstring-only disclosures in sessions/mobility/multipath are untouched."
+
+downstream_effect:
+  - "Exactly one implementation authorization (R8-CORE-001) is active; R7-CORE-001, M001-CORE-001 and all W-item authorizations remain closed."
+  - "Implementation PRs under R8-CORE-001 must classify as implementation-only (drift guard) and be fully scope-covered (ARCH-08 provenance, byte-identical authorization inheritance from main; the program-era baseline-range semantics apply — the authorization baseline 28b3150 precedes the branch point only through governance-only commits)."
+  - "Acceptance of each child (starting with M015 -> DEC-0115) records the exact reviewed head and merge SHA, closes that child, advances the dependency chain, and reconciles execution-state/roadmap/ledger."
+  - "Once M015 is accepted, the Tech Lead exploits the worker pipeline (A: M016 -> M017 from the accepted M015; B: M018 chain-independent; C: M019 preparation) within the charter's dependency and authority boundaries."
+  - "The M015 resilience battery is CI-wired with a pre-delivery existence guard (visible skip until the delivery lands, the M002 contract-battery precedent); each subsequent child battery is wired at its acceptance."

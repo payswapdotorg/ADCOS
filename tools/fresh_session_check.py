@@ -80,13 +80,17 @@ def main() -> int:
         "spec/architect/execution-ledger.yaml",
         "spec/architect/work-items/M001.md",
         "spec/architect/work-items/R7-charter.md",
+        "spec/architect/work-items/R8-charter.md",
         "spec/architect/dependency-overlays/R7.yaml",
+        "spec/architect/dependency-overlays/R8.yaml",
         "spec/architect/authorizations/M001.yaml",
         "spec/architect/authorizations/R7.yaml",
+        "spec/architect/authorizations/R8.yaml",
         "spec/architect/decisions/DEC-0098-m001-activation.yaml",
         "spec/architect/decisions/DEC-0099-m001-battery-reconciliation.yaml",
         "spec/architect/decisions/DEC-0100-m001-acceptance.yaml",
         "spec/architect/decisions/DEC-0101-r7-activation.yaml",
+        "spec/architect/decisions/DEC-0114-r8-activation.yaml",
         "spec/acr/ACR-014-architecture-1.1-freeze.md",
         "spec/history/README.md",
         "spec/history/architecture-1.0.md",
@@ -120,26 +124,27 @@ def main() -> int:
         (resume, "Fresh-session guarantee", "resume protocol must define fresh-session sufficiency"),
         (resume, "M001 — Architecture 1.1 Freeze", "resume protocol must identify the 1.1 transition gate"),
         (resume, "THE R7 GATE IS COMPLETE", "resume protocol must record the R7 gate completion (DEC-0109)"),
+        (resume, "R8 — Resilience, Mobility and Scale is ACTIVE", "resume protocol must record the R8 gate activation (DEC-0114)"),
         (roadmap, "mandatory_forward_target: \"Architecture 1.1\"", "roadmap must declare 1.1 as mandatory forward target"),
-        (roadmap, "next_gate: R8_RESILIENCE_MOBILITY_AND_SCALE", "roadmap must put R8 as the next gate after the R7 completion"),
-        (roadmap, 'roadmap_version: "2.10"', "roadmap must be advanced to the post-M014-acceptance/R7-completion version 2.10"),
-        (roadmap, "program_state: R8_UNLOCKED_NOT_ACTIVATED", "roadmap must record the R8-unlocked-not-activated program state"),
+        (roadmap, "next_gate: R9_FUTURE_ACCESS_TECHNOLOGY", "roadmap must put R9 as the next gate after the R8 activation"),
+        (roadmap, 'roadmap_version: "2.11"', "roadmap must be advanced to the post-R8-activation version 2.11"),
+        (roadmap, "program_state: R8_RESILIENCE_MOBILITY_AND_SCALE_ACTIVE", "roadmap must record the R8-active program state"),
     ]
     for text, marker, message in required_markers:
         if marker.lower() not in text.lower():
             failures.append(message)
 
-    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "the sole active implementation authorization", "Architecture 1.0 is preserved historical evidence", "R7 — Universal Connectivity Commerce", "M002 — Connectivity Contract Core", "M003 — Offers and Provider Capability Exchange", "M013 — Developer Connectivity API", "M009 — Usage and Commercial Reconciliation", "M010 — Vertical Proof — ShareNet", "M011 — Vertical Proof — RoamLink", "M012 — Vertical Proof — COMOS", "M004 — Eligibility and Policy", "M005 — Evidence and Assurance", "M006 — Execution Plan", "M007 — Provider/Standard Adapters", "M008 — Replan and Failover", "M014 — Production Federation", "R7 — Universal Connectivity Commerce is COMPLETE", "R8 — Resilience, Mobility and Scale"]:
+    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "the sole active implementation authorization", "Architecture 1.0 is preserved historical evidence", "R7 — Universal Connectivity Commerce", "M002 — Connectivity Contract Core", "M003 — Offers and Provider Capability Exchange", "M013 — Developer Connectivity API", "M009 — Usage and Commercial Reconciliation", "M010 — Vertical Proof — ShareNet", "M011 — Vertical Proof — RoamLink", "M012 — Vertical Proof — COMOS", "M004 — Eligibility and Policy", "M005 — Evidence and Assurance", "M006 — Execution Plan", "M007 — Provider/Standard Adapters", "M008 — Replan and Failover", "M014 — Production Federation", "R7 — Universal Connectivity Commerce is COMPLETE", "R8 — Resilience, Mobility and Scale", "M015 — Execution Resilience Runtime", "M016 — Local-First and Offline Operation", "M017 — Disaster Recovery and State Reconciliation", "M018 — Credential and Key Lifecycle Operations", "M019 — Resilience Convergence and Scale Hardening"]:
         if marker.lower() not in current.lower():
-            failures.append(f"current-state.md missing R7-active checkpoint marker: {marker}")
+            failures.append(f"current-state.md missing current checkpoint marker: {marker}")
 
-    for marker in ['roadmap_version: "2.10"', "program_state: R8_UNLOCKED_NOT_ACTIVATED", "execution_mode: awaiting-architect-decisions", "active_work_item: null", "active_authorization: null", "next_gate: R8_RESILIENCE_MOBILITY_AND_SCALE", "completion_decision: DEC-0100", "activation_decision: DEC-0101", "completion_decision: DEC-0109", "completion_merge_sha: 344cd64e8396c7e388e31a50635ddff16bb4ea14"]:
+    for marker in ['roadmap_version: "2.11"', "program_state: R8_RESILIENCE_MOBILITY_AND_SCALE_ACTIVE", "execution_mode: implementing", "active_work_item: M015", "active_authorization: R8-CORE-001", "next_gate: R9_FUTURE_ACCESS_TECHNOLOGY", "completion_decision: DEC-0100", "activation_decision: DEC-0101", "completion_decision: DEC-0109", "completion_merge_sha: 344cd64e8396c7e388e31a50635ddff16bb4ea14", "activation_decision: DEC-0114", "authorization: \"R8-CORE-001\""]:
         if marker not in roadmap:
             failures.append(f"roadmap.yaml missing current authoritative marker: {marker}")
 
-    for marker in ["mode: awaiting-architect-decisions", "active_work_item: null", "active_authorization: null", "current_child_work_item: null", "m014_acceptance_decision: DEC-0109", "R7-CORE-001"]:
+    for marker in ["mode: implementing", "active_work_item: M015", "active_authorization: R8-CORE-001", "current_child_work_item: M015", "r8_activation_decision: DEC-0114", "R8-CORE-001"]:
         if marker not in execution:
-            failures.append(f"execution-state.yaml missing R7-active marker: {marker}")
+            failures.append(f"execution-state.yaml missing R8-active marker: {marker}")
 
     proposal = ROOT / "spec/architecture-1.1-proposed.md"
     if proposal.exists() and "mandatory forward implementation target" not in agents.lower():

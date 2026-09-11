@@ -110,9 +110,15 @@ authority BY REFERENCE; the client battery DEC-0099 re-baseline 24/24 with
 W048 never restored; the scale battery evolved 45/45).**
 **R7 — Universal Connectivity Commerce is COMPLETE (DEC-0109): all thirteen
 children M002–M014 accepted; the R7-CORE-001 program authorization is CLOSED.
-R8 — Resilience, Mobility and Scale is the next gate, UNLOCKED and NOT
-ACTIVATED; no implementation authorization is active.** Per-child
-acceptance (DEC-0104 onward) is
+R8 — Resilience, Mobility and Scale is ACTIVE (DEC-0114): the bounded R8 program
+authorization R8-CORE-001 (baseline 28b3150, the R8 charter at
+spec/architect/work-items/R8-charter.md) covers the child scopes M015–M019 —
+M015 Execution Resilience Runtime the current child; M016 Local-First and
+Offline Operation; M017 Disaster Recovery and State Reconciliation; M018
+Credential and Key Lifecycle Operations (chain-independent); M019 Resilience
+Convergence and Scale Hardening the convergence child. Every accepted R7
+authority is consumed BY REFERENCE per the R8 charter consumption rule.**
+Per-child acceptance (DEC-0115 onward) is
 mandatory and is the serialization point; the Tech Lead may decompose,
 dispatch, integrate and deliver within the authorized child scopes without
 further pre-implementation authorization ceremonies.
