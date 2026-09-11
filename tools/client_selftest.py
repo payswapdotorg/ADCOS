@@ -58,6 +58,23 @@ round-trips, tamper evidence, LOCK-119 discipline, PYTHONHASHSEED
 cross-process determinism, the frozen-core byte-identity audit,
 and the PR-delta authorization coverage.
 
+The M014 HARDEN MAP (the M009 payment+eligibility multi-domain
+battery precedent): this battery additionally carries the
+behavioral verification of the OTHER M014 convergence surfaces —
+the identity harden map (case_23: principal authorization bindings
+citing a REAL contract's own canonical bytes, the typed
+authorization gate, the append-only revocation registry, the
+authorization-attestation lift into the REAL M005 evidence space,
+the deterministic credential-rotation discipline over the WORK-004
+lifecycle vocabulary) and the upgrade harden map (case_24: the
+frozen converged-domain set, the MAJOR.MINOR additive-evolution
+verdicts with NO fallback on major mismatch, the capability-id
+consultation through the REAL accepted registry, and the
+deterministic compatibility negotiation with byte-stable
+digests).  The federation and scale surfaces are exercised by
+cases 01-16 above and by the evolved scale battery
+(``tools/scale_selftest.py`` 45/45) respectively.
+
 Deterministic, offline, seeded: injected instants only (no wall
 clock, no randomness, no UUIDs, no network, no secrets —
 LOCK-119); content-derived ids over canonical JSON; sorted
@@ -174,6 +191,31 @@ from client.convergence import (  # noqa: E402
     consent_scope_from_declared,
     converged_client_citations,
 )
+from identity.convergence import (  # noqa: E402
+    AUTHORIZATION_VERDICTS,
+    CREDENTIAL_VERDICTS,
+    IDENTITY_CONVERGENCE_PREFIX,
+    AuthorizationRegistry,
+    CredentialLifecyclePolicy,
+    CredentialLifecycleState,
+    IdentityConvergenceError,
+    IdentityConvergenceReasonCode,
+    authorization_attestation,
+    authorization_revocation,
+    build_principal_authorization,
+    check_principal_authorization,
+    evaluate_credential_lifecycle,
+    enforce_active_credential_bound,
+)
+from upgrade.convergence import (  # noqa: E402
+    CONVERGED_DOMAIN_SET,
+    DOMAIN_COMPATIBILITY_VERDICTS,
+    DomainVersion,
+    classify_domain_compatibility,
+    capability_compatibility,
+    negotiate_converged_compatibility,
+)
+from upgrade.errors import UpgradeError, UpgradeReasonCode  # noqa: E402
 
 Result = Tuple[str, bool, str]
 
@@ -2084,6 +2126,333 @@ def case_22_evidence_honesty() -> Result:
 
 
 # ---------------------------------------------------------------------------
+# 23: the identity harden map (M014) — principal authorization, the
+# revocation registry, the evidence lift, credential rotation
+# ---------------------------------------------------------------------------
+
+
+def case_23_identity_harden_map() -> Result:
+    name = "case_23_identity_harden_map"
+    built = _build()
+    world, cid = built.world, built.cid
+    contract = world.store.contract(cid)
+    if AUTHORIZATION_VERDICTS != (
+        "authorized", "node-mismatch", "contract-mismatch",
+        "not-yet-valid", "expired", "revoked",
+    ):
+        return fail(name, "the authorization verdict vocabulary drifted")
+    if CREDENTIAL_VERDICTS != (
+        "ok", "rotation-due", "rotation-overdue", "expired", "revoked",
+        "not-active", "too-many-active",
+    ):
+        return fail(name, "the credential verdict vocabulary drifted")
+    if IDENTITY_CONVERGENCE_PREFIX != "m014-identity":
+        return fail(name, "the identity convergence prefix drifted")
+    # the principal authorization binding cites the REAL contract
+    authorization = build_principal_authorization(
+        node_id=PROVIDER, principal_kind="APPLICATION", principal_ref=BUYER,
+        contract=contract, valid_from=T0, valid_until=T_END,
+    )
+    if (authorization.contract_id != cid
+            or authorization.contract_digest != _sha256_hex(
+                contract.canonical_bytes())
+            or authorization.principal_kind != "APPLICATION"):
+        return fail(name, "the binding does not cite the real contract's "
+                          "OWN canonical bytes (LOCK-101/118)")
+    verdicts = {
+        "authorized": check_principal_authorization(
+            authorization, node_id=PROVIDER, contract_id=cid,
+            at_instant=T1H),
+        "node-mismatch": check_principal_authorization(
+            authorization, node_id="adcos:node:identity.sha256-hmac-dev.v1:"
+            + "2" * 64, contract_id=cid, at_instant=T1H),
+        "contract-mismatch": check_principal_authorization(
+            authorization, node_id=PROVIDER,
+            contract_id="sha256:" + "3" * 64, at_instant=T1H),
+        "not-yet-valid": check_principal_authorization(
+            authorization, node_id=PROVIDER, contract_id=cid,
+            at_instant=CREATE_AT),
+        "expired": check_principal_authorization(
+            authorization, node_id=PROVIDER, contract_id=cid,
+            at_instant="2027-03-01T00:00:00Z"),
+        "revoked": check_principal_authorization(
+            authorization, node_id=PROVIDER, contract_id=cid,
+            at_instant=T1H, revoked=True),
+    }
+    for label, verdict in verdicts.items():
+        if verdict != label:
+            return fail(name, "gate verdict for %r is %r" % (label, verdict))
+    # a valid identity is never authorization by itself (LOCK-022):
+    # the binding is explicit, windowed and revocable
+    bad_kind = expect_typed(
+        name + "/bad-kind", IdentityConvergenceError,
+        IdentityConvergenceReasonCode.VOCABULARY,
+        lambda: build_principal_authorization(
+            node_id=PROVIDER, principal_kind="TENANT", principal_ref=BUYER,
+            contract=contract, valid_from=T0, valid_until=T_END,
+        ),
+    )
+    if not bad_kind[1]:
+        return bad_kind
+    bad_node = expect_typed(
+        name + "/bad-node", IdentityConvergenceError,
+        IdentityConvergenceReasonCode.INVALID_INPUT,
+        lambda: build_principal_authorization(
+            node_id="not-a-node-id", principal_kind="APPLICATION",
+            principal_ref=BUYER, contract=contract,
+            valid_from=T0, valid_until=T_END,
+        ),
+    )
+    if not bad_node[1]:
+        return bad_node
+    bad_window = expect_typed(
+        name + "/bad-window", IdentityConvergenceError,
+        IdentityConvergenceReasonCode.TEMPORAL_INVALID,
+        lambda: build_principal_authorization(
+            node_id=PROVIDER, principal_kind="APPLICATION",
+            principal_ref=BUYER, contract=contract,
+            valid_from=T_END, valid_until=T0,
+        ),
+    )
+    if not bad_window[1]:
+        return bad_window
+    # the append-only registry with revocation observed first
+    registry = AuthorizationRegistry()
+    registry.register(authorization)
+    if registry.register(authorization) is not authorization:
+        return fail(name, "the identical registration is not idempotent")
+    if registry.check(authorization.authorization_id, node_id=PROVIDER,
+                      contract_id=cid, at_instant=T1H) != "authorized":
+        return fail(name, "the registry-backed gate is not authorized")
+    revocation = authorization_revocation(
+        authorization_id=authorization.authorization_id,
+        reason="battery-identity-revocation", revoked_at=T2H,
+    )
+    registry.revoke(revocation)
+    if not registry.is_revoked(authorization.authorization_id):
+        return fail(name, "the revocation is not visible")
+    if len(registry.authorizations()) != 1:
+        return fail(name, "the revocation deleted history")
+    if registry.check(authorization.authorization_id, node_id=PROVIDER,
+                      contract_id=cid, at_instant=T1H) != "revoked":
+        return fail(name, "the registry gate does not observe the "
+                          "revocation first")
+    digest = registry.digest()
+    if AuthorizationRegistry.from_dict(
+            registry.to_dict()).digest() != digest:
+        return fail(name, "the registry round-trip is not byte-stable")
+    # the closed-loop lift into the REAL M005 evidence space
+    attestation = authorization_attestation(
+        authorization, producer="m014-battery:identity",
+        valid_until=T_END,
+    )
+    if (not isinstance(attestation, AttestationEvidence)
+            or attestation.attestation_kind != "controller-verified"
+            or attestation.subject_ref != PROVIDER
+            or attestation.contract_ref != cid
+            or attestation.source_refs != (authorization.authorization_id,)):
+        return fail(name, "the authorization attestation lift drifted")
+    peer_store = EvidenceStore()
+    peer_store.ingest(attestation)
+    if len(peer_store.records()) != 1:
+        return fail(name, "the authorization attestation did not enter "
+                          "the REAL evidence store")
+    # the deterministic credential-rotation discipline
+    policy = CredentialLifecyclePolicy(
+        rotation_deadline_seconds=3600, grace_seconds=3600,
+        max_active_credentials=2,
+    )
+    state = CredentialLifecycleState()
+    state.record_activation("cred:router-a", T0, "active")
+    state.record_activation("cred:router-b", T0, "active")
+    ladder = {
+        "ok": evaluate_credential_lifecycle(
+            policy, state, "cred:router-a", T1H).verdict,
+        "rotation-due": evaluate_credential_lifecycle(
+            policy, state, "cred:router-a", T2H).verdict,
+        "rotation-overdue": evaluate_credential_lifecycle(
+            policy, state, "cred:router-a", "2027-01-15T04:00:00Z").verdict,
+    }
+    for label, verdict in ladder.items():
+        if verdict != label:
+            return fail(name, "rotation verdict for %r is %r"
+                        % (label, verdict))
+    state.record_status("cred:router-a", "revoked")
+    if evaluate_credential_lifecycle(
+            policy, state, "cred:router-a", T1H).verdict != "revoked":
+        return fail(name, "the terminal revoked credential is not observed")
+    if evaluate_credential_lifecycle(
+            policy, state, "cred:router-z", T1H).verdict != "not-active":
+        return fail(name, "a provisioned credential is usable (fail-closed "
+                          "violation)")
+    state.record_activation("cred:router-c", T0, "active")
+    state.record_activation("cred:router-d", T0, "active")
+    bound = expect_typed(
+        name + "/too-many-active", IdentityConvergenceError,
+        IdentityConvergenceReasonCode.TOO_MANY_ACTIVE,
+        lambda: enforce_active_credential_bound(policy, state),
+    )
+    if not bound[1]:
+        return bound
+    if CredentialLifecycleState.from_dict(
+            state.to_dict()).to_dict() != state.to_dict():
+        return fail(name, "the credential state round-trip is not "
+                          "byte-stable")
+    return ok(name, "the identity harden map: contract-cited principal "
+              "authorizations, the typed gate, the append-only revocation "
+              "registry, the M005 lift, and the rotation ladder "
+              "ok/due/overdue/revoked/not-active/too-many-active")
+
+
+# ---------------------------------------------------------------------------
+# 24: the upgrade harden map (M014) — the converged-domain
+# compatibility matrix (frozen labels, no fallback, REAL registry)
+# ---------------------------------------------------------------------------
+
+
+def case_24_upgrade_harden_map() -> Result:
+    name = "case_24_upgrade_harden_map"
+    if CONVERGED_DOMAIN_SET != (
+        "adapters", "assurance", "client", "commercial", "contracts",
+        "evidence", "executionplans", "federation", "identity", "offers",
+        "replan", "scale", "upgrade",
+    ):
+        return fail(name, "the frozen converged-domain set drifted")
+    if DOMAIN_COMPATIBILITY_VERDICTS != (
+        "compatible", "additive-gap", "major-mismatch", "unknown-domain",
+        "local-missing", "peer-missing",
+    ):
+        return fail(name, "the compatibility verdict vocabulary drifted")
+    local = DomainVersion(domain="contracts", major=1, minor=2)
+    same = DomainVersion(domain="contracts", major=1, minor=1)
+    newer = DomainVersion(domain="contracts", major=1, minor=3)
+    breaking = DomainVersion(domain="contracts", major=2, minor=0)
+    checks = {
+        "compatible": classify_domain_compatibility(
+            local, same).verdict == "compatible",
+        "additive-gap": classify_domain_compatibility(
+            local, newer).verdict == "additive-gap",
+        "major-mismatch": classify_domain_compatibility(
+            local, breaking).verdict == "major-mismatch",
+    }
+    missing = [label for label, held in checks.items() if not held]
+    if missing:
+        return fail(name, "coexistence verdicts drifted: %s" % missing)
+    mismatch = classify_domain_compatibility(local, breaking)
+    if "NO fallback" not in mismatch.detail:
+        return fail(name, "the major mismatch does not disclose the "
+                          "fail-closed no-fallback rule")
+    domain_mismatch = expect_typed(
+        name + "/domain-mismatch", UpgradeError,
+        UpgradeReasonCode.INVALID_INPUT,
+        lambda: classify_domain_compatibility(
+            local, DomainVersion(domain="offers", major=1, minor=0)),
+    )
+    if not domain_mismatch[1]:
+        return domain_mismatch
+    unknown_domain = expect_typed(
+        name + "/unknown-domain", UpgradeError,
+        UpgradeReasonCode.INVALID_INPUT,
+        lambda: DomainVersion(domain="telepathy", major=1, minor=0),
+    )
+    if not unknown_domain[1]:
+        return unknown_domain
+    # the capability-id consultation through the REAL accepted registry
+    if capability_compatibility("capability.core.multipath") != "known":
+        return fail(name, "the known capability id is not classified known")
+    if capability_compatibility(
+            "capability.core.newly-added") != "unknown_but_well_formed":
+        return fail(name, "the well-formed unknown id is not classified so")
+    if capability_compatibility("not a capability id") != "invalid":
+        return fail(name, "the malformed id is not classified invalid")
+    secret_cap = expect_typed(
+        name + "/secret-capability", UpgradeError,
+        UpgradeReasonCode.INVALID_INPUT,
+        lambda: capability_compatibility("capability.core.api_key-leak"),
+    )
+    if not secret_cap[1]:
+        return secret_cap
+    # the deterministic negotiation over the full converged domain set
+    local_versions = tuple(
+        DomainVersion(domain=domain, major=1, minor=2)
+        for domain in CONVERGED_DOMAIN_SET
+    )
+    peer_versions = tuple(
+        DomainVersion(domain=domain, major=1, minor=3)
+        if domain in ("contracts", "offers")
+        else DomainVersion(domain=domain, major=1, minor=2)
+        for domain in CONVERGED_DOMAIN_SET
+    )
+    report = negotiate_converged_compatibility(
+        local_id="domain-a", peer_id="domain-b",
+        local_versions=local_versions, peer_versions=peer_versions,
+    )
+    if (len(report.verdicts) != len(CONVERGED_DOMAIN_SET)
+            or not report.compatible()):
+        return fail(name, "the additive-gap report is not compatible")
+    by_domain = report.by_domain()
+    if (by_domain["contracts"].verdict != "additive-gap"
+            or by_domain["federation"].verdict != "compatible"):
+        return fail(name, "the per-domain verdicts drifted")
+    reordered = negotiate_converged_compatibility(
+        local_id="domain-a", peer_id="domain-b",
+        local_versions=tuple(reversed(local_versions)),
+        peer_versions=tuple(reversed(peer_versions)),
+    )
+    if reordered.digest() != report.digest():
+        return fail(name, "the negotiation digest depends on input order")
+    first_digest = report.digest()
+    again = negotiate_converged_compatibility(
+        local_id="domain-a", peer_id="domain-b",
+        local_versions=local_versions, peer_versions=peer_versions,
+    )
+    if again.digest() != first_digest:
+        return fail(name, "the negotiation digest is not deterministic")
+    # a peer missing a frozen domain fails closed (never silently skipped)
+    gap_peer = tuple(
+        version for version in peer_versions
+        if version.domain != "replan"
+    )
+    gap_report = negotiate_converged_compatibility(
+        local_id="domain-a", peer_id="domain-c",
+        local_versions=local_versions, peer_versions=gap_peer,
+    )
+    if (gap_report.by_domain()["replan"].verdict != "peer-missing"
+            or gap_report.compatible()):
+        return fail(name, "the missing frozen domain is silently skipped")
+    breaking_peer = tuple(
+        DomainVersion(domain=domain, major=2, minor=0)
+        if domain == "identity"
+        else version
+        for domain, version in zip(CONVERGED_DOMAIN_SET, peer_versions)
+    )
+    breaking_report = negotiate_converged_compatibility(
+        local_id="domain-a", peer_id="domain-d",
+        local_versions=local_versions, peer_versions=breaking_peer,
+    )
+    if (breaking_report.by_domain()["identity"].verdict != "major-mismatch"
+            or breaking_report.compatible()):
+        return fail(name, "the major mismatch does not fail the report")
+    duplicate = expect_typed(
+        name + "/duplicate-domain", UpgradeError,
+        UpgradeReasonCode.INVALID_INPUT,
+        lambda: negotiate_converged_compatibility(
+            local_id="a", peer_id="b",
+            local_versions=local_versions + (
+                DomainVersion(domain="contracts", major=1, minor=9),),
+            peer_versions=peer_versions,
+        ),
+    )
+    if not duplicate[1]:
+        return duplicate
+    return ok(name, "the upgrade harden map: 13 frozen domain labels, "
+              "compatible/additive-gap/major-mismatch (NO fallback), the "
+              "REAL capability registry consulted, byte-stable "
+              "input-order-independent negotiation, missing domains fail "
+              "closed")
+
+
+# ---------------------------------------------------------------------------
 # the runner
 # ---------------------------------------------------------------------------
 
@@ -2112,6 +2481,9 @@ def main() -> int:
     results.append(case_20_frozen_core_unchanged())
     results.append(case_21_pr_delta_authorization())
     results.append(case_22_evidence_honesty())
+    # the M014 harden-map cases (the multi-domain battery precedent)
+    results.append(case_23_identity_harden_map())
+    results.append(case_24_upgrade_harden_map())
 
     print("ADCOS provider/buyer client convergence battery "
           "(M014 — the DEC-0099 re-baseline)")
