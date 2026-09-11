@@ -27,6 +27,17 @@ transport, radio selection, adapters, resource reservation, or billing.
 The plan is a deterministic fold over the session's append-only event
 history — the history IS the evidence, and a plan change is atomically
 represented there.
+
+Harvest disclosure (R7 charter M008 scope: ``multipath/`` (harvest)):
+this WORK-013 multi-path plan model is harvested onto the Architecture
+1.1 authority as one of the alternative models the M008 replan engine
+selects among, THROUGH ``replan/execution_state.py`` (the available
+constituent paths of a session's plan are read by reference, one-way:
+the frozen public API above is preserved verbatim for every existing
+consumer, and this package never imports ``replan/``; the authority
+boundaries of this module are preserved — the replan side never adds,
+removes or re-statuses a path, it only selects among the alternatives
+this plan carries).
 """
 
 from __future__ import annotations
