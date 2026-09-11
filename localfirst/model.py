@@ -1549,26 +1549,60 @@ class ResyncResult:
             self, "provenance", _require_provenance(self.provenance, "resync.provenance")
         )
         # the no-silent-loss invariant (mechanically enforced on the
-        # finished record): every divergence cites its local operation,
-        # and no local operation appears twice across the outcome sets
-        cited = [d.local_operation_id for d in self.divergences]
-        accounted = list(self.applied_operations) + [
-            r.operation_id for r in self.rejected_operations
-        ] + cited
-        if len(accounted) != len(set(accounted)):
+        # finished record): no operation is double-accounted WITHIN an
+        # outcome set (applied twice, rejected twice), and no operation
+        # is BOTH applied and rejected (a contradiction).  A divergence
+        # citation MAY overlap the applied set — a WON conflict is
+        # applied AND evidenced (the citation is the evidence, not a
+        # second application: the converged record set carries the
+        # winning subject exactly once).
+        applied_list = list(self.applied_operations)
+        if len(applied_list) != len(set(applied_list)):
             raise LocalFirstError(
                 LocalFirstReason.JOURNAL_DIVERGENCE,
-                "the resynchronization result double-accounts a local "
-                "operation (never a silent duplicate)",
+                "the resynchronization result applies a local operation twice "
+                "(never a silent duplicate)",
             )
-        # every divergence's local operation is accounted exactly once
+        rejected_ids = [r.operation_id for r in self.rejected_operations]
+        if len(rejected_ids) != len(set(rejected_ids)):
+            raise LocalFirstError(
+                LocalFirstReason.JOURNAL_DIVERGENCE,
+                "the resynchronization result rejects a local operation twice "
+                "(never a silent duplicate)",
+            )
+        if set(applied_list) & set(rejected_ids):
+            raise LocalFirstError(
+                LocalFirstReason.JOURNAL_DIVERGENCE,
+                "the resynchronization result both applies and rejects a "
+                "local operation (a contradiction — never a silent drop)",
+            )
+        # every divergence's local operation is accounted through one
+        # of exactly two consistent shapes: a WON conflict (applied AND
+        # cited — the citation is the evidence) or a LOST conflict
+        # (cited and NOT applied — explicitly superseded by the
+        # recorded resolution).  A cited operation that is REJECTED is a
+        # contradiction (the LOCK-108 rejection path never reaches
+        # conflict resolution).
+        rejected_set = set(rejected_ids)
         for divergence in self.divergences:
-            if divergence.local_operation_id not in accounted:
+            if divergence.local_operation_id in rejected_set:
                 raise LocalFirstError(
                     LocalFirstReason.JOURNAL_DIVERGENCE,
-                    "a divergence cites an operation the result does not account "
-                    "for (never a silent drop)",
+                    "a divergence cites a REJECTED operation (the LOCK-108 "
+                    "rejection path never resolves a conflict — a "
+                    "contradiction, never a silent drop)",
                 )
+        # the converged replica record set carries each subject exactly
+        # once (a duplicated subject value is a silent duplication)
+        seen_values: Dict[str, str] = {}
+        for i, ref in enumerate(self.converged_records):
+            if ref.value in seen_values:
+                raise LocalFirstError(
+                    LocalFirstReason.JOURNAL_DIVERGENCE,
+                    "the converged record set carries the subject %r twice — "
+                    "never a silent duplicate" % ref.value[:40],
+                )
+            seen_values[ref.value] = ref.value
         expected = self._derive_resync_id()
         if not self.resync_id:
             object.__setattr__(self, "resync_id", expected)
