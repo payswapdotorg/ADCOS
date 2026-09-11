@@ -24,8 +24,8 @@ A brand-new Architect, Tech Lead, worker, or implementation agent must resume fr
 
 ## Current checkpoint
 
-The latest reconciled software baseline is the M007 acceptance merge
-`cc93bb4992151ba01b6c892e2bbf1c277d7716a4` (the M003 acceptance merge
+The latest reconciled software baseline is the M008 acceptance merge
+`ce65c88fd5fe632613be1cedf3c8c1519990a825` (the M003 acceptance merge
 `4090e03` and the M013 acceptance merge `8f4d58a2` precede it on main — the
 3-worker pipeline's first parallel delivery round — with the DEC-0103/DEC-0113
 acceptance record 9e16cb0 between them and the M009 branch point); the
@@ -72,9 +72,15 @@ convention.
   standard/provider mechanisms; LOCK-110 provider-SDK isolation; the
   battery expanded 56 -> 70 cases, already wired and green at the merged
   head; one disclosed payment-battery frozen-family repair ratified — the
-  DEC-0111 precedent; the fourth chain-pointer move).** The current child
-  is **M008 — Replan and Failover** (replan/ new, mobility/, multipath/,
-  sessions/ harvest per the R7 charter).
+  DEC-0111 precedent; the fourth chain-pointer move). M008 — Replan and
+  Failover is ACCEPTED (DEC-0108; head 8c7d685, merge ce65c88; replan/ eight
+  modules — LOCK-108 the constraint-preservation core, LOCK-111 deterministic
+  declared tie-breaking, the realization-state vocabulary; the sessions/
+  mobility/ multipath harvest disclosed docstring-only with the one-way seam;
+  the 38/38 battery CI-wired; the fifth chain-pointer move).** The current child
+  is **M014 — Production Federation** (federation/, scale/, upgrade/, identity/,
+  client/ harvest+harden per the R7 charter — the LAST chain child; after its
+  acceptance the R7 gate completion review closes the program).
   Per-child acceptance decisions (DEC-0104 onward) are the serialization points.
 - R4/W040 remains an independent physical-validation track and is not replaced by the software roadmap.
 - W048 remains accepted-not-restored and MUST NOT be recreated, mocked, or substituted implicitly.

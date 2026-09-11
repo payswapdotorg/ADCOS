@@ -1,0 +1,45 @@
+# DEC-0108 — M008 acceptance: Replan and Failover accepted; the current-child pointer advances M008 → M014
+# Sole-Architect governance decision (per-child acceptance, DEC-0101 serialization point).
+decision_id: DEC-0108
+date: "2026-09-11"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M008
+authorization: R7-CORE-001
+
+review_basis: "Tech Lead review of the exact M008 delivery head 8c7d685d5eacea66c71b1a8aa706bd05c809c78c (PR #37, branch m008-replan, base 4d501da — the live DEC-0107-accepted main head, correctly rooted at dispatch; one commit, append-only, parent verified = the baseline): the replan battery 38/38 PASS run 3x consecutively with byte-identical logs PLUS cross-process determinism verified across explicit PYTHONHASHSEED 0/1/42 (all logs hash-identical; battery case_23 additionally verifies cross-process determinism in-battery), the full workflow suite executed in exact CI order at the head (68 workflow steps, 67 rc=0; the single non-zero exit is the documented legacy spec_check.py compatibility audit baseline — continue-on-error: true, same rc as on the pre-delivery baseline), CI green end-to-end on the head (run 34584671679 — both jobs, no failed steps), scope verified 13 files all inside the charter boundary (replan/ x8 NEW — errors.py 108, model.py 1420, validation.py 272, engine.py 341, execution_state.py 332, alternatives.py 234, bridge.py 226, __init__.py 188 lines; tools/replan_selftest.py NEW 2739 lines; docs/M008-evidence.md NEW 392 lines; mobility/__init__.py +11, multipath/__init__.py +12, sessions/__init__.py +12 — docstring-only harvest disclosure), the structural invariants verified (LOCK-108 — the constraint-preservation core: validate_constraints_preserved checks verbatim constraint-set equality by canonical content BOTH directions with typed replan-constraint-weakened reasons citing the specific kinds, then the LOCK-108 fingerprint agreement; candidate_verdict rejects every candidate that weakens/drops ANY hard constraint; verify_decision_preserves_contract the pure cross-authority gate — no silent downgrade shape; LOCK-111 — deterministic per-candidate evaluation with injected, DECLARED, RECORDED tie-breaking on content keys only, never wall-clock, input order never matters; LOCK-119 — zero wall-clock/randomness/network references in replan/, the single secret-pattern match being the defensive rejection regex that DETECTS and REJECTS secret-shaped material as replan-secret-rejected without echoing it; the explicit no-acceptable-alternative outcomes degraded/renegotiate/failed each carrying the typed renegotiation notice), the harvest seam verified one-way (zero imports of replan/ inside sessions/, mobility/, multipath/; the __all__ export tables AST-identical to origin/main for all three harvested packages; the functional harvest lives in replan/execution_state.py — the M005/M006 seam-in-the-new-domain precedent; the WORK-012 explicit-reconnect discipline PRESERVED and mechanically enforced — a reconnect record missing either side of the route change fails closed replan-silent-replacement), the accepted sibling batteries at their accepted counts on this head (session 55/55, mobility 43/43, multipath 45/45, assurance 97/97, executionplan 36/36, adapter 70/70, contract 54/54, offer 49/49, developerapi 56/56, usage 53/53, commercial 41/41, sharenet 33/33, roamlink 56/56, comos 33/33, policy 103/103, payment 44/44, eligibility 46/46). The review is durably recorded in the PR #37 review timeline (review comment 5177731819); GitHub self-approval was unavailable (the single operator account owns both the PR and the review), so this decision is the authoritative acceptance record per repo convention."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 37
+  branch: "m008-replan"
+  baseline_sha: 4d501dad1ea4424dc91ede3c5f3e26b527b29b83
+  pr_head: 8c7d685d5eacea66c71b1a8aa706bd05c809c78c
+  reviewed_sha: 8c7d685d5eacea66c71b1a8aa706bd05c809c78c
+  merge_sha: ce65c88fd5fe632613be1cedf3c8c1519990a825
+  merged_at: "2026-09-11T10:37:42Z"
+  ci_run: 34584671679
+  worker_session: "m008-replan (charter w24d — dispatched through the GLM-5.3 destruction-cycling window; the third dispatch survived to generate and delivered the single-commit PR; the worker session's cloud sandbox survived the orchestrator-side sandbox reset — the git-delivery gold standard)"
+
+acceptance_effects:
+  current_child_advances: "M008 -> M014 (a chain-child acceptance — the FIFTH pointer move; M014 — Production Federation is the LAST chain child: federation/, scale/, upgrade/, identity/, client/ harvest+harden per the R7 charter with the tools/client_selftest.py DEC-0099 re-baseline; after M014's acceptance the R7 gate completion review closes the program)"
+  roadmap_version: "2.8 -> 2.9 (M008 COMPLETE)"
+  authorization_state: "R7-CORE-001 stays ACTIVE (the bounded R7 program authorization closes only when the R7 gate completes)"
+  ci_wiring: "The replan battery is CI-wired by this acceptance (existence-guarded step, the established pattern — the M002/M003/M010/M011/M012/M005/M006 precedent)"
+  ledger: "M008 accepted-merged entry appended + LEDGER-RECON-026 (snapshot baseline cc93bb4 -> ce65c88)"
+
+verification_summary:
+  battery: "tools/replan_selftest.py 38/38 x3 consecutive runs with byte-identical logs at the exact head, plus cross-PYTHONHASHSEED 0/1/42 determinism"
+  full_suite: "68 workflow steps in exact CI order at the head — 67 rc=0; the single non-zero exit is the documented legacy spec_check.py compatibility audit baseline (continue-on-error: true)"
+  gates: "current_spec_check PASS; tech_lead_guard PASS; architecture_drift_guard PASS (implementation-only, 13 files); fresh_session_check PASS (pin cc93bb4 == origin/main at review time); authorization_provenance PASS (13/13 covered)"
+  ci: "run 34584671679 SUCCESS on the PR head (both jobs: Specification consistency checks + W050 exact-head battery); the merge is a clean merge-commit of a branch rooted at the main head"
+  scope: "13 files: replan/ x8 NEW, tools/replan_selftest.py NEW, docs/M008-evidence.md NEW, mobility/__init__.py +11 / multipath/__init__.py +12 / sessions/__init__.py +12 (docstring-only harvest) — all inside the charter boundary"
+
+physical_obligations: "EVID-002..EVID-008 remain OPEN and untouched; SOFTWARE-class deterministic evaluation only"
+
+standing_rules:
+  w048: "accepted-not-restored; MUST NOT be restored implicitly or explicitly"
+  architecture: "Architecture 1.1 remains the sole forward design source; no architecture or protocol semantic change is made by this decision"
+  history: "No work-item history is rewritten; the M008 ledger entry is appended, never converted"

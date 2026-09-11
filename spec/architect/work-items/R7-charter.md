@@ -112,7 +112,7 @@ registry — not a re-authorization ceremony.
 - **Acceptance:** reference adapters around existing standard/provider mechanisms
   (LOCK-112) behind the capability-oriented boundary; SDK isolation (LOCK-110).
 
-### M008 — Replan and Failover
+### M008 — Replan and Failover — ACCEPTED (DEC-0108: PR #37 head 8c7d685, merge ce65c88 — the current-child pointer advances to M014)
 
 - **Scope:** `replan/` (new), `mobility/`, `multipath/`, `sessions/` (harvest),
   `tools/replan_selftest.py`, `docs/M008-evidence.md`.

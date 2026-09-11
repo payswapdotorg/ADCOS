@@ -101,7 +101,11 @@ assurance battery is CI-wired).**
 merge cc93bb4; the adapter battery expanded to 70/70 — the CI step already
 wired and green at the merged head; one disclosed payment-battery
 frozen-family repair ratified).**
-**M008 — Replan and Failover is the current child work item.** Per-child
+**M008 — Replan and Failover is ACCEPTED (DEC-0108; head 8c7d685, merge
+ce65c88; the 38/38 replan battery is CI-wired; the sessions/mobility/
+multipath harvest disclosed docstring-only with the one-way seam).**
+**M014 — Production Federation is the current child work item (the last
+chain child — its acceptance is followed by the R7 gate completion review).** Per-child
 acceptance (DEC-0104 onward) is
 mandatory and is the serialization point; the Tech Lead may decompose,
 dispatch, integrate and deliver within the authorized child scopes without

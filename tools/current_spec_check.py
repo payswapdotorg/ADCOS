@@ -164,7 +164,7 @@ def main() -> int:
                 fail(errors, "dispatch-state.yaml cannot declare more than 9 active subagents")
 
     for marker in (
-        'roadmap_version: "2.8"',
+        'roadmap_version: "2.9"',
         'status: FROZEN_AUTHORITATIVE',
         'source_of_truth: repository_only',
         'mandatory_forward_target: "Architecture 1.1"',
@@ -181,7 +181,7 @@ def main() -> int:
         'work_item_contract: "spec/architect/work-items/R7-charter.md"',
         'prerequisite: M001_ARCHITECTURE_1_1_FREEZE',
         'program_state: R7_UNIVERSAL_CONNECTIVITY_COMMERCE_ACTIVE',
-        'active_work_item: M008',
+        'active_work_item: M014',
         'active_authorization: R7-CORE-001',
         'next_gate: R7_UNIVERSAL_CONNECTIVITY_COMMERCE',
     ):
@@ -247,6 +247,8 @@ def main() -> int:
                     fail(errors, "M006 is accepted (DEC-0106); it can never return to the active implementing state")
                 if awi == "M007":
                     fail(errors, "M007 is accepted (DEC-0107); it can never return to the active implementing state")
+                if awi == "M008":
+                    fail(errors, "M008 is accepted (DEC-0108); it can never return to the active implementing state")
                 if execution.get("halted_reason") is not None:
                     fail(errors, "execution-state.yaml halted_reason must be null while implementing")
                 auth_root = ROOT / "spec/architect/authorizations"
@@ -506,6 +508,18 @@ def main() -> int:
                     fail(errors, "execution-ledger.yaml M007 entry must record the exact acceptance merge SHA")
                 if m007_entry.get("reviewed_sha") != "1636b15f8d639f0896b2b42567d6e2da99b53678":
                     fail(errors, "execution-ledger.yaml M007 entry must record the exact reviewed delivery head")
+            m008_entry = next((e for e in items if isinstance(e, dict) and e.get("work_item") == "M008"), None)
+            if not isinstance(m008_entry, dict):
+                fail(errors, "execution-ledger.yaml must contain the M008 acceptance entry")
+            else:
+                if m008_entry.get("lifecycle") != "accepted-merged":
+                    fail(errors, "execution-ledger.yaml M008 entry must be lifecycle accepted-merged")
+                if m008_entry.get("acceptance_decision") != "DEC-0108":
+                    fail(errors, "execution-ledger.yaml M008 entry must record acceptance decision DEC-0108")
+                if m008_entry.get("merge_sha") != "ce65c88fd5fe632613be1cedf3c8c1519990a825":
+                    fail(errors, "execution-ledger.yaml M008 entry must record the exact acceptance merge SHA")
+                if m008_entry.get("reviewed_sha") != "8c7d685d5eacea66c71b1a8aa706bd05c809c78c":
+                    fail(errors, "execution-ledger.yaml M008 entry must record the exact reviewed delivery head")
             m009_entry = next((e for e in items if isinstance(e, dict) and e.get("work_item") == "M009"), None)
             if not isinstance(m009_entry, dict):
                 fail(errors, "execution-ledger.yaml must contain the M009 acceptance entry")

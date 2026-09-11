@@ -64,7 +64,11 @@ Provider/Standard Adapters is ACCEPTED (DEC-0107; head 1636b15, merge
 cc93bb4; the adapter battery expanded to 70/70 — already wired and green
 at the merged head; one disclosed payment-battery frozen-family repair
 ratified; the current child advances to M008). M008 — Replan and
-Failover is the current child. Implementation proceeds only within the active authorization's declared
+Failover is ACCEPTED (DEC-0108; head 8c7d685, merge ce65c88; the 38/38
+replan battery is CI-wired; the sessions/mobility/multipath harvest
+disclosed docstring-only with the one-way seam; the current child advances
+to M014 — the LAST chain child). M014 — Production Federation is the
+current child. Implementation proceeds only within the active authorization's declared
 scope; each child work item is accepted only from repository evidence per the
 charter's acceptance rules.
 

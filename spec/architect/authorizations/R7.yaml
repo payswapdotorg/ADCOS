@@ -5,8 +5,8 @@
 # closes when the R7 gate completes. Children closed so far: M002 (DEC-0102),
 # M003 (DEC-0103), M013 (DEC-0113), M009 (DEC-0109), M010 (DEC-0110),
 # M011 (DEC-0111), M012 (DEC-0112), M004 (DEC-0104), M005 (DEC-0105),
-# M006 (DEC-0106), M007 (DEC-0107 — the chain-child pointer advanced
-# M007 -> M008).
+# M006 (DEC-0106), M007 (DEC-0107), M008 (DEC-0108 — the chain-child
+# pointer advanced M008 -> M014, the LAST chain child).
 work_item: R7
 child_work_items:
   - M002
@@ -22,7 +22,7 @@ child_work_items:
   - M012
   - M013
   - M014
-current_child_work_item: M008
+current_child_work_item: M014
 status: active
 authorized: true
 type: implementation
@@ -114,6 +114,10 @@ scope:
   # [M006 ACCEPTED 2026-09-10 under DEC-0106: PR #35 head 764007b, merge 1f9f509;
   #  the 36/36 executionplan battery CI-wired (existence-guard); the current-child
   #  pointer ADVANCES M006 -> M007 (chain-child acceptance)]
+  # [M008 ACCEPTED 2026-09-11 under DEC-0108: PR #37 head 8c7d685, merge ce65c88;
+  #  the 38/38 replan battery CI-wired (existence-guard); the sessions/mobility/
+  #  multipath harvest disclosed docstring-only (one-way seam); the current-child
+  #  pointer ADVANCES M008 -> M014 — the LAST chain child (chain-child acceptance)]
   # [M007 ACCEPTED 2026-09-11 under DEC-0107: PR #36 head 1636b15, merge cc93bb4;
   #  the adapter battery expanded 56 -> 70 cases — the step already wired and
   #  green at the merged head (run 34575262098); one disclosed payment-battery
