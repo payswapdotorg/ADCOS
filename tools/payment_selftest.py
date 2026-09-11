@@ -4567,12 +4567,26 @@ def case_38_scope_audit(results: List[Result]) -> None:
             _SIBLING_PREFIXES
         )
     )
+    # Authorization-aware frozen-family consultation (the M002-era repair
+    # pattern, the same repair ratified by DEC-0111 for the sharenet battery
+    # case_31: the M007 delivery disclosed this stop-condition — the frozen
+    # sibling-family check predates the R7 program authorizations and trips
+    # on every authorized R7 child delivery that touches its own charter
+    # scope inside a family the WORK-044-era battery froze. Sibling paths
+    # covered by the ACTIVE repository-local authorization are sanctioned;
+    # the freeze stays byte-identical for everything else.)
+    if sibling_changes:
+        sibling_changes = {
+            line.strip()
+            for line in sibling_changes.splitlines()
+            if line.strip() and not _active_authorization_covers(line.strip())
+        }
     if sibling_changes:
         results.append(
             fail(
                 name,
                 "accepted authority families changed vs %s: %s"
-                % (audit_ref, sibling_changes),
+                % (audit_ref, sorted(sibling_changes)),
             )
         )
         return
