@@ -4,10 +4,21 @@
 authorization; M018 is the R8 charter's chain-independent fourth child)
 **Baseline:** `28b31500a928f2f75582bfb79039e315187d72b2` (the DEC-0109 R7-completion head,
 per the authorization record; the branch rides the DEC-0116 M016-acceptance head
-`bda91c39fb80c89dc3df1eaf1864f6560558a16b` — the current main, the accepted R7 state
-including the M014 identity/federation/client convergence surfaces that are this
+`bda91c39fb80c89dc3df1eaf1864f6560558a16b` — the branch-root main state, the accepted R7
+state including the M014 identity/federation/client convergence surfaces that are this
 delivery's composition substrate, plus the accepted M015 `resilience/` and M016
 `localfirst/` domains)
+
+**Main advancement during delivery (chain independence in action):** while this branch
+was in flight, main advanced past the branch root — the M017 Disaster Recovery delivery
+was accepted (DEC-0117, PR #41, merge `438acb6`, main head `d16093d`) — and the branch
+DID NOT rebase (the R8 overlay rule / the charter's append-only discipline): the scopes
+are fully disjoint (`git diff --name-only origin/main...HEAD` = exactly the 11 M018
+files), so the branch merges cleanly in any order relative to the chain.  The
+M017-acceptance governance commit pre-wired this battery's CI existence guard on main
+(the established DEC-0114 wiring pattern); the guard activates on this delivery's
+merge ref and the CI run at the PR head executes `tools/credential_selftest.py`
+there.
 
 **Chain independence (the M013 precedent class, the R8 overlay rule):** this branch
 composes ONLY the accepted R7/M014 surfaces (`identity/`, `federation/`, `client/`
@@ -21,6 +32,23 @@ reproducible offline from the delivery head; no worker report is trusted without
 verification (the standing Tech Lead rule). All evidence in this record is **SOFTWARE
 class** — deterministic-battery evidence only; no PHYSICAL PASS is claimed or implied,
 and EVID-002..EVID-008 remain open and untouched.
+
+## 0. Continuation disclosure (the delivery history)
+
+M018 was delivered across TWO worker sessions on the append-only branch
+`m018-credentials` (no rebase, no force-push, no amending — the M015 two-session
+precedent class):
+
+- **Milestone 1** (the prior worker session, commit `baa28da`): the complete
+  `credentials/` domain package (9 modules), the full 32-case battery
+  `tools/credential_selftest.py`, and this evidence record — delivered in one commit
+  before the session was interrupted by the workspace-destruction cycle; its full
+  context is lost, the branch carries the progress (the commit-as-you-go discipline).
+- **Milestone 2** (this continuation session): verification of the delivered package
+  against the accepted authorities (every file read; `import credentials` clean; the
+  by-reference composition confirmed against identity/federation/client), ONE
+  disclosed defect fix in the battery (case_31's PR-delta computation — §4), and this
+evidence-record continuation update.  No file outside the M018 scope was touched.
 
 ## 1. Delivered surface
 
@@ -111,7 +139,8 @@ and EVID-002..EVID-008 remain open and untouched.
     runtime).
   - `credentials/__init__.py` — the public surface (42 names).
 - **`tools/credential_selftest.py` (NEW)** — the M018 battery: 32 deterministic,
-  offline, seeded cases covering the charter's (a)-(f) matrix (§2).
+  offline, seeded cases covering the charter's (a)-(f) matrix (§2), delivered at
+  milestone 1 with the case_31 delta-semantics defect fixed at milestone 2 (§4).
 - **`docs/M018-evidence.md`** — this record.
 
 ## 2. Verification matrix (the battery, SOFTWARE class per case)
@@ -138,7 +167,10 @@ on the delivery head (byte-identical output; exit-code-based verification).
 | Evidence-doc honesty | SOFTWARE class, by-reference composition, harvest, lock mapping, the fragment discipline and the open physical obligations disclosed; no affirmative physical claims | SOFTWARE | case_32 |
 
 **Battery result: PASS (32/32 cases; the 7 per-kind inventory break cases are
-individually numbered case_13..case_19 within the set), run 3× consecutively.**
+individually numbered case_13..case_19 within the set), run 3× consecutively,
+byte-identical logs, exit-code-based verification — at the continuation delivery head
+`687fb82` (the milestone-2 fix commit; the milestone-1 head `baa28da` carried the
+case_31 defect the fix discloses below).**
 
 ## 3. Lock-conformance summary (Architecture 1.1)
 
@@ -184,7 +216,41 @@ individually numbered case_13..case_19 within the set), run 3× consecutively.**
   the battery's fixtures are assembled at runtime from fragments so the full
   shape never appears in source (case_22, case_23, case_29).
 
-## 4. Judgment calls (disclosed)
+## 4. Defect fix in the battery (disclosed; the continuation session)
+
+One defect in the delivered milestone-1 battery was exposed by the continuation
+verification and fixed as its own append-only commit (`687fb82`, the charter's
+defect-fix discipline; never a weakened case):
+
+1. **The case_31 PR-delta computation (`tools/credential_selftest.py`).**  The
+   delivered case computed the PR delta with a plain two-dot
+   `git diff --name-only origin/main` (main's HEAD vs the working tree) — a form
+   that is environment-sensitive on a chain-independent branch: it conflates the two
+   diff directions whenever main has advanced past the branch root, reporting
+   main-side governance files (the M017 acceptance's `spec/`, `.github/`,
+   `AGENTS.md`, `README.md` changes) as though this branch's PR touched them.  The
+   case therefore failed in any local checkout of this branch after DEC-0117 landed
+   while passing at the CI merge ref — a false negative in one environment, i.e. a
+   real defect in the check's construction.  Fix: the delta is now computed with the
+   MERGE-BASE semantics every authoritative consumer already uses (the CI provenance
+   step's `git diff --name-only origin/main...HEAD` and the charter's own
+   zero-overlap instruction), plus the uncommitted working-tree diff and the
+   untracked files (local pre-commit hygiene).  No assertion was weakened: the
+   `spec/`/`.github/` control-plane rejection and the active-authorization coverage
+   check are unchanged; the case passes because the delta it inspects is the PR's
+   actual delta shape in every environment.
+
+   Disclosure note (the same root cause, OUT OF SCOPE for this delivery): the
+   ACCEPTED sibling batteries' own delta-shape cases (`resilience` case_35,
+   `localfirst` case_34, the recovery battery's equivalent on main) use the same
+   two-dot form and therefore report the same environmental false negative when run
+   from a local non-rebased checkout of this branch with main advanced.  They are
+   green at their accepted counts at the CI merge ref of this PR (verified by direct
+   execution in the merge state — §9); they were NOT patched (out of the M018 scope,
+   the charter's battery-scope-repair stop rule), and no behavior of this delivery
+   depends on them.
+
+## 5. Judgment calls (disclosed)
 
 1. **The lifecycle operation identity is derived over the POSITION-INDEPENDENT
    operation core (the idempotency key).** The accepted journal conventions
@@ -235,7 +301,7 @@ individually numbered case_13..case_19 within the set), run 3× consecutively.**
    assembled per seed from fragments (`_secret(seed)`) so no case's fixture
    shares material with another's except through the deterministic assembly.
 
-## 5. By-reference composition and the legacy reservoir (disclosed)
+## 6. By-reference composition and the legacy reservoir (disclosed)
 
 - **By-reference composition:** `credentials/` imports only the accepted
   authorities — `identity/` (the WORK-004 credential machinery and the M014
@@ -263,60 +329,78 @@ individually numbered case_13..case_19 within the set), run 3× consecutively.**
   `credentials/`; the legacy packages are NOT imported (AST-audited, case_28),
   NOT modified, and remain their own authorities for their existing consumers.
 
-## 6. Out-of-scope discipline (nothing else changed)
+## 7. Out-of-scope discipline (nothing else changed)
 
-The M018 delta (from the DEC-0116 acceptance head `bda91c39`) contains only:
-`credentials/` (NEW, 8 files), `tools/credential_selftest.py` (NEW), and
-`docs/M018-evidence.md` (this record).  No control-plane surface, no `spec/`
-file, no `.github/` file, no protocol schema, and no accepted-domain
-modification (`identity/`, `federation/`, `client/`, `contracts/`, `evidence/`,
-`offers/`, or any other canonical domain — all consumed by reference only;
-verified in the battery's one-way-import and PR-delta cases).  The drift guard
-classifies the delta implementation-only; the provenance gate verifies full
-coverage by R8-CORE-001 (`credentials/`, `tools/`, `docs/M018-evidence.md` are
-declared M018 scope entries).
+The M018 delta (from the DEC-0116 acceptance head `bda91c39`, the branch root)
+contains only: `credentials/` (NEW, 9 files), `tools/credential_selftest.py`
+(NEW), and `docs/M018-evidence.md` (this record) — 11 files total, zero overlap
+with any main-side change since the root (chain-independence verified:
+`git diff --name-only origin/main...HEAD` = exactly these 11).  No control-plane
+surface, no `spec/` file, no `.github/` file, no protocol schema, and no
+accepted-domain modification (`identity/`, `federation/`, `client/`,
+`contracts/`, `evidence/`, `offers/`, `recovery/`, or any other canonical domain
+— all consumed by reference only; verified in the battery's one-way-import and
+PR-delta cases).  The drift guard classifies the delta implementation-only; the
+provenance gate verifies full coverage by R8-CORE-001 (`credentials/`,
+`tools/`, `docs/M018-evidence.md` are declared M018 scope entries).
 
-The CI workflow's M018 step does not exist at this head and is NOT added by
+The CI workflow at THIS branch head carries no M018 step and none was added by
 this delivery: the battery's CI wiring is made by the acceptance decision (the
 DEC-0113 chain-independent precedent — the workflow file is control-plane, out
-of the implementation scope).  When the Architect records the M018 acceptance,
-the governance commit wires `tools/credential_selftest.py` with the
-established existence-guard pattern, exactly as the M016/M017 steps were wired
-by their acceptance decisions.
+of the implementation scope).  The main-side workflow pre-wired the M018
+existence guard at the M017 acceptance (DEC-0117 — the established wiring
+pattern); that guard activates on this delivery's merge ref (the PR CI runs the
+battery there) and on main at the merge — no wiring by this branch either way.
 
-## 7. Evidence classes (honest disclosure)
+## 8. Evidence classes (honest disclosure)
 
 - All M018 acceptance criteria: **SOFTWARE** class (deterministic offline
   battery, 32/32 PASS on the delivery head; every blocking battery and
   governance gate in the CI suite green on the delivery head).
-- No pending child is claimed delivered: the M017 `recovery/` surface does not
-  exist at this head and is not faked (another worker's in-flight surface,
-  never touched); the CI existence-guard step for its battery skips visibly
-  (disclosed, the DEC-0116 wiring convention).  The M018 battery's own CI step
-  is not present at this head (the acceptance-wiring convention above).
+- No pending child is claimed delivered: at this branch HEAD the M017 `recovery/`
+  surface does not exist and is not faked (another worker's delivery, accepted on
+  main under DEC-0117 while this branch was in flight — its governance transition
+  is untouched by this branch; the workflow's existence-guard step for its battery
+  skips visibly at this head and runs at the PR merge ref).  The M018 battery's own
+  CI step is not present at this branch head (the acceptance-wiring convention
+  above); the main-side pre-wired guard activates on this delivery's merge.
 - Physical-world obligations: **NOT-TESTABLE/OPEN** — M018 creates and closes
   none; EVID-002..EVID-008 remain open and untouched, and no evidence produced
   by this delivery is physical, production, or live-service evidence.  No
   SOFTWARE evidence is converted into PHYSICAL PASS.
 
-## 8. Delivery provenance
+## 9. Delivery provenance
 
 - Branch: `m018-credentials`, append-only from the DEC-0116 acceptance head
-  `bda91c39` (the current main, the accepted R7 state); no rebase, no
-  force-push, no amending; commit-as-you-go delivery history (the package
-  first, then the battery, then this record).
+  `bda91c39` (the branch root; the R7-completion-era main); no rebase, no
+  force-push, no amending; commit-as-you-go delivery history across two worker
+  sessions (milestone 1 `baa28da` — the package, the battery and this record; the
+  continuation `687fb82` — the disclosed case_31 defect fix and this record's
+  continuation update).
 - Battery: `python3 tools/credential_selftest.py` -> PASS (32/32) on the
-  delivery head, run 3× consecutively, byte-identical.
-- Full suite: every battery the CI workflow runs, in exact workflow order, on
-  the delivery head with exit-code-based detection — see the PR body for the
-  numbered results.
-- Governance gates on the delivery head: `authorization_provenance.py` PASS,
-  `current_spec_check.py` PASS, `tech_lead_guard.py` PASS,
-  `architecture_drift_guard.py` PASS (implementation-only classification),
-  `fresh_session_check.py --actual-main-sha <origin/main>` PASS.
-- Accepted sibling batteries at this head: contract 54/54, offer 49/49,
-  developerapi 56/56, usage 53/53, commercial 41/41, sharenet 33/33, roamlink
-  56/56, comos 33/33, assurance 97/97, executionplan 36/36, adapter 70/70,
-  replan 38/38, payment 44/44, eligibility 46/46, policy 103/103, client 24/24,
-  scale 45/45, conformance 63/63, resilience 36/36, localfirst 35/35 (verified
-  by direct execution on the delivery head, exit-code-based).
+  continuation delivery head, run 3× consecutively, byte-identical,
+  exit-code-based.
+- Verification environments (disclosed precisely): the battery x3 was run at the
+  branch HEAD; the full suite and the governance gates were run in the
+  CI-equivalent MERGE STATE of the PR (a local merge of the branch into
+  `origin/main` — the exact state the workflow's pull_request event checks out
+  as `refs/pull/N/merge`), because main advanced past the branch root
+  (DEC-0117) while this branch correctly never rebased: the two-dot-based
+  delta-shape cases of the accepted sibling batteries and the provenance gate's
+  local diff are environment-sensitive in a non-rebased local checkout of this
+  branch (§4's disclosure note) and green exactly where CI runs them — the
+  merge state, verified by direct execution with exit-code-based detection (see
+  the PR body for the numbered results).
+- Governance gates in the PR merge state: `authorization_provenance.py` PASS
+  (the 11-file delta fully covered by R8-CORE-001), `current_spec_check.py`
+  PASS, `tech_lead_guard.py` PASS, `architecture_drift_guard.py` PASS
+  (implementation-only classification), `fresh_session_check.py
+  --actual-main-sha <origin/main>` PASS.
+- Accepted sibling batteries at their accepted counts in the PR merge state:
+  contract 54/54, offer 49/49, developerapi 56/56, usage 53/53, commercial
+  41/41, sharenet 33/33, roamlink 56/56, comos 33/33, assurance 97/97,
+  executionplan 36/36, adapter 70/70, replan 38/38, payment 44/44, eligibility
+  46/46, policy 103/103, client 24/24, scale 45/45, conformance 63/63,
+  resilience 36/36, localfirst 35/35, recovery 36/36 (verified by direct
+  execution with exit-code-based detection; the recovery battery exists in the
+  merge state — it landed on main with the accepted M017 delivery).
