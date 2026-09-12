@@ -123,11 +123,19 @@ merge a0ebd019; the localfirst/ domain composing the accepted contracts/,
 replan/, resilience/ authorities BY REFERENCE — the M015 runtime the
 composition substrate; the 35/35 battery CI-wired and green; a clean
 single-session delivery with zero disclosed defect fixes);
-M017 Disaster Recovery and State Reconciliation the current child; M018
-Credential and Key Lifecycle Operations (chain-independent); M019 Resilience
-Convergence and Scale Hardening the convergence child. Every accepted R7
+M017 Disaster Recovery and State Reconciliation ACCEPTED (DEC-0117; head
+f016124, merge 438acb66; the recovery/ domain composing the accepted
+contracts/, resilience/, localfirst/, evidence/ authorities BY REFERENCE —
+the M015 runtime journals and the M016 offline journals the drill substrate;
+the 36/36 battery CI-wired and green; delivered through the site-side
+destruction cycle — three sessions, the third completed the append-only
+branch, zero disclosed implementation defect fixes);
+M018 Credential and Key Lifecycle Operations (chain-independent, in flight —
+the DEC-0118 slot); M019 Resilience Convergence and Scale Hardening the
+current chain child and convergence child — its acceptance is BLOCKED until
+M018 lands. Every accepted R7
 authority is consumed BY REFERENCE per the R8 charter consumption rule.**
-Per-child acceptance (DEC-0117 onward) is
+Per-child acceptance (DEC-0118 onward) is
 mandatory and is the serialization point; the Tech Lead may decompose,
 dispatch, integrate and deliver within the authorized child scopes without
 further pre-implementation authorization ceremonies.

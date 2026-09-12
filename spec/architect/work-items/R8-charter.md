@@ -2,7 +2,7 @@
 
 **Gate-specific Work Item contract (DEC-0114 governance-compression class, the DEC-0101 precedent).**
 **Authorization: R8-CORE-001 (bounded R8 program authorization, DEC-0114). Baseline: `28b31500a928f2f75582bfb79039e315187d72b2`.**
-**Status: ACTIVE — the R8 implementation tranche M015-M019 is open; M015 — Execution Resilience Runtime is ACCEPTED (DEC-0115; head 95a65a5, merge d77a561 — the current-child pointer advances to M016); M016 — Local-First and Offline Operation is ACCEPTED (DEC-0116; head 0d5cfb7, merge a0ebd019 — the current-child pointer advances to M017); M017 — Disaster Recovery and State Reconciliation is the current child.**
+**Status: ACTIVE — the R8 implementation tranche M015-M019 is open; M015 — Execution Resilience Runtime is ACCEPTED (DEC-0115; head 95a65a5, merge d77a561 — the current-child pointer advances to M016); M016 — Local-First and Offline Operation is ACCEPTED (DEC-0116; head 0d5cfb7, merge a0ebd019 — the current-child pointer advances to M017); M017 — Disaster Recovery and State Reconciliation is ACCEPTED (DEC-0117; head f016124, merge 438acb66 — the current-child pointer advances to M019); M018 — Credential and Key Lifecycle Operations is chain-independent and IN FLIGHT (the DEC-0118 slot, accepted in any order); M019 — Resilience Convergence and Scale Hardening is the current child — its acceptance is BLOCKED until M018 lands.**
 
 ## Objective
 
@@ -125,7 +125,7 @@ re-authorization ceremony.
   explicit and journaled. The M015 runtime is the composition substrate
   (dependency: M015).
 
-### M017 — Disaster Recovery and State Reconciliation (current child)
+### M017 — Disaster Recovery and State Reconciliation — ACCEPTED (DEC-0117: PR #41 head f016124, merge 438acb66 — the current-child pointer advances to M019)
 
 - **Scope:** `recovery/` (NEW), `tools/recovery_selftest.py` (NEW battery),
   `docs/M017-evidence.md`.
@@ -141,10 +141,11 @@ re-authorization ceremony.
   fail-closed recovery (an unverifiable snapshot is rejected, never partially
   trusted). Dependencies: M015, M016.
 
-### M018 — Credential and Key Lifecycle Operations
+### M018 — Credential and Key Lifecycle Operations (chain-independent, in flight)
 
 - **Scope:** `credentials/` (NEW), `tools/credential_selftest.py` (NEW
-  battery), `docs/M018-evidence.md`.
+  battery — the CI step wired with a pre-delivery existence guard by the
+  DEC-0117 governance commit), `docs/M018-evidence.md`.
 - **Acceptance criteria:** the operational credential-lifecycle domain over
   the accepted M014 identity/federation authorities BY REFERENCE — rotation
   drills with zero coverage gaps (no operation window in which a revoked
@@ -158,7 +159,7 @@ re-authorization ceremony.
   surfaces (no second authorization runtime — LOCK-117). Chain-independent:
   branches from the accepted R7 state (M014), not from the M015-M017 chain.
 
-### M019 — Resilience Convergence and Scale Hardening (the convergence child)
+### M019 — Resilience Convergence and Scale Hardening (current child — the convergence child; its acceptance is BLOCKED until the chain-independent M018 lands)
 
 - **Scope:** `resilience/` (the convergence module — the M015-owned prefix,
   shared), `tools/scale_selftest.py` (disclosed evolution, the M014 precedent),

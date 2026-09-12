@@ -6,7 +6,9 @@
 # completion (the convergence child M019 accepted and the completion review
 # recorded). Children closed so far: M015 (DEC-0115 — the chain-child pointer
 # advanced M015 -> M016), M016 (DEC-0116 — the chain-child pointer advanced
-# M016 -> M017).
+# M016 -> M017), M017 (DEC-0117 — the chain-child pointer advanced
+# M017 -> M019; M018 chain-independent and in flight, M019's acceptance
+# blocked until M018 lands).
 work_item: R8
 child_work_items:
   - M015
@@ -14,7 +16,7 @@ child_work_items:
   - M017
   - M018
   - M019
-current_child_work_item: M017
+current_child_work_item: M019
 status: active
 authorized: true
 type: implementation
@@ -57,14 +59,17 @@ scope:
   # 0d5cfb7, merge a0ebd019 — the current-child pointer advances to M017)
   - "localfirst/"
   - "docs/M016-evidence.md"
-  # M017 — Disaster Recovery and State Reconciliation (current child)
+  # M017 — Disaster Recovery and State Reconciliation (ACCEPTED under DEC-0117: PR #41
+  #  reviewed head f016124, merge 438acb66 — the current-child pointer advances
+  #  to M019)
   - "recovery/"
   - "docs/M017-evidence.md"
-  # M018 — Credential and Key Lifecycle Operations
+  # M018 — Credential and Key Lifecycle Operations (chain-independent, in flight)
   - "credentials/"
   - "docs/M018-evidence.md"
-  # M019 — Resilience Convergence and Scale Hardening (the convergence child;
-  # resilience/ is the M015-owned shared prefix)
+  # M019 — Resilience Convergence and Scale Hardening (the convergence child,
+  #  the current child — its acceptance is BLOCKED until the chain-independent
+  #  M018 lands; resilience/ is the M015-owned shared prefix)
   - "docs/M019-evidence.md"
   # [M015 ACCEPTED 2026-09-11 under DEC-0115: PR #39 head 95a65a5, merge d77a561;
   #  the 36/36 resilience battery CI-wired (the DEC-0114 existence guard
@@ -83,6 +88,26 @@ scope:
   #  ADVANCES M016 -> M017 — the SECOND R8 chain-child acceptance (the
   #  authorization stays ACTIVE; M017's battery is CI-wired at the acceptance
   #  with a pre-delivery existence guard, the DEC-0115 M016 wiring precedent)]
+  # [M017 ACCEPTED 2026-09-12 under DEC-0117: PR #41 reviewed head f016124, merge
+  #  438acb66 (the PR tip at merge b742bec — one append-only docs-only
+  #  evidence-record precision amendment beyond the reviewed head); the 36/36
+  #  recovery battery CI-wired (the DEC-0116 existence guard activated by the
+  #  delivery merge) and green at the accepted head; delivered through the
+  #  site-side destruction cycle — THREE dispatched sessions, the third
+  #  completed the append-only branch, ZERO disclosed implementation defect
+  #  fixes; the current-child pointer ADVANCES M017 -> M019 — the THIRD R8
+  #  chain-child acceptance (the authorization stays ACTIVE; it closes only
+  #  with the R8 gate completion at the M019 acceptance). M018 is
+  #  chain-independent and IN FLIGHT (the parallel Worker B under the Task 56
+  #  charter, accepted in any order — the DEC-0118 slot; its credential battery
+  #  is CI-wired at this acceptance with a pre-delivery existence guard, the
+  #  DEC-0116 M017 wiring precedent). M019 — the current child — is the
+  #  convergence child whose acceptance is BLOCKED until M018 lands (its
+  #  declared dependencies M015+M016+M017+M018; parallel preparation is
+  #  permitted but never falsely claimed as acceptance — the charter's own
+  #  rule; NO new existence guard for M019 — its battery is the disclosed
+  #  evolution of the already-wired tools/scale_selftest.py, the M014
+  #  precedent class)]
 authorization_rules:
   - "Implementation PRs must classify as implementation-only (tools/architecture_drift_guard.py) and be fully covered by this scope (tools/authorization_provenance.py, byte-identical authorization inheritance from main)."
   - "The baseline-range semantics of the bounded program authorization apply: the baseline 28b3150 may precede the PR branch point only through control-plane-only commits or commits covered by this authorization's own scope."

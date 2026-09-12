@@ -85,9 +85,19 @@ M016 — Local-First and Offline Operation ACCEPTED (DEC-0116; head 0d5cfb7,
 merge a0ebd019; the localfirst/ domain composing the accepted contracts/,
 replan/, resilience/ authorities BY REFERENCE — the M015 runtime the
 composition substrate; the 35/35 battery CI-wired and green; a clean
-single-session delivery with zero disclosed defect fixes)
-and M017 — Disaster Recovery and State Reconciliation the current child, with
-per-child acceptance decisions (DEC-0117+) mandatory; every accepted R7
+single-session delivery with zero disclosed defect fixes),
+M017 — Disaster Recovery and State Reconciliation ACCEPTED (DEC-0117; head
+f016124, merge 438acb66; the recovery/ domain composing the accepted
+contracts/, resilience/, localfirst/, evidence/ authorities BY REFERENCE —
+the M015 runtime journals and the M016 offline journals the drill substrate;
+the 36/36 battery CI-wired and green; delivered through the site-side
+destruction cycle — three sessions, the third completed the append-only
+branch, zero disclosed implementation defect fixes),
+M018 — Credential and Key Lifecycle Operations chain-independent and in
+flight (the DEC-0118 slot, accepted in any order),
+and M019 — Resilience Convergence and Scale Hardening the current chain
+child — its acceptance is BLOCKED until M018 lands, with
+per-child acceptance decisions (DEC-0118+) mandatory; every accepted R7
 authority is consumed BY REFERENCE (the R8 charter consumption rule). Implementation proceeds only within the active authorization's declared
 scope; each child work item is accepted only from repository evidence per the
 charter's acceptance rules.
