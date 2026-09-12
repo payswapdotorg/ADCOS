@@ -95,6 +95,7 @@ def main() -> int:
         "spec/architect/decisions/DEC-0101-r7-activation.yaml",
         "spec/architect/decisions/DEC-0114-r8-activation.yaml",
         "spec/architect/decisions/DEC-0120-r9-activation.yaml",
+        "spec/architect/decisions/DEC-0121-m020-acceptance.yaml",
         "spec/acr/ACR-014-architecture-1.1-freeze.md",
         "spec/history/README.md",
         "spec/history/architecture-1.0.md",
@@ -135,9 +136,10 @@ def main() -> int:
         (resume, "M018 — Credential and Key Lifecycle Operations is ACCEPTED", "resume protocol must record the M018 acceptance (DEC-0118)"),
         (resume, "M019 — Resilience Convergence and Scale Hardening is ACCEPTED", "resume protocol must record the M019 acceptance (DEC-0119)"),
         (resume, "R9 — Future Access Technology is ACTIVE under DEC-0120", "resume protocol must record the R9 activation (DEC-0120)"),
+        (resume, "M020 — Access Technology Capability Envelope is ACCEPTED", "resume protocol must record the M020 acceptance (DEC-0121)"),
         (roadmap, "mandatory_forward_target: \"Architecture 1.1\"", "roadmap must declare 1.1 as mandatory forward target"),
         (roadmap, "next_gate: null", "roadmap must record the terminal-gate null successor (R9 is the last gate, active under DEC-0120)"),
-        (roadmap, 'roadmap_version: "2.17"', "roadmap must be advanced to the R9-activation version 2.17"),
+        (roadmap, 'roadmap_version: "2.18"', "roadmap must be advanced to the v2.18 M020-acceptance version"),
         (roadmap, "program_state: R9_FUTURE_ACCESS_TECHNOLOGY_ACTIVE", "roadmap must record the R9-active program state"),
     ]
     for text, marker, message in required_markers:
@@ -148,11 +150,11 @@ def main() -> int:
         if marker.lower() not in current.lower():
             failures.append(f"current-state.md missing current checkpoint marker: {marker}")
 
-    for marker in ['roadmap_version: "2.17"', "program_state: R9_FUTURE_ACCESS_TECHNOLOGY_ACTIVE", "execution_mode: implementing", "active_work_item: M020", "active_authorization: R9-CORE-001", "next_gate: null", "id: R9_FUTURE_ACCESS_TECHNOLOGY", "status: ACTIVE", "activation_decision: DEC-0120", "authorization: \"R9-CORE-001\"", "work_item_contract: \"spec/architect/work-items/R9-charter.md\"", "prerequisite: R8_RESILIENCE_MOBILITY_AND_SCALE", "work_item: M024", "work_item_chain: [M020, M021, M022, M023, M024]", "completion_decision: DEC-0100", "activation_decision: DEC-0101", "completion_decision: DEC-0109", "completion_merge_sha: 344cd64e8396c7e388e31a50635ddff16bb4ea14", "activation_decision: DEC-0114", "completion_decision: DEC-0119", "completion_merge_sha: 3fedfbcd82e7b9a5be562bc51a819ba95453f570", "authorization: \"R8-CORE-001\"", "child_acceptance_decisions: \"M015 accepted by DEC-0115 (head 95a65a5, merge d77a561); M016 accepted by DEC-0116 (head 0d5cfb7, merge a0ebd019); M017 accepted by DEC-0117 (head f016124, merge 438acb66); M018 accepted by DEC-0118 (head dba0e9a, merge e037ca8d — chain-independent); M019 accepted by DEC-0119 (head acf9e6c, merge 3fedfbc — the convergence child completing the gate)"]:
+    for marker in ['roadmap_version: "2.18"', "program_state: R9_FUTURE_ACCESS_TECHNOLOGY_ACTIVE", "execution_mode: implementing", "active_work_item: M021", "active_authorization: R9-CORE-001", "next_gate: null", "id: R9_FUTURE_ACCESS_TECHNOLOGY", "status: ACTIVE", "activation_decision: DEC-0120", "authorization: \"R9-CORE-001\"", "work_item_contract: \"spec/architect/work-items/R9-charter.md\"", "prerequisite: R8_RESILIENCE_MOBILITY_AND_SCALE", "work_item: M024", "work_item_chain: [M020, M021, M022, M023, M024]", "completion_decision: DEC-0100", "activation_decision: DEC-0101", "completion_decision: DEC-0109", "completion_merge_sha: 344cd64e8396c7e388e31a50635ddff16bb4ea14", "activation_decision: DEC-0114", "completion_decision: DEC-0119", "completion_merge_sha: 3fedfbcd82e7b9a5be562bc51a819ba95453f570", "authorization: \"R8-CORE-001\"", "child_acceptance_decisions: \"M015 accepted by DEC-0115 (head 95a65a5, merge d77a561); M016 accepted by DEC-0116 (head 0d5cfb7, merge a0ebd019); M017 accepted by DEC-0117 (head f016124, merge 438acb66); M018 accepted by DEC-0118 (head dba0e9a, merge e037ca8d — chain-independent); M019 accepted by DEC-0119 (head acf9e6c, merge 3fedfbc — the convergence child completing the gate)\"", "child_acceptance_decisions: \"M020 accepted by DEC-0121 (head 035242de, merge c75a7c70 — the chain root)"]:
         if marker not in roadmap:
             failures.append(f"roadmap.yaml missing current authoritative marker: {marker}")
 
-    for marker in ["mode: implementing", "active_work_item: M020", "active_authorization: R9-CORE-001", "current_child_work_item: M020", "r8_activation_decision: DEC-0114", "m015_acceptance_decision: DEC-0115", "m016_acceptance_decision: DEC-0116", "m017_acceptance_decision: DEC-0117", "m018_acceptance_decision: DEC-0118", "m019_acceptance_decision: DEC-0119", "r8_completion_decision: DEC-0119", "r9_activation_decision: DEC-0120", "R8-CORE-001", "R9-CORE-001"]:
+    for marker in ["mode: implementing", "active_work_item: M021", "active_authorization: R9-CORE-001", "current_child_work_item: M021", "r8_activation_decision: DEC-0114", "m015_acceptance_decision: DEC-0115", "m016_acceptance_decision: DEC-0116", "m017_acceptance_decision: DEC-0117", "m018_acceptance_decision: DEC-0118", "m019_acceptance_decision: DEC-0119", "r8_completion_decision: DEC-0119", "r9_activation_decision: DEC-0120", "m020_acceptance_decision: DEC-0121", "R8-CORE-001", "R9-CORE-001"]:
         if marker not in execution:
             failures.append(f"execution-state.yaml missing R9-active marker: {marker}")
 

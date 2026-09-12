@@ -1,0 +1,62 @@
+# DEC-0121 — M020 acceptance: Access Technology Capability Envelope accepted (the R9 chain root);
+# the current-child pointer ADVANCES M020 -> M021 (the FIRST R9 chain-child acceptance)
+# Sole-Architect governance decision (per-child acceptance, the DEC-0120 R9 serialization point;
+# the DEC-0115/DEC-0117 chain-child precedent class: the chain is M020 -> M021 -> M022 -> M024 with
+# M023 chain-independent, and the current-child pointer follows the CHAIN).
+decision_id: DEC-0121
+date: "2026-09-12"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M020
+authorization: R9-CORE-001
+
+review_basis: "Tech Lead review of the exact M020 delivery head 035242de3ee2c84db7067a51c582d9a4e81f0ae3 (PR #44, branch m020-accesstech rooted at the live DEC-0120 activation head a53910546d04f9555f481f80c29d610f8a136031 — the live-main rule, no root-behind-main reconciliation needed: the branch roots at the CURRENT live main; two append-only worker-authored commits (fa27371 the accesstech/ domain, 035242d the battery + the evidence record), no rebase/force-push/amending — the PR head IS the reviewed head, no tip advance) verified at the integration station (never trust reported numbers — every gate re-run): (1) the EXACT HEAD: the governance gates 6/6 PASS — current_spec_check, tech_lead_guard, architecture_drift_guard (implementation-only, 8 files, 0 control-plane), fresh_session_check (PASS with main verified against the execution-state snapshot), authorization_provenance (8/8 delta files covered by R9-CORE-001, byte-identical authorization inheritance), spec_check_selftest; the M020 battery tools/accesstech_selftest.py 19/19 PASS run 3x consecutively with byte-identical logs; the five accepted R8 batteries at their accepted counts ALL GREEN (scale 53/53, credential 32/32, recovery 36/36, resilience 36/36, localfirst 35/35). (2) the CI-EQUIVALENT MERGE STATE (the decisive state): the clean automatic merge into the live main a539105 (ZERO conflicts — the scope disjointness held: the merge-base three-dot delta is exactly the 8 M020 files) with ALL gates rc=0 at the merge state (architecture_drift_guard implementation-only delta: 0 — the merged state's delta against the authorized baseline fully accounted), the accesstech battery step ACTIVATED at the merge state by the DEC-0120 pre-delivery existence guard finding tools/accesstech_selftest.py — green 19/19, and all five R8 batteries green at their accepted counts, with exactly the one documented non-zero exit: the legacy spec_check.py compatibility audit baseline (continue-on-error: true). (3) CI: run 34699214717 SUCCESS on the exact delivery head (the pull_request merge-ref checkout where the accesstech step ACTIVATED); the merge-commit run 34700182115 on c75a7c70 verified green before this governance push (the DEC-0117/DEC-0118 precedent). Scope verified 8 files, +4503/-0 — the charter boundary honored exactly (accesstech/ x6 NEW, tools/accesstech_selftest.py NEW, docs/M020-evidence.md NEW). The review is durably recorded in this decision (GitHub self-approval was unavailable — the single operator account owns both the PR and the review — so this decision is the authoritative acceptance record per repo convention)."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 44
+  branch: "m020-accesstech"
+  baseline_sha: a53910546d04f9555f481f80c29d610f8a136031
+  pr_head: 035242de3ee2c84db7067a51c582d9a4e81f0ae3
+  reviewed_sha: 035242de3ee2c84db7067a51c582d9a4e81f0ae3
+  merge_sha: c75a7c70da8c13f737c537a57b3c203889921a10
+  merged_at: "2026-09-12T14:44:30Z"
+  ci_run: 34699214717
+  merge_ci_run: 34700182115
+  worker_session: "m020-accesstech (delivered in ONE effective worker session on the append-only branch — the SITE-MIGRATED session: dispatched 13:20Z as 395c97d6, destroyed while queued ~2 min; re-dispatched 13:32Z as 5e2917f5, destroyed while queued ~4 min; the site then MIGRATED the queued task to a fresh chat (1738283e) on the same tab — the prompt verified verbatim server-side (the chat's first message IS the 13016-char charter), the sandbox provisioned ('M020 Implementation Task'), and the worker executed the COMPLETE delivery in the migrated session: the domain commit fa27371, the battery + evidence commit 035242d, the branch push, PR #44, and the completion report with the verification numbers — no rebase, no force-push, no amending, the branch never re-rooted from a539105)"
+
+# SITE-MIGRATION DISCLOSURE (a new site behavior, disclosed for the delivery record —
+# the capacity-peak destruction cycle's third observed outcome): the platform
+# destroyed two queued sessions in the destructive phase, then re-queued the task
+# under a fresh chat id on the same tab. The resident's session registry was
+# surgically reconciled (the dead record voided, the migrated chat registered on
+# the same tab); the worker's context was preserved by the migration, and the
+# delivery completed without any continuation session or disclosed defect fix.
+migration_disclosure:
+  destroyed_sessions: "395c97d6 (13:20Z, destroyed while queued within ~2 min, no sandbox provisioned) and 5e2917f5 (13:32Z, accepted then destroyed within ~4 min) — both during the 11:49-14:00Z capacity-peak destructive phase that destroyed 9 consecutive sessions across the morning churn"
+  migrated_session: "1738283e (the site re-queued the task under a fresh chat on the same tab ~13:43Z; server-side proof: chat detail HTTP 200, the message tree's first message IS the charter verbatim (13016 chars, 'Task ID 60 (worker session: m020-accesstech)'), the workspace 'M020 Implementation Task' provisioned and active; the worker generated from ~13:43Z through the completion report at ~14:32Z — a ~49-minute single-session delivery through two wedged-render phases (trap 19b — the page froze twice while the worker kept running server-side, reload-verified each time))"
+  registry_reconciliation: "the resident voided the dead 5e2917f5 registry record with the server-side-verified destruction reason and registered the migrated chat 1738283e on the same tab (stage migrated-generating) BEFORE the completion harvest — the harvest/verify chain below operated on the migrated session's delivery facts throughout"
+
+acceptance_effects:
+  current_child_advance: "M020 ACCEPTED — the current-child pointer ADVANCES M020 -> M021 (Wireline Access Adapters, the chain child requiring M020 — its declared dependency now satisfied; the DEC-0115/DEC-0117 chain-child pointer precedent). M023 (Future Technology Extension Drill) remains chain-independent and dispatchable in parallel; M022 requires M021; M024 (the convergence child) requires all four. The R9-CORE-001 program authorization STAYS ACTIVE (it closes only with the R9 gate completion at the M024 acceptance, the DEC-0088/DEC-0108 mid-chain precedent)."
+  roadmap_version: "2.17 -> 2.18 (M020 COMPLETE — the FIRST R9 child accepted; the R9 gate stays ACTIVE with M021 the current child)"
+  authorization_state: "R9-CORE-001 stays ACTIVE (the bounded R9 program authorization; the current-child binding advances to M021 in R9.yaml; the accepted-children record gains M020 accepted under DEC-0121)"
+  ci_wiring: "The M020 accesstech battery step (wired by DEC-0120 with the pre-delivery existence guard) is ACTIVATED by this delivery merge: at the merge state and the accepted head the step finds tools/accesstech_selftest.py and runs it — green 19/19 (the PR CI run 34699214717 executed it at the pull_request merge ref; the station merge-state run confirmed 19/19). The M021 wireline battery (tools/wireline_selftest.py, the M021 charter scope) is CI-wired by THIS acceptance with a pre-delivery existence guard (the DEC-0120 M020 wiring precedent, the M002/M015 contract-battery class)."
+  checker_synchronization: "the synchronized checker evolution per the DEC-0120 pattern: tools/current_spec_check.py and tools/fresh_session_check.py advance to the v2.18 markers, the active-work-item marker M020 -> M021, and the M020 child-acceptance marker appended to the R9 child_acceptance_decisions chain (control-plane, governance-only — the drift guard's CONTROL_FILES freeze holds against implementation PRs)"
+  ledger: "M020 accepted-merged entry appended + LEDGER-RECON-035 (the snapshot advances ea4bb64 -> c75a7c7 through the DEC-0120 activation commit a539105 and the PR #44 delivery merge; this governance commit sits beyond the new pin per the standing reconciliation convention, enforced by tools/fresh_session_check.py)"
+
+verification_summary:
+  battery: "tools/accesstech_selftest.py 19/19 x3 consecutive runs with byte-identical logs at the exact delivery head 035242de (2026-09-12T14:41-14:42Z station verification); green again at the CI-equivalent merge state (the DEC-0120 existence guard ACTIVATED there)"
+  full_suite: "the full workflow suite in exact CI order — 72/72 steps rc=0 at the exact head (the worker's reported number, station-confirmed); at the merge state all gates rc=0, the accesstech step activated green 19/19, the five R8 batteries at their accepted counts (scale 53/53, credential 32/32, recovery 36/36, resilience 36/36, localfirst 35/35), exactly the one documented non-zero exit (the legacy spec_check.py compatibility baseline, continue-on-error: true)"
+  gates: "exact head: current_spec_check PASS; tech_lead_guard PASS; architecture_drift_guard PASS (implementation-only, 8 files, 0 control-plane); fresh_session_check PASS; authorization_provenance PASS (8/8 covered by R9-CORE-001: accesstech/, tools/accesstech_selftest.py, docs/M020-evidence.md); spec_check_selftest PASS; merge state: all six rc=0 with the drift guard's implementation-only delta 0"
+  ci: "run 34699214717 SUCCESS on the exact delivery head 035242de (the pull_request merge-ref checkout — the accesstech step ACTIVATED and green); the merge-commit run 34700182115 on c75a7c70 SUCCESS, verified green before this governance push; the merge is a clean automatic merge (zero conflicts) of a branch rooted at the live main a539105 with the merge-base three-dot delta exactly the 8 M020 files"
+  scope: "8 files, +4503/-0 at the reviewed head: accesstech/ x6 NEW (errors.py 90, envelopes.py 579, ladders.py 511, handovers.py 378, registry.py 771, __init__.py 147), tools/accesstech_selftest.py NEW (1693 lines, 19 cases), docs/M020-evidence.md NEW (334 lines) — the charter boundary honored exactly; ZERO disclosed implementation defect fixes (the migration preserved the worker's full context; the single battery self-failure the worker diagnosed pre-delivery — client_selftest case_21 counting UNTRACKED delivery files as deltas — resolved by the delivery's own commit, never a post-hoc repair)"
+
+physical_obligations: "EVID-002..EVID-008 remain OPEN and untouched; SOFTWARE-class deterministic evaluation only; R4/W040 remains independently in-review and unaccepted"
+
+standing_rules:
+  w048: "accepted-not-restored; MUST NOT be restored implicitly or explicitly"
+  architecture: "Architecture 1.1 remains the sole forward design source; the R9 charter by-reference consumption rule is an acceptance criterion at every remaining R9 child (no accepted authority reimplemented, weakened, forked, or bypassed); the gate's own objective constraint holds — access technologies added or replaced through the adapter boundary WITHOUT altering the connectivity contract core (LOCK-101)"
+  history: "No work-item history is rewritten; the M020 ledger entry is appended, never converted; the M008 docstring-only disclosures in sessions/, mobility/, multipath/ stay exactly as accepted"

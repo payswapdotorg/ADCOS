@@ -36,7 +36,9 @@ DEC-0120 R9-activation transition sits beyond it per the standing
 reconciliation convention — R9 — Future Access Technology is now ACTIVE
 under DEC-0120 (the bounded R9 program authorization R9-CORE-001, baseline
 `ea4bb64`, with the R9 charter child scopes M020-M024; M020 — Access
-Technology Capability Envelope is the current child).
+Technology Capability Envelope ACCEPTED under DEC-0121 (PR #44 head
+`035242de`, merge `c75a7c70`); M021 — Wireline Access Adapters is the current
+child).
 
 - R6 Provider Onboarding & Federation is complete under `DEC-0097`.
 - M001 — Architecture 1.1 Freeze is complete under `DEC-0100`: Architecture 1.1
@@ -164,9 +166,10 @@ Technology Capability Envelope is the current child).
   R8-completion head) with the R9 charter
   (`spec/architect/work-items/R9-charter.md`) declaring the gate-specific child
   work-item scopes M020-M024 — M020 — Access Technology Capability Envelope
-  the CURRENT CHILD (the `accesstech/` envelope domain; `tools/accesstech_selftest.py`
-  CI-wired with a pre-delivery existence guard); M021 — Wireline Access
-  Adapters; M022 — Non-Terrestrial Access Adapters; M023 — Future Technology
+  ACCEPTED under DEC-0121 (PR #44 head `035242de`, merge `c75a7c70` — the
+  accesstech battery step ACTIVATED green 19/19 by the delivery merge); M021 —
+  Wireline Access Adapters the CURRENT CHILD (`tools/wireline_selftest.py`
+  CI-wired with a pre-delivery existence guard); M022 — Non-Terrestrial Access Adapters; M023 — Future Technology
   Extension Drill (CHAIN-INDEPENDENT — the synthetic future-IMT/6G-class
   technology added purely through the accepted public extension surface, zero
   contract-core delta); M024 — Future Access Convergence (the convergence
@@ -175,7 +178,22 @@ Technology Capability Envelope is the current child).
   are mandatory. The R9 charter's own objective constraint is an acceptance
   criterion on every child: access technologies are added or replaced through
   the adapter boundary WITHOUT altering the connectivity contract core
-  (LOCK-101). The execution mode is implementing (M020/R9-CORE-001).
+  (LOCK-101). The execution mode is implementing (M021/R9-CORE-001).
+  **M020 — Access Technology Capability Envelope is ACCEPTED (DEC-0121; head
+  035242de, merge c75a7c70 — the chain root, the FIRST R9 child acceptance:
+  the accesstech/ envelope domain — typed fail-closed envelope validation
+  (degenerate/inconsistent/tampered envelopes are typed rejections, never
+  warnings), declared capability envelopes with LOCK-106 content-derived
+  identities, degradation ladders on the M008-owned realization vocabulary
+  imported BY REFERENCE, handover declarations on the accepted LOCK-108
+  machinery, the technology-extension registration surface proven by
+  registering the accepted M007 six families through it; the 19/19 battery
+  CI-wired and green at the accepted head — the step ACTIVATED by the
+  delivery merge; delivered through the site-migrated session — the
+  capacity-peak destruction cycle's third observed outcome, disclosed in the
+  decision; THE CURRENT-CHILD POINTER ADVANCES M020 -> M021 — the
+  R9-CORE-001 authorization stays ACTIVE (it closes only with the R9 gate
+  completion at the M024 acceptance).**
 - `M001-CORE-001` is closed. **R7 — Universal Connectivity Commerce is COMPLETE
   under DEC-0101/DEC-0109**
 - `M001-CORE-001` is closed. **R7 — Universal Connectivity Commerce was
@@ -246,8 +264,10 @@ Technology Capability Envelope is the current child).
   R8-completion head) with the R9 charter
   (`spec/architect/work-items/R9-charter.md`) declaring the gate-specific child
   work-item scopes M020-M024: M020 — Access Technology Capability Envelope is
-  the CURRENT CHILD (the accesstech/ envelope domain; its battery CI-wired
-  with a pre-delivery existence guard); M021 — Wireline Access Adapters;
+  ACCEPTED under DEC-0121 (PR #44 head `035242de`, merge `c75a7c70` — the
+  battery step ACTIVATED green by the delivery merge); M021 — Wireline Access
+  Adapters the CURRENT CHILD (its battery CI-wired with a pre-delivery
+  existence guard);
   M022 — Non-Terrestrial Access Adapters; M023 — Future Technology Extension
   Drill (chain-independent — dispatchable immediately from the accepted
   baseline); M024 — Future Access Convergence (the convergence child).

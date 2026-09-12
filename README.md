@@ -144,7 +144,8 @@ COMPLETE (all five children accepted; the R8-CORE-001 program authorization
 CLOSED). R9 — Future Access Technology is ACTIVE (DEC-0120): the bounded R9
 program authorization R9-CORE-001 (baseline ea4bb64, the R9 charter at
 spec/architect/work-items/R9-charter.md) covers the child scopes M020–M024
-(M020 Access Technology Capability Envelope the current child; M021 Wireline
+(M020 Access Technology Capability Envelope ACCEPTED under DEC-0121 (PR #44
+head 035242de, merge c75a7c70); M021 Wireline
 Access Adapters; M022 Non-Terrestrial Access Adapters; M023 Future Technology
 Extension Drill, chain-independent — the synthetic future-IMT/6G-class
 technology added purely through the accepted public extension surface; M024

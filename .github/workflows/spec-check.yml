@@ -447,6 +447,19 @@ jobs:
           fi
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
 
+      # Pre-delivery existence guard: the M021 wireline battery lands with the
+      # authorized M021 delivery; until then the step skips visibly (never
+      # silently) and activates automatically on the delivery merge. The
+      # DEC-0120 M020 wiring precedent (the M002/contract battery class).
+      - name: Run wireline access adapter tests
+        run: |
+          if [ -f tools/wireline_selftest.py ]; then
+            python3 tools/wireline_selftest.py
+          else
+            echo "SKIP (pre-delivery, disclosed): tools/wireline_selftest.py lands with the authorized M021 delivery (R9-CORE-001, DEC-0121)"
+          fi
+        continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
+
       # M019 — Resilience Convergence and Scale Hardening: NO new existence
       # guard is wired here. Its battery is a DISCLOSED EVOLUTION of the
       # existing tools/scale_selftest.py (already CI-wired and running in the
