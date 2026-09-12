@@ -2821,27 +2821,58 @@ def _active_authorization_covers(path: str) -> bool:
         return False
 
 
+def _pr_delta_files() -> set:
+    """The PR-delta file set with the MERGE-BASE semantics (the defect
+    fix disclosed in docs/M018-evidence.md §4):
+
+    - ``git diff --name-only origin/main...HEAD`` — the COMMITTED PR
+      delta: the diff from the merge base of origin/main and HEAD to
+      HEAD.  This is the delta shape the CI provenance step computes
+      and the continuation charter itself prescribes ("verify zero
+      file overlap with ``git diff --name-only origin/main...HEAD``").
+      It is the PR's actual delta in EVERY environment: locally at
+      the branch head (the merge base is the branch root) and at the
+      CI pull_request merge ref (where origin/main is an ancestor of
+      the checked-out merge commit, so the merge base IS origin/main).
+    - ``git diff --name-only HEAD`` — uncommitted working-tree
+      modifications (local pre-commit hygiene; empty in CI).
+    - ``git ls-files --others --exclude-standard`` — untracked files.
+
+    The delivered form used a plain TWO-DOT ``git diff --name-only
+    origin/main`` (main's HEAD vs the working tree).  That conflates
+    the two directions whenever main has advanced past the branch
+    root: on a chain-independent branch that never rebases (the R8
+    overlay rule), the two-dot diff reports main-side governance
+    files (spec/, .github/, AGENTS.md, README.md — the ACCEPTANCE
+    commits of sibling children) as though this branch's PR touched
+    them, so the case failed in any local checkout after a sibling
+    acceptance landed — the exact scenario the chain-independence
+    rule anticipates.  The three-dot form keeps the case honest in
+    both environments without weakening any assertion."""
+    delta: set = set()
+    for args in (
+        ["diff", "--name-only", "origin/main...HEAD"],
+        ["diff", "--name-only", "HEAD"],
+        ["ls-files", "--others", "--exclude-standard"],
+    ):
+        probe = subprocess.run(
+            ["git", *args],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+        )
+        if probe.returncode == 0:
+            delta |= {
+                line.strip() for line in probe.stdout.splitlines() if line.strip()
+            }
+    return delta
+
+
 def case_31_pr_delta_shape_authorized_scope() -> Result:
     name = "case_31_pr_delta_shape_authorized_scope"
     if not _origin_main_available():
         return ok(name, "skipped (no origin/main ref; the CI provenance step enforces scope)")
-    delta: set = set()
-    diff = subprocess.run(
-        ["git", "diff", "--name-only", "origin/main"],
-        capture_output=True,
-        text=True,
-        cwd=str(REPO_ROOT),
-    )
-    if diff.returncode == 0:
-        delta |= {line for line in diff.stdout.splitlines() if line.strip()}
-    untracked = subprocess.run(
-        ["git", "ls-files", "--others", "--exclude-standard"],
-        capture_output=True,
-        text=True,
-        cwd=str(REPO_ROOT),
-    )
-    if untracked.returncode == 0:
-        delta |= {line for line in untracked.stdout.splitlines() if line.strip()}
+    delta = _pr_delta_files()
     if not delta:
         return ok(name, "no delta (clean main)")
     problems: List[str] = []
