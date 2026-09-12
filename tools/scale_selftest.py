@@ -1709,11 +1709,17 @@ _ARCHITECT_HANDOFF_COMMIT = "7274384"
 
 
 def _spec_delta_clean() -> List[str]:
-    """The spec/ problems vs origin/main: the delta may contain EXACTLY
+    """The spec/ problems vs the merge base of origin/main: the delta may
+    contain EXACTLY
     the Architect's handoff prompt (added on this branch by the
-    Architect); everything else must be byte-identical."""
+    Architect); everything else must be byte-identical.  The
+    MERGE-BASE (three-dot) semantics (the M018-ratified precedent,
+    commit 687fb82 — accepted under DEC-0118) keeps the check honest
+    in every environment: a chain child that never rebases (the R8
+    overlay rule) must not report main-side governance files (sibling
+    acceptance commits) as though this branch touched them."""
     delta = subprocess.run(
-        ["git", "diff", "--name-status", "origin/main", "HEAD", "--", "spec/"],
+        ["git", "diff", "--name-status", "origin/main...HEAD", "--", "spec/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
     problems: List[str] = []
@@ -1792,7 +1798,7 @@ def case_37_pr_delta_shape(results: List[Result]) -> None:
             results.append(fail(name, "committed CI wiring missing"))
         return
     delta = subprocess.run(
-        ["git", "diff", "--name-only", "origin/main", "HEAD"],
+        ["git", "diff", "--name-only", "origin/main...HEAD"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
     changed = {line for line in delta.stdout.splitlines() if line.strip()}
@@ -1831,7 +1837,7 @@ def case_37_pr_delta_shape(results: List[Result]) -> None:
         results.append(fail(name, "delta beyond the sanctioned shape: %s" % unexpected))
         return
     workflow_delta = subprocess.run(
-        ["git", "diff", "origin/main", "--", ".github/"],
+        ["git", "diff", "origin/main...HEAD", "--", ".github/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
     # CI wiring via committed content: the workflow was already read,

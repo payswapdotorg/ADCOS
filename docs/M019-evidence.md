@@ -42,6 +42,15 @@ control-plane). Reported with evidence on the PR; never patched silently. The st
 goes green when the DEC-0118 acceptance governance commit lands on main — which is
 exactly the sequencing this PR's merge already waits for.
 
+**Resolution (observed and verified):** the DEC-0118 acceptance governance commit
+landed on main (`6da2c3c` — "Governance: DEC-0118 — accept the M018 delivery
+(chain-independent), unblock the current child M019"; the roadmap advanced to v2.15;
+M018 recorded ACCEPTED with reviewed head `dba0e9a` and acceptance merge `e037ca8`;
+M019 recorded UNBLOCKED — all its declared dependencies accepted). The
+`fresh_session_check` step now PASSES on this PR's merged checkout state (verified
+by direct execution on a local simulation of the exact merge with the reconciled
+main: the full suite 71/71 green — the M018 credential battery included at 32/32).
+
 ## 1. Delivered surface
 
 - **`resilience/convergence.py` (NEW, 2879 lines)** — the R8 convergence surface in the
@@ -147,8 +156,15 @@ the M014 precedent"). Every one of the 45 accepted cases is PRESERVED verbatim (
 delta to the accepted battery is purely appended content: the eight new case functions,
 their fixtures and imports, the appended `main()` entries — verified by direct
 inspection; no pre-existing case, fixture, or expectation was touched, re-baselined, or
-weakened). Eight NEW cases append for `resilience/convergence.py` — the second
-disclosed evolution of this battery (39 -> 45 at M014; **45 -> 53 here**):
+weakened), with ONE disclosed exception — the delta-semantics defect fix on the two
+accepted delta-shape cases (case_36/case_37: the two-dot `git diff origin/main HEAD`
+replaced by the MERGE-BASE three-dot `origin/main...HEAD` form — the
+M018-ratified precedent, commit `687fb82`, accepted under DEC-0118, applied to THIS
+battery's own cases after the DEC-0118 governance advancement environmentally tripped
+them in a local non-rebased checkout; NO assertion weakened — the spec//.github/
+control-plane rejection and the active-authorization coverage checks are unchanged;
+see §7 judgment call 7). Eight NEW cases append for `resilience/convergence.py` — the
+second disclosed evolution of this battery (39 -> 45 at M014; **45 -> 53 here**):
 
 | Case | Verification | Result |
 |---|---|---|
@@ -242,11 +258,11 @@ branch root `d16093d` the M018 credential CI step skipped visibly (the pre-deliv
 existence guard wired by the DEC-0117 governance commit); after the parallel M018
 merge landed on main (see the main-advancement disclosure above), the step ACTIVATES
 on the merged PR checkout and its battery runs 32/32 green there (verified locally on
-the simulated merge, together with every other battery in this section). The
-`fresh_session_check` step on the merged checkout carries the disclosed
-governance-state condition (the M018 merge precedes its acceptance reconciliation —
-identical at the live main head with zero delta of this delivery; the Tech Lead's
-DEC-0118 commit resolves it).
+the simulated merge, together with every other battery in this section). After the DEC-0118
+reconciliation landed on main (`6da2c3c`), the fresh-session step PASSES on the
+merged checkout state (verified locally: the full suite 71/71 batteries green on
+the simulated merge with the reconciled main, the M018 credential battery included
+at 32/32).
 
 ## 7. Judgment calls (disclosed)
 
@@ -317,6 +333,25 @@ DEC-0118 commit resolves it).
    the assembler's `evidence_store.has` gate makes the composed drill FAIL CLOSED if
    any cited record is missing from the plane (a broken evidence chain is never a
    silent pass — case_47's empty-evidence-plane probe).
+7. **The one modification to an accepted case pair: the case_36/case_37
+   delta-semantics defect fix (the M018-ratified precedent).** After the DEC-0118
+   governance commit landed on main (the sibling M018 acceptance — main advanced
+   past this never-rebased branch's root, as the charter's parallel-delivery rule
+   requires), the two accepted delta-shape cases' TWO-DOT form
+   (`git diff origin/main HEAD`) began reporting main-side governance files
+   (`spec/architect/...`) as though this branch touched them — the exact
+   environmental false-negative class the M018 worker documented and the Architect
+   ratified the fix for (commit `687fb82`, accepted under DEC-0118: the MERGE-BASE
+   three-dot `origin/main...HEAD` semantics — "correct in both environments",
+   "no assertion weakened"). Because `tools/scale_selftest.py` is THIS delivery's
+   declared evolution surface (the fix is inside the authorized path, not another
+   domain's battery), the ratified precedent was applied to this battery's own two
+   delta cases and is disclosed here for the DEC-0119 acceptance review. The
+   spec//.github/ control-plane rejections, the authorization-coverage checks and
+   the Architect-handoff exception are byte-identical in strength; only the diff's
+   base changed from "main's tip" to "the merge base" — the delta shape every
+   authoritative consumer (the CI provenance step, the charter's own zero-overlap
+   instruction) already computes.
 
 ## 8. The composed R8 completion-review material (from repository evidence)
 
@@ -344,20 +379,20 @@ records):
   battery CI-wired and green; the M018 credential battery's CI existence guard wired
   by the same governance commit. Cited from: `R8.yaml` (the M017 acceptance
   annotation), `AGENTS.md`, `docs/M017-evidence.md`.
-- **M018 — Credential and Key Lifecycle Operations: DELIVERED ON MAIN, NOT YET
-  ACCEPTED (the DEC-0118 slot, chain-independent).** At this branch's root
+- **M018 — Credential and Key Lifecycle Operations: ACCEPTED (DEC-0118; delivery
+  head `dba0e9a`, acceptance merge `e037ca8`, PR #42).** At this branch's root
   (`d16093d`) the `credentials/` surface did not exist; while this PR was in flight
-  the parallel delivery landed on main (PR #42, merge `e037ca8`: `credentials/` +
-  `tools/credential_selftest.py` + `docs/M018-evidence.md`). No DEC-0118 acceptance
-  decision is recorded in the repository at this writing (the execution-state
-  snapshot still carries the DEC-0117 state — the condition the fresh-session check
-  discloses); this branch's own delta never touches `credentials/` (verified by the
-  battery's case_53 against the branch's own delivery files — the parallel delivery
-  is never claimed here). M019's acceptance — and therefore the R8 gate completion —
-  remains BLOCKED until the M018 acceptance lands; this delivery is the
-  charter-permitted parallel preparation. Cited from: `R8.yaml` (the current-child +
-  blocking annotations), the R8 charter's "### M018" section, the live main history
-  (`d16093d..e037ca8`).
+  the parallel delivery landed on main and was accepted by the DEC-0118 governance
+  commit (`6da2c3c`: the roadmap at v2.15, the 32/32 credential battery recorded
+  green at the accepted head, the current-child M019 UNBLOCKED — all its declared
+  dependencies M015+M016+M017+M018 accepted; M019's acceptance as DEC-0119 completes
+  the R8 gate). This branch's own delta never touches `credentials/` (verified by
+  the battery's case_53 against the branch's own delivery files — the parallel
+  delivery is never claimed here). With M018 accepted, M019's acceptance is no
+  longer blocked by the overlay rule — the acceptance decision itself remains the
+  Architect's DEC-0119 from this delivery's repository evidence. Cited from: the
+  DEC-0118 governance commit on main (`6da2c3c`), `spec/architect/roadmap.yaml` at
+  v2.15, `R8.yaml`, the R8 charter's "### M018" section.
 - **M019 (this delivery): the convergence surface delivered, NOT accepted.** The
   end-to-end drill, the R8 matrix, the federation-scale convergence and this composed
   review material are the acceptance-ready material at this head; the acceptance
@@ -405,9 +440,13 @@ delivery adds no workflow change.
 ## 11. Delivery provenance
 
 - Branch: `m019-convergence`, append-only from the DEC-0117 acceptance head
-  `d16093d` (the current main); no rebase, no force-push, no amending;
-  commit-as-you-go delivery history (the module first, then the battery + this
-  record).
+  `d16093d` (the live main at dispatch); no rebase, no force-push, no amending —
+  held through the mid-flight M018 merge (`e037ca8`) and the DEC-0118 acceptance
+  governance commit (`6da2c3c`) landing on main (the parallel-delivery rule);
+  commit-as-you-go delivery history: the module (`60a0285`), the battery + this
+  record (`dba1cd6`), the case_53 parallel-delivery precision fix (`9685f3d`), the
+  main-advancement disclosure (`ab83a48`), the DEC-0118-resolution amendment +
+  the case_36/case_37 ratified delta-semantics fix (the final head).
 - Battery: `python3 tools/scale_selftest.py` -> PASS (53/53) on the delivery head,
   run 3× consecutively, byte-identical.
 - Full suite: every battery the CI workflow runs, in exact workflow order, on the
