@@ -1709,11 +1709,17 @@ _ARCHITECT_HANDOFF_COMMIT = "7274384"
 
 
 def _spec_delta_clean() -> List[str]:
-    """The spec/ problems vs origin/main: the delta may contain EXACTLY
+    """The spec/ problems vs the merge base of origin/main: the delta may
+    contain EXACTLY
     the Architect's handoff prompt (added on this branch by the
-    Architect); everything else must be byte-identical."""
+    Architect); everything else must be byte-identical.  The
+    MERGE-BASE (three-dot) semantics (the M018-ratified precedent,
+    commit 687fb82 — accepted under DEC-0118) keeps the check honest
+    in every environment: a chain child that never rebases (the R8
+    overlay rule) must not report main-side governance files (sibling
+    acceptance commits) as though this branch touched them."""
     delta = subprocess.run(
-        ["git", "diff", "--name-status", "origin/main", "HEAD", "--", "spec/"],
+        ["git", "diff", "--name-status", "origin/main...HEAD", "--", "spec/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
     problems: List[str] = []
@@ -1792,7 +1798,7 @@ def case_37_pr_delta_shape(results: List[Result]) -> None:
             results.append(fail(name, "committed CI wiring missing"))
         return
     delta = subprocess.run(
-        ["git", "diff", "--name-only", "origin/main", "HEAD"],
+        ["git", "diff", "--name-only", "origin/main...HEAD"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
     changed = {line for line in delta.stdout.splitlines() if line.strip()}
@@ -1831,7 +1837,7 @@ def case_37_pr_delta_shape(results: List[Result]) -> None:
         results.append(fail(name, "delta beyond the sanctioned shape: %s" % unexpected))
         return
     workflow_delta = subprocess.run(
-        ["git", "diff", "origin/main", "--", ".github/"],
+        ["git", "diff", "origin/main...HEAD", "--", ".github/"],
         capture_output=True, text=True, cwd=str(REPO_ROOT),
     )
     # CI wiring via committed content: the workflow was already read,
@@ -2564,6 +2570,1297 @@ def case_45_convergence_rate_envelope(results: List[Result]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# 46-53: M019 convergence evolution (disclosed): the battery gains the
+# R8 convergence cases for resilience/convergence.py — the end-to-end
+# resilience drill (fault -> detect -> replan/failover -> recover ->
+# reconcile over the accepted M015/M016/M017 surfaces, composed by this
+# battery as the composition root), the converged-domain compatibility
+# matrix over the R8 domains (the accepted upgrade/ matrix discipline
+# extended), and the federation-scale convergence over the R8 domains
+# (the accepted scale/ harness driven with the REAL R8 drill material).
+# Every pre-existing case above is PRESERVED verbatim; the new cases
+# append after the accepted 45 (the M014 precedent class — the second
+# disclosed evolution of this battery: 39 -> 45 at M014, 45 -> 53 here).
+# ---------------------------------------------------------------------------
+
+from contracts import (  # noqa: E402  (the disclosed evolution)
+    ActivateContract,
+    BeneficiaryScope,
+    ConnectivityPrincipal,
+    CreateContract,
+    ContractStore,
+    HardConstraint,
+    OpaqueReference,
+    Provenance,
+    RecordExecutionActivation,
+    SelectOffers,
+    TerminationRules,
+    ValidityInterval,
+)
+from executionplans import SegmentInput, translate_contract  # noqa: E402
+from evidence import EvidenceStore  # noqa: E402
+from resilience import (  # noqa: E402  (the M019 convergence surface)
+    DRILL_PHASES,
+    MATRIX_VERDICTS,
+    R8_CONVERGENCE_DOMAINS,
+    ConvergenceDomainVersion,
+    ConvergenceDrillPlan,
+    FederationScaleBounds,
+    ResilienceError,
+    RuntimeStore,
+    assemble_convergence_drill,
+    classify_convergence_domain,
+    compose_convergence_matrix,
+    negotiate_r8_matrix,
+    offline_phase_record,
+    recovery_phase_record,
+    run_fault_phase,
+    verify_federation_scale_convergence,
+)
+from localfirst import (  # noqa: E402  (the accepted M016 surface)
+    authority_snapshot,
+    local_admit,
+    open_partition,
+    sync_authority_view,
+)
+from recovery import (  # noqa: E402  (the accepted M017 surface)
+    DrillPlan,
+    DrillStep,
+    OperationBudget,
+    run_drill,
+)
+from upgrade.convergence import (  # noqa: E402  (the accepted matrix discipline)
+    CONVERGED_DOMAIN_SET,
+    DOMAIN_COMPATIBILITY_VERDICTS,
+    DomainVersion,
+    negotiate_converged_compatibility,
+)
+from federation.convergence import (  # noqa: E402  (the accepted citations)
+    cite_evidence_record,
+    cite_replan_decision,
+)
+
+_M019_T0 = "2026-12-01T00:00:00Z"
+
+
+def _m019_prov(issuer: str, *refs: str) -> Provenance:
+    return Provenance(issuer=issuer, decision_refs=tuple(refs))
+
+
+_M019_KIND_FIXTURES = {
+    "latency-bound": ({"max_ms": 40}, {"max_ms": 90}),
+    "availability-floor": ({"min_nines": 3}, {"min_nines": 2}),
+}
+
+
+def _m019_constraints(*kinds: str) -> Tuple[HardConstraint, ...]:
+    return tuple(
+        HardConstraint(
+            kind=kind,
+            params=_M019_KIND_FIXTURES[kind][0],
+            provenance=_m019_prov("prov:netpro"),
+        )
+        for kind in kinds
+    )
+
+
+_M019_OFFER_A = OpaqueReference(
+    ref_kind="offer", value="offer:netpro-basic-1", provenance=_m019_prov("prov:netpro")
+)
+_M019_OFFER_B = OpaqueReference(
+    ref_kind="offer", value="offer:skywave-mesh-1", provenance=_m019_prov("prov:skywave")
+)
+_M019_OFFER_C = OpaqueReference(
+    ref_kind="offer", value="offer:skywave-failover-1", provenance=_m019_prov("prov:skywave")
+)
+
+
+def _m019_mature_contract():
+    """A contract store whose single contract is EXECUTION_ACTIVE
+    (deterministic; rebuilt per call so mutating cases stay isolated)."""
+    store = ContractStore()
+    created = store.submit(CreateContract(
+        principal=ConnectivityPrincipal(
+            principal_kind="APPLICATION", principal_ref="app:conv-gw-01"
+        ),
+        beneficiaries=(
+            BeneficiaryScope(beneficiary_kind="DEVICE", beneficiary_ref="dev:pi-7f2a"),
+        ),
+        requirements=(
+            OpaqueReference(
+                ref_kind="intent-requirements",
+                value="intent:conv019",
+                provenance=_m019_prov("arch:convergence"),
+            ),
+        ),
+        hard_constraints=_m019_constraints("latency-bound", "availability-floor"),
+        validity=ValidityInterval(not_before=_M019_T0, not_after="2027-02-01T00:00:00Z"),
+        service_properties=(
+            OpaqueReference(
+                ref_kind="service-property",
+                value="prop:committed-1",
+                provenance=_m019_prov("prov:netpro"),
+            ),
+        ),
+        usage_pricing_terms=OpaqueReference(
+            ref_kind="usage-pricing-terms",
+            value="terms:comm-42",
+            provenance=_m019_prov("comm:ops"),
+        ),
+        assurance_obligations=(
+            OpaqueReference(ref_kind="assurance-obligation", value="oblig:evid-7"),
+        ),
+        execution_scope=(
+            OpaqueReference(ref_kind="execution-scope", value="scope:exec-default"),
+        ),
+        termination=TerminationRules(
+            conditions=("principal-requested", "constraint-violated"),
+            compensation=OpaqueReference(
+                ref_kind="compensation",
+                value="comp:rule-9",
+                provenance=_m019_prov("comm:ops"),
+            ),
+        ),
+        provenance=_m019_prov("arch:convergence", "dec:elig-1"),
+    ), recorded_at="2026-12-01T00:00:01Z")
+    cid = created.contract.contract_id
+    store.submit(
+        SelectOffers(offers=(_M019_OFFER_A, _M019_OFFER_B, _M019_OFFER_C)),
+        recorded_at="2026-12-01T00:00:02Z",
+        contract_id=cid,
+    )
+    store.submit(
+        ActivateContract(
+            activated_at=_M019_T0,
+            signature_refs=(
+                OpaqueReference(ref_kind="signature", value="sig:ed25519-1"),
+            ),
+        ),
+        recorded_at=_M019_T0,
+        contract_id=cid,
+    )
+    store.submit(RecordExecutionActivation(recorded_at=_M019_T0), recorded_at=_M019_T0, contract_id=cid)
+    return store.contract(cid)
+
+
+def _m019_failover_plan(contract: Any):
+    """A complex-deployment plan (LOCK-116): one primary segment plus
+    two alternative-role segments, translated from the SAME contract
+    through the accepted M006 bridge."""
+    return translate_contract(
+        contract,
+        (
+            SegmentInput(
+                offer_reference=_M019_OFFER_A,
+                role="primary",
+                operations=("reserve", "activate", "measure"),
+                provenance=_m019_prov("optimizer:conv-v1", "dec:opt-f0"),
+            ),
+            SegmentInput(
+                offer_reference=_M019_OFFER_B,
+                role="alternative",
+                operations=("reserve", "activate", "measure"),
+                provenance=_m019_prov("optimizer:conv-v1", "dec:opt-f1"),
+            ),
+            SegmentInput(
+                offer_reference=_M019_OFFER_C,
+                role="alternative",
+                operations=("reserve", "activate"),
+                provenance=_m019_prov("optimizer:conv-v1", "dec:opt-f2"),
+            ),
+        ),
+        provenance=_m019_prov("optimizer:conv-v1", "dec:opt-conv"),
+    )
+
+
+def _m019_record(value: str) -> OpaqueReference:
+    return OpaqueReference(
+        ref_kind="execution-artifact",
+        value=value,
+        provenance=_m019_prov("prov:netpro"),
+    )
+
+
+def _m019_subject(value: str) -> OpaqueReference:
+    return OpaqueReference(
+        ref_kind="execution-artifact",
+        value=value,
+        provenance=_m019_prov("app:conv-gw-01"),
+    )
+
+
+def _m019_views(contract: Any):
+    """The base and fresh authority views (the accepted M016 authority
+    snapshot constructor over the contract's own LOCK-108 fingerprint)."""
+    base = authority_snapshot(
+        contract,
+        (_m019_record("lease:alpha-1"), _m019_record("lease:beta-2")),
+        fresh_from="2026-12-01T00:00:00Z",
+        fresh_until="2027-01-01T00:00:00Z",
+        recorded_at="2026-12-02T00:00:20Z",
+    )
+    fresh = authority_snapshot(
+        contract,
+        (_m019_record("lease:beta-2"), _m019_record("lease:gamma-3")),
+        fresh_from="2026-12-02T00:00:00Z",
+        fresh_until="2027-01-02T00:00:00Z",
+        recorded_at="2026-12-02T00:00:38Z",
+    )
+    return base, fresh
+
+
+def _full_convergence_drill() -> Dict[str, Any]:
+    """The deterministic end-to-end convergence drill (the full accepted
+    surface composed by THIS battery — the composition root):
+
+    1. the fixture: the mature contract + the M006 failover plan + the
+       M015 runtime session ACTIVE on the primary realization;
+    2. fault -> detect -> replan/failover (the M019 surface: the typed
+       fault injection, the LOCK-106 detection observation, the accepted
+       orchestrate_failover — the consumed M008 kernel enforces LOCK-108
+       and the adopted realization lands through the explicit WORK-012
+       reconnect pair);
+    3. the offline boundary (the accepted M016 surface driven by the
+       battery): the authority-view sync, the journaled partition, two
+       local admissions;
+    4. recover + reconcile (the accepted M017 drill engine): the
+       recovery points over BOTH journal planes, the induced losses,
+       the byte-exact restores, the LOCK-106 attestations, the
+       cross-plane reconciliation with the accepted M016 resync drive;
+    5. the assembly (the M019 surface): the LOCK-108 trail + the
+       LOCK-106 citation chain + the composed verdict.
+    """
+    contract = _m019_mature_contract()
+    plan = _m019_failover_plan(contract)
+    rstore = RuntimeStore()
+    created = rstore.create(
+        contract_id=contract.contract_id,
+        created_at="2026-12-02T00:00:00Z",
+        provenance=_m019_prov("m019-scale-battery"),
+    )
+    rstore.activate(
+        created.runtime_id,
+        route_decision_id="route:primary-d0",
+        path_id="path:primary-p0",
+        recorded_at="2026-12-02T00:00:01Z",
+        provenance=_m019_prov("m019-scale-battery"),
+    )
+    estore = EvidenceStore()
+    base, fresh = _m019_views(contract)
+    cplan = ConvergenceDrillPlan(
+        contract_id=contract.contract_id,
+        runtime_id=created.runtime_id,
+        fault_kind="path-failure",
+        fault_at="2026-12-02T00:00:10Z",
+        detect_at="2026-12-02T00:00:11Z",
+        failover_at="2026-12-02T00:00:12Z",
+        offline_at="2026-12-02T00:00:20Z",
+        resolution_rule=("candidate-kind", "candidate-id"),
+        provenance=_m019_prov("m019-scale-battery"),
+    )
+    fault_phase = run_fault_phase(
+        cplan,
+        contract=contract,
+        execution_plan=plan,
+        runtime_store=rstore,
+        runtime_id=created.runtime_id,
+        evidence_store=estore,
+    )
+    sync_authority_view(
+        rstore, created.runtime_id, contract, base,
+        recorded_at="2026-12-02T00:00:21Z",
+        provenance=_m019_prov("m019-scale-battery"),
+    )
+    journal, _entry = open_partition(
+        rstore, created.runtime_id, contract, base,
+        recorded_at="2026-12-02T00:00:22Z",
+        provenance=_m019_prov("m019-scale-battery"),
+    )
+    for subject, decided_at in (
+        ("dev:device-42", "2026-12-02T00:00:23Z"),
+        ("dev:device-43", "2026-12-02T00:00:24Z"),
+    ):
+        local_admit(
+            journal,
+            contract,
+            base,
+            subject=_m019_subject(subject),
+            claimed_constraints=tuple(contract.hard_constraints),
+            decided_at=decided_at,
+            provenance=_m019_prov("m019-scale-battery"),
+        )
+    dplan = DrillPlan(
+        contract_id=contract.contract_id,
+        steps=(
+            DrillStep(kind="snapshot-plane", plane="runtime-journal", recorded_at="2026-12-02T00:00:30Z", provenance=_m019_prov("m019-scale-battery")),
+            DrillStep(kind="snapshot-plane", plane="offline-journal", recorded_at="2026-12-02T00:00:31Z", provenance=_m019_prov("m019-scale-battery")),
+            DrillStep(kind="induce-plane-loss", plane="runtime-journal", recorded_at="2026-12-02T00:00:32Z", provenance=_m019_prov("m019-scale-battery")),
+            DrillStep(kind="induce-plane-loss", plane="offline-journal", recorded_at="2026-12-02T00:00:33Z", provenance=_m019_prov("m019-scale-battery")),
+            DrillStep(kind="restore-plane", plane="runtime-journal", recorded_at="2026-12-02T00:00:34Z", provenance=_m019_prov("m019-scale-battery")),
+            DrillStep(kind="restore-plane", plane="offline-journal", recorded_at="2026-12-02T00:00:35Z", provenance=_m019_prov("m019-scale-battery")),
+            DrillStep(kind="verify-restore", plane="runtime-journal", recorded_at="2026-12-02T00:00:36Z", provenance=_m019_prov("m019-scale-battery")),
+            DrillStep(kind="verify-restore", plane="offline-journal", recorded_at="2026-12-02T00:00:37Z", provenance=_m019_prov("m019-scale-battery")),
+            DrillStep(kind="reconcile-planes", recorded_at="2026-12-02T00:00:38Z", provenance=_m019_prov("m019-scale-battery")),
+        ),
+        budget=OperationBudget(journal_appends=16, folds=8, verifications=128),
+        provenance=_m019_prov("m019-scale-battery"),
+    )
+    dresult = run_drill(
+        dplan,
+        contract=contract,
+        runtime_store=rstore,
+        runtime_id=created.runtime_id,
+        offline_journal=journal,
+        evidence_store=estore,
+        fresh_view=fresh,
+    )
+    result = assemble_convergence_drill(
+        cplan,
+        contract=contract,
+        fault_phase=fault_phase,
+        offline_phase=offline_phase_record(journal, base),
+        recovery_phase=recovery_phase_record(dresult),
+        evidence_store=estore,
+    )
+    return {
+        "contract": contract,
+        "plan": plan,
+        "cplan": cplan,
+        "fault_phase": fault_phase,
+        "journal": journal,
+        "base": base,
+        "fresh": fresh,
+        "evidence_store": estore,
+        "drill_result": dresult,
+        "result": result,
+    }
+
+
+def case_46_convergence_drill_end_to_end(results: List[Result]) -> None:
+    """The end-to-end resilience drill: fault -> detect ->
+    replan/failover -> recover -> reconcile across the FULL accepted
+    surface, every hard constraint preserved at each step (the LOCK-108
+    trail) and every transition evidence-visible (the LOCK-106
+    citations resolving on the evidence plane)."""
+    name = "case_46_convergence_drill_end_to_end"
+    fixture = _CACHE.setdefault("m019_drill", _full_convergence_drill())
+    contract = fixture["contract"]
+    fault_phase = fixture["fault_phase"]
+    dresult = fixture["drill_result"]
+    result = fixture["result"]
+    estore = fixture["evidence_store"]
+    # the replan/failover phase: the adopted alternative through the
+    # explicit WORK-012 reconnect pair (old AND new references)
+    if fault_phase.drive.outcome != "adopted":
+        results.append(fail(name, "the failover did not adopt (found %s)"
+                            % fault_phase.drive.outcome))
+        return
+    reconnect = fault_phase.drive.reconnect
+    if reconnect is None:
+        results.append(fail(name, "the adopted failover carries no reconnect evidence"))
+        return
+    fault = fault_phase.fault
+    if (reconnect.old_route_decision_id, reconnect.old_path_id) != (
+        fault.lost_route_decision_id, fault.lost_path_id
+    ):
+        results.append(fail(name, "the reconnect does not name the LOST realization"))
+        return
+    session_after = fault_phase.drive.session
+    if (session_after.route_decision_id, session_after.path_id) != (
+        reconnect.new_route_decision_id, reconnect.new_path_id
+    ):
+        results.append(fail(name, "the runtime did not land on the adopted realization"))
+        return
+    # the LOCK-108 trail: every phase, the contract's own fingerprint
+    fingerprint = contract.hard_constraint_fingerprint()
+    phases = [phase for phase, fp in result.lock108_trail]
+    if phases != list(DRILL_PHASES):
+        results.append(fail(name, "the LOCK-108 trail phases drifted: %r" % phases))
+        return
+    if any(fp != fingerprint for _, fp in result.lock108_trail):
+        results.append(fail(name, "a LOCK-108 trail entry diverged from the contract's own fingerprint"))
+        return
+    # the LOCK-106 citation chain: the detection observation + the
+    # failover attestation + every accepted M017 drill evidence record
+    if len(result.lock106_citations) != 6:
+        results.append(fail(name, "expected 6 LOCK-106 citations (the detection "
+                                  "observation, the failover attestation, the 2 "
+                                  "plane-loss observations, the 2 restore "
+                                  "attestations); found %d" % len(result.lock106_citations)))
+        return
+    for citation in result.lock106_citations:
+        if not estore.has(citation):
+            results.append(fail(name, "the LOCK-106 citation %s does not resolve"
+                                % citation[:32]))
+            return
+    # the recover phase: byte-exact restores; the reconcile phase: the
+    # accepted resync preserved and the planes converged
+    if any(outcome != "byte-exact" for outcome in result.recovery.restoration_outcomes):
+        results.append(fail(name, "a restore verification was not byte-exact: %r"
+                            % list(result.recovery.restoration_outcomes)))
+        return
+    accepted_resync = (dresult.reconciliation.accepted_resync or {})
+    if not accepted_resync.get("resync_id"):
+        results.append(fail(name, "the accepted M016 resync result was not preserved"))
+        return
+    if result.outcome != "converged":
+        results.append(fail(name, "the drill outcome is %r (expected converged)"
+                            % result.outcome))
+        return
+    # the composed drill result round-trips byte-identically
+    from resilience import ConvergenceDrillResult as _CDR
+    replayed = _CDR.from_dict(result.to_dict())
+    if replayed.canonical_bytes() != result.canonical_bytes():
+        results.append(fail(name, "the drill result does not round-trip"))
+        return
+    results.append(ok(name, "fault -> detect -> failover (adopted; the WORK-012 "
+                            "reconnect pair) -> offline -> recover (byte-exact) "
+                            "-> reconcile (converged); the LOCK-108 trail equal "
+                            "at all 6 phases; 6 LOCK-106 citations resolve"))
+
+
+def case_47_convergence_drill_fail_closed(results: List[Result]) -> None:
+    """The convergence drill fails closed: the unknown fault kind, the
+    non-increasing phase instants, the attribution mismatch, the
+    non-replan-surface runtime, the forged authority view (the LOCK-108
+    gate at assembly), the missing evidence citation, and the recovery
+    result without a reconciliation."""
+    name = "case_47_convergence_drill_fail_closed"
+
+    def expect_rejection(label: str, builder) -> bool:
+        try:
+            builder()
+        except ResilienceError:
+            return True
+        except Exception as error:  # noqa: BLE001
+            results.append(fail(
+                name, "%s: unexpected exception %s: %s"
+                % (label, type(error).__name__, str(error)[:90]),
+            ))
+            return False
+        results.append(fail(name, "%s: the input was accepted" % label))
+        return False
+
+    contract = _m019_mature_contract()
+    plan = _m019_failover_plan(contract)
+    rstore = RuntimeStore()
+    created = rstore.create(
+        contract_id=contract.contract_id,
+        created_at="2026-12-02T00:00:00Z",
+        provenance=_m019_prov("m019-scale-battery"),
+    )
+    rstore.activate(
+        created.runtime_id,
+        route_decision_id="route:primary-d0",
+        path_id="path:primary-p0",
+        recorded_at="2026-12-02T00:00:01Z",
+        provenance=_m019_prov("m019-scale-battery"),
+    )
+    good_kwargs = dict(
+        contract_id=contract.contract_id,
+        runtime_id=created.runtime_id,
+        fault_kind="path-failure",
+        fault_at="2026-12-02T00:00:10Z",
+        detect_at="2026-12-02T00:00:11Z",
+        failover_at="2026-12-02T00:00:12Z",
+        offline_at="2026-12-02T00:00:20Z",
+        resolution_rule=("candidate-kind", "candidate-id"),
+        provenance=_m019_prov("m019-scale-battery"),
+    )
+
+    def bad_fault_kind():
+        return ConvergenceDrillPlan(**dict(good_kwargs, fault_kind="meteor-strike"))
+    if not expect_rejection("the unknown fault kind", bad_fault_kind):
+        return
+
+    def bad_instants():
+        return ConvergenceDrillPlan(**dict(
+            good_kwargs,
+            fault_at="2026-12-02T00:00:12Z",
+            detect_at="2026-12-02T00:00:11Z",
+        ))
+    if not expect_rejection("the non-increasing phase instants", bad_instants):
+        return
+
+    def bad_attribution():
+        # the plan rides ANOTHER contract (a distinct forged identity —
+        # the deterministic fixture contracts share one content-derived
+        # id, so the forged id names a genuinely different contract):
+        # the fault-phase engine must reject the attribution mismatch
+        # before any state changes
+        mismatched = ConvergenceDrillPlan(
+            **dict(good_kwargs, contract_id="sha256:" + "e" * 64)
+        )
+        return run_fault_phase(
+            mismatched,
+            contract=contract,
+            execution_plan=plan,
+            runtime_store=rstore,
+            runtime_id=created.runtime_id,
+            evidence_store=EvidenceStore(),
+        )
+    if not expect_rejection("the attribution mismatch", bad_attribution):
+        return
+
+    # the non-replan-surface runtime: a PENDING session (no established
+    # realization) is rejected by the accepted failover engine
+    pending_store = RuntimeStore()
+    pending = pending_store.create(
+        contract_id=contract.contract_id,
+        created_at="2026-12-02T00:00:00Z",
+        provenance=_m019_prov("m019-scale-battery"),
+    )
+    pending_plan = ConvergenceDrillPlan(**dict(
+        good_kwargs, runtime_id=pending.runtime_id,
+    ))
+
+    def bad_surface():
+        return run_fault_phase(
+            pending_plan,
+            contract=contract,
+            execution_plan=plan,
+            runtime_store=pending_store,
+            runtime_id=pending.runtime_id,
+            evidence_store=EvidenceStore(),
+        )
+    if not expect_rejection("the non-replan-surface runtime", bad_surface):
+        return
+
+    # the forged authority view: the LOCK-108 gate at assembly (a base
+    # view whose fingerprint is not the contract's own fails closed —
+    # the same gate the accepted M016 resynchronization enforces on the
+    # fresh view, re-verified on this surface's own vocabulary)
+    fixture = _CACHE.setdefault("m019_drill", _full_convergence_drill())
+    from resilience import OfflinePhaseRecord
+
+    def forged_view():
+        material = fixture["result"].offline.to_dict()
+        material["base_constraint_fingerprint"] = "sha256:" + "0" * 64
+        forged_offline = OfflinePhaseRecord.from_dict(material)
+        return assemble_convergence_drill(
+            fixture["cplan"],
+            contract=fixture["contract"],
+            fault_phase=fixture["fault_phase"],
+            offline_phase=forged_offline,
+            recovery_phase=fixture["result"].recovery,
+            evidence_store=fixture["evidence_store"],
+        )
+    if not expect_rejection("the forged authority view", forged_view):
+        return
+
+    # the missing evidence citation: an id that never landed on the
+    # evidence plane breaks the LOCK-106 chain at assembly
+    def missing_citation():
+        return assemble_convergence_drill(
+            fixture["cplan"],
+            contract=fixture["contract"],
+            fault_phase=fixture["fault_phase"],
+            offline_phase=fixture["result"].offline,
+            recovery_phase=fixture["result"].recovery,
+            evidence_store=EvidenceStore(),  # an EMPTY evidence plane
+        )
+    if not expect_rejection("the missing evidence citation", missing_citation):
+        return
+
+    # the recovery result without a reconciliation (the end-to-end
+    # sequence requires the reconcile phase)
+    class _NoReconciliation:
+        contract_id = fixture["contract"].contract_id
+        drill_run_id = "sha256:" + "1" * 64
+        recovery_points = ()
+        restorations = ()
+        reconciliation = None
+        completed_at = "2026-12-02T00:00:38Z"
+
+        class measured_counts:  # noqa: N801 - the duck-typed surface
+            journal_appends = 0
+            folds = 0
+            verifications = 0
+
+    def no_reconciliation():
+        return recovery_phase_record(_NoReconciliation())
+    if not expect_rejection("the recovery result without a reconciliation", no_reconciliation):
+        return
+
+    results.append(ok(name, "6 rejection classes verified: the unknown fault "
+                            "kind, the non-increasing instants, the attribution "
+                            "mismatch, the non-replan-surface runtime, the "
+                            "forged LOCK-108 view, the broken LOCK-106 chain"))
+
+
+def case_48_convergence_drill_determinism(results: List[Result]) -> None:
+    """The convergence drill is deterministic: the full sequence re-run
+    byte-identically, and the drill digests are byte-identical across
+    PYTHONHASHSEED 0/1/42 subprocesses."""
+    name = "case_48_convergence_drill_determinism"
+    first = _full_convergence_drill()
+    second = _full_convergence_drill()
+    if first["result"].canonical_bytes() != second["result"].canonical_bytes():
+        results.append(fail(name, "two full drill runs diverged"))
+        return
+    if (first["result"].convergence_run_id != second["result"].convergence_run_id
+            or first["drill_result"].drill_run_id != second["drill_result"].drill_run_id):
+        results.append(fail(name, "the content-derived run ids diverged"))
+        return
+    digest_hexes = {}
+    import os as _os
+    for seed in ("0", "1", "42"):
+        env = dict(_os.environ)
+        env["PYTHONHASHSEED"] = seed
+        probe = subprocess.run(
+            [sys.executable, "-c", _M019_DRILL_PROBE],
+            capture_output=True, text=True, cwd=str(REPO_ROOT), env=env,
+        )
+        if probe.returncode != 0:
+            results.append(fail(
+                name, "the PYTHONHASHSEED=%s probe failed: %s"
+                % (seed, probe.stderr.strip()[:120]),
+            ))
+            return
+        digest_hexes[seed] = probe.stdout.strip()
+    if len(set(digest_hexes.values())) != 1:
+        results.append(fail(name, "the drill digests differ across PYTHONHASHSEED: %r" % digest_hexes))
+        return
+    results.append(ok(name, "the composed drill result + the M017 run + the "
+                            "fault phase are byte-identical in-process and "
+                            "across PYTHONHASHSEED 0/1/42 subprocesses"))
+
+
+_M019_DRILL_PROBE = r"""
+import hashlib
+import sys
+sys.path.insert(0, ".")
+sys.path.insert(0, "tools")
+from scale_selftest import _full_convergence_drill
+fixture = _full_convergence_drill()
+digest = hashlib.sha256()
+digest.update(fixture["result"].canonical_bytes())
+digest.update(fixture["drill_result"].reconciliation.canonical_bytes())
+digest.update(fixture["fault_phase"].drive.decision.canonical_bytes())
+digest.update(fixture["fault_phase"].fault.canonical_bytes())
+print(digest.hexdigest())
+""".strip()
+
+
+def case_49_convergence_matrix_r8(results: List[Result]) -> None:
+    """The converged-domain compatibility matrix over the R8 domains:
+    the accepted upgrade/ matrix discipline extended — the verdict
+    vocabulary IDENTICAL to the accepted set (the by-reference drift
+    guard), the R8 classification rows, input-order independence,
+    byte-stable digests, and the COMPOSED 16-label matrix whose R7 rows
+    are the accepted engine's own verdicts verbatim."""
+    name = "case_49_convergence_matrix_r8"
+    # the by-reference drift guard: the module's verdict vocabulary is
+    # exactly the accepted upgrade engine's (never a fork)
+    if MATRIX_VERDICTS != tuple(sorted(DOMAIN_COMPATIBILITY_VERDICTS)):
+        results.append(fail(name, "the R8 matrix verdict vocabulary diverged "
+                                  "from the accepted upgrade set"))
+        return
+    if R8_CONVERGENCE_DOMAINS != ("localfirst", "recovery", "resilience"):
+        results.append(fail(name, "the R8 convergence domain set drifted"))
+        return
+    if "credentials" in R8_CONVERGENCE_DOMAINS:
+        results.append(fail(name, "the in-flight M018 domain must never be "
+                                  "claimed on the convergence surface"))
+        return
+    # the R8 classification rows
+    local = (
+        ConvergenceDomainVersion("resilience", 1, 2),
+        ConvergenceDomainVersion("localfirst", 1, 0),
+        ConvergenceDomainVersion("recovery", 1, 1),
+    )
+    peer = (
+        ConvergenceDomainVersion("resilience", 1, 3),
+        ConvergenceDomainVersion("localfirst", 1, 0),
+        ConvergenceDomainVersion("recovery", 2, 0),
+    )
+    report = negotiate_r8_matrix(
+        local_id="site-a", peer_id="site-b",
+        local_versions=local, peer_versions=peer,
+    )
+    by_domain = report.by_domain()
+    if by_domain["resilience"].verdict != "additive-gap":
+        results.append(fail(name, "the additive-gap row drifted"))
+        return
+    if by_domain["localfirst"].verdict != "compatible":
+        results.append(fail(name, "the compatible row drifted"))
+        return
+    if by_domain["recovery"].verdict != "major-mismatch":
+        results.append(fail(name, "the major-mismatch row drifted"))
+        return
+    if report.compatible():
+        results.append(fail(name, "a major mismatch must refuse coexistence"))
+        return
+    # input-order independence + byte-stable digests
+    reversed_report = negotiate_r8_matrix(
+        local_id="site-a", peer_id="site-b",
+        local_versions=tuple(reversed(local)), peer_versions=tuple(reversed(peer)),
+    )
+    if reversed_report.digest() != report.digest():
+        results.append(fail(name, "the R8 matrix digest depends on input order"))
+        return
+    if negotiate_r8_matrix(
+        local_id="site-a", peer_id="site-b",
+        local_versions=local, peer_versions=peer,
+    ).digest() != report.digest():
+        results.append(fail(name, "the R8 matrix digest is not byte-stable"))
+        return
+    # the composed 16-label matrix: the R7 rows are the ACCEPTED
+    # engine's own verdicts (driven verbatim through the accepted
+    # negotiate_converged_compatibility), the R8 rows are the extension
+    accepted = negotiate_converged_compatibility(
+        local_id="site-a", peer_id="site-b",
+        local_versions=[DomainVersion(d, 1, 0) for d in CONVERGED_DOMAIN_SET],
+        peer_versions=[DomainVersion(d, 1, 0) for d in CONVERGED_DOMAIN_SET],
+    )
+    substrate = [verdict.to_dict() for verdict in accepted.verdicts]
+    composed = compose_convergence_matrix(
+        substrate, report, local_id="site-a", peer_id="site-b",
+    )
+    if len(composed.rows) != len(CONVERGED_DOMAIN_SET) + len(R8_CONVERGENCE_DOMAINS):
+        results.append(fail(name, "the composed matrix carries %d rows (expected "
+                                  "%d)" % (len(composed.rows),
+                                            len(CONVERGED_DOMAIN_SET) + len(R8_CONVERGENCE_DOMAINS))))
+        return
+    composed_by_domain = composed.by_domain()
+    for domain in CONVERGED_DOMAIN_SET:
+        if composed_by_domain[domain] != "compatible":
+            results.append(fail(name, "the R7 substrate row for %s is not the "
+                                      "accepted engine's compatible verdict" % domain))
+            return
+    if composed.compatible():
+        results.append(fail(name, "the composed matrix must refuse on the "
+                                  "recovery major-mismatch row"))
+        return
+    # the composed digest is input-order independent (re-composing with
+    # a shuffled substrate sequence and a reversed-order R8 report
+    # changes nothing)
+    shuffled = list(substrate)
+    shuffled.reverse()
+    shuffled_composed = compose_convergence_matrix(
+        shuffled, reversed_report, local_id="site-a", peer_id="site-b",
+    )
+    if shuffled_composed.digest() != composed.digest():
+        results.append(fail(name, "the composed matrix digest depends on input order"))
+        return
+    # a fully compatible composed matrix digests stably
+    compatible_peer = (
+        ConvergenceDomainVersion("resilience", 1, 2),
+        ConvergenceDomainVersion("localfirst", 1, 0),
+        ConvergenceDomainVersion("recovery", 1, 1),
+    )
+    compatible_r8 = negotiate_r8_matrix(
+        local_id="site-a", peer_id="site-b",
+        local_versions=local, peer_versions=compatible_peer,
+    )
+    compatible_composed = compose_convergence_matrix(
+        substrate, compatible_r8, local_id="site-a", peer_id="site-b",
+    )
+    if not compatible_composed.compatible():
+        results.append(fail(name, "the all-compatible composed matrix refuses"))
+        return
+    if compatible_composed.digest() != compose_convergence_matrix(
+        list(reversed(substrate)), compatible_r8,
+        local_id="site-a", peer_id="site-b",
+    ).digest():
+        results.append(fail(name, "the compatible composed digest is not "
+                                  "input-order independent"))
+        return
+    results.append(ok(name, "the verdict vocabulary == the accepted upgrade set; "
+                            "R8 rows classify (additive-gap/compatible/"
+                            "major-mismatch); digests byte-stable and "
+                            "input-order independent; the composed %d-label "
+                            "matrix carries the accepted R7 rows verbatim"
+                            % (len(CONVERGED_DOMAIN_SET) + len(R8_CONVERGENCE_DOMAINS))))
+
+
+def case_50_convergence_matrix_fail_closed(results: List[Result]) -> None:
+    """The R8 matrix fails closed: unknown domains, duplicate versions,
+    missing sides, substrate rows carrying R8 labels, malformed
+    substrate rows, and R8 rows that do not cover the full R8 set."""
+    name = "case_50_convergence_matrix_fail_closed"
+
+    def expect_rejection(label: str, builder) -> bool:
+        try:
+            builder()
+        except ResilienceError:
+            return True
+        except Exception as error:  # noqa: BLE001
+            results.append(fail(
+                name, "%s: unexpected exception %s: %s"
+                % (label, type(error).__name__, str(error)[:90]),
+            ))
+            return False
+        results.append(fail(name, "%s: the input was accepted" % label))
+        return False
+
+    if not expect_rejection(
+        "the unknown domain",
+        lambda: ConvergenceDomainVersion("credentials", 1, 0),
+    ):
+        return
+    if not expect_rejection(
+        "the substrate label on the extension record",
+        lambda: ConvergenceDomainVersion("contracts", 1, 0),
+    ):
+        return
+    local = (
+        ConvergenceDomainVersion("resilience", 1, 2),
+        ConvergenceDomainVersion("localfirst", 1, 0),
+        ConvergenceDomainVersion("recovery", 1, 1),
+    )
+    peer = (
+        ConvergenceDomainVersion("resilience", 1, 2),
+        ConvergenceDomainVersion("localfirst", 1, 0),
+    )
+    partial = negotiate_r8_matrix(
+        local_id="site-a", peer_id="site-b",
+        local_versions=local, peer_versions=peer,
+    )
+    if partial.by_domain()["recovery"].verdict != "peer-missing":
+        results.append(fail(name, "the peer-missing row drifted"))
+        return
+    if partial.compatible():
+        results.append(fail(name, "a missing side must refuse coexistence"))
+        return
+    if not expect_rejection(
+        "the duplicate local version",
+        lambda: negotiate_r8_matrix(
+            local_id="site-a", peer_id="site-b",
+            local_versions=(
+                ConvergenceDomainVersion("resilience", 1, 2),
+                ConvergenceDomainVersion("resilience", 1, 3),
+            ),
+            peer_versions=peer,
+        ),
+    ):
+        return
+    accepted = negotiate_converged_compatibility(
+        local_id="site-a", peer_id="site-b",
+        local_versions=[DomainVersion(d, 1, 0) for d in CONVERGED_DOMAIN_SET],
+        peer_versions=[DomainVersion(d, 1, 0) for d in CONVERGED_DOMAIN_SET],
+    )
+    substrate = [verdict.to_dict() for verdict in accepted.verdicts]
+    report = negotiate_r8_matrix(
+        local_id="site-a", peer_id="site-b",
+        local_versions=local,
+        peer_versions=(
+            ConvergenceDomainVersion("resilience", 1, 2),
+            ConvergenceDomainVersion("localfirst", 1, 0),
+            ConvergenceDomainVersion("recovery", 1, 1),
+        ),
+    )
+    forged_r8_row = dict(substrate[0])
+    forged_r8_row["domain"] = "resilience"
+    if not expect_rejection(
+        "the substrate row carrying an R8 label",
+        lambda: compose_convergence_matrix(
+            [forged_r8_row] + substrate[1:], report,
+            local_id="site-a", peer_id="site-b",
+        ),
+    ):
+        return
+    malformed_row = dict(substrate[0])
+    del malformed_row["detail"]
+    if not expect_rejection(
+        "the malformed substrate row",
+        lambda: compose_convergence_matrix(
+            [malformed_row] + substrate[1:], report,
+            local_id="site-a", peer_id="site-b",
+        ),
+    ):
+        return
+    if not expect_rejection(
+        "the R8 rows not covering the full R8 set",
+        lambda: compose_convergence_matrix(
+            substrate,
+            negotiate_r8_matrix(
+                local_id="site-a", peer_id="site-b",
+                local_versions=local[:2], peer_versions=local[:2],
+            ),
+            local_id="site-a", peer_id="site-b",
+        ),
+    ):
+        return
+    results.append(ok(name, "the unknown/substrate domains, duplicates, missing "
+                            "sides, forged substrate rows and incomplete R8 rows "
+                            "all fail closed"))
+
+
+def _m019_scale_fixture():
+    """The R8 federation-scale convergence fixture: the drill's REAL
+    material (the M008 replan decision + the LOCK-106 evidence records)
+    cited through the ACCEPTED federation constructors, the accepted
+    scale harness scenario over the citations with declared bounds, and
+    the M019 verifier over the run."""
+    fixture = _CACHE.setdefault("m019_drill", _full_convergence_drill())
+    decision = fixture["fault_phase"].drive.decision
+    estore = fixture["evidence_store"]
+    result = fixture["result"]
+    citations = [
+        cite_replan_decision(
+            decision, issuer="m019-scale-battery", cited_at=_M019_T0,
+        ),
+    ]
+    for record_id in result.lock106_citations:
+        citations.append(cite_evidence_record(
+            estore.get(record_id),
+            issuer="m019-scale-battery", cited_at=_M019_T0,
+        ))
+    decision_citation = citations[0]
+    spec = ConvergenceScenarioSpec(
+        scenario_id="r8-convergence",
+        seed=13,
+        start_instant=_M019_T0,
+        tick_seconds=60,
+        horizon_ticks=12,
+        domain_count=6,
+        shape=TopologyShape.RING,
+        citations=(
+            # the R8 decision citation at THREE holder domains (the M014
+            # canonical holder shape: the propagation bound is the ring
+            # distance to the farthest holder)
+            ConvergenceCitationPlan(at_tick=0, domain_index=0, citation=citations[0]),
+            ConvergenceCitationPlan(at_tick=0, domain_index=1, citation=citations[0]),
+            ConvergenceCitationPlan(at_tick=2, domain_index=4, citation=citations[0]),
+            # the six LOCK-106 evidence-record citations across the world
+            ConvergenceCitationPlan(at_tick=1, domain_index=2, citation=citations[1]),
+            ConvergenceCitationPlan(at_tick=1, domain_index=3, citation=citations[2]),
+            ConvergenceCitationPlan(at_tick=2, domain_index=5, citation=citations[3]),
+            ConvergenceCitationPlan(at_tick=3, domain_index=4, citation=citations[4]),
+            ConvergenceCitationPlan(at_tick=3, domain_index=5, citation=citations[5]),
+            ConvergenceCitationPlan(at_tick=3, domain_index=0, citation=citations[6]),
+        ),
+        revocations=(
+            ConvergenceRevocationPlan(
+                at_tick=4, domain_index=0,
+                citation_id=decision_citation.citation_id,
+                reason="m019-r8-material-revocation",
+            ),
+        ),
+    )
+    distances = delivery_distances(
+        topology_edges(TopologyShape.RING, 6), 6, 0,
+    )
+    expected_rounds = max(distances[index] for index in (0, 1, 4))
+    bounds = FederationScaleBounds(
+        domain_count=6,
+        shape=TopologyShape.RING,
+        tick_seconds=60,
+        horizon_ticks=12,
+        citation_rate_limit=8,
+        planned_citations=9,
+        revoked_citation_count=3,
+        propagation_round_bounds=((decision_citation.citation_id, expected_rounds),),
+    )
+    run = run_convergence_scenario(spec)
+    replay = run_convergence_scenario(spec)
+    report = verify_federation_scale_convergence(
+        bounds, run, replay,
+        citation_ids=tuple(citation.citation_id for citation in citations),
+    )
+    return {
+        "spec": spec,
+        "bounds": bounds,
+        "citations": citations,
+        "run": run,
+        "replay": replay,
+        "report": report,
+        "expected_rounds": expected_rounds,
+    }
+
+
+def case_51_convergence_federation_scale(results: List[Result]) -> None:
+    """Federation-scale convergence over the R8 domains: the drill's
+    REAL material (the M008 decision + the LOCK-106 records) cited
+    through the accepted constructors, propagated across the accepted
+    multi-domain federation harness with declared deterministic bounds,
+    the revocation propagated in topology-predicted rounds, the replay
+    byte-identical, and the verifier's composed report stable."""
+    name = "case_51_convergence_federation_scale"
+    scale_fixture = _CACHE.setdefault("m019_scale", _m019_scale_fixture())
+    report = scale_fixture["report"]
+    run = scale_fixture["run"]
+    citations = scale_fixture["citations"]
+    expected_rounds = scale_fixture["expected_rounds"]
+    # the R8 material citations: the replan decision + the 6 LOCK-106
+    # records, all constructed through the ACCEPTED cite-* constructors
+    if len(citations) != 7:
+        results.append(fail(name, "expected 7 R8 material citations (the M008 "
+                                  "decision + the 6 LOCK-106 records); found %d"
+                            % len(citations)))
+        return
+    authorities = {citation.authority for citation in citations}
+    if authorities != {"replan", "evidence"}:
+        results.append(fail(name, "the R8 material citation authorities drifted: %s"
+                            % sorted(authorities)))
+        return
+    # the declared bounds verified: the citations, the revocation, the
+    # topology-predicted propagation rounds (observed == declared)
+    if report.citation_count != 9 or report.revoked_citation_count != 3:
+        results.append(fail(name, "the declared citation/revocation envelopes drifted"))
+        return
+    if report.propagation != ((citations[0].citation_id, expected_rounds, expected_rounds),):
+        results.append(fail(name, "the propagation bound drifted: %r" % (report.propagation,)))
+        return
+    if not report.replay_verified:
+        results.append(fail(name, "the harness replay was not verified"))
+        return
+    if report.run_digest != run.run_digest:
+        results.append(fail(name, "the report does not carry the accepted run digest verbatim"))
+        return
+    # the accepted harness's own replay verification agrees
+    if not verify_convergence_replay(scale_fixture["spec"], run):
+        results.append(fail(name, "the accepted harness replay verification diverged"))
+        return
+    # the journal honesty: the R8 material admissions journaled with
+    # their citation identities and authorities (the frozen taxonomy)
+    admissions = [
+        event for event in run.journal
+        if event.kind == ScaleEventType.OBSERVATION
+        and event.payload.get("kind") == "convergence-citation-admitted"
+    ]
+    if len(admissions) != 9:
+        results.append(fail(name, "the R8 material admissions drifted: %d" % len(admissions)))
+        return
+    admitted_ids = {event.payload.get("citation_id") for event in admissions}
+    if not all(citation.citation_id in admitted_ids for citation in citations):
+        results.append(fail(name, "an R8 material citation was never admitted"))
+        return
+    # the verifier's composed report is byte-stable across a full re-run
+    second = _m019_scale_fixture()
+    if second["report"].canonical_bytes() != report.canonical_bytes():
+        results.append(fail(name, "the composed federation-scale report diverged across runs"))
+        return
+    # a diverging declared bound fails closed (the topology-predicted
+    # convergence bound is the contract)
+    from resilience import ResilienceError as _RE
+    bad_bounds = FederationScaleBounds(
+        domain_count=6, shape=TopologyShape.RING, tick_seconds=60,
+        horizon_ticks=12, citation_rate_limit=8, planned_citations=9,
+        revoked_citation_count=3,
+        propagation_round_bounds=((citations[0].citation_id, expected_rounds + 1),),
+    )
+    try:
+        verify_federation_scale_convergence(
+            bad_bounds, run, scale_fixture["replay"],
+            citation_ids=tuple(c.citation_id for c in citations),
+        )
+        results.append(fail(name, "a diverging declared round bound was accepted"))
+        return
+    except _RE:
+        pass
+    # a diverging replay fails closed
+    class _DivergingReplay:
+        run_digest = "sha256:" + "0" * 64
+    try:
+        verify_federation_scale_convergence(
+            scale_fixture["bounds"], run, _DivergingReplay(),
+            citation_ids=tuple(c.citation_id for c in citations),
+        )
+        results.append(fail(name, "a diverging replay was accepted"))
+        return
+    except _RE:
+        pass
+    results.append(ok(name, "7 R8 material citations (the M008 decision + the 6 "
+                            "LOCK-106 records) over the accepted 6-domain ring; "
+                            "the revocation confirmed in %d topology-predicted "
+                            "rounds; the replay byte-identical; the report stable"
+                            % expected_rounds))
+
+
+def case_52_convergence_lock119_discipline(results: List[Result]) -> None:
+    """LOCK-119 discipline for the new convergence module: no
+    wall-clock/randomness/network constructs anywhere in
+    resilience/convergence.py; imports confined to the sanctioned set
+    (the same boundary the accepted resilience battery audits — the
+    duck-typed composition keeps the one-way import DAG intact); the
+    canonical-JSON round-trips of every new record class."""
+    name = "case_52_convergence_lock119_discipline"
+    module_path = os.path.join(REPO_ROOT, "resilience", "convergence.py")
+    with open(module_path, encoding="utf-8") as handle:
+        source = handle.read()
+    for forbidden in (
+        "datetime.now", "time.time", "utcnow", "uuid", "random.",
+        "socket.", "requests.", "urlopen", "time.monotonic", "time.sleep",
+        "importlib", "__import__",
+    ):
+        if forbidden in source:
+            results.append(fail(name, "resilience/convergence.py carries %r" % forbidden))
+            return
+    allowed = {
+        "__future__", "hashlib", "re", "dataclasses", "typing",
+        "protocol", "contracts", "evidence", "replan", "executionplans",
+        "resilience",
+    }
+    tree = ast.parse(source)
+    imported = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            imported.add(node.module.split(".")[0])
+    unexpected = sorted(imported - allowed)
+    if unexpected:
+        results.append(fail(name, "resilience/convergence.py imports %s — the "
+                                  "duck-typed composition boundary forbids "
+                                  "upward imports" % unexpected))
+        return
+    # the canonical round-trips of the new records
+    fixture = _CACHE.setdefault("m019_drill", _full_convergence_drill())
+    from resilience import (
+        ConvergenceDrillPlan as _Plan,
+        ConvergenceDrillResult as _Result,
+        FaultRecord as _Fault,
+        OfflinePhaseRecord as _Offline,
+        RecoveryPhaseRecord as _Recovery,
+        FederationScaleConvergence as _ScaleReport,
+    )
+    scale_fixture = _CACHE.setdefault("m019_scale", _m019_scale_fixture())
+    probes = (
+        (_Plan, fixture["cplan"]),
+        (_Result, fixture["result"]),
+        (_Fault, fixture["fault_phase"].fault),
+        (_Offline, fixture["result"].offline),
+        (_Recovery, fixture["result"].recovery),
+        (FederationScaleBounds, scale_fixture["bounds"]),
+        (_ScaleReport, scale_fixture["report"]),
+    )
+    for record_cls, record in probes:
+        replayed = record_cls.from_dict(record.to_dict())
+        if replayed.canonical_bytes() != record.canonical_bytes():
+            results.append(fail(name, "%s does not round-trip byte-identically"
+                                % record_cls.__name__))
+            return
+    # a tampered deserialization fails closed (tamper-evident ids)
+    material = fixture["result"].to_dict()
+    material["outcome"] = "divergence-disclosed"
+    try:
+        _Result.from_dict(material)
+    except ResilienceError:
+        pass
+    else:
+        results.append(fail(name, "a tampered drill result deserialized (the "
+                                  "content-derived id must reject it)"))
+        return
+    results.append(ok(name, "no clock/randomness/network; imports confined to "
+                            "the sanctioned set (no upward imports — the "
+                            "duck-typed composition); 7 record classes "
+                            "round-trip byte-identically with tamper-evident ids"))
+
+
+def case_53_convergence_disclosed_evolution(results: List[Result]) -> None:
+    """The disclosed-evolution and composition-boundary checks: the
+    battery evolution 45 -> 53 disclosed, the module present, the
+    resilience package exports ADDITIVE-ONLY (the M015-accepted surface
+    frozen), the M018 credentials surface untouched (the parallel
+    delivery never claimed), and the evidence doc present with the
+    honesty markers."""
+    name = "case_53_convergence_disclosed_evolution"
+    # the battery evolution is disclosed in this file's own source
+    with open(os.path.join(REPO_ROOT, "tools", "scale_selftest.py"), encoding="utf-8") as handle:
+        battery_source = handle.read()
+    if "45 -> 53" not in battery_source or "disclosed evolution" not in battery_source:
+        results.append(fail(name, "the battery evolution is not disclosed in the "
+                                  "battery source"))
+        return
+    # the module is present and importable through the frozen package
+    import resilience
+    for symbol in (
+        "run_fault_phase", "assemble_convergence_drill",
+        "negotiate_r8_matrix", "compose_convergence_matrix",
+        "verify_federation_scale_convergence", "offline_phase_record",
+        "recovery_phase_record",
+    ):
+        if not hasattr(resilience, symbol):
+            results.append(fail(name, "the resilience package does not export %r" % symbol))
+            return
+    # the M015-accepted package surface stays frozen (additive-only)
+    m015_surface = [
+        "ResilienceError", "ResilienceReason", "RUNTIME_STATES",
+        "RUNTIME_TERMINAL_STATES", "RUNTIME_TRANSITIONS",
+        "RUNTIME_RECONNECTABLE_STATES", "RUNTIME_REALIZATION_MAP",
+        "RUNTIME_EVENT_KINDS", "ROUTE_MEMBER_NAMES", "EVENT_TARGET_STATES",
+        "DRIVE_OUTCOME_KINDS", "HANDOVER_CANDIDATE_KIND",
+        "FAILOVER_CANDIDATE_KIND", "FAILOVER_TRIGGER_KINDS",
+        "FAILOVER_TRIGGER_MAP", "RuntimeSession", "RuntimeEvent",
+        "RuntimeReconnect", "DriveResult", "check_runtime_transition",
+        "check_realization_surface", "derive_runtime_id",
+        "runtime_realization_snapshot", "fold_events", "reconnect_evidence",
+        "RuntimeStore", "RUNTIME_ISSUER", "RUNTIME_DRIVEN_ISSUER",
+        "drive_replan_decision", "handover_candidate", "handover_verdict",
+        "validate_handover_preserves_contract", "perform_handover",
+        "failover_alternatives", "orchestrate_failover",
+    ]
+    if resilience.__all__[:len(m015_surface)] != m015_surface:
+        results.append(fail(name, "the M015-accepted package surface was "
+                                  "reordered or modified (additive-only is the "
+                                  "rule)"))
+        return
+    # the parallel M018 delivery is never claimed by THIS branch: the
+    # branch's OWN delivery delta (its append-only commits, measured
+    # from the merge-base with origin/main) carries no credentials/
+    # path.  The merged CI checkout legitimately contains main's M018
+    # files once the parallel delivery lands — the BRANCH SCOPE is what
+    # is verified here, never the working tree's merged state.
+    base_probe = subprocess.run(
+        ["git", "merge-base", "origin/main", "HEAD"],
+        capture_output=True, text=True, cwd=str(REPO_ROOT),
+    )
+    if base_probe.returncode == 0 and base_probe.stdout.strip():
+        base = base_probe.stdout.strip().splitlines()[0]
+        own_delta = subprocess.run(
+            ["git", "diff", "--name-only", base, "HEAD"],
+            capture_output=True, text=True, cwd=str(REPO_ROOT),
+        )
+        own_files = {
+            line for line in own_delta.stdout.splitlines() if line.strip()
+        }
+        if any(f.startswith("credentials/") for f in own_files):
+            results.append(fail(name, "the branch's own delta touches the "
+                                      "credentials/ surface (the parallel M018 "
+                                      "delivery is NOT part of this branch's "
+                                      "scope)"))
+            return
+    else:
+        # origin/main unavailable (a fresh export without git refs): the
+        # no-git fallback verifies the credentials package is absent from
+        # THIS branch's tracked tree
+        tracked = subprocess.run(
+            ["git", "ls-files", "credentials"],
+            capture_output=True, text=True, cwd=str(REPO_ROOT),
+        )
+        if tracked.returncode == 0 and tracked.stdout.strip():
+            results.append(fail(name, "the credentials/ surface is tracked at "
+                                      "this head (the parallel M018 delivery "
+                                      "is NOT part of this branch's scope)"))
+            return
+    # the evidence doc carries the honesty markers
+    evidence_path = os.path.join(REPO_ROOT, "docs", "M019-evidence.md")
+    if not os.path.exists(evidence_path):
+        results.append(fail(name, "docs/M019-evidence.md is missing"))
+        return
+    with open(evidence_path, encoding="utf-8") as handle:
+        evidence = handle.read()
+    for marker in ("SOFTWARE", "M019", "LOCK-108", "EVID-002", "by reference"):
+        if marker not in evidence:
+            results.append(fail(name, "the evidence doc lacks the %r marker" % marker))
+            return
+    normalized = " ".join(evidence.split()).lower()
+    for phrase in ("physical pass", "physically verified", "production pass"):
+        index = normalized.find(phrase)
+        if index >= 0:
+            window = normalized[max(0, index - 90):index]
+            if "not" not in window and "never" not in window and "no " not in window:
+                results.append(fail(name, "an affirmative physical claim near %r" % phrase))
+                return
+    results.append(ok(name, "the evolution 45 -> 53 disclosed; the M015 package "
+                            "surface additive-only; the branch's own delta "
+                            "carries no credentials/ path (the parallel M018 "
+                            "delivery never claimed); the evidence doc honest"))
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 
@@ -2618,6 +3915,16 @@ def main() -> int:
         case_43_convergence_journal_honesty,
         case_44_convergence_topology_rounds,
         case_45_convergence_rate_envelope,
+        # the M019 convergence evolution (disclosed): the new R8
+        # convergence cases appended after the accepted 45
+        case_46_convergence_drill_end_to_end,
+        case_47_convergence_drill_fail_closed,
+        case_48_convergence_drill_determinism,
+        case_49_convergence_matrix_r8,
+        case_50_convergence_matrix_fail_closed,
+        case_51_convergence_federation_scale,
+        case_52_convergence_lock119_discipline,
+        case_53_convergence_disclosed_evolution,
     ):
         case(results)
     passed = sum(1 for _, ok_flag, _ in results if ok_flag)
