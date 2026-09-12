@@ -427,6 +427,42 @@ def reconcile_planes(
             RecoveryReason.INVALID_INPUT, "provenance must be a Provenance record"
         )
 
+    # -- gate 1: the attribution (fail closed — unreconcilable; BEFORE
+    # any convergence drive: a journal that does not ride the owning
+    # contract is never driven, never reconciled, never diverged -----
+    divergences: List[CrossPlaneDivergence] = []
+    with _wrap_consumed_error("the reconciliation runtime read"):
+        session = runtime_store.session(runtime_id)
+        events = runtime_store.events(runtime_id)
+    if session.contract_id != contract.contract_id:
+        raise RecoveryError(
+            RecoveryReason.PLANE_MISMATCH,
+            "runtime session %s rides contract %s, not %s — a journal that "
+            "does not ride the owning contract is unreconcilable (LOCK-101/"
+            "LOCK-117; the recovery surface never rewrites attribution)"
+            % (
+                session.runtime_id[:23],
+                session.contract_id[:23],
+                contract.contract_id[:23],
+            ),
+        )
+    for event in events:
+        if event.contract_id != contract.contract_id:
+            raise RecoveryError(
+                RecoveryReason.PLANE_MISMATCH,
+                "the runtime journal event at position %d cites contract %s, "
+                "not %s — unreconcilable attribution (fail closed)"
+                % (event.sequence, event.contract_id[:23], contract.contract_id[:23]),
+            )
+    for record in offline_journal.records():
+        if record.contract_id != contract.contract_id:
+            raise RecoveryError(
+                RecoveryReason.PLANE_MISMATCH,
+                "the offline journal record at position %d cites contract %s, "
+                "not %s — unreconcilable attribution (fail closed)"
+                % (record.sequence, record.contract_id[:23], contract.contract_id[:23]),
+            )
+
     # -- the convergence drive (the accepted M016 close, BY REFERENCE) --
     close_result: Optional[CloseResult] = None
     local_state = offline_journal.state()
@@ -465,40 +501,10 @@ def reconcile_planes(
                 "the accepted reconnect did not land the runtime session "
                 "ACTIVE on the fresh view (the planes did not converge)",
             )
-
-    # -- gate 1: the attribution (fail closed — unreconcilable) ------
-    divergences: List[CrossPlaneDivergence] = []
-    with _wrap_consumed_error("the reconciliation runtime read"):
-        session = runtime_store.session(runtime_id)
-        events = runtime_store.events(runtime_id)
-    if session.contract_id != contract.contract_id:
-        raise RecoveryError(
-            RecoveryReason.PLANE_MISMATCH,
-            "runtime session %s rides contract %s, not %s — a journal that "
-            "does not ride the owning contract is unreconcilable (LOCK-101/"
-            "LOCK-117; the recovery surface never rewrites attribution)"
-            % (
-                session.runtime_id[:23],
-                session.contract_id[:23],
-                contract.contract_id[:23],
-            ),
-        )
-    for event in events:
-        if event.contract_id != contract.contract_id:
-            raise RecoveryError(
-                RecoveryReason.PLANE_MISMATCH,
-                "the runtime journal event at position %d cites contract %s, "
-                "not %s — unreconcilable attribution (fail closed)"
-                % (event.sequence, event.contract_id[:23], contract.contract_id[:23]),
-            )
-    for record in offline_journal.records():
-        if record.contract_id != contract.contract_id:
-            raise RecoveryError(
-                RecoveryReason.PLANE_MISMATCH,
-                "the offline journal record at position %d cites contract %s, "
-                "not %s — unreconcilable attribution (fail closed)"
-                % (record.sequence, record.contract_id[:23], contract.contract_id[:23]),
-            )
+        # re-read the post-drive runtime journal (the convergence
+        # appended the reconnect pair)
+        with _wrap_consumed_error("the reconciliation runtime re-read"):
+            events = runtime_store.events(runtime_id)
 
     # -- gate 2: the composition links (typed disclosed divergence) --
     runtime_event_ids = {event.event_id for event in events}
