@@ -285,9 +285,12 @@ until the merge.
   battery, 36/36 PASS on the delivery head; every blocking battery and
   governance gate in the CI suite green on the delivery head).
 - No pending child is claimed delivered: the M018/M019 surfaces do not exist
-  yet and are not faked; the CI existence-guard steps for their batteries skip
-  visibly (disclosed, the DEC-0101 wiring convention; the M018/M019 batteries
-  do not exist yet and are not created by this delivery).
+  yet and are not faked; their batteries do not exist and were not created by
+  this delivery. Their CI existence-guard steps are not wired in the workflow
+  at this head — each step lands with its child's acceptance-time governance
+  commit (the DEC-0101/DEC-0114/DEC-0115/DEC-0116 wiring convention; the M017
+  step itself was wired by the DEC-0116 governance commit BEFORE this delivery
+  and activates on it).
 - Physical-world obligations: **NOT-TESTABLE/OPEN** — M017 creates and closes
   none; EVID-002..EVID-008 remain open and untouched, and no evidence produced
   by this delivery is physical, production, or live-service evidence. No
