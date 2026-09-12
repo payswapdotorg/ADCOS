@@ -3791,14 +3791,44 @@ def case_53_convergence_disclosed_evolution(results: List[Result]) -> None:
                                   "reordered or modified (additive-only is the "
                                   "rule)"))
         return
-    # the parallel M018 delivery is never claimed: the credentials
-    # surface does not exist at this head and is not part of this delta
-    credentials_dir = os.path.join(REPO_ROOT, "credentials")
-    if os.path.isdir(credentials_dir):
-        results.append(fail(name, "the credentials/ surface exists at this head "
-                                  "(the parallel M018 delivery is NOT part of "
-                                  "this branch's scope)"))
-        return
+    # the parallel M018 delivery is never claimed by THIS branch: the
+    # branch's OWN delivery delta (its append-only commits, measured
+    # from the merge-base with origin/main) carries no credentials/
+    # path.  The merged CI checkout legitimately contains main's M018
+    # files once the parallel delivery lands — the BRANCH SCOPE is what
+    # is verified here, never the working tree's merged state.
+    base_probe = subprocess.run(
+        ["git", "merge-base", "origin/main", "HEAD"],
+        capture_output=True, text=True, cwd=str(REPO_ROOT),
+    )
+    if base_probe.returncode == 0 and base_probe.stdout.strip():
+        base = base_probe.stdout.strip().splitlines()[0]
+        own_delta = subprocess.run(
+            ["git", "diff", "--name-only", base, "HEAD"],
+            capture_output=True, text=True, cwd=str(REPO_ROOT),
+        )
+        own_files = {
+            line for line in own_delta.stdout.splitlines() if line.strip()
+        }
+        if any(f.startswith("credentials/") for f in own_files):
+            results.append(fail(name, "the branch's own delta touches the "
+                                      "credentials/ surface (the parallel M018 "
+                                      "delivery is NOT part of this branch's "
+                                      "scope)"))
+            return
+    else:
+        # origin/main unavailable (a fresh export without git refs): the
+        # no-git fallback verifies the credentials package is absent from
+        # THIS branch's tracked tree
+        tracked = subprocess.run(
+            ["git", "ls-files", "credentials"],
+            capture_output=True, text=True, cwd=str(REPO_ROOT),
+        )
+        if tracked.returncode == 0 and tracked.stdout.strip():
+            results.append(fail(name, "the credentials/ surface is tracked at "
+                                      "this head (the parallel M018 delivery "
+                                      "is NOT part of this branch's scope)"))
+            return
     # the evidence doc carries the honesty markers
     evidence_path = os.path.join(REPO_ROOT, "docs", "M019-evidence.md")
     if not os.path.exists(evidence_path):
@@ -3819,8 +3849,9 @@ def case_53_convergence_disclosed_evolution(results: List[Result]) -> None:
                 results.append(fail(name, "an affirmative physical claim near %r" % phrase))
                 return
     results.append(ok(name, "the evolution 45 -> 53 disclosed; the M015 package "
-                            "surface additive-only; the parallel M018 surface "
-                            "absent and never claimed; the evidence doc honest"))
+                            "surface additive-only; the branch's own delta "
+                            "carries no credentials/ path (the parallel M018 "
+                            "delivery never claimed); the evidence doc honest"))
 
 
 # ---------------------------------------------------------------------------
