@@ -111,7 +111,9 @@ is ACTIVE under DEC-0120: the bounded R9 program authorization R9-CORE-001
 spec/architect/work-items/R9-charter.md) covers the child scopes M020-M024
 (M020 — Access Technology Capability Envelope ACCEPTED under DEC-0121 (PR #44
 head 035242de, merge c75a7c70 — the current-child pointer advanced to M021); M021 Wireline
-Access Adapters; M022 Non-Terrestrial Access Adapters; M023 Future Technology
+Access Adapters ACCEPTED under DEC-0122 (PR #45 head 8966693, merge
+8ebdb21 — the current-child pointer advanced to M022); M022 Non-Terrestrial
+Access Adapters; M023 Future Technology
 Extension Drill, chain-independent — the synthetic future-IMT/6G-class
 technology added purely through the accepted public extension surface; M024
 Future Access Convergence the convergence child). R9 is the TERMINAL roadmap

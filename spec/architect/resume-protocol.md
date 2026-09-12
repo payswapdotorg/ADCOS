@@ -37,8 +37,9 @@ reconciliation convention — R9 — Future Access Technology is now ACTIVE
 under DEC-0120 (the bounded R9 program authorization R9-CORE-001, baseline
 `ea4bb64`, with the R9 charter child scopes M020-M024; M020 — Access
 Technology Capability Envelope ACCEPTED under DEC-0121 (PR #44 head
-`035242de`, merge `c75a7c70`); M021 — Wireline Access Adapters is the current
-child).
+`035242de`, merge `c75a7c70`); M021 — Wireline Access Adapters ACCEPTED under
+DEC-0122 (PR #45 head `8966693`, merge `8ebdb21`); M022 — Non-Terrestrial
+Access Adapters is the current child).
 
 - R6 Provider Onboarding & Federation is complete under `DEC-0097`.
 - M001 — Architecture 1.1 Freeze is complete under `DEC-0100`: Architecture 1.1
@@ -168,17 +169,22 @@ child).
   work-item scopes M020-M024 — M020 — Access Technology Capability Envelope
   ACCEPTED under DEC-0121 (PR #44 head `035242de`, merge `c75a7c70` — the
   accesstech battery step ACTIVATED green 19/19 by the delivery merge); M021 —
-  Wireline Access Adapters the CURRENT CHILD (`tools/wireline_selftest.py`
-  CI-wired with a pre-delivery existence guard); M022 — Non-Terrestrial Access Adapters; M023 — Future Technology
+  Wireline Access Adapters ACCEPTED under DEC-0122 (PR #45 head `8966693`,
+  merge `8ebdb21` — the wireline battery step ACTIVATED green 14/14 by the
+  delivery merge, the case_68 expected-set evolution of the accepted adapter
+  battery recorded per the R9 Consumption rule, the M019 precedent); M022 —
+  Non-Terrestrial Access Adapters the CURRENT CHILD
+  (`tools/satellite_selftest.py` CI-wired with a pre-delivery existence
+  guard); M023 — Future Technology
   Extension Drill (CHAIN-INDEPENDENT — the synthetic future-IMT/6G-class
   technology added purely through the accepted public extension surface, zero
   contract-core delta); M024 — Future Access Convergence (the convergence
   child — its acceptance completes the gate and evaluates the program_exit
-  conditions, SOFTWARE-class only). Per-child acceptance decisions (DEC-0121+)
+  conditions, SOFTWARE-class only). Per-child acceptance decisions (DEC-0123+)
   are mandatory. The R9 charter's own objective constraint is an acceptance
   criterion on every child: access technologies are added or replaced through
   the adapter boundary WITHOUT altering the connectivity contract core
-  (LOCK-101). The execution mode is implementing (M021/R9-CORE-001).
+  (LOCK-101). The execution mode is implementing (M022/R9-CORE-001).
   **M020 — Access Technology Capability Envelope is ACCEPTED (DEC-0121; head
   035242de, merge c75a7c70 — the chain root, the FIRST R9 child acceptance:
   the accesstech/ envelope domain — typed fail-closed envelope validation
@@ -194,6 +200,24 @@ child).
   decision; THE CURRENT-CHILD POINTER ADVANCES M020 -> M021 — the
   R9-CORE-001 authorization stays ACTIVE (it closes only with the R9 gate
   completion at the M024 acceptance).**
+  **M021 — Wireline Access Adapters is ACCEPTED (DEC-0122; head 8966693, merge
+  8ebdb21 — the second R9 chain-child acceptance: the wireline reference
+  compositions — Ethernet (IEEE 802.3-2018), fiber (ITU-T G.709 OTN) and
+  enterprise-WAN (IEEE 802.1Q) on the M020 envelope domain, composing the
+  accepted `adapters/backhaul/` family runtime BY REFERENCE through the
+  accepted capability seam; the static-availability envelope/ladder/handover
+  declarations under `accesstech/` built only through the accepted M020 public
+  surface; the declared enterprise-WAN site topology as declared data only
+  (LOCK-105); the 14/14 battery CI-wired and green at the accepted head — the
+  step ACTIVATED by the delivery merge; the case_68 expected-set evolution of
+  the accepted adapter battery per the R9 charter's Consumption rule (the M019
+  disclosed-battery-surface-evolution precedent — the Tech-Lead-authored
+  amendment 8966693, disclosed in the evidence record §0/§9, the adapter
+  battery 70/70 at the accepted head); delivered through a worker session
+  whose turn stream died mid-report — the git/PR channel carried the complete
+  delivery, the m017/M019 wedged-render precedent class; THE CURRENT-CHILD
+  POINTER ADVANCES M021 -> M022 — the R9-CORE-001 authorization stays ACTIVE
+  (it closes only with the R9 gate completion at the M024 acceptance).**
 - `M001-CORE-001` is closed. **R7 — Universal Connectivity Commerce is COMPLETE
   under DEC-0101/DEC-0109**
 - `M001-CORE-001` is closed. **R7 — Universal Connectivity Commerce was

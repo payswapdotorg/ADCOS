@@ -7,9 +7,11 @@
 # review recorded — the terminal roadmap gate; the program_exit evaluation
 # rides with that acceptance). Children: M020 (Access Technology Capability
 # Envelope — ACCEPTED under DEC-0121: the chain-child pointer advanced
-# M020 -> M021), M021 (Wireline Access Adapters — the current child), M022
-# (Non-Terrestrial Access Adapters), M023 (Future Technology Extension Drill —
-# chain-independent), M024 (Future Access Convergence — the convergence child).
+# M020 -> M021), M021 (Wireline Access Adapters — ACCEPTED under DEC-0122:
+# the chain-child pointer advanced M021 -> M022), M022 (Non-Terrestrial
+# Access Adapters — the current child), M023 (Future Technology Extension
+# Drill — chain-independent), M024 (Future Access Convergence — the
+# convergence child).
 work_item: R9
 child_work_items:
   - M020
@@ -17,7 +19,7 @@ child_work_items:
   - M022
   - M023
   - M024
-current_child_work_item: M021
+current_child_work_item: M022
 status: active
 authorized: true
 type: implementation
@@ -47,7 +49,7 @@ authority_outputs:
   - "The access-technology envelope domain, the wireline/non-terrestrial/future reference adapter compositions, and the R9 convergence surface on the canonical 1.1 authority — access technologies added and replaced through the adapter boundary with the connectivity contract core unaltered"
 scope:
   # M020 — Access Technology Capability Envelope (ACCEPTED under DEC-0121: PR #44
-  #  reviewed head 035242de, merge c75a7c70 — the current-child pointer advances
+  #  reviewed head 035242de, merge c75a7c70 — the current-child pointer advanced
   #  to M021)
   - "accesstech/"
   - "docs/M020-evidence.md"

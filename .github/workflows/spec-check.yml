@@ -451,12 +451,31 @@ jobs:
       # authorized M021 delivery; until then the step skips visibly (never
       # silently) and activates automatically on the delivery merge. The
       # DEC-0120 M020 wiring precedent (the M002/contract battery class).
+      # ACTIVATED by the accepted M021 delivery (merge 8ebdb21): the battery
+      # runs green 14/14, x3 byte-identical at the accepted head (DEC-0122).
       - name: Run wireline access adapter tests
         run: |
           if [ -f tools/wireline_selftest.py ]; then
             python3 tools/wireline_selftest.py
           else
             echo "SKIP (pre-delivery, disclosed): tools/wireline_selftest.py lands with the authorized M021 delivery (R9-CORE-001, DEC-0121)"
+          fi
+        continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
+
+      # M022 battery (DEC-0122 acceptance wiring — the established existence-
+      # guard pattern: skips visibly until the delivery lands on main, then
+      # runs; the M002/M015/M020/M021 wiring class). ACTIVATION NOTE: the
+      # case_68 expected-set evolution (the R9 Consumption-rule sanctioned
+      # battery-surface evolution, DEC-0122) adds each accepted R9 child's
+      # reference module at its OWN acceptance — M022's satellite.py joins
+      # case_68's expected_delta at the M022 acceptance, exactly as M021's
+      # wireline.py joined at this one.
+      - name: Run non-terrestrial access adapter tests
+        run: |
+          if [ -f tools/satellite_selftest.py ]; then
+            python3 tools/satellite_selftest.py
+          else
+            echo "SKIP (pre-delivery, disclosed): tools/satellite_selftest.py lands with the authorized M022 delivery (R9-CORE-001, DEC-0122)"
           fi
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
 
