@@ -124,29 +124,30 @@ def main() -> int:
         (resume, "Fresh-session guarantee", "resume protocol must define fresh-session sufficiency"),
         (resume, "M001 — Architecture 1.1 Freeze", "resume protocol must identify the 1.1 transition gate"),
         (resume, "THE R7 GATE IS COMPLETE", "resume protocol must record the R7 gate completion (DEC-0109)"),
-        (resume, "R8 — Resilience, Mobility and Scale is ACTIVE", "resume protocol must record the R8 gate activation (DEC-0114)"),
+        (resume, "THE R8 GATE IS COMPLETE", "resume protocol must record the R8 gate completion (DEC-0119)"),
         (resume, "M015 — Execution Resilience Runtime is ACCEPTED", "resume protocol must record the M015 acceptance (DEC-0115)"),
         (resume, "M016 — Local-First and Offline Operation is ACCEPTED", "resume protocol must record the M016 acceptance (DEC-0116)"),
         (resume, "M017 — Disaster Recovery and State Reconciliation is ACCEPTED", "resume protocol must record the M017 acceptance (DEC-0117)"),
         (resume, "M018 — Credential and Key Lifecycle Operations is ACCEPTED", "resume protocol must record the M018 acceptance (DEC-0118)"),
+        (resume, "M019 — Resilience Convergence and Scale Hardening is ACCEPTED", "resume protocol must record the M019 acceptance (DEC-0119)"),
         (roadmap, "mandatory_forward_target: \"Architecture 1.1\"", "roadmap must declare 1.1 as mandatory forward target"),
         (roadmap, "next_gate: R9_FUTURE_ACCESS_TECHNOLOGY", "roadmap must put R9 as the next gate after the R8 activation"),
-        (roadmap, 'roadmap_version: "2.15"', "roadmap must be advanced to the post-M018-acceptance version 2.15"),
-        (roadmap, "program_state: R8_RESILIENCE_MOBILITY_AND_SCALE_ACTIVE", "roadmap must record the R8-active program state"),
+        (roadmap, 'roadmap_version: "2.16"', "roadmap must be advanced to the post-M019-acceptance/R8-completion version 2.16"),
+        (roadmap, "program_state: R9_UNLOCKED_NOT_ACTIVATED", "roadmap must record the R9-unlocked-not-activated halted program state"),
     ]
     for text, marker, message in required_markers:
         if marker.lower() not in text.lower():
             failures.append(message)
 
-    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "the sole active implementation authorization", "Architecture 1.0 is preserved historical evidence", "R7 — Universal Connectivity Commerce", "M002 — Connectivity Contract Core", "M003 — Offers and Provider Capability Exchange", "M013 — Developer Connectivity API", "M009 — Usage and Commercial Reconciliation", "M010 — Vertical Proof — ShareNet", "M011 — Vertical Proof — RoamLink", "M012 — Vertical Proof — COMOS", "M004 — Eligibility and Policy", "M005 — Evidence and Assurance", "M006 — Execution Plan", "M007 — Provider/Standard Adapters", "M008 — Replan and Failover", "M014 — Production Federation", "R7 — Universal Connectivity Commerce is COMPLETE", "R8 — Resilience, Mobility and Scale", "M015 — Execution Resilience Runtime", "M016 — Local-First and Offline Operation", "M017 — Disaster Recovery and State Reconciliation", "M018 — Credential and Key Lifecycle Operations", "M019 — Resilience Convergence and Scale Hardening"]:
+    for marker in ["R6 Provider Onboarding & Federation", "M001 — Architecture 1.1 Freeze", "NO active implementation authorization", "Architecture 1.0 is preserved historical evidence", "R7 — Universal Connectivity Commerce", "M002 — Connectivity Contract Core", "M003 — Offers and Provider Capability Exchange", "M013 — Developer Connectivity API", "M009 — Usage and Commercial Reconciliation", "M010 — Vertical Proof — ShareNet", "M011 — Vertical Proof — RoamLink", "M012 — Vertical Proof — COMOS", "M004 — Eligibility and Policy", "M005 — Evidence and Assurance", "M006 — Execution Plan", "M007 — Provider/Standard Adapters", "M008 — Replan and Failover", "M014 — Production Federation", "R7 — Universal Connectivity Commerce is COMPLETE", "R8 — Resilience, Mobility and Scale", "M015 — Execution Resilience Runtime", "M016 — Local-First and Offline Operation", "M017 — Disaster Recovery and State Reconciliation", "M018 — Credential and Key Lifecycle Operations", "M019 — Resilience Convergence and Scale Hardening"]:
         if marker.lower() not in current.lower():
             failures.append(f"current-state.md missing current checkpoint marker: {marker}")
 
-    for marker in ['roadmap_version: "2.15"', "program_state: R8_RESILIENCE_MOBILITY_AND_SCALE_ACTIVE", "execution_mode: implementing", "active_work_item: M019", "active_authorization: R8-CORE-001", "next_gate: R9_FUTURE_ACCESS_TECHNOLOGY", "completion_decision: DEC-0100", "activation_decision: DEC-0101", "completion_decision: DEC-0109", "completion_merge_sha: 344cd64e8396c7e388e31a50635ddff16bb4ea14", "activation_decision: DEC-0114", "authorization: \"R8-CORE-001\"", "child_acceptance_decisions: \"M015 accepted by DEC-0115 (head 95a65a5, merge d77a561); M016 accepted by DEC-0116 (head 0d5cfb7, merge a0ebd019); M017 accepted by DEC-0117 (head f016124, merge 438acb66); M018 accepted by DEC-0118 (head dba0e9a, merge e037ca8d — chain-independent)"]:
+    for marker in ['roadmap_version: "2.16"', "program_state: R9_UNLOCKED_NOT_ACTIVATED", "execution_mode: awaiting-architect-decisions", "active_work_item: null", "active_authorization: null", "next_gate: R9_FUTURE_ACCESS_TECHNOLOGY", "completion_decision: DEC-0100", "activation_decision: DEC-0101", "completion_decision: DEC-0109", "completion_merge_sha: 344cd64e8396c7e388e31a50635ddff16bb4ea14", "activation_decision: DEC-0114", "completion_decision: DEC-0119", "completion_merge_sha: 3fedfbcd82e7b9a5be562bc51a819ba95453f570", "authorization: \"R8-CORE-001\"", "child_acceptance_decisions: \"M015 accepted by DEC-0115 (head 95a65a5, merge d77a561); M016 accepted by DEC-0116 (head 0d5cfb7, merge a0ebd019); M017 accepted by DEC-0117 (head f016124, merge 438acb66); M018 accepted by DEC-0118 (head dba0e9a, merge e037ca8d — chain-independent); M019 accepted by DEC-0119 (head acf9e6c, merge 3fedfbc — the convergence child completing the gate)"]:
         if marker not in roadmap:
             failures.append(f"roadmap.yaml missing current authoritative marker: {marker}")
 
-    for marker in ["mode: implementing", "active_work_item: M019", "active_authorization: R8-CORE-001", "current_child_work_item: M019", "r8_activation_decision: DEC-0114", "m015_acceptance_decision: DEC-0115", "m016_acceptance_decision: DEC-0116", "m017_acceptance_decision: DEC-0117", "m018_acceptance_decision: DEC-0118", "R8-CORE-001"]:
+    for marker in ["mode: awaiting-architect-decisions", "active_work_item: null", "active_authorization: null", "current_child_work_item: null", "r8_activation_decision: DEC-0114", "m015_acceptance_decision: DEC-0115", "m016_acceptance_decision: DEC-0116", "m017_acceptance_decision: DEC-0117", "m018_acceptance_decision: DEC-0118", "m019_acceptance_decision: DEC-0119", "r8_completion_decision: DEC-0119", "R8-CORE-001"]:
         if marker not in execution:
             failures.append(f"execution-state.yaml missing R8-active marker: {marker}")
 

@@ -24,16 +24,17 @@ A brand-new Architect, Tech Lead, worker, or implementation agent must resume fr
 
 ## Current checkpoint
 
-The latest reconciled software baseline is the M018 acceptance merge
-`e037ca8de7379f3f6d461a2aa9994442ca145e4f` (the DEC-0109 R7-completion
-acceptance head `28b3150`, the DEC-0114 R8-activation commit `b0145f1`, the
-M015 acceptance merge `d77a561`, the DEC-0115 acceptance commit `6b96438`,
-the M016 acceptance merge `a0ebd019`, the DEC-0116 acceptance commit
-`bda91c3`, the M017 acceptance merge `438acb66` and the DEC-0117 acceptance
-commit `d16093d` precede it on main — the m018-credentials delivery branch
-rooted at `bda91c3`, the CHAIN-INDEPENDENT rooting, merging cleanly past the
-advanced main; the delivery merged as `e037ca8d` completing the fourth R8
-child — the chain-independent acceptance); the DEC-0118 acceptance
+The latest reconciled software baseline is the M019 acceptance merge
+`3fedfbcd82e7b9a5be562bc51a819ba95453f570` — the R8 COMPLETION merge (the
+DEC-0109 R7-completion acceptance head `28b3150`, the DEC-0114 R8-activation
+commit `b0145f1`, the M015 acceptance merge `d77a561`, the DEC-0115 acceptance
+commit `6b96438`, the M016 acceptance merge `a0ebd019`, the DEC-0116 acceptance
+commit `bda91c3`, the M017 acceptance merge `438acb66`, the DEC-0117 acceptance
+commit `d16093d`, the M018 acceptance merge `e037ca8d` and the DEC-0118
+acceptance commit `6da2c3c` precede it on main — the m019-convergence delivery
+branch rooted at `d16093d`, the live-main rule, merging cleanly past the
+advanced main; the delivery merged as `3fedfbc` completing the FIFTH R8 child
+— the R8 GATE COMPLETION); the DEC-0119 acceptance
 transition sits beyond it per the standing reconciliation convention.
 
 - R6 Provider Onboarding & Federation is complete under `DEC-0097`.
@@ -41,19 +42,17 @@ transition sits beyond it per the standing reconciliation convention.
   is the sole normative forward architecture (`spec/architecture.md` FROZEN v1.1,
   LOCK-101..LOCK-120); Architecture 1.0 is preserved historical evidence at
   `spec/history/`; ACR-014 is ACCEPTED.
-- `M001-CORE-001` is closed. **R8 — Resilience, Mobility and Scale is ACTIVE
-  under DEC-0114** (the DEC-0101 governance-compression precedent) as a bounded
-  program authorization: `R8-CORE-001`
+- `M001-CORE-001` is closed. **R8 — Resilience, Mobility and Scale is COMPLETE
+  under DEC-0119** (the DEC-0109/R7-completion precedent) — the bounded
+  program authorization `R8-CORE-001`
   (`spec/architect/authorizations/R8.yaml`, baseline `28b3150`) with the R8
-  charter (`spec/architect/work-items/R8-charter.md`) declaring the
-  gate-specific child work-item scopes M015-M019 (M019 Resilience Convergence
-  and Scale Hardening — the CURRENT chain child, now UNBLOCKED: its declared
-  dependencies M015+M016+M017+M018 are all accepted, its worker in flight;
-  M018 Credential and
-  Key Lifecycle Operations ACCEPTED under DEC-0118 — the chain-independent
-  acceptance: the current-child pointer does NOT move; M019 the convergence
-  child whose acceptance as DEC-0119 COMPLETES
-  the R8 gate and unlocks R9) and
+  charter (`spec/architect/work-items/R8-charter.md`) that declared the
+  gate-specific child work-item scopes M015-M019 is CLOSED (status accepted,
+  authorized false) with ALL FIVE children accepted (M015 DEC-0115, M016
+  DEC-0116, M017 DEC-0117, M018 DEC-0118 — the chain-independent acceptance:
+  the current-child pointer does NOT move; M019 — Resilience Convergence and
+  Scale Hardening ACCEPTED under DEC-0119 — the convergence child whose
+  acceptance COMPLETED the R8 gate) and
   the overlay (`spec/architect/dependency-overlays/R8.yaml`: M015 -> M016 ->
   M017 -> M019, M018 chain-independent, M019 converges all four, R7 the sole
   hard dependency). **M015 — Execution Resilience Runtime is ACCEPTED
@@ -133,9 +132,26 @@ transition sits beyond it per the standing reconciliation convention.
   PR-delta-shape comparison class), the decisive CI-equivalent merge state ALL
   GREEN) — the FOURTH R8 child accepted, the CHAIN-INDEPENDENT acceptance:
   the current-child pointer does NOT move (the M009/M013 precedent) and M019
-  is UNBLOCKED (its declared dependencies M015+M016+M017+M018 all accepted;
-  only M019 remains between the R8 gate and completion) — the R8-CORE-001
-  authorization stays ACTIVE.** The R8 charter consumption rule:
+  is UNBLOCKED (its declared dependencies M015+M016+M017+M018 all accepted) —
+  the R8-CORE-001 authorization stayed ACTIVE through the fourth acceptance.**
+  **M019 — Resilience Convergence and Scale Hardening is ACCEPTED (DEC-0119;
+  head acf9e6c, merge 3fedfbc — the convergence child completing the R8 gate:
+  the resilience/convergence.py surface composing every accepted R8 child
+  authority BY REFERENCE — the end-to-end fault-injection drill with every
+  hard constraint preserved (the LOCK-108 trail equal across all six phases),
+  the converged-domain compatibility matrix composing the accepted upgrade
+  engine's verdict dicts, the federation-scale convergence verifier with
+  topology-predicted declared-round bounds; the evolved scale battery 53/53 —
+  the disclosed evolution 45 -> 53 with the case_53/case_36/case_37
+  delta-semantics fixes, the M018-ratified merge-base precedent; verified
+  under the branch-root-behind-live-main protocol — the DEC-0113 precedent
+  class: the base-consistent-ref gates 6/6, the bare-head unreconciled-main
+  artifact disclosed (36 rc=1 steps — every failing case the
+  frozen-spec-unchanged/PR-delta-shape comparison class), the decisive
+  CI-equivalent merge state ALL GREEN; delivered through the wedged-render
+  turn — the git/PR channel the truth) — THE R8 GATE IS COMPLETE (all five
+  children accepted; the R8-CORE-001 program authorization is CLOSED —
+  status accepted, authorized false).** The R8 charter consumption rule:
   every accepted R7 authority consumed BY REFERENCE — never reimplemented,
   weakened, forked, or bypassed; the legacy resilience reservoir
   (sessions/mobility/multipath/edge/appliance) is harvest material per the
@@ -189,18 +205,21 @@ transition sits beyond it per the standing reconciliation convention.
   authority BY REFERENCE; the client battery DEC-0099 re-baseline 24/24 with
   W048 never restored; the scale battery evolved 45/45) — THE R7 GATE IS COMPLETE
   (all thirteen children M002-M014 accepted; the R7-CORE-001 program
-  authorization is CLOSED). R8 — Resilience, Mobility and Scale is now ACTIVE
-  under DEC-0114 (the R8 charter + overlay + the R8-CORE-001 program
-  authorization above); M015 — Execution Resilience Runtime is ACCEPTED
+  authorization is CLOSED). R8 — Resilience, Mobility and Scale is COMPLETE under DEC-0119 (the R8
+  charter + overlay + the R8-CORE-001 program authorization above — CLOSED,
+  status accepted, authorized false); M015 — Execution Resilience Runtime is ACCEPTED
   (DEC-0115), M016 — Local-First and Offline Operation is ACCEPTED (DEC-0116),
   M017 — Disaster Recovery and State Reconciliation is ACCEPTED (DEC-0117),
   M018 — Credential and Key Lifecycle Operations is ACCEPTED (DEC-0118 — the
   chain-independent acceptance: the current-child pointer does NOT move),
-  and M019 — Resilience Convergence and Scale Hardening is the current
-  chain child, now UNBLOCKED (its declared dependencies M015+M016+M017+M018
-  all accepted; its worker in flight; only M019 remains between the R8 gate
-  and completion).
-  Per-child acceptance decisions (DEC-0119 onward for the R8 children) are the
+  and M019 — Resilience Convergence and Scale Hardening is ACCEPTED
+  (DEC-0119 — the convergence child completing the gate). THE R8 GATE IS
+  COMPLETE (all five children accepted; the R8-CORE-001 program authorization
+  CLOSED); R9 — Future Access Technology is UNLOCKED and NOT ACTIVATED
+  (activation requires its own decision — an Architect decision); the
+  execution mode is awaiting-architect-decisions (no active work item, no
+  active authorization — the post-DEC-0100/post-DEC-0109 halt pattern).
+  Per-child acceptance decisions (DEC-0115 through DEC-0119) were the
   serialization points.
 - R4/W040 remains an independent physical-validation track and is not replaced by the software roadmap.
 - W048 remains accepted-not-restored and MUST NOT be recreated, mocked, or substituted implicitly.

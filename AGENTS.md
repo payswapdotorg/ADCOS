@@ -99,12 +99,17 @@ pointer does NOT move; the credentials/ domain composing the accepted M014
 identity/federation/client convergence surfaces BY REFERENCE; the 32/32
 battery CI-wired and green; the two-session continuation delivery with one
 disclosed battery defect fix),
-and M019 — Resilience Convergence and Scale Hardening the current chain
-child, now UNBLOCKED (its declared dependencies M015+M016+M017+M018 all
-accepted — only M019 remains between the R8 gate and completion; its
-acceptance as DEC-0119 completes the R8 gate), with
-per-child acceptance decisions (DEC-0119+) mandatory; every accepted R7
-authority is consumed BY REFERENCE (the R8 charter consumption rule). Implementation proceeds only within the active authorization's declared
+and M019 — Resilience Convergence and Scale Hardening ACCEPTED (DEC-0119; head
+acf9e6c, merge 3fedfbc — the convergence child completing the R8 gate: the
+resilience/convergence.py surface composing every accepted R8 child authority
+BY REFERENCE; the evolved 53/53 scale battery green at the completed head;
+delivered through the wedged-render turn — the git/PR channel the truth).
+R8 — Resilience, Mobility and Scale is COMPLETE (all five children accepted;
+the R8-CORE-001 program authorization CLOSED); R9 — Future Access Technology
+is the next gate, UNLOCKED and NOT ACTIVATED (activation requires its own
+decision); the execution mode is awaiting-architect-decisions. Every accepted
+R7 authority was consumed BY REFERENCE (the R8 charter consumption rule held
+at every child). Implementation proceeds only within the active authorization's declared
 scope; each child work item is accepted only from repository evidence per the
 charter's acceptance rules.
 

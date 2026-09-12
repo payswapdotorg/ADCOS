@@ -136,12 +136,17 @@ does NOT move; the credentials/ domain composing the accepted M014
 identity/federation/client convergence surfaces BY REFERENCE; the 32/32
 battery CI-wired and green; the two-session continuation delivery with one
 disclosed battery defect fix); M019 Resilience Convergence and Scale Hardening
-the current chain child and convergence child, now UNBLOCKED (its declared
-dependencies M015+M016+M017+M018 all accepted — its acceptance as DEC-0119
-completes the R8 gate). Every accepted R7
+ACCEPTED (DEC-0119; head acf9e6c, merge 3fedfbc — the convergence child
+completing the R8 gate: the resilience/convergence.py surface composing every
+accepted R8 child authority BY REFERENCE, the evolved 53/53 scale battery
+green at the completed head). R8 — Resilience, Mobility and Scale is
+COMPLETE (all five children accepted; the R8-CORE-001 program authorization
+CLOSED); R9 — Future Access Technology is the next gate, UNLOCKED and NOT
+ACTIVATED (activation requires its own decision); the execution mode is
+awaiting-architect-decisions. Every accepted R7
 authority is consumed BY REFERENCE per the R8 charter consumption rule.**
-Per-child acceptance (DEC-0119 onward) is
-mandatory and is the serialization point; the Tech Lead may decompose,
+Per-child acceptance (DEC-0115 through DEC-0119) was
+mandatory and was the serialization point; the Tech Lead may decompose,
 dispatch, integrate and deliver within the authorized child scopes without
 further pre-implementation authorization ceremonies.
 

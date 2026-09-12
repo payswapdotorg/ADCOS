@@ -2,7 +2,7 @@
 
 **Gate-specific Work Item contract (DEC-0114 governance-compression class, the DEC-0101 precedent).**
 **Authorization: R8-CORE-001 (bounded R8 program authorization, DEC-0114). Baseline: `28b31500a928f2f75582bfb79039e315187d72b2`.**
-**Status: ACTIVE — the R8 implementation tranche M015-M019 is open; M015 — Execution Resilience Runtime is ACCEPTED (DEC-0115; head 95a65a5, merge d77a561 — the current-child pointer advances to M016); M016 — Local-First and Offline Operation is ACCEPTED (DEC-0116; head 0d5cfb7, merge a0ebd019 — the current-child pointer advances to M017); M017 — Disaster Recovery and State Reconciliation is ACCEPTED (DEC-0117; head f016124, merge 438acb66 — the current-child pointer advances to M019); M018 — Credential and Key Lifecycle Operations is ACCEPTED (DEC-0118; head dba0e9a, merge e037ca8d — the CHAIN-INDEPENDENT acceptance: the current-child pointer does NOT move); M019 — Resilience Convergence and Scale Hardening is the current child, now UNBLOCKED (its declared dependencies M015+M016+M017+M018 all accepted — four accepted, M019 the remaining current child).**
+**Status: COMPLETE — the R8 gate is finished under DEC-0119; ALL FIVE children accepted: M015 — Execution Resilience Runtime (DEC-0115; head 95a65a5, merge d77a561); M016 — Local-First and Offline Operation (DEC-0116; head 0d5cfb7, merge a0ebd019); M017 — Disaster Recovery and State Reconciliation (DEC-0117; head f016124, merge 438acb66); M018 — Credential and Key Lifecycle Operations (DEC-0118; head dba0e9a, merge e037ca8d — CHAIN-INDEPENDENT: the current-child pointer does NOT move); M019 — Resilience Convergence and Scale Hardening (DEC-0119; head acf9e6c, merge 3fedfbc — the convergence child completing the gate). The R8-CORE-001 program authorization is CLOSED (status accepted, authorized false — the R7-CORE-001 closure pattern). R9 — Future Access Technology is the next gate, UNLOCKED and NOT ACTIVATED.**
 
 ## Objective
 
@@ -159,7 +159,7 @@ re-authorization ceremony.
   surfaces (no second authorization runtime — LOCK-117). Chain-independent:
   branches from the accepted R7 state (M014), not from the M015-M017 chain.
 
-### M019 — Resilience Convergence and Scale Hardening (current child, unblocked — the convergence child; its declared dependencies M015+M016+M017+M018 are ALL accepted, its worker in flight)
+### M019 — Resilience Convergence and Scale Hardening — ACCEPTED (DEC-0119: PR #43 head acf9e6c, merge 3fedfbc — the convergence child completing the R8 gate)
 
 - **Scope:** `resilience/` (the convergence module — the M015-owned prefix,
   shared), `tools/scale_selftest.py` (disclosed evolution, the M014 precedent),

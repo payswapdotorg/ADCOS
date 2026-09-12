@@ -2,14 +2,14 @@
 # (bounded R8 program authorization, the DEC-0114 governance-compression class —
 # the DEC-0101/R7-CORE-001 precedent). Issued by DEC-0114; ONE active
 # authorization for the whole M015-M019 tranche. Per-child acceptance decisions
-# (DEC-0115+) close each child; this authorization CLOSES with the R8 gate
-# completion (the convergence child M019 accepted and the completion review
-# recorded). Children closed so far: M015 (DEC-0115 — the chain-child pointer
+# (DEC-0115+) closed each child; this authorization CLOSED with the R8 gate
+# completion (DEC-0119 — the convergence child M019 accepted and the completion
+# review recorded). Children closed: M015 (DEC-0115 — the chain-child pointer
 # advanced M015 -> M016), M016 (DEC-0116 — the chain-child pointer advanced
 # M016 -> M017), M017 (DEC-0117 — the chain-child pointer advanced
 # M017 -> M019), M018 (DEC-0118 — CHAIN-INDEPENDENT: the current-child
-# pointer does NOT move; M019 the remaining child, now UNBLOCKED — its
-# declared dependencies M015+M016+M017+M018 all accepted).
+# pointer does NOT move), M019 (DEC-0119 — the convergence child; ALL FIVE
+# children accepted; the gate COMPLETED).
 work_item: R8
 child_work_items:
   - M015
@@ -17,19 +17,19 @@ child_work_items:
   - M017
   - M018
   - M019
-current_child_work_item: M019
-status: active
-authorized: true
+current_child_work_item: null
+status: accepted
+authorized: false
 type: implementation
 authorization_id: "R8-CORE-001"
 authorization_decision: DEC-0114
 scope_amendment_chain: []
 superseded_by: null
 supersession_decision: null
-acceptance_decision: null
-acceptance_mode: null
-accepted_delivery_sha: null
-acceptance_merge_sha: null
+acceptance_decision: DEC-0119
+acceptance_mode: "R8 gate completion (all five children accepted; the program authorization closes with the gate)"
+accepted_delivery_sha: acf9e6c2216e0684e152e45b16c66f50eee45083
+acceptance_merge_sha: 3fedfbcd82e7b9a5be562bc51a819ba95453f570
 baseline_sha: 28b31500a928f2f75582bfb79039e315187d72b2
 review_basis: "DEC-0114 activated R8 as a bounded program authorization from the DEC-0109 R7-completion head 28b3150 (live main, push CI green run 34606619436). R7 is COMPLETE (DEC-0109: all thirteen children M002-M014 accepted; the R7-CORE-001 program authorization closed); Architecture 1.1 is the sole normative forward architecture; the accepted R7 child authorities are the composition substrate consumed BY REFERENCE. The gate-specific contract is the R8 charter (spec/architect/work-items/R8-charter.md); the dependency overlay is spec/architect/dependency-overlays/R8.yaml."
 dependencies:

@@ -441,7 +441,9 @@ jobs:
       # records the wiring decision where a guard would have gone, so the
       # wiring history stays honest (DEC-0117). Restated unchanged at the M018
       # acceptance (DEC-0118): still no guard — the disclosed evolution
-      # activates with the authorized M019 delivery.
+      # activates with the authorized M019 delivery. ACTIVATED by the accepted
+      # M019 delivery (merge 3fedfbc): the evolved battery runs green 53/53 at
+      # the completed head (DEC-0119 — the R8 gate completion).
       # M014 acceptance wiring (DEC-0109): the client battery DEC-0099
       # containment guard is RETIRED — the honest convergence re-baseline
       # (24/24) landed with the accepted M014 delivery; the step converts
