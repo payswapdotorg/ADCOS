@@ -21,6 +21,27 @@ Lead sequences the MERGE after it. Nothing in this record claims the M019 accept
 the M018 delivery, or the R8 gate completion; §8 composes the completion-review material
 from repository citations for the Tech Lead's DEC-0119 decision.
 
+**Main advancement during delivery (the parallel-delivery note in action, disclosed
+exactly):** while this PR was in flight, main advanced past the branch root — the
+parallel M018 delivery (PR #42, branch `m018-credentials`, merge `e037ca8`) landed
+with `credentials/` + `tools/credential_selftest.py` + `docs/M018-evidence.md`. The
+consequences, disclosed precisely: (a) this branch does NOT rebase onto the advanced
+main (the charter's rule; the scopes are disjoint and the merge is clean — verified
+by a local simulation of the exact merge: every battery green on the merged state,
+§6); (b) the M018 credential CI step's existence guard ACTIVATES on the merged PR
+checkout (the battery runs 32/32 green there — verified locally); (c) the
+`fresh_session_check` CI step fails on the merged checkout with
+"main advanced beyond the snapshot 438acb66 with implementation-domain changes
+(baa28dab: credentials/__init__.py); reconcile the execution-state snapshot before
+implementation" — a GOVERNANCE-STATE condition that is identical at the live main
+head with ZERO delta of this delivery (verified by direct execution at `e037ca8`):
+the M018 merge landed before its DEC-0118 acceptance reconciliation commit, and the
+snapshot reconciliation (the execution-state/roadmap/ledger update) is the Tech
+Lead's governance action, outside this delivery's declared scope (`spec/` is
+control-plane). Reported with evidence on the PR; never patched silently. The step
+goes green when the DEC-0118 acceptance governance commit lands on main — which is
+exactly the sequencing this PR's merge already waits for.
+
 ## 1. Delivered surface
 
 - **`resilience/convergence.py` (NEW, 2879 lines)** — the R8 convergence surface in the
@@ -216,9 +237,16 @@ scale **45 -> 53** (this delivery's disclosed evolution), and the governance gat
 `resilience/` — convergence.py + the additive `__init__` exports —
 `tools/scale_selftest.py`, `docs/M019-evidence.md`), `current_spec_check.py` PASS,
 `tech_lead_guard.py` PASS, `architecture_drift_guard.py` PASS (implementation-only
-classification), `fresh_session_check.py --actual-main-sha <origin/main>` PASS. The
-M018 credential CI step skips visibly at this head (the pre-delivery existence guard
-wired by the DEC-0117 governance commit — correct, not created by this delivery).
+classification), `fresh_session_check.py --actual-main-sha <origin/main>` PASS. At the
+branch root `d16093d` the M018 credential CI step skipped visibly (the pre-delivery
+existence guard wired by the DEC-0117 governance commit); after the parallel M018
+merge landed on main (see the main-advancement disclosure above), the step ACTIVATES
+on the merged PR checkout and its battery runs 32/32 green there (verified locally on
+the simulated merge, together with every other battery in this section). The
+`fresh_session_check` step on the merged checkout carries the disclosed
+governance-state condition (the M018 merge precedes its acceptance reconciliation —
+identical at the live main head with zero delta of this delivery; the Tech Lead's
+DEC-0118 commit resolves it).
 
 ## 7. Judgment calls (disclosed)
 
@@ -316,14 +344,20 @@ records):
   battery CI-wired and green; the M018 credential battery's CI existence guard wired
   by the same governance commit. Cited from: `R8.yaml` (the M017 acceptance
   annotation), `AGENTS.md`, `docs/M017-evidence.md`.
-- **M018 — Credential and Key Lifecycle Operations: IN FLIGHT (the DEC-0118 slot,
-  chain-independent).** The `credentials/` surface does NOT exist at this delivery
-  head (verified by the battery's case_53 — the parallel delivery is never claimed
-  here); its CI step skips visibly (the pre-delivery existence guard,
-  `.github/workflows/spec-check.yml` at this head). M019's acceptance — and therefore
-  the R8 gate completion — remains BLOCKED until the M018 acceptance lands; this
-  delivery is the charter-permitted parallel preparation. Cited from: `R8.yaml`
-  (the current-child + blocking annotations), the R8 charter's "### M018" section.
+- **M018 — Credential and Key Lifecycle Operations: DELIVERED ON MAIN, NOT YET
+  ACCEPTED (the DEC-0118 slot, chain-independent).** At this branch's root
+  (`d16093d`) the `credentials/` surface did not exist; while this PR was in flight
+  the parallel delivery landed on main (PR #42, merge `e037ca8`: `credentials/` +
+  `tools/credential_selftest.py` + `docs/M018-evidence.md`). No DEC-0118 acceptance
+  decision is recorded in the repository at this writing (the execution-state
+  snapshot still carries the DEC-0117 state — the condition the fresh-session check
+  discloses); this branch's own delta never touches `credentials/` (verified by the
+  battery's case_53 against the branch's own delivery files — the parallel delivery
+  is never claimed here). M019's acceptance — and therefore the R8 gate completion —
+  remains BLOCKED until the M018 acceptance lands; this delivery is the
+  charter-permitted parallel preparation. Cited from: `R8.yaml` (the current-child +
+  blocking annotations), the R8 charter's "### M018" section, the live main history
+  (`d16093d..e037ca8`).
 - **M019 (this delivery): the convergence surface delivered, NOT accepted.** The
   end-to-end drill, the R8 matrix, the federation-scale convergence and this composed
   review material are the acceptance-ready material at this head; the acceptance
@@ -347,8 +381,9 @@ The M019 delta (from the DEC-0117 acceptance head `d16093d`) contains ONLY:
 (`contracts/`, `replan/`, `executionplans/`, `evidence/`, `localfirst/`, `recovery/`,
 `upgrade/`, `scale/`, `federation/`, or any other canonical domain — all consumed by
 reference only; verified by the battery's import-audit and PR-delta cases and the
-provenance gate). The parallel M018 worker's in-flight surface (`credentials/`) is
-untouched and absent. The CI workflow's M019 wiring decision (NO new existence guard —
+provenance gate). The parallel M018 worker's surface (`credentials/`) is untouched by this branch's
+own delta (absent at the branch root; present on the advanced main only through the
+parallel delivery's own merge — never claimed, never modified here). The CI workflow's M019 wiring decision (NO new existence guard —
 the battery is the disclosed evolution of the already-wired
 `tools/scale_selftest.py`) was recorded by the DEC-0117 governance commit; this
 delivery adds no workflow change.
