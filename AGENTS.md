@@ -93,11 +93,17 @@ the M015 runtime journals and the M016 offline journals the drill substrate;
 the 36/36 battery CI-wired and green; delivered through the site-side
 destruction cycle — three sessions, the third completed the append-only
 branch, zero disclosed implementation defect fixes),
-M018 — Credential and Key Lifecycle Operations chain-independent and in
-flight (the DEC-0118 slot, accepted in any order),
+M018 — Credential and Key Lifecycle Operations ACCEPTED (DEC-0118; head
+dba0e9a, merge e037ca8d — the CHAIN-INDEPENDENT acceptance: the current-child
+pointer does NOT move; the credentials/ domain composing the accepted M014
+identity/federation/client convergence surfaces BY REFERENCE; the 32/32
+battery CI-wired and green; the two-session continuation delivery with one
+disclosed battery defect fix),
 and M019 — Resilience Convergence and Scale Hardening the current chain
-child — its acceptance is BLOCKED until M018 lands, with
-per-child acceptance decisions (DEC-0118+) mandatory; every accepted R7
+child, now UNBLOCKED (its declared dependencies M015+M016+M017+M018 all
+accepted — only M019 remains between the R8 gate and completion; its
+acceptance as DEC-0119 completes the R8 gate), with
+per-child acceptance decisions (DEC-0119+) mandatory; every accepted R7
 authority is consumed BY REFERENCE (the R8 charter consumption rule). Implementation proceeds only within the active authorization's declared
 scope; each child work item is accepted only from repository evidence per the
 charter's acceptance rules.

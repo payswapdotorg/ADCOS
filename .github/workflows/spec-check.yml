@@ -421,7 +421,9 @@ jobs:
       # Pre-delivery existence guard: the battery lands with the authorized
       # M018 delivery; until then the step skips visibly (never silently) and
       # activates automatically on the delivery merge. The M002/contract
-      # precedent (the DEC-0101/DEC-0114/DEC-0115/DEC-0116 wiring).
+      # precedent (the DEC-0101/DEC-0114/DEC-0115/DEC-0116 wiring). ACTIVATED
+      # by the accepted M018 delivery (merge e037ca8d): the battery runs green
+      # 32/32 at the accepted head (DEC-0118).
       - name: Run credential and key lifecycle operations tests
         run: |
           if [ -f tools/credential_selftest.py ]; then
@@ -437,7 +439,9 @@ jobs:
       # suite above) — the M014 precedent class (the scale battery evolved
       # 45/45 at the M014 acceptance with its step already live). This comment
       # records the wiring decision where a guard would have gone, so the
-      # wiring history stays honest (DEC-0117).
+      # wiring history stays honest (DEC-0117). Restated unchanged at the M018
+      # acceptance (DEC-0118): still no guard — the disclosed evolution
+      # activates with the authorized M019 delivery.
       # M014 acceptance wiring (DEC-0109): the client battery DEC-0099
       # containment guard is RETIRED — the honest convergence re-baseline
       # (24/24) landed with the accepted M014 delivery; the step converts

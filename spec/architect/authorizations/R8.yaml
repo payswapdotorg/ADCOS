@@ -7,8 +7,9 @@
 # recorded). Children closed so far: M015 (DEC-0115 — the chain-child pointer
 # advanced M015 -> M016), M016 (DEC-0116 — the chain-child pointer advanced
 # M016 -> M017), M017 (DEC-0117 — the chain-child pointer advanced
-# M017 -> M019; M018 chain-independent and in flight, M019's acceptance
-# blocked until M018 lands).
+# M017 -> M019), M018 (DEC-0118 — CHAIN-INDEPENDENT: the current-child
+# pointer does NOT move; M019 the remaining child, now UNBLOCKED — its
+# declared dependencies M015+M016+M017+M018 all accepted).
 work_item: R8
 child_work_items:
   - M015
@@ -64,12 +65,15 @@ scope:
   #  to M019)
   - "recovery/"
   - "docs/M017-evidence.md"
-  # M018 — Credential and Key Lifecycle Operations (chain-independent, in flight)
+  # M018 — Credential and Key Lifecycle Operations (ACCEPTED under DEC-0118: PR #42
+  #  exact head dba0e9a, merge e037ca8d — the CHAIN-INDEPENDENT acceptance: the
+  #  current-child pointer does NOT move, M019 unblocked)
   - "credentials/"
   - "docs/M018-evidence.md"
   # M019 — Resilience Convergence and Scale Hardening (the convergence child,
-  #  the current child — its acceptance is BLOCKED until the chain-independent
-  #  M018 lands; resilience/ is the M015-owned shared prefix)
+  #  the current child — UNBLOCKED: its declared dependencies M015+M016+M017+M018
+  #  are all accepted, its worker in flight; its acceptance as DEC-0119 completes
+  #  the R8 gate; resilience/ is the M015-owned shared prefix)
   - "docs/M019-evidence.md"
   # [M015 ACCEPTED 2026-09-11 under DEC-0115: PR #39 head 95a65a5, merge d77a561;
   #  the 36/36 resilience battery CI-wired (the DEC-0114 existence guard
@@ -108,6 +112,28 @@ scope:
   #  rule; NO new existence guard for M019 — its battery is the disclosed
   #  evolution of the already-wired tools/scale_selftest.py, the M014
   #  precedent class)]
+  # [M018 ACCEPTED 2026-09-12 under DEC-0118: PR #42 exact head dba0e9a, merge
+  #  e037ca8d (the PR head IS the reviewed head — no tip advance); the 32/32
+  #  credential battery ACTIVATED at the delivery merge (the DEC-0117 existence
+  #  guard finding tools/credential_selftest.py — the PR CI run 34669231951
+  #  executed it green at the pull_request merge ref) and green at the accepted
+  #  head; delivered across TWO worker sessions under the continuation charter
+  #  (session 1 delivered milestone 1 complete then ZOMBIED server-side — the
+  #  boot-rule #23 signature, the sandbox released at the 02:40Z capacity peak;
+  #  the continuation session recovered the append-only branch) with ONE
+  #  disclosed battery defect fix (687fb825b3, the case_31 merge-base delta
+  #  semantics); verified under the CHAIN-INDEPENDENT VERIFICATION PROTOCOL (the
+  #  DEC-0113 precedent class): the base-consistent-ref gates 5/5, the bare-head
+  #  unreconciled-main artifact disclosed (35 rc=1 steps — every failing case the
+  #  frozen-spec-unchanged/PR-delta-shape comparison class, the pending
+  #  acceptance reconciliation NOT the PR's content), the decisive CI-equivalent
+  #  merge state ALL GREEN; the CHAIN-INDEPENDENT acceptance — the current-child
+  #  pointer does NOT move (the M009/M013 precedent) and M019 is UNBLOCKED (its
+  #  declared dependencies M015+M016+M017+M018 all accepted; only M019 remains
+  #  between the R8 gate and completion); the authorization STAYS ACTIVE — it
+  #  closes only with the R8 gate completion at the M019 acceptance = DEC-0119;
+  #  NO new guard wired (M019's battery is the disclosed evolution of the
+  #  already-wired tools/scale_selftest.py — the DEC-0117 wiring note restated)]
 authorization_rules:
   - "Implementation PRs must classify as implementation-only (tools/architecture_drift_guard.py) and be fully covered by this scope (tools/authorization_provenance.py, byte-identical authorization inheritance from main)."
   - "The baseline-range semantics of the bounded program authorization apply: the baseline 28b3150 may precede the PR branch point only through control-plane-only commits or commits covered by this authorization's own scope."

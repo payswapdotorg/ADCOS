@@ -168,7 +168,7 @@ def main() -> int:
                 fail(errors, "dispatch-state.yaml cannot declare more than 9 active subagents")
 
     for marker in (
-        'roadmap_version: "2.14"',
+        'roadmap_version: "2.15"',
         'status: FROZEN_AUTHORITATIVE',
         'source_of_truth: repository_only',
         'mandatory_forward_target: "Architecture 1.1"',
@@ -271,6 +271,8 @@ def main() -> int:
                     fail(errors, "M016 is accepted (DEC-0116, the second R8 chain-child acceptance); it can never return to the active implementing state")
                 if awi == "M017":
                     fail(errors, "M017 is accepted (DEC-0117, the third R8 chain-child acceptance); it can never return to the active implementing state")
+                if awi == "M018":
+                    fail(errors, "M018 is accepted (DEC-0118, the fourth R8 child acceptance — chain-independent); it can never return to the active implementing state")
                 if execution.get("halted_reason") is not None:
                     fail(errors, "execution-state.yaml halted_reason must be null while implementing")
                 auth_root = ROOT / "spec/architect/authorizations"
@@ -367,7 +369,7 @@ def main() -> int:
             if "baseline_sha: 28b31500a928f2f75582bfb79039e315187d72b2" not in r8a:
                 fail(errors, "R8 authorization must record the exact activation baseline (the DEC-0109 head)")
             if "current_child_work_item: M019" not in r8a:
-                fail(errors, "R8 authorization must bind M019 as the current child work item after the DEC-0117 M017 acceptance")
+                fail(errors, "R8 authorization must bind M019 as the current child work item after the DEC-0118 M018 acceptance (chain-independent — the current child does NOT move; M019 the remaining child, now unblocked)")
             for child in ("M015", "M016", "M017", "M018", "M019"):
                 if f"  - {child}" not in r8a:
                     fail(errors, f"R8 authorization child_work_items must declare {child}")
@@ -631,6 +633,18 @@ def main() -> int:
                     fail(errors, "execution-ledger.yaml M017 entry must record the exact acceptance merge SHA")
                 if m017_entry.get("reviewed_sha") != "f016124f45193defd6343ff73b5efbe2b157b5cd":
                     fail(errors, "execution-ledger.yaml M017 entry must record the exact reviewed delivery head")
+            m018_entry = next((e for e in items if isinstance(e, dict) and e.get("work_item") == "M018"), None)
+            if not isinstance(m018_entry, dict):
+                fail(errors, "execution-ledger.yaml must contain the M018 acceptance entry")
+            else:
+                if m018_entry.get("lifecycle") != "accepted-merged":
+                    fail(errors, "execution-ledger.yaml M018 entry must be lifecycle accepted-merged")
+                if m018_entry.get("acceptance_decision") != "DEC-0118":
+                    fail(errors, "execution-ledger.yaml M018 entry must record acceptance decision DEC-0118")
+                if m018_entry.get("merge_sha") != "e037ca8de7379f3f6d461a2aa9994442ca145e4f":
+                    fail(errors, "execution-ledger.yaml M018 entry must record the exact acceptance merge SHA")
+                if m018_entry.get("reviewed_sha") != "dba0e9aac0e1bf8c00ff1445c01a1603f25161b4":
+                    fail(errors, "execution-ledger.yaml M018 entry must record the exact reviewed delivery head")
             m009_entry = next((e for e in items if isinstance(e, dict) and e.get("work_item") == "M009"), None)
             if not isinstance(m009_entry, dict):
                 fail(errors, "execution-ledger.yaml must contain the M009 acceptance entry")
