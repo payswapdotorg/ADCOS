@@ -433,6 +433,20 @@ jobs:
           fi
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
 
+      # M020 — Access Technology Capability Envelope battery (R9-CORE-001, DEC-0120).
+      # Pre-delivery existence guard: the battery lands with the authorized
+      # M020 delivery; until then the step skips visibly (never silently) and
+      # activates automatically on the delivery merge. The M002/contract
+      # precedent (the DEC-0101/DEC-0114/DEC-0115/DEC-0116/DEC-0117 wiring).
+      - name: Run access technology envelope tests
+        run: |
+          if [ -f tools/accesstech_selftest.py ]; then
+            python3 tools/accesstech_selftest.py
+          else
+            echo "SKIP (pre-delivery, disclosed): tools/accesstech_selftest.py lands with the authorized M020 delivery (R9-CORE-001, DEC-0120)"
+          fi
+        continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
+
       # M019 — Resilience Convergence and Scale Hardening: NO new existence
       # guard is wired here. Its battery is a DISCLOSED EVOLUTION of the
       # existing tools/scale_selftest.py (already CI-wired and running in the

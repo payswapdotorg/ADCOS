@@ -1,0 +1,37 @@
+# ADCOS gate-specific dependency overlay — R9 / Future Access Technology
+# Governed by DEC-0120 (the R9 activation and governance-compression decision,
+# the DEC-0101/DEC-0114 precedent class). Representation only; no new runtime
+# authority.
+version: 1
+status: active
+gate: R9_FUTURE_ACCESS_TECHNOLOGY
+charter: "spec/architect/work-items/R9-charter.md"
+authorization: "R9-CORE-001"
+architecture_version: "1.1"
+protocol_version: "1.0"
+baseline_sha: "ea4bb64e0d32cfe93384ece71ec0003f447e357f"
+
+hard_dependencies:
+  - R8
+
+dependency_model: "the M020 -> M021 -> M022 -> M024 chain with M023 chain-independent from the accepted R8-complete state; M024 converges M020+M021+M022+M023; R8 (COMPLETE under DEC-0119, all five children) is the sole hard dependency"
+
+forbidden_dependencies:
+  - WORK-048
+
+rules:
+  - "R8 must remain COMPLETE (DEC-0119) for the whole tranche; it is the sole hard dependency (every accepted R7 and R8 child authority is a composition substrate consumed BY REFERENCE)."
+  - "Per-M-item acceptance is mandatory before any dependent M-item may be accepted; dependency advancement never precedes acceptance (the acceptance gate, not a pre-implementation gate, is the serialization point)."
+  - "M023 is chain-independent: it branches from the accepted R8-complete state (the DEC-0119 acceptance head ea4bb64 — the accepted M007 adapter boundary, the accepted executionplans/ bridge, the accepted offers/eligibility/policy gates) and may be accepted in any order relative to M020-M022 (the M013/M018 precedent class); M021 requires M020; M022 requires M020 and M021; M024 requires M020+M021+M022+M023."
+  - "Downstream preparation may proceed in parallel (the worker pipeline), but downstream acceptance is blocked until its declared dependencies are accepted; no false downstream acceptance."
+  - "WORK-048 is accepted-not-restored and must not be restored implicitly or explicitly under any child scope."
+  - "WORK-040 remains independent physical evidence and is not a software prerequisite for any M-item."
+  - "EVID-002..EVID-008 remain open physical obligations, unaffected by R9 software evidence; the M024 program-exit evaluation records them as open."
+  - "Architecture 1.0 is not a forward design source; the migration classification matrix governs how legacy material is harvested (the imt/transport/topology reservoir is source material only)."
+  - "Provider-specific implementations stay behind adapter boundaries; provider SDK types never enter the core (LOCK-110); access technologies never alter the connectivity contract core (LOCK-101 — the gate's own objective constraint)."
+  - "Protocol Version 1.0 wire semantics are frozen; any protocol semantic change requires the ACR/change-control process."
+
+execution_order:
+  prerequisite: "R8 COMPLETE under DEC-0119 (the M019 acceptance merge 3fedfbc completing the chain, acceptance head ea4bb64)"
+  active_child: "M020 — Access Technology Capability Envelope"
+  successor_chain: "M021 -> M022 (worker A, the envelope/adapter chain); M023 chain-independent (worker B — dispatchable immediately from the accepted baseline); M024 converges M020+M021+M022+M023 last (worker C preparation) — the terminal roadmap gate: its acceptance evaluates the program_exit conditions"

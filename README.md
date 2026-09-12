@@ -141,12 +141,20 @@ completing the R8 gate: the resilience/convergence.py surface composing every
 accepted R8 child authority BY REFERENCE, the evolved 53/53 scale battery
 green at the completed head). R8 — Resilience, Mobility and Scale is
 COMPLETE (all five children accepted; the R8-CORE-001 program authorization
-CLOSED); R9 — Future Access Technology is the next gate, UNLOCKED and NOT
-ACTIVATED (activation requires its own decision); the execution mode is
-awaiting-architect-decisions. Every accepted R7
-authority is consumed BY REFERENCE per the R8 charter consumption rule.**
-Per-child acceptance (DEC-0115 through DEC-0119) was
-mandatory and was the serialization point; the Tech Lead may decompose,
+CLOSED). R9 — Future Access Technology is ACTIVE (DEC-0120): the bounded R9
+program authorization R9-CORE-001 (baseline ea4bb64, the R9 charter at
+spec/architect/work-items/R9-charter.md) covers the child scopes M020–M024
+(M020 Access Technology Capability Envelope the current child; M021 Wireline
+Access Adapters; M022 Non-Terrestrial Access Adapters; M023 Future Technology
+Extension Drill, chain-independent — the synthetic future-IMT/6G-class
+technology added purely through the accepted public extension surface; M024
+Future Access Convergence the convergence child) — access technologies added
+or replaced through the adapter boundary without altering the connectivity
+contract core. R9 is the TERMINAL roadmap gate: the M024 acceptance evaluates
+the program_exit conditions (SOFTWARE-class only). Every accepted R7/R8
+authority is consumed BY REFERENCE per the R9 charter consumption rule.**
+Per-child acceptance (DEC-0121 onward) is
+mandatory and is the serialization point; the Tech Lead may decompose,
 dispatch, integrate and deliver within the authorized child scopes without
 further pre-implementation authorization ceremonies.
 

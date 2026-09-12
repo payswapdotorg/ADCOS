@@ -54,15 +54,19 @@ REQUIRED_FILES = [
     "spec/architect/authorizations/M001.yaml",
     "spec/architect/authorizations/R7.yaml",
     "spec/architect/authorizations/R8.yaml",
+    "spec/architect/authorizations/R9.yaml",
     "spec/architect/decisions/DEC-0098-m001-activation.yaml",
     "spec/architect/decisions/DEC-0099-m001-battery-reconciliation.yaml",
     "spec/architect/decisions/DEC-0100-m001-acceptance.yaml",
     "spec/architect/decisions/DEC-0101-r7-activation.yaml",
     "spec/architect/decisions/DEC-0114-r8-activation.yaml",
+    "spec/architect/decisions/DEC-0120-r9-activation.yaml",
     "spec/architect/work-items/R7-charter.md",
     "spec/architect/work-items/R8-charter.md",
+    "spec/architect/work-items/R9-charter.md",
     "spec/architect/dependency-overlays/R7.yaml",
     "spec/architect/dependency-overlays/R8.yaml",
+    "spec/architect/dependency-overlays/R9.yaml",
     "docs/tech-lead/ADCOS-TECH-LEAD-HANDOFF.md",
     "docs/tech-lead/worker-model.md",
     "docs/tech-lead/dispatch-state.yaml",
@@ -168,7 +172,7 @@ def main() -> int:
                 fail(errors, "dispatch-state.yaml cannot declare more than 9 active subagents")
 
     for marker in (
-        'roadmap_version: "2.16"',
+        'roadmap_version: "2.17"',
         'status: FROZEN_AUTHORITATIVE',
         'source_of_truth: repository_only',
         'mandatory_forward_target: "Architecture 1.1"',
@@ -195,11 +199,19 @@ def main() -> int:
         'prerequisite: R7_UNIVERSAL_CONNECTIVITY_COMMERCE',
         'work_item: M019',
         'work_item_chain: [M015, M016, M017, M018, M019]',
-        'program_state: R9_UNLOCKED_NOT_ACTIVATED',
-        'execution_mode: awaiting-architect-decisions',
-        'active_work_item: null',
-        'active_authorization: null',
-        'next_gate: R9_FUTURE_ACCESS_TECHNOLOGY',
+        'id: R9_FUTURE_ACCESS_TECHNOLOGY',
+        'status: ACTIVE',
+        'activation_decision: DEC-0120',
+        'authorization: "R9-CORE-001"',
+        'work_item_contract: "spec/architect/work-items/R9-charter.md"',
+        'prerequisite: R8_RESILIENCE_MOBILITY_AND_SCALE',
+        'work_item: M024',
+        'work_item_chain: [M020, M021, M022, M023, M024]',
+        'program_state: R9_FUTURE_ACCESS_TECHNOLOGY_ACTIVE',
+        'execution_mode: implementing',
+        'active_work_item: M020',
+        'active_authorization: R9-CORE-001',
+        'next_gate: null',
     ):
         if marker not in roadmap_text:
             fail(errors, f"roadmap.yaml missing mandatory post-acceptance marker: {marker}")
@@ -216,8 +228,9 @@ def main() -> int:
         else:
             mode = execution.get("mode")
             if mode == "awaiting-architect-decisions":
-                # post-R8-completion halt state: no active item, the halted
-                # reason explains the next gate (R9) authorization requirement
+                # post-R9-completion halt state: no active item, the halted
+                # reason explains the terminal gate (R9) completion / program
+                # exit condition
                 if execution.get("active_work_item") is not None:
                     fail(errors, "execution-state.yaml active_work_item must be null while halted awaiting architect decisions")
                 if execution.get("active_authorization") is not None:
@@ -310,8 +323,8 @@ def main() -> int:
             else:
                 fail(errors, f"execution-state.yaml execution.mode must be awaiting-architect-decisions or implementing, got {mode!r}")
             decisions_text = "\n".join(str(x) for x in execution.get("next_required_decisions", []))
-            if "R8" not in decisions_text:
-                fail(errors, "execution-state.yaml does not identify R8 as the immediate next gate")
+            if "R9" not in decisions_text:
+                fail(errors, "execution-state.yaml does not identify R9 as the active gate")
             if not isinstance(state.get("open_acrs"), list):
                 fail(errors, "execution-state.yaml open_acrs must be a list")
             if not isinstance(state.get("open_architectural_questions"), list):
@@ -379,6 +392,27 @@ def main() -> int:
             for child in ("M015", "M016", "M017", "M018", "M019"):
                 if f"  - {child}" not in r8a:
                     fail(errors, f"R8 authorization child_work_items must declare {child}")
+
+        # R9 program-authorization ACTIVE invariants (independent of mode:
+        # fail closed against the pre-activation halted markers)
+        r9_auth = ROOT / "spec/architect/authorizations/R9.yaml"
+        if not r9_auth.is_file():
+            fail(errors, "R9-CORE-001 authorization file missing")
+        else:
+            r9a = r9_auth.read_text(encoding="utf-8")
+            if not re.search(r"^status:\s*active\s*$", r9a, re.MULTILINE):
+                fail(errors, "R9 authorization must be status active after the DEC-0120 activation")
+            if not re.search(r"^authorized:\s*true\s*$", r9a, re.MULTILINE):
+                fail(errors, "R9 authorization must be authorized true after the DEC-0120 activation")
+            if "authorization_decision: DEC-0120" not in r9a:
+                fail(errors, "R9 authorization must record the DEC-0120 issuance decision")
+            if "baseline_sha: ea4bb64e0d32cfe93384ece71ec0003f447e357f" not in r9a:
+                fail(errors, "R9 authorization must record the exact activation baseline (the DEC-0119 head)")
+            if "current_child_work_item: M020" not in r9a:
+                fail(errors, "R9 authorization must bind M020 as the current child work item")
+            for child in ("M020", "M021", "M022", "M023", "M024"):
+                if f"  - {child}" not in r9a:
+                    fail(errors, f"R9 authorization child_work_items must declare {child}")
 
     wi_dir = ROOT / "spec/architect/work-items"
     if not wi_dir.is_dir():

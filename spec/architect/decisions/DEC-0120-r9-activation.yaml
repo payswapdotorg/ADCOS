@@ -1,0 +1,57 @@
+# DEC-0120 — R9 activation and governance compression: one bounded program
+# authorization for the M020-M024 future-access-technology tranche
+# Sole-Architect governance decision, single-agent mode (Architect + Tech Lead).
+# Durable activation record; per-child acceptance decisions follow (DEC-0121+).
+# The DEC-0101/DEC-0114 precedent class: governance compression for the R9 gate.
+# R9 is the TERMINAL roadmap gate: its completion evaluates the program_exit
+# conditions.
+decision_id: DEC-0120
+date: "2026-09-12"
+type: governance
+status: ACCEPTED
+owner: "Architect"
+work_item: R9
+authorization: R9-CORE-001
+
+review_basis: "Live main ea4bb64e0d32cfe93384ece71ec0003f447e357f (the DEC-0119 acceptance commit completing the R8 gate, push CI green run 34675282864; the M019 acceptance merge 3fedfbc preceded it), the R8 completion chain (DEC-0119: M019 accepted at head acf9e6c merged 3fedfbc, ALL FIVE children accepted, the R8-CORE-001 program authorization CLOSED), the frozen Architecture 1.1 package (spec/architecture.md, LOCK-101..LOCK-120), spec/architect/roadmap.yaml v2.16 R9 gate (UNLOCKED, prerequisite R8 satisfied by DEC-0119), the migration classification matrix (the imt/transport/topology access-technology reservoir is harvest material), the governance-autonomy Architect advancement mandate (every unlocked gate advances autonomously; user confirmation is not a governance dependency), the standing authority-uniqueness invariant (at most one active implementation authorization), and local verification of current_spec_check, tech_lead_guard, architecture_drift_guard, spec_check_selftest and fresh_session_check on the pre-decision head."
+
+decision: ACCEPTED
+
+evidence:
+  - "R8 is COMPLETE under DEC-0119 (roadmap v2.16: all five children M015-M019 accepted and merged; the R8-CORE-001 program authorization closed with status accepted / authorized false; live main push CI green at ea4bb64 run 34675282864; 0 open PRs; all delivery branches present)."
+  - "All current-governance gates re-run locally on the pre-decision head ea4bb64: current_spec_check PASS, tech_lead_guard PASS, architecture_drift_guard PASS (governance-only: 0 implementation files), spec_check_selftest 9/9 PASS, fresh_session_check satisfied under the standing reconciliation convention (the persisted snapshot reconciles to live main through the governance-only DEC-0119 range)."
+  - "The R9 activation predicates of roadmap v2.16 are satisfied by this decision: the gate-specific Work Item contract (the R9 charter, spec/architect/work-items/R9-charter.md), the dependency overlay (spec/architect/dependency-overlays/R9.yaml), the evidence policy (charter + authorization evidence classes), and the repository-local implementation authorization (R9-CORE-001, this decision)."
+  - "The R9 children are gate-specific execution units under the governance-autonomy Post-snapshot rule: durable contract (this charter), explicit dependencies against accepted history (the overlay), exact authorization before implementation (R9-CORE-001), explicit acyclic overlay, no frozen architecture or protocol semantic changed implicitly, no historical record rewritten; the frozen 1.1 successor registry (M001-M014) is untouched."
+
+findings:
+  - "R9 is UNLOCKED with its R8 prerequisite satisfied by DEC-0119, but no gate-specific contract, overlay, or authorization existed — the repository sat at the post-gate-completion halt point (the post-DEC-0100/post-DEC-0109 halt pattern): activation of the next gate is the Architect's sanctioned autonomous advancement, and the operator's standing directive to complete the entire roadmap aligns (the operator's live message 'You can proceed' confirms it)."
+  - "The R9 objective decomposes into five coherent access-technology surfaces with a clean dependency topology: the capability-envelope framework (M020), the wireline reference adapters (M021), the non-terrestrial reference adapters (M022), the future-technology extension drill (M023, chain-independent — the strongest proof of the gate objective: a technology the architecture never named, added purely through the accepted public extension surface), and the convergence drill (M024) — the M014/M019 by-reference consumption discipline carries over unchanged."
+  - "The per-work-item pre-implementation ceremony chain would add five more governance events before the tranche could proceed, while per-item ACCEPTANCE already provides the serialization point that actually protects the architecture — the DEC-0101/DEC-0114 compression finding reproduces exactly."
+  - "R9 is the TERMINAL roadmap gate (the gate sequence R0-R9 has no successor): its completion (the M024 convergence child) evaluates the program_exit conditions — the stripe-of-connectivity test and the architecture test — as SOFTWARE-class evaluation only; the open physical obligations EVID-002..EVID-008 are recorded as open, never satisfied by software evidence."
+  - "The repository's access-technology-relevant legacy reservoir (imt/ the future-IMT modeling, transport/ 2982 lines, topology/, networkpath/, the WORK-018..023 standards boundaries behind the accepted adapter families) is harvest material for the R9 child scopes per the frozen matrix; the accepted M007 adapter boundary (adapters/capability.py + adapters/reference/ x7, LOCK-110/LOCK-112) and the accepted R8 resilience/ handover machinery are the composition substrate."
+
+blockers: []
+required_corrections: []
+
+accepted_scope:
+  - "R9 — Future Access Technology is ACTIVATED as the current program gate (the terminal gate): roadmap 2.16 -> 2.17 records R9 ACTIVE with program state R9_FUTURE_ACCESS_TECHNOLOGY_ACTIVE, active work item M020, active authorization R9-CORE-001, next gate null (no successor gate; the M024 acceptance evaluates the program_exit conditions)."
+  - "The R9 implementation charter (spec/architect/work-items/R9-charter.md) is the gate-specific Work Item contract: mission objective, the by-reference consumption rule, architectural invariants (LOCK-101..LOCK-120) with the gate's own objective constraint (access technologies added/replaced through the adapter boundary WITHOUT altering the connectivity contract core), child work-item scopes and acceptance criteria (M020-M024), dependency model, evidence policy, migration policy, 3-worker concurrency policy, acceptance rules, and the R9 out-of-scope boundary."
+  - "R9-CORE-001 is issued as the sole active implementation authorization (baseline ea4bb64): a bounded R9 program authorization whose scope is the union of the charter child scopes (accesstech/, adapters/reference/wireline.py, adapters/reference/satellite.py, adapters/reference/futureimt.py, the five evidence docs) plus the shared battery surface (tools/); per-child acceptance remains mandatory; at most one authorization stays active."
+  - "The Tech Lead is empowered to decompose, dispatch (within the 3x3/9/depth-2 machine-checked dispatch limits), branch, integrate, test, verify and deliver implementation PRs against the authorized child scopes without further pre-implementation authorization ceremonies; scope amendments outside the declared prefixes are lightweight decisions recorded in the registry."
+  - "Stale state projections are repaired: README.md and AGENTS.md next-gate projections, current-state.md R9-active projection, resume-protocol.md checkpoint, roadmap.yaml current_state, and the R9 battery CI wiring (the M020 accesstech battery step with a pre-delivery existence guard, the M002/M015 precedent)."
+  - "The current-governance checkers evolve in lockstep to validate the R9-active state and fail closed against the pre-activation markers (synchronized updates, the DEC-0098/DEC-0101/DEC-0114 pattern): v2.17 markers, the R9 gate ACTIVE invariants, the halted-state post-R9 requirements for the eventual post-R9 state, and the required-file additions (R9.yaml authorization, R9 charter, R9 overlay, this decision)."
+
+rejected_scope:
+  - "This decision does not accept any child work item; M020-M024 acceptance happens per child from repository evidence (DEC-0121 onward)."
+  - "This decision does not weaken any invariant: locks stay frozen, control-plane mixing stays forbidden, provenance stays fail-closed, per-item acceptance stays mandatory, and the one-active-authorization invariant is preserved (the program authorization is singular; R8-CORE-001 is closed)."
+  - "No contract-core change of any kind: the gate's own objective constraint (LOCK-101 — access technologies through the adapter boundary without altering the connectivity contract core) is an acceptance criterion on every child, not an aspiration."
+  - "No WORK-048 restoration, no W040/EVID-007/EVID-008 disturbance, no protocol semantic change, no mission change, no frozen registry (spec/work-items.md) modification."
+  - "No legacy implementation is reclassified as 1.1-complete by this decision; the migration matrix continues to govern harvesting; no program_exit condition is declared satisfied by this activation — the evaluation rides with the M024 acceptance from repository evidence."
+
+downstream_effect:
+  - "Exactly one implementation authorization (R9-CORE-001) is active; R8-CORE-001, R7-CORE-001, M001-CORE-001 and all W-item authorizations remain closed."
+  - "Implementation PRs under R9-CORE-001 must classify as implementation-only (drift guard) and be fully scope-covered (ARCH-08 provenance, byte-identical authorization inheritance from main; the program-era baseline-range semantics apply — the authorization baseline ea4bb64 precedes the branch point only through governance-only commits)."
+  - "Acceptance of each child (starting with M020 -> DEC-0121) records the exact reviewed head and merge SHA, closes that child, advances the dependency chain, and reconciles execution-state/roadmap/ledger."
+  - "Once M020 is accepted, the Tech Lead exploits the worker pipeline (A: M021 -> M022 from the accepted M020; B: M023 chain-independent — dispatchable immediately from the accepted baseline; C: M024 preparation) within the charter's dependency and authority boundaries."
+  - "The M020 accesstech battery is CI-wired with a pre-delivery existence guard (visible skip until the delivery lands, the M002 contract-battery precedent); the M021/M022/M023 batteries are wired at their predecessors' acceptances; M024's battery is wired at the M023 acceptance (the DEC-0116/DEC-0117 pattern)."
+  - "The M024 acceptance (the convergence child, DEC-0124 under the current numbering) completes the R9 gate — the terminal gate — and carries the program_exit evaluation (SOFTWARE-class; the stripe-of-connectivity and architecture tests evaluated from repository evidence; the open physical obligations recorded as open)."

@@ -24,18 +24,19 @@ A brand-new Architect, Tech Lead, worker, or implementation agent must resume fr
 
 ## Current checkpoint
 
-The latest reconciled software baseline is the M019 acceptance merge
-`3fedfbcd82e7b9a5be562bc51a819ba95453f570` — the R8 COMPLETION merge (the
-DEC-0109 R7-completion acceptance head `28b3150`, the DEC-0114 R8-activation
-commit `b0145f1`, the M015 acceptance merge `d77a561`, the DEC-0115 acceptance
-commit `6b96438`, the M016 acceptance merge `a0ebd019`, the DEC-0116 acceptance
-commit `bda91c3`, the M017 acceptance merge `438acb66`, the DEC-0117 acceptance
-commit `d16093d`, the M018 acceptance merge `e037ca8d` and the DEC-0118
-acceptance commit `6da2c3c` precede it on main — the m019-convergence delivery
+The latest reconciled software baseline is the DEC-0119 acceptance head
+`ea4bb64e0d32cfe93384ece71ec0003f447e357f` — the R8 gate-completion record on
+live main (the M019 acceptance merge `3fedfbc` — the m019-convergence delivery
 branch rooted at `d16093d`, the live-main rule, merging cleanly past the
 advanced main; the delivery merged as `3fedfbc` completing the FIFTH R8 child
-— the R8 GATE COMPLETION); the DEC-0119 acceptance
-transition sits beyond it per the standing reconciliation convention.
+— the R8 GATE COMPLETION — then the DEC-0119 acceptance commit `ea4bb64`
+closing the R8-CORE-001 authorization and unlocking R9; push CI green run
+34675282864; the full R7/R8 acceptance chains precede it on main); the
+DEC-0120 R9-activation transition sits beyond it per the standing
+reconciliation convention — R9 — Future Access Technology is now ACTIVE
+under DEC-0120 (the bounded R9 program authorization R9-CORE-001, baseline
+`ea4bb64`, with the R9 charter child scopes M020-M024; M020 — Access
+Technology Capability Envelope is the current child).
 
 - R6 Provider Onboarding & Federation is complete under `DEC-0097`.
 - M001 — Architecture 1.1 Freeze is complete under `DEC-0100`: Architecture 1.1
@@ -156,6 +157,25 @@ transition sits beyond it per the standing reconciliation convention.
   weakened, forked, or bypassed; the legacy resilience reservoir
   (sessions/mobility/multipath/edge/appliance) is harvest material per the
   frozen migration classification matrix.
+- **R9 — Future Access Technology is ACTIVE under DEC-0120** (the DEC-0101/
+  DEC-0114 governance-compression precedent class — the TERMINAL roadmap gate):
+  the bounded program authorization `R9-CORE-001`
+  (`spec/architect/authorizations/R9.yaml`, baseline `ea4bb64` — the DEC-0119
+  R8-completion head) with the R9 charter
+  (`spec/architect/work-items/R9-charter.md`) declaring the gate-specific child
+  work-item scopes M020-M024 — M020 — Access Technology Capability Envelope
+  the CURRENT CHILD (the `accesstech/` envelope domain; `tools/accesstech_selftest.py`
+  CI-wired with a pre-delivery existence guard); M021 — Wireline Access
+  Adapters; M022 — Non-Terrestrial Access Adapters; M023 — Future Technology
+  Extension Drill (CHAIN-INDEPENDENT — the synthetic future-IMT/6G-class
+  technology added purely through the accepted public extension surface, zero
+  contract-core delta); M024 — Future Access Convergence (the convergence
+  child — its acceptance completes the gate and evaluates the program_exit
+  conditions, SOFTWARE-class only). Per-child acceptance decisions (DEC-0121+)
+  are mandatory. The R9 charter's own objective constraint is an acceptance
+  criterion on every child: access technologies are added or replaced through
+  the adapter boundary WITHOUT altering the connectivity contract core
+  (LOCK-101). The execution mode is implementing (M020/R9-CORE-001).
 - `M001-CORE-001` is closed. **R7 — Universal Connectivity Commerce is COMPLETE
   under DEC-0101/DEC-0109**
 - `M001-CORE-001` is closed. **R7 — Universal Connectivity Commerce was
@@ -215,12 +235,30 @@ transition sits beyond it per the standing reconciliation convention.
   and M019 — Resilience Convergence and Scale Hardening is ACCEPTED
   (DEC-0119 — the convergence child completing the gate). THE R8 GATE IS
   COMPLETE (all five children accepted; the R8-CORE-001 program authorization
-  CLOSED); R9 — Future Access Technology is UNLOCKED and NOT ACTIVATED
-  (activation requires its own decision — an Architect decision); the
-  execution mode is awaiting-architect-decisions (no active work item, no
-  active authorization — the post-DEC-0100/post-DEC-0109 halt pattern).
+  CLOSED); R9 — Future Access Technology was UNLOCKED and NOT ACTIVATED
+  until the DEC-0120 activation.
   Per-child acceptance decisions (DEC-0115 through DEC-0119) were the
   serialization points.
+- `R8-CORE-001` is closed. **R9 — Future Access Technology is ACTIVE under
+  DEC-0120** (the DEC-0101/DEC-0114 governance-compression precedent class) —
+  the bounded program authorization `R9-CORE-001`
+  (`spec/architect/authorizations/R9.yaml`, baseline `ea4bb64` — the DEC-0119
+  R8-completion head) with the R9 charter
+  (`spec/architect/work-items/R9-charter.md`) declaring the gate-specific child
+  work-item scopes M020-M024: M020 — Access Technology Capability Envelope is
+  the CURRENT CHILD (the accesstech/ envelope domain; its battery CI-wired
+  with a pre-delivery existence guard); M021 — Wireline Access Adapters;
+  M022 — Non-Terrestrial Access Adapters; M023 — Future Technology Extension
+  Drill (chain-independent — dispatchable immediately from the accepted
+  baseline); M024 — Future Access Convergence (the convergence child).
+  Per-child acceptance decisions (DEC-0121 onward) are mandatory and are the
+  serialization points. R9 is the TERMINAL roadmap gate: the M024 acceptance
+  completes the gate sequence R0-R9 and evaluates the program_exit conditions
+  (SOFTWARE-class only — the stripe-of-connectivity test and the architecture
+  test; the open physical obligations EVID-002..EVID-008 recorded as open).
+  The R9 charter's own objective constraint is an acceptance criterion on
+  every child: access technologies are added or replaced through the adapter
+  boundary WITHOUT altering the connectivity contract core (LOCK-101).
 - R4/W040 remains an independent physical-validation track and is not replaced by the software roadmap.
 - W048 remains accepted-not-restored and MUST NOT be recreated, mocked, or substituted implicitly.
 
