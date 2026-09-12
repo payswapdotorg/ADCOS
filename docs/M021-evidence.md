@@ -42,6 +42,30 @@ battery-scope-repair clause this delivery does NOT patch another domain's batter
 battery surface — the M019 `tools/scale_selftest.py` precedent, or a Tech Lead-owned
 expected-set reconciliation). Every other verification below is green at this head.
 
+**TECH LEAD RESOLUTION (2026-09-12, pre-merge amendment commit):** the conflict
+above is resolved on the R9 charter's own declared path. The Consumption rule
+(live charter text, ratified by DEC-0120 at activation) sanctions "a disclosed
+evolution of an accepted shared battery surface [that] follows the M019
+`tools/scale_selftest.py` precedent — disclosed, append-only in intent, never
+assertion-weakening". Applied to case_68: the `expected_delta` set gains
+EXACTLY `adapters/reference/wireline.py` (this delivery's declared file),
+authored by the Tech Lead on this branch as an amendment commit — the worker
+session ended after its push and PR (the turn's stream died mid-report; the
+delivery itself, this record, and the PR body carry the complete report), and
+the worker charter's battery-scope-repair clause correctly left this battery
+untouched. Nothing is weakened: the W016 canonical flow, the 54-name baseline
+export table, the family export counts, and the six family-subpackage
+byte-identity assertions are unchanged; the guard still rejects every other
+undeclared adapters/ change. The M022 (satellite.py) and M023 (futureimt.py)
+siblings repeat this pattern at their own acceptances — never before
+(pre-adding them would weaken the guard for unaccepted deliveries).
+Re-verified at the amended head by the integration station (direct execution):
+adapter battery **70/70**; wireline battery **14/14 x3 byte-identical**; the
+five R8 batteries at their accepted counts (scale 53/53, credential 32/32,
+recovery 36/36, resilience 36/36, localfirst 35/35); accesstech 19/19; all six
+governance gates rc=0 (the acceptance decision DEC-0122 records the reviewed
+numbers).
+
 ## 1. Delivered surface
 
 - **`adapters/reference/wireline.py` (NEW — the wireline reference compositions)** —
@@ -349,3 +373,11 @@ verification numbers in §3/§5 were produced at the final delivery head by dire
 execution (battery x3 byte-identical; the full suite in exact CI order with
 exit-code-based detection — the one disclosed case_68 exception root-caused in
 §0; the five governance gates).
+
+**Amendment provenance:** the case_68 resolution amendment (see §0 — TECH LEAD
+RESOLUTION) is the ONE post-delivery commit on this branch, authored by the
+Tech Lead (`z-ai-architect`), not the worker session; it touches only
+`tools/adapter_selftest.py`'s declared set and this record (the §0 resolution
+addendum + this note). The delivery commit itself is untouched (append-only;
+no rebase, no force-push, no amending — the amendment rides ON TOP, exactly as
+the M019 branch's resolution amendment rode on top of its delivery).
