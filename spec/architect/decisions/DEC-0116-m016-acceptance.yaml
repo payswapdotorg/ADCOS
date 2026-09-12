@@ -1,0 +1,51 @@
+# DEC-0116 — M016 acceptance: Local-First and Offline Operation accepted; the current-child pointer advances M016 → M017
+# Sole-Architect governance decision (per-child acceptance, the DEC-0114 R8 serialization point; the SECOND R8 chain-child acceptance).
+decision_id: DEC-0116
+date: "2026-09-12"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: M016
+authorization: R8-CORE-001
+
+review_basis: "Tech Lead review of the exact M016 delivery head 0d5cfb742d14bf3f257008593f7b0a22d98cc971 (PR #40, branch m016-localfirst, base 6b96438 — the live DEC-0115 M015-acceptance head, correctly rooted at dispatch; two append-only worker-authored commits, no rebase/force-push/amending, delivered in ONE worker session under the Task ID 54 charter — see single_session_delivery): the localfirst battery (tools/localfirst_selftest.py, 35 deterministic offline seeded cases covering the charter's (a)-(h) acceptance matrix) 35/35 PASS run 3x consecutively with byte-identical logs at the exact head (2026-09-12T00:11-00:16Z); the full workflow suite executed in exact CI order at the head — 64/64 green (the M016 localfirst step activated by this delivery) with exactly the one documented non-zero exit (the legacy spec_check.py compatibility audit baseline, continue-on-error: true); CI green end-to-end on the exact delivery head (run 34650933081, both jobs) and on the merge commit (run 34661179904); scope verified 9 files, +6825/-0 — localfirst/ x7 NEW (errors.py 110, model.py 1759, journal.py 491, admission.py 396, offline.py 608, resync.py 301, __init__.py 182 lines — the local-first/offline operation domain composing the accepted authorities BY REFERENCE: contracts/, replan/, resilience/ consumed, never reimplemented/weakened/forked/bypassed; the legacy reservoir un-imported and unmodified source material), tools/localfirst_selftest.py NEW (2696 lines), docs/M016-evidence.md NEW (282-line SOFTWARE-class matrix) — every delta file covered by the R8-CORE-001 M016 scope entries; the governance gates 5/5 (current_spec_check, tech_lead_guard, architecture_drift_guard implementation-only 9 files 0 control-plane, fresh_session_check with --actual-main-sha 6b96438, authorization_provenance); the structural invariants verified (fail-closed stale-authority rejection — a local state past its declared freshness bound never silently authorizes, the fold MECHANICALLY rejecting the forged admitted-outside-window silent-allow shape; LOCK-108 across the offline boundary — all 12 constraint kinds x DROP/RELAX/REINTERPRET rejected with typed reasons citing the kinds on the admission twin + the raising gate, and the wire-forged journaled admitted record rejected by the resynchronization re-verification against the LIVE contract (never silently converged, never silently dropped); LOCK-111 declared recorded deterministic convergence — same inputs run twice byte-identical, both rule directions discriminating the same conflict, never dropped, never duplicated; LOCK-106 content-derived identities — the POSITION-INDEPENDENT content identity as the idempotency key, no history fabricated; the M015 runtime consumed BY REFERENCE as the composition substrate — the RuntimeStore lifecycle driven by reference for every offline transition, the WORK-012 reconnect pair naming BOTH the OLD and the NEW authority views; LOCK-117 no second authorization runtime — the contract rides as opaque references; LOCK-119 no wall clock, no randomness, no network, no secrets — AST-audited, fragment-assembled fixtures; one-way imports — no accepted authority imports localfirst/; the consumed-domain errors ReplanError/ResilienceError/ContractError wrapped at every boundary with deterministic text preserved); ZERO disclosed defect fixes — a clean single-session delivery (no continuation disclosure needed, no delivery_repairs_disclosed section, in deliberate contrast with the two-session M015 continuation under DEC-0115); the accepted sibling batteries at their accepted counts on this head (resilience 36/36 among them). The review is durably recorded in the PR #40 review timeline (review comment 5184395790, COMMENTED state, posted 2026-09-12T00:2xZ); GitHub self-approval was unavailable (the single operator account owns both the PR and the review), so this decision is the authoritative acceptance record per repo convention."
+
+decision: ACCEPTED
+
+delivery:
+  pr: 40
+  branch: "m016-localfirst"
+  baseline_sha: 6b96438fbef3634ded30c4defb5727d88f74ebb3
+  pr_head: 0d5cfb742d14bf3f257008593f7b0a22d98cc971
+  reviewed_sha: 0d5cfb742d14bf3f257008593f7b0a22d98cc971
+  merge_sha: a0ebd019a03238d089f03f006e9364e5c03cde51
+  merged_at: "2026-09-12T00:18:17Z"
+  ci_run: 34650933081
+  merge_ci_run: 34661179904
+  worker_session: "m016-localfirst (the full M016 charter — delivered in ONE worker session: the localfirst/ domain at 8849d3e, the battery + the evidence record at 0d5cfb7; no rebase, no force-push, no amending; no capacity-peak interruption this time — a clean single-session delivery)"
+
+# DEC-0116 carries NO continuation_disclosure and NO delivery_repairs_disclosed
+# section (the DEC-0115 sections): the M016 delivery is a clean single-session
+# delivery with ZERO disclosed defect fixes.
+single_session_delivery: "The M016 delivery is a CLEAN SINGLE-SESSION delivery: both worker-authored commits (8849d3e the localfirst/ domain; 0d5cfb7 the battery + the evidence record) come from the ONE dispatched worker session m016-localfirst under the Task ID 54 charter — no continuation, no zombie session voided, no capacity-peak destruction window; DEC-0116 therefore records NO continuation disclosure and NO disclosed defect fixes (zero), in deliberate contrast with the M015 two-session continuation under DEC-0115."
+
+acceptance_effects:
+  current_child_advances: "M016 -> M017 (the SECOND R8 chain-child acceptance; M017 — Disaster Recovery and State Reconciliation is the next child: recovery/ NEW, tools/recovery_selftest.py, docs/M017-evidence.md per the R8 charter; the R8-CORE-001 program authorization STAYS ACTIVE — closes only with the R8 gate completion at the M019 acceptance, the DEC-0088/DEC-0108 mid-chain precedent)"
+  roadmap_version: "2.12 -> 2.13 (M016 COMPLETE; the R8 gate stays ACTIVE with M017 the current child)"
+  authorization_state: "R8-CORE-001 stays ACTIVE (the bounded R8 program authorization; the current-child binding advances M016 -> M017 in R8.yaml)"
+  ci_wiring: "The M017 recovery battery is CI-wired by this acceptance with a pre-delivery existence guard (a visible skip until the authorized M017 delivery lands — the M002/contract precedent, exactly the M016 wiring DEC-0115 added; the guard message references the authorized M017 delivery R8-CORE-001 DEC-0116); the M016 localfirst battery step (wired by DEC-0115, activated by the delivery merge) runs green 35/35 at the accepted head"
+  ledger: "M016 accepted-merged entry appended + LEDGER-RECON-030 (snapshot baseline 28b3150 -> the M016 acceptance merge a0ebd019 — through the DEC-0114 activation b0145f1, the PR #39 delivery merge d77a561, the DEC-0115 acceptance 6b96438 and the PR #40 delivery merge a0ebd019, the DEC-0109/DEC-0114 RECON semantics; this governance commit sits beyond the new pin per the standing reconciliation convention)"
+
+verification_summary:
+  battery: "tools/localfirst_selftest.py 35/35 x3 consecutive runs with byte-identical logs at the exact delivery head 0d5cfb7 (2026-09-12T00:11-00:16Z); cross-PYTHONHASHSEED determinism verified in-battery (case_30)"
+  full_suite: "the full workflow suite in exact CI order at the head — 64/64 green (the M016 localfirst step activated by this delivery) with exactly the one documented non-zero exit: the legacy spec_check.py compatibility audit baseline (continue-on-error: true); every battery at its accepted count (resilience 36/36, contract 54/54, offer 49/49, developerapi 56/56, usage 53/53, commercial 41/41, sharenet 33/33, roamlink 56/56, comos 33/33, assurance 97/97, executionplan 36/36, adapter 70/70, replan 38/38, payment 44/44, eligibility 46/46, policy 103/103, client 24/24, scale 45/45, conformance 63/63)"
+  gates: "current_spec_check PASS; tech_lead_guard PASS; architecture_drift_guard PASS (implementation-only, 9 files, 0 control-plane); fresh_session_check PASS (--actual-main-sha 6b96438 at review time); authorization_provenance PASS (9/9 covered by R8-CORE-001: localfirst/, tools/localfirst_selftest.py, docs/M016-evidence.md)"
+  ci: "run 34650933081 SUCCESS on the exact delivery head 0d5cfb7; the merge-commit run 34661179904 on a0ebd019 (started at review time; the Tech Lead confirms it green before pushing); the merge is a clean merge-commit of a branch rooted at the main head 6b96438"
+  scope: "9 files, +6825/-0: localfirst/ x7 NEW (errors.py 110, model.py 1759, journal.py 491, admission.py 396, offline.py 608, resync.py 301, __init__.py 182), tools/localfirst_selftest.py NEW (2696 lines, 35 cases), docs/M016-evidence.md NEW (282 lines) — the charter boundary honored exactly; ZERO disclosed defect fixes (a clean single-session delivery — no delivery_repairs_disclosed section, nothing to disclose)"
+
+physical_obligations: "EVID-002..EVID-008 remain OPEN and untouched; SOFTWARE-class deterministic evaluation only; R4/W040 remains independently in-review and unaccepted"
+
+standing_rules:
+  w048: "accepted-not-restored; MUST NOT be restored implicitly or explicitly"
+  architecture: "Architecture 1.1 remains the sole forward design source; the R8 charter by-reference consumption rule is an acceptance criterion at every remaining R8 child (no accepted authority reimplemented, weakened, forked, or bypassed)"
+  history: "No work-item history is rewritten; the M016 ledger entry is appended, never converted; the M008 docstring-only disclosures in sessions/, mobility/, multipath/ stay exactly as accepted"

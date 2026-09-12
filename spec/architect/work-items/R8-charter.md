@@ -2,7 +2,7 @@
 
 **Gate-specific Work Item contract (DEC-0114 governance-compression class, the DEC-0101 precedent).**
 **Authorization: R8-CORE-001 (bounded R8 program authorization, DEC-0114). Baseline: `28b31500a928f2f75582bfb79039e315187d72b2`.**
-**Status: ACTIVE — the R8 implementation tranche M015-M019 is open; M015 — Execution Resilience Runtime is ACCEPTED (DEC-0115; head 95a65a5, merge d77a561 — the current-child pointer advances to M016); M016 — Local-First and Offline Operation is the current child.**
+**Status: ACTIVE — the R8 implementation tranche M015-M019 is open; M015 — Execution Resilience Runtime is ACCEPTED (DEC-0115; head 95a65a5, merge d77a561 — the current-child pointer advances to M016); M016 — Local-First and Offline Operation is ACCEPTED (DEC-0116; head 0d5cfb7, merge a0ebd019 — the current-child pointer advances to M017); M017 — Disaster Recovery and State Reconciliation is the current child.**
 
 ## Objective
 
@@ -109,7 +109,7 @@ re-authorization ceremony.
   `resilience/` may import the accepted authorities; no accepted authority
   imports `resilience/`.
 
-### M016 — Local-First and Offline Operation (current child)
+### M016 — Local-First and Offline Operation — ACCEPTED (DEC-0116: PR #40 head 0d5cfb7, merge a0ebd019 — the current-child pointer advances to M017)
 
 - **Scope:** `localfirst/` (NEW), `tools/localfirst_selftest.py` (NEW battery),
   `docs/M016-evidence.md`.
@@ -125,7 +125,7 @@ re-authorization ceremony.
   explicit and journaled. The M015 runtime is the composition substrate
   (dependency: M015).
 
-### M017 — Disaster Recovery and State Reconciliation
+### M017 — Disaster Recovery and State Reconciliation (current child)
 
 - **Scope:** `recovery/` (NEW), `tools/recovery_selftest.py` (NEW battery),
   `docs/M017-evidence.md`.

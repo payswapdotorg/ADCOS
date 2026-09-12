@@ -80,9 +80,14 @@ M015-M019 with M015 — Execution Resilience Runtime ACCEPTED (DEC-0115; head
 95a65a5, merge d77a561; the resilience/ runtime domain composing the accepted
 contracts/, replan/, executionplans/, evidence/ authorities BY REFERENCE; the
 36/36 battery CI-wired and green; delivered across two worker sessions under
-the continuation charter with two disclosed in-scope resilience/ defect fixes)
-and M016 — Local-First and Offline Operation the current child, with
-per-child acceptance decisions (DEC-0116+) mandatory; every accepted R7
+the continuation charter with two disclosed in-scope resilience/ defect fixes),
+M016 — Local-First and Offline Operation ACCEPTED (DEC-0116; head 0d5cfb7,
+merge a0ebd019; the localfirst/ domain composing the accepted contracts/,
+replan/, resilience/ authorities BY REFERENCE — the M015 runtime the
+composition substrate; the 35/35 battery CI-wired and green; a clean
+single-session delivery with zero disclosed defect fixes)
+and M017 — Disaster Recovery and State Reconciliation the current child, with
+per-child acceptance decisions (DEC-0117+) mandatory; every accepted R7
 authority is consumed BY REFERENCE (the R8 charter consumption rule). Implementation proceeds only within the active authorization's declared
 scope; each child work item is accepted only from repository evidence per the
 charter's acceptance rules.

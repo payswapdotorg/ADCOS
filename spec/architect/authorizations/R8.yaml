@@ -5,7 +5,8 @@
 # (DEC-0115+) close each child; this authorization CLOSES with the R8 gate
 # completion (the convergence child M019 accepted and the completion review
 # recorded). Children closed so far: M015 (DEC-0115 — the chain-child pointer
-# advanced M015 -> M016).
+# advanced M015 -> M016), M016 (DEC-0116 — the chain-child pointer advanced
+# M016 -> M017).
 work_item: R8
 child_work_items:
   - M015
@@ -13,7 +14,7 @@ child_work_items:
   - M017
   - M018
   - M019
-current_child_work_item: M016
+current_child_work_item: M017
 status: active
 authorized: true
 type: implementation
@@ -52,10 +53,11 @@ scope:
   # architecture_drift_guard, spec_check_selftest, tools/README.md) against
   # implementation-PR modification, so this prefix cannot reach them.
   - "tools/"
-  # M016 — Local-First and Offline Operation (current child)
+  # M016 — Local-First and Offline Operation (ACCEPTED under DEC-0116: PR #40 head
+  # 0d5cfb7, merge a0ebd019 — the current-child pointer advances to M017)
   - "localfirst/"
   - "docs/M016-evidence.md"
-  # M017 — Disaster Recovery and State Reconciliation
+  # M017 — Disaster Recovery and State Reconciliation (current child)
   - "recovery/"
   - "docs/M017-evidence.md"
   # M018 — Credential and Key Lifecycle Operations
@@ -73,6 +75,14 @@ scope:
   #  ADVANCES M015 -> M016 — the FIRST R8 chain-child acceptance (the
   #  authorization stays ACTIVE; M016's battery is CI-wired at the acceptance
   #  with a pre-delivery existence guard, the DEC-0114 M015 wiring precedent)]
+  # [M016 ACCEPTED 2026-09-12 under DEC-0116: PR #40 head 0d5cfb7, merge a0ebd019;
+  #  the 35/35 localfirst battery CI-wired (the DEC-0115 existence guard
+  #  activated by the delivery merge) and green at the accepted head; delivered
+  #  in ONE worker session on the append-only branch — a clean single-session
+  #  delivery with ZERO disclosed defect fixes; the current-child pointer
+  #  ADVANCES M016 -> M017 — the SECOND R8 chain-child acceptance (the
+  #  authorization stays ACTIVE; M017's battery is CI-wired at the acceptance
+  #  with a pre-delivery existence guard, the DEC-0115 M016 wiring precedent)]
 authorization_rules:
   - "Implementation PRs must classify as implementation-only (tools/architecture_drift_guard.py) and be fully covered by this scope (tools/authorization_provenance.py, byte-identical authorization inheritance from main)."
   - "The baseline-range semantics of the bounded program authorization apply: the baseline 28b3150 may precede the PR branch point only through control-plane-only commits or commits covered by this authorization's own scope."

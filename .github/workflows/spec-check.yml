@@ -389,13 +389,29 @@ jobs:
       # Pre-delivery existence guard: the battery lands with the authorized
       # M016 delivery; until then the step skips visibly (never silently) and
       # activates automatically on the delivery merge. The M002/contract
-      # precedent (the DEC-0101/DEC-0114 wiring).
+      # precedent (the DEC-0101/DEC-0114 wiring). ACTIVATED by the accepted
+      # M016 delivery (merge a0ebd019): the battery runs green 35/35 at the
+      # accepted head (DEC-0116).
       - name: Run local-first/offline operation tests
         run: |
           if [ -f tools/localfirst_selftest.py ]; then
             python3 tools/localfirst_selftest.py
           else
             echo "SKIP (pre-delivery, disclosed): tools/localfirst_selftest.py lands with the authorized M016 delivery (R8-CORE-001, DEC-0115)"
+          fi
+        continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
+
+      # M017 — Disaster Recovery and State Reconciliation battery (R8-CORE-001, DEC-0116).
+      # Pre-delivery existence guard: the battery lands with the authorized
+      # M017 delivery; until then the step skips visibly (never silently) and
+      # activates automatically on the delivery merge. The M002/contract
+      # precedent (the DEC-0101/DEC-0114/DEC-0115 wiring).
+      - name: Run disaster recovery and state reconciliation tests
+        run: |
+          if [ -f tools/recovery_selftest.py ]; then
+            python3 tools/recovery_selftest.py
+          else
+            echo "SKIP (pre-delivery, disclosed): tools/recovery_selftest.py lands with the authorized M017 delivery (R8-CORE-001, DEC-0116)"
           fi
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
 

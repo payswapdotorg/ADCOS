@@ -168,7 +168,7 @@ def main() -> int:
                 fail(errors, "dispatch-state.yaml cannot declare more than 9 active subagents")
 
     for marker in (
-        'roadmap_version: "2.12"',
+        'roadmap_version: "2.13"',
         'status: FROZEN_AUTHORITATIVE',
         'source_of_truth: repository_only',
         'mandatory_forward_target: "Architecture 1.1"',
@@ -195,7 +195,7 @@ def main() -> int:
         'work_item_chain: [M015, M016, M017, M018, M019]',
         'program_state: R8_RESILIENCE_MOBILITY_AND_SCALE_ACTIVE',
         'execution_mode: implementing',
-        'active_work_item: M016',
+        'active_work_item: M017',
         'active_authorization: R8-CORE-001',
         'next_gate: R9_FUTURE_ACCESS_TECHNOLOGY',
     ):
@@ -267,6 +267,8 @@ def main() -> int:
                     fail(errors, "M014 is accepted (DEC-0109, completing the R7 gate); it can never return to the active implementing state")
                 if awi == "M015":
                     fail(errors, "M015 is accepted (DEC-0115, the first R8 chain-child acceptance); it can never return to the active implementing state")
+                if awi == "M016":
+                    fail(errors, "M016 is accepted (DEC-0116, the second R8 chain-child acceptance); it can never return to the active implementing state")
                 if execution.get("halted_reason") is not None:
                     fail(errors, "execution-state.yaml halted_reason must be null while implementing")
                 auth_root = ROOT / "spec/architect/authorizations"
@@ -362,8 +364,8 @@ def main() -> int:
                 fail(errors, "R8 authorization must record the DEC-0114 issuance decision")
             if "baseline_sha: 28b31500a928f2f75582bfb79039e315187d72b2" not in r8a:
                 fail(errors, "R8 authorization must record the exact activation baseline (the DEC-0109 head)")
-            if "current_child_work_item: M016" not in r8a:
-                fail(errors, "R8 authorization must bind M016 as the current child work item after the DEC-0115 M015 acceptance")
+            if "current_child_work_item: M017" not in r8a:
+                fail(errors, "R8 authorization must bind M017 as the current child work item after the DEC-0116 M016 acceptance")
             for child in ("M015", "M016", "M017", "M018", "M019"):
                 if f"  - {child}" not in r8a:
                     fail(errors, f"R8 authorization child_work_items must declare {child}")
@@ -603,6 +605,18 @@ def main() -> int:
                     fail(errors, "execution-ledger.yaml M015 entry must record the exact acceptance merge SHA")
                 if m015_entry.get("reviewed_sha") != "95a65a54076b1401ea8ca414faa49a383ee2eb5f":
                     fail(errors, "execution-ledger.yaml M015 entry must record the exact reviewed delivery head")
+            m016_entry = next((e for e in items if isinstance(e, dict) and e.get("work_item") == "M016"), None)
+            if not isinstance(m016_entry, dict):
+                fail(errors, "execution-ledger.yaml must contain the M016 acceptance entry")
+            else:
+                if m016_entry.get("lifecycle") != "accepted-merged":
+                    fail(errors, "execution-ledger.yaml M016 entry must be lifecycle accepted-merged")
+                if m016_entry.get("acceptance_decision") != "DEC-0116":
+                    fail(errors, "execution-ledger.yaml M016 entry must record acceptance decision DEC-0116")
+                if m016_entry.get("merge_sha") != "a0ebd019a03238d089f03f006e9364e5c03cde51":
+                    fail(errors, "execution-ledger.yaml M016 entry must record the exact acceptance merge SHA")
+                if m016_entry.get("reviewed_sha") != "0d5cfb742d14bf3f257008593f7b0a22d98cc971":
+                    fail(errors, "execution-ledger.yaml M016 entry must record the exact reviewed delivery head")
             m009_entry = next((e for e in items if isinstance(e, dict) and e.get("work_item") == "M009"), None)
             if not isinstance(m009_entry, dict):
                 fail(errors, "execution-ledger.yaml must contain the M009 acceptance entry")

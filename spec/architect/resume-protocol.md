@@ -24,12 +24,13 @@ A brand-new Architect, Tech Lead, worker, or implementation agent must resume fr
 
 ## Current checkpoint
 
-The latest reconciled software baseline is the M015 acceptance merge
-`d77a56197b0450ee04c61b356389cf8800aac288` (the DEC-0109 R7-completion
-acceptance head `28b3150` and the DEC-0114 R8-activation commit `b0145f1`
-precede it on main — the m015-resilience delivery branch rooted at `b0145f1`;
-the delivery merged as `d77a561` completing the first R8 child); the
-DEC-0115 acceptance transition sits beyond it per the standing reconciliation
+The latest reconciled software baseline is the M016 acceptance merge
+`a0ebd019a03238d089f03f006e9364e5c03cde51` (the DEC-0109 R7-completion
+acceptance head `28b3150`, the DEC-0114 R8-activation commit `b0145f1`, the
+M015 acceptance merge `d77a561` and the DEC-0115 acceptance commit `6b96438`
+precede it on main — the m016-localfirst delivery branch rooted at `6b96438`;
+the delivery merged as `a0ebd019` completing the second R8 child); the
+DEC-0116 acceptance transition sits beyond it per the standing reconciliation
 convention.
 
 - R6 Provider Onboarding & Federation is complete under `DEC-0097`.
@@ -42,11 +43,11 @@ convention.
   program authorization: `R8-CORE-001`
   (`spec/architect/authorizations/R8.yaml`, baseline `28b3150`) with the R8
   charter (`spec/architect/work-items/R8-charter.md`) declaring the
-  gate-specific child work-item scopes M015-M019 (M016 Local-First and Offline
-  Operation — the CURRENT child, implementing; M017 Disaster Recovery and
-  State Reconciliation; M018 Credential and Key Lifecycle Operations,
-  chain-independent; M019 Resilience Convergence and Scale Hardening — the
-  convergence child whose acceptance COMPLETES the R8 gate and unlocks R9) and
+  gate-specific child work-item scopes M015-M019 (M017 Disaster Recovery and
+  State Reconciliation — the CURRENT child, implementing; M018 Credential and
+  Key Lifecycle Operations, chain-independent; M019 Resilience Convergence
+  and Scale Hardening — the convergence child whose acceptance COMPLETES the
+  R8 gate and unlocks R9) and
   the overlay (`spec/architect/dependency-overlays/R8.yaml`: M015 -> M016 ->
   M017 -> M019, M018 chain-independent, M019 converges all four, R7 the sole
   hard dependency). **M015 — Execution Resilience Runtime is ACCEPTED
@@ -61,7 +62,26 @@ convention.
   capacity peak destroyed 8+ sessions during the delivery window — with two
   disclosed in-scope resilience/ defect fixes) — the FIRST R8 chain-child
   acceptance: the current-child pointer advances M015 -> M016 and the
-  R8-CORE-001 authorization stays ACTIVE.** The R8 charter consumption rule:
+  R8-CORE-001 authorization stays ACTIVE.** **M016 — Local-First and Offline
+  Operation is ACCEPTED (DEC-0116; head 0d5cfb7, merge a0ebd019; the
+  localfirst/ domain — deterministic offline operation journals with
+  idempotent position-independent content identities, partition-tolerant
+  admission with fail-closed stale-authority rejection (never a silent allow
+  past the declared freshness window — the fold mechanically rejects the
+  forged silent-allow shape), LOCK-108 across the offline boundary (all 12
+  constraint kinds x DROP/RELAX/REINTERPRET rejected with typed reasons at
+  admission and re-verified at resynchronization — the wire-forged journaled
+  admitted record rejected), explicit reconnect/resynchronization with
+  divergence detection and LOCK-111 declared recorded deterministic
+  convergence (same inputs byte-identical, both rule directions, never
+  dropped, never duplicated), journaled degraded-mode operation, the M015
+  runtime consumed BY REFERENCE as the composition substrate (the RuntimeStore
+  lifecycle driven by reference for every offline transition); the 35/35
+  battery CI-wired and green at the accepted head; delivered in ONE worker
+  session on the append-only branch — a clean single-session delivery with
+  zero disclosed defect fixes) — the SECOND R8 chain-child acceptance: the
+  current-child pointer advances M016 -> M017 and the R8-CORE-001
+  authorization stays ACTIVE.** The R8 charter consumption rule:
   every accepted R7 authority consumed BY REFERENCE — never reimplemented,
   weakened, forked, or bypassed; the legacy resilience reservoir
   (sessions/mobility/multipath/edge/appliance) is harvest material per the
@@ -118,9 +138,10 @@ convention.
   authorization is CLOSED). R8 — Resilience, Mobility and Scale is now ACTIVE
   under DEC-0114 (the R8 charter + overlay + the R8-CORE-001 program
   authorization above); M015 — Execution Resilience Runtime is ACCEPTED
-  (DEC-0115) and M016 — Local-First and Offline Operation is the current
+  (DEC-0115), M016 — Local-First and Offline Operation is ACCEPTED (DEC-0116),
+  and M017 — Disaster Recovery and State Reconciliation is the current
   child (implementing).
-  Per-child acceptance decisions (DEC-0116 onward for the R8 children) are the
+  Per-child acceptance decisions (DEC-0117 onward for the R8 children) are the
   serialization points.
 - R4/W040 remains an independent physical-validation track and is not replaced by the software roadmap.
 - W048 remains accepted-not-restored and MUST NOT be recreated, mocked, or substituted implicitly.

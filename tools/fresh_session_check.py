@@ -126,9 +126,10 @@ def main() -> int:
         (resume, "THE R7 GATE IS COMPLETE", "resume protocol must record the R7 gate completion (DEC-0109)"),
         (resume, "R8 — Resilience, Mobility and Scale is ACTIVE", "resume protocol must record the R8 gate activation (DEC-0114)"),
         (resume, "M015 — Execution Resilience Runtime is ACCEPTED", "resume protocol must record the M015 acceptance (DEC-0115)"),
+        (resume, "M016 — Local-First and Offline Operation is ACCEPTED", "resume protocol must record the M016 acceptance (DEC-0116)"),
         (roadmap, "mandatory_forward_target: \"Architecture 1.1\"", "roadmap must declare 1.1 as mandatory forward target"),
         (roadmap, "next_gate: R9_FUTURE_ACCESS_TECHNOLOGY", "roadmap must put R9 as the next gate after the R8 activation"),
-        (roadmap, 'roadmap_version: "2.12"', "roadmap must be advanced to the post-M015-acceptance version 2.12"),
+        (roadmap, 'roadmap_version: "2.13"', "roadmap must be advanced to the post-M016-acceptance version 2.13"),
         (roadmap, "program_state: R8_RESILIENCE_MOBILITY_AND_SCALE_ACTIVE", "roadmap must record the R8-active program state"),
     ]
     for text, marker, message in required_markers:
@@ -139,11 +140,11 @@ def main() -> int:
         if marker.lower() not in current.lower():
             failures.append(f"current-state.md missing current checkpoint marker: {marker}")
 
-    for marker in ['roadmap_version: "2.12"', "program_state: R8_RESILIENCE_MOBILITY_AND_SCALE_ACTIVE", "execution_mode: implementing", "active_work_item: M016", "active_authorization: R8-CORE-001", "next_gate: R9_FUTURE_ACCESS_TECHNOLOGY", "completion_decision: DEC-0100", "activation_decision: DEC-0101", "completion_decision: DEC-0109", "completion_merge_sha: 344cd64e8396c7e388e31a50635ddff16bb4ea14", "activation_decision: DEC-0114", "authorization: \"R8-CORE-001\"", "child_acceptance_decisions: \"M015 accepted by DEC-0115 (head 95a65a5, merge d77a561)"]:
+    for marker in ['roadmap_version: "2.13"', "program_state: R8_RESILIENCE_MOBILITY_AND_SCALE_ACTIVE", "execution_mode: implementing", "active_work_item: M017", "active_authorization: R8-CORE-001", "next_gate: R9_FUTURE_ACCESS_TECHNOLOGY", "completion_decision: DEC-0100", "activation_decision: DEC-0101", "completion_decision: DEC-0109", "completion_merge_sha: 344cd64e8396c7e388e31a50635ddff16bb4ea14", "activation_decision: DEC-0114", "authorization: \"R8-CORE-001\"", "child_acceptance_decisions: \"M015 accepted by DEC-0115 (head 95a65a5, merge d77a561); M016 accepted by DEC-0116 (head 0d5cfb7, merge a0ebd019)"]:
         if marker not in roadmap:
             failures.append(f"roadmap.yaml missing current authoritative marker: {marker}")
 
-    for marker in ["mode: implementing", "active_work_item: M016", "active_authorization: R8-CORE-001", "current_child_work_item: M016", "r8_activation_decision: DEC-0114", "m015_acceptance_decision: DEC-0115", "R8-CORE-001"]:
+    for marker in ["mode: implementing", "active_work_item: M017", "active_authorization: R8-CORE-001", "current_child_work_item: M017", "r8_activation_decision: DEC-0114", "m015_acceptance_decision: DEC-0115", "m016_acceptance_decision: DEC-0116", "R8-CORE-001"]:
         if marker not in execution:
             failures.append(f"execution-state.yaml missing R8-active marker: {marker}")
 
