@@ -335,7 +335,9 @@ class TechnologyRegistration:
             )
         object.__setattr__(self, "mechanisms", mechanisms)
         object.__setattr__(self, "handovers", tuple(self.handovers))
-        if isinstance(self.binding_requirements, Mapping):
+        if self.binding_requirements is None:
+            object.__setattr__(self, "binding_requirements", ())
+        elif isinstance(self.binding_requirements, Mapping):
             object.__setattr__(
                 self,
                 "binding_requirements",
@@ -466,7 +468,7 @@ def technology_registration_from_mapping(
     capability_adapter: CapabilityAdapter,
     runtime: AdapterRuntime,
     descriptor: AdapterDescriptor,
-    binding_requirements: Mapping[str, Any],
+    binding_requirements: Optional[Mapping[str, Any]],
     mechanisms: Sequence[str],
 ) -> TechnologyRegistration:
     """Reconstruct a :class:`TechnologyRegistration` from its canonical
@@ -577,11 +579,14 @@ def register_access_technology(
             "the registration requires the mounted composition's "
             "AdapterDescriptor (got %s)" % type(descriptor).__name__,
         )
-    if not isinstance(binding_requirements, Mapping):
+    if binding_requirements is not None and not isinstance(
+        binding_requirements, Mapping
+    ):
         raise AccessTechError(
             AccessTechReason.REGISTRATION_REJECTED,
-            "binding requirements must be a mapping (the composition's "
-            "declared wiring data)",
+            "binding requirements must be a mapping or None (None is the "
+            "accepted RAN composition's declared shape: no caller "
+            "coordinates — QoS data passes through verbatim)",
         )
     if envelope.technology_class != descriptor.access_technology_id:
         raise AccessTechError(
@@ -679,7 +684,9 @@ def register_access_technology(
         capability_adapter=capability_adapter,
         runtime=runtime,
         descriptor=descriptor,
-        binding_requirements=dict(binding_requirements),
+        binding_requirements=(
+            {} if binding_requirements is None else dict(binding_requirements)
+        ),
         mechanisms=mechanisms_tuple,
         registered_at=now,
     )
