@@ -1,8 +1,11 @@
-T2-T6 COMPLETE and INTEGRATED (branch deployment/integration-20260913):
-runtime + Neon + Upstash + R2 + Vercel surface, all batteries + gates green
-at the integrated head, runbook 6.4 routing caveat reconciled (Option A).
-T7 IN FLIGHT: provision Neon (Composio), R2 bucket + token (Composio
-cloudflare), Upstash (operator-supplied REST coordinates), Vercel project +
-the 9-variable env contract (Composio vercel), then deploy. T8 next: run
-deploy/verify.py --expect-mode production, the D1/D2 rollback proof, and
-collect the acceptance evidence per runbook 10.
+T7/T8 COMPLETE — ADCOS DEPLOYED. Production: https://adcos.vercel.app
+(D1 = dpl_JE6EuY6evcYfHxKP4S6N1fecKdFf @ 73856f1, the stale-socket
+repair head; T8 8/8 before AND after the D2 rollback proof; suspend-
+recovery proven in production). Acceptance evidence: docs/deployment/
+acceptance-record.md (runbook §10, software-class only). REMAINING
+OPERATOR ACTION ITEMS: (1) the Upstash REST host of record is publicly
+unreachable — supply the REST URL matching the refreshed 2026-09-13
+token to activate the distributed limiter (one env change + redeploy);
+(2) R2 remains not-enabled on the Cloudflare account (Dashboard
+action). Branch reconciliation to main (PR) follows per the
+LEDGER-RECON discipline.

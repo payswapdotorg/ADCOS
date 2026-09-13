@@ -88,6 +88,50 @@
   provider credentials, the integrated T2–T6 result, and the Tech Lead's
   execution of docs/deployment/runbook.md.
 
+- THE BUILD-FALLBACK SEQUENCE (the lost-window record, reconstructed
+  from the repository): the first healthy production build took the
+  runbook 6.4 builds fallback (dc2399d: .vercelignore/build cache) and
+  the registry-starved demonstration repair (6067147: spec/schemas/ is
+  runtime data — the domain authorities machine-load the protocol
+  schema and the capability/access-profile/identity registries at
+  request time, so the wholesale spec/ exclusion starved the demo
+  path); the T8 harness's persistence check needed the disclosed
+  contract-id key-path widening (de1a220). First full T8 PASS 8/8 at
+  dpl_BxadefSr1CUqHwgp3CARi5RpE5a3 @ 6067147.
+- THE STALE-SOCKET FAILURE AND REPAIR (73856f1, the accepted head):
+  minutes after that 8/8, readyz reported postgres/evidence_store
+  "network error" on EVERY probe while Neon itself was healthy — the
+  adapter's cached connection was a corpse (Neon free-tier idle
+  suspend) that the failure path never dropped, so the warm instance
+  failed permanently until a cold start. The surgical repair: drop +
+  ONE bounded retry only on PROVEN connection death (socket-family
+  failure or undeliverable rollback); deterministic failures raise
+  exactly as before. Battery case_25 (25/25 x3); REAL-Neon repro:
+  ready → 390s idle → READY in 2.03s; production suspend-recovery
+  proven (3 consecutive ready probes + a live demo round-trip after
+  the suspend window).
+- THE OPERATOR'S REFRESHED UPSTASH TOKEN deployed encrypted to the
+  Vercel production env — and the REST host remains unreachable from
+  the Vercel network too (URLError at assembly; the sandbox DNS for
+  *.upstash.io is sinkholed so only the Vercel-side probe is
+  authoritative). The disclosed coordination fallback stays active
+  (degraded-ok). Operator action item recorded: the hostname of record
+  does not resolve publicly; supply the REST URL matching the refreshed
+  token to activate the distributed limiter (one env change + one
+  redeploy, no code change).
+- THE DEPLOYMENT ACCEPTANCE (runbook §8 + §10; full record in
+  docs/deployment/acceptance-record.md): D1 =
+  dpl_JE6EuY6evcYfHxKP4S6N1fecKdFf @ 73856f1 (T8 PASS 8/8;
+  suspend-recovery proof; readyz ok=true with postgres ready for the
+  first time in production); D2 = dpl_BsNvPRSBHDnCTQdkxwcDgTvTN7mG @
+  6b84d1b (the docstring-only marker build, deployed + promoted); the
+  routing-layer rollback D2 -> D1 (instant alias switch); the
+  post-rollback T8 re-verify PASS 8/8 (byte-identical determinism
+  sha256 577e24cfd361…). All deployment batteries + the three
+  governance gates green at the accepted head. Software-class-only
+  acceptance; the physical-validation track untouched.
+- **T7 AND T8 COMPLETE — ADCOS IS DEPLOYED at https://adcos.vercel.app.**
+
 ## TODO.txt
 
 T6 complete (w3: Vercel config, runbook, verify harness). T7/T8: run the
