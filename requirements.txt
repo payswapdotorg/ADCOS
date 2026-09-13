@@ -1,6 +1,5 @@
-# pg8000 — the ONLY third-party dependency — lazily imported; the core
-# runtime is stdlib-only (docs/deployment/runtime-inventory.md). Vercel's
-# Python runtime pip-installs this file at build time; nothing else is
-# needed because backends/postgres.py imports pg8000 lazily, only when
-# ADCOS_DATABASE_URL is set.
+# cache-key bump: the incremental build-cache restore chain poisoned the function bundle
+# (the zero-config detection failed under restored caches; this comment forces a fresh
+# dependency install layer — see docs/deployment/runbook.md §6.4/§6.5 and the fallback
+# delivery record)
 pg8000==1.31.2
