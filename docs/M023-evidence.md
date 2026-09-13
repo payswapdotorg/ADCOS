@@ -238,6 +238,26 @@ main's DEC-0122 advance — see §0):
    runs at its accepted 14/14 (main's own accepted delivery) and accesstech
    at 19/19.
 
+**The live CI timeline on the PR (disclosed):** CI run `34730876308`
+(pull_request, at the delivery commit `a273642` — the complete delivery
+content, evaluated against the then-live main `9ee8611`): **every step green
+except the one §0 adapter artifact** (the adapter battery step 69/70 —
+`['adapters/reference/futureimt.py']`, the exact sanctioned line; every
+other battery, gate, and the platformcaps job green). The follow-up run at
+the evidence-amendment head `299208b` (run `34731124787`) raced main's OWN
+M022 pre-acceptance window: the M022 merge (`68060d9`) landed on main
+between the two runs WITHOUT its DEC-0123 reconciliation, so the
+fresh-session step failed at the stale merge-ref payload with "main
+advanced beyond the snapshot 8ebdb21b with implementation-domain changes
+(ed7406bb: accesstech/satellite.py)" — verified delta-independent (the
+identical failure at a CLEAN `68060d9` main checkout with zero delta, and
+the run-1 fresh-session PASSED against the identical delivery content at
+the pre-race main); every step after it was skipped by the job's
+fail-fast. After DEC-0123 reconciled main (`0ab0307`), the final CI
+evaluation at this head (the regenerated merge ref against the reconciled
+main) returns to the complete expected state: **every step green except
+the one §0 adapter artifact**.
+
 The addendum-directed survey of the other hardcoded-allowlist batteries
 (oran, conformance, appliance — plus the adjacent imt battery) against this
 delivery's delta: **none trips on this delivery's delta** — verified in BOTH
