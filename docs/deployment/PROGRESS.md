@@ -71,6 +71,13 @@
   merge passes the provenance gate (the 28-file delta fully covered)
   and the payment battery 44/44 (case_38 authorization-aware).
 
+- THE FIRST PRODUCTION DEPLOYMENT (D1 = dpl_2f5XFNxb3XfLsXLRYX4dfhBY1QJ7
+  at https://adcos.vercel.app, from main 5a06833): healthz/artifacts/
+  error-surface green; the Upstash coordinates proved unreachable from
+  every network (recorded for the operator); the design-authorized
+  coordination fallback delivered on this branch (the accepted
+  in-process limiter with the degraded-ok disclosure); the T8
+  acceptance re-run follows this merge.
 - T7 (provision + deploy) IN FLIGHT: the operator supplied the provider
   credential set (GitHub PAT, Composio gateway with connected vercel/neon/
   cloudflare/github toolkits, the Upstash REST coordinates); provisioning
