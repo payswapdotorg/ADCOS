@@ -318,7 +318,7 @@ def build_production_services(
     )
     demo_credential = _demo_credential(gateway, issuance_key, environment)
 
-    backends = {"postgres": api_store}
+    backends = {"postgres": api_store, "evidence_store": evidence_journal}
     if upstash is not None:
         backends["upstash"] = upstash
     return RuntimeServices(

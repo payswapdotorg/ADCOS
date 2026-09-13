@@ -212,6 +212,10 @@ class FakeUpstashTransport:
         return 200, json.dumps({"result": result}).encode("utf-8")
 
     def _dispatch(self, command: str, args: List[str]) -> Any:
+        if command == "ping":
+            # the real Redis PING -> PONG (the readiness probe rides
+            # the same command surface as every coordination call)
+            return "PONG"
         key = args[0]
         if command == "incr":
             entry = self.store.get(key)
@@ -1374,6 +1378,53 @@ def case_21_gateway_seam(results: List[Result]) -> None:
         )
 
 
+def case_22_health_probe(results: List[Result]) -> None:
+    """The readiness probe: one REST PING through the REAL transport
+    seam.  PONG -> ready; a transport failure or a non-PONG reply ->
+    the explicit unavailable state with truthful detail (never a
+    static "wired" claim, never a silent pass)."""
+    problems: List[str] = []
+    clock, fake = _world()
+    limiter = UpstashRateLimiter(
+        rest_url=_REST_URL,
+        rest_token=_REST_TOKEN,
+        transport=fake,
+        limit=2,
+        window_seconds=60,
+        clock=clock,
+    )
+    healthy = limiter.health()
+    if healthy != {"state": "ready", "detail": ""}:
+        problems.append("healthy probe -> %r" % (healthy,))
+    if ("ping", "") not in fake.commands:
+        problems.append("the probe did not ride the command surface")
+    # a dead transport -> the explicit unavailable state
+    fake.raise_error = OSError("connection reset")
+    dead = limiter.health()
+    if dead.get("state") != "unavailable" or "REST ping" not in str(
+        dead.get("detail", "")
+    ):
+        problems.append("dead transport -> %r" % (dead,))
+    # a non-PONG 200 reply -> unavailable with the truthful detail
+    fake.raise_error = None
+    fake.next_body = b'{"result": "WRONG"}'
+    wrong = limiter.health()
+    if wrong.get("state") != "unavailable" or "WRONG" not in str(
+        wrong.get("detail", "")
+    ):
+        problems.append("non-PONG reply -> %r" % (wrong,))
+    if problems:
+        results.append(fail("22 health probe", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "22 health probe",
+                "PONG -> ready on the command surface; dead transport and "
+                "non-PONG -> the explicit unavailable state with detail",
+            )
+        )
+
+
 _CASES = (
     case_01_module_surface,
     case_02_config_invalid,
@@ -1396,6 +1447,7 @@ _CASES = (
     case_19_secret_hygiene,
     case_20_determinism,
     case_21_gateway_seam,
+    case_22_health_probe,
 )
 
 

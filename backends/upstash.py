@@ -347,6 +347,31 @@ class UpstashRateLimiter:
         """The fixed window length (the refill-cadence analogue)."""
         return self._window_seconds
 
+    def health(self) -> dict:
+        """The readiness probe: one REST ``PING`` through the REAL
+        transport (the same seam every coordination command rides).
+
+        The runtime's readiness aggregation drives this probe and
+        reports the result verbatim: ``{"state": "ready"}`` when the
+        coordination backend answers, ``{"state": "unavailable",
+        "detail": ...}`` when it does not — an explicit, observable
+        probe (never a static "wired" claim, never a silent pass; a
+        Redis outage surfaces as a named backend failure, exactly as
+        the RedisNeverCanonical contract requires)."""
+        try:
+            result = self._rest.command("ping")
+        except UpstashCoordinationError as error:
+            return {
+                "state": "unavailable",
+                "detail": "REST ping: %s" % error,
+            }
+        if result == "PONG":
+            return {"state": "ready", "detail": ""}
+        return {
+            "state": "unavailable",
+            "detail": "REST ping returned %r (expected PONG)" % (result,),
+        }
+
     def _counter_key(self, application_id: str) -> str:
         return "%s:%s" % (self._key_prefix, application_id)
 
