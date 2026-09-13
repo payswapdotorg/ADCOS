@@ -76,10 +76,13 @@ CHAIN_KEYS = ("contract", "plan", "execution", "evidence")
 CHAIN_CONTAINERS = ("", "chain", "result", "demo", "data")  # "" = payload root
 CONTRACT_ID_KEYS = (
     "contract.id",
+    "contract.contract_id",
     "contract_id",
     "id",
     "chain.contract.id",
+    "chain.contract.contract_id",
     "result.contract.id",
+    "result.contract.contract_id",
     "demo.contract_id",
     "demo.id",
 )
