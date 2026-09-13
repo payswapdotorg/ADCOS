@@ -1170,6 +1170,94 @@ def case_24_cross_process_determinism(results: List[Result]) -> None:
     )
 
 
+def case_25_coordination_fallback(results: List[Result]) -> None:
+    """Criterion: the DESIGN-AUTHORIZED coordination fallback — an
+    unreachable Upstash at assembly degrades to the accepted
+    in-process limiter WITH THE DISCLOSURE (readiness
+    ``degraded-ok`` + the fallback detail); a healthy Upstash wires
+    as ``ready``; the demo runs in the degraded posture."""
+    import tempfile
+
+    import backends.upstash as upstash_mod
+    from runtime.wiring import build_production_services
+
+    env = dict(_PRODUCTION_ENV)
+    env["ADCOS_REDIS_REST_URL"] = "https://adcos-battery.upstash.io"
+    env["ADCOS_REDIS_REST_TOKEN"] = "adcos-battery-token"
+
+    def _pong(method, url, headers, body):
+        return 200, json.dumps({"result": "PONG"}).encode("utf-8")
+
+    def _dead(method, url, headers, body):
+        raise OSError("connection reset by battery")
+
+    original = upstash_mod._urllib_transport
+    try:
+        # -- healthy Upstash: wired as ready --------------------------
+        database = _FakeDatabase()
+        upstash_mod._urllib_transport = _pong
+        healthy = build_production_services(
+            environ=env,
+            journal_dir=Path(tempfile.gettempdir())
+            / "adcos-runtime-battery-cf-healthy",
+            connection_factory=_fake_factory(database),
+        )
+        app_h = build_app(healthy)
+        status_h, payload_h, _ = drive(app_h, "GET", "/readyz")
+        doc_h = json.loads(payload_h)
+        backends_h = doc_h.get("backends") or {}
+        # -- unreachable Upstash: the disclosed fallback --------------
+        upstash_mod._urllib_transport = _dead
+        degraded = build_production_services(
+            environ=env,
+            journal_dir=Path(tempfile.gettempdir())
+            / "adcos-runtime-battery-cf-degraded",
+            connection_factory=_fake_factory(_FakeDatabase()),
+        )
+        app_d = build_app(degraded)
+        status_d, payload_d, _ = drive(app_d, "GET", "/readyz")
+        doc_d = json.loads(payload_d)
+        backends_d = doc_d.get("backends") or {}
+        status_demo, payload_demo = _app_post_demo(app_d)
+        doc_demo = json.loads(payload_demo) if status_demo == 200 else {}
+    finally:
+        upstash_mod._urllib_transport = original
+
+    problems: List[str] = []
+    if status_h != 200 or doc_h.get("ok") is not True:
+        problems.append("healthy readyz %d %r" % (status_h, doc_h.get("ok")))
+    if backends_h.get("upstash", {}).get("state") != "ready":
+        problems.append("healthy upstash %r" % backends_h.get("upstash"))
+    if status_d != 200 or doc_d.get("ok") is not True:
+        problems.append("degraded readyz %d ok=%r" % (status_d, doc_d.get("ok")))
+    upstash_entry = backends_d.get("upstash", {})
+    if upstash_entry.get("state") != "degraded-ok":
+        problems.append("fallback state %r" % upstash_entry)
+    if "coordination fallback active" not in str(
+        upstash_entry.get("detail", "")
+    ):
+        problems.append("fallback detail not disclosed: %r" % upstash_entry)
+    if backends_d.get("postgres", {}).get("state") != "ready":
+        problems.append("postgres %r" % backends_d.get("postgres"))
+    if backends_d.get("evidence_store", {}).get("state") != "ready":
+        problems.append("evidence_store %r" % backends_d.get("evidence_store"))
+    if status_demo != 200 or doc_demo.get("evidence_class") != "SOFTWARE":
+        problems.append(
+            "degraded demo %d %r" % (status_demo, doc_demo.get("evidence_class"))
+        )
+    if problems:
+        results.append(fail("25 coordination fallback", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "25 coordination fallback",
+                "unreachable Upstash -> the in-process limiter with the "
+                "degraded-ok disclosure (readiness 200, demo 200); healthy "
+                "Upstash wires ready",
+            )
+        )
+
+
 _CASES = (
     case_01_liveness_shape,
     case_02_readiness_sandbox,
@@ -1195,6 +1283,7 @@ _CASES = (
     case_22_demo_evidence_class_is_software,
     case_23_production_mode_demo,
     case_24_cross_process_determinism,
+    case_25_coordination_fallback,
 )
 
 

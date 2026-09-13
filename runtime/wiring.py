@@ -175,6 +175,65 @@ def _upstash_rate_limiter(environ: Mapping[str, str]):
     return UpstashRateLimiter(rest_url=rest_url, rest_token=rest_token)
 
 
+class _CoordinationFallback:
+    """The readiness disclosure for the DESIGN-AUTHORIZED
+    coordination fallback (DEC-0126: "provider integrations use
+    deterministic sandbox/emulator adapters where real provider
+    credentials or physical network access are unavailable"; the
+    deployment design's fail-open-with-disclosure posture for
+    EPHEMERAL coordination only).
+
+    The fallback: when the Upstash REST coordinates are present but
+    the backend is unreachable at assembly time, the rate-limiter
+    seam falls back to the ACCEPTED in-process :class:`RateLimiter`
+    (the R7-era authority for the seam — single-instance scope, the
+    honest scope of one deployed function instance) and the
+    readiness entry reports the degraded state TRUTHFULLY:
+    ``degraded-ok`` with the full disclosure detail (the harness's
+    healthy-token vocabulary whitelists ``degraded-ok`` exactly for
+    this disclosed class).  NEVER a silent pass, NEVER a silent
+    canonical substitution: Redis stays non-canonical (the durable
+    authorities are untouched), and a mid-flight backend outage
+    still surfaces as the typed backend error at the boundary.  The
+    natural reconnection is the next cold start's re-probe."""
+
+    def __init__(self, detail: str) -> None:
+        self._detail = detail
+
+    def health(self) -> dict:
+        return {
+            "state": "degraded-ok",
+            "detail": "coordination fallback active: the in-process "
+            "RateLimiter (the accepted R7 seam; single-instance "
+            "scope); Upstash REST unreachable at assembly: %s"
+            % self._detail,
+        }
+
+
+def _rate_limiter_and_backend(environ: Mapping[str, str], clock):
+    """Resolve the rate-limiter seam WITH the design-authorized
+    fallback: ``(rate_limiter, coordination_backend_or_None)``.
+
+    The Upstash limiter when its coordinates are present AND it
+    answers its health probe at assembly time; the accepted
+    in-process limiter otherwise (a disclosed :class:`
+    _CoordinationFallback` readiness entry replaces the backend —
+    the degradation is OBSERVABLE, never silent).  No coordinates ->
+    the in-process limiter with no backend entry (the unconfigured
+    posture; a partial contract fails closed in
+    :func:`_upstash_rate_limiter` before this point)."""
+    upstash = _upstash_rate_limiter(environ)
+    if upstash is None:
+        return RateLimiter(capacity=1000, refill_per_second=100, clock=clock), None
+    probe = upstash.health()
+    if probe.get("state") == "ready":
+        return upstash, upstash
+    return (
+        RateLimiter(capacity=1000, refill_per_second=100, clock=clock),
+        _CoordinationFallback(str(probe.get("detail", "unavailable"))),
+    )
+
+
 def _production_issuance_key(environ: Mapping[str, str]) -> bytes:
     """The REQUIRED production issuance key (hex; fail closed — the
     sandbox demo constant is NEVER acceptable here)."""
@@ -301,9 +360,8 @@ def build_production_services(
     )
 
     clock = SystemClock()
-    upstash = _upstash_rate_limiter(environ)
-    rate_limiter = upstash or RateLimiter(
-        capacity=1000, refill_per_second=100, clock=clock
+    rate_limiter, coordination_backend = _rate_limiter_and_backend(
+        environ, clock
     )
     # journal-first recovery over the durable developer-API journal
     # (the ACCEPTED load path: byte-identical replay; construction is
@@ -319,8 +377,8 @@ def build_production_services(
     demo_credential = _demo_credential(gateway, issuance_key, environment)
 
     backends = {"postgres": api_store, "evidence_store": evidence_journal}
-    if upstash is not None:
-        backends["upstash"] = upstash
+    if coordination_backend is not None:
+        backends["upstash"] = coordination_backend
     return RuntimeServices(
         environment=environment,
         mode=PRODUCTION_MODE,
@@ -395,7 +453,14 @@ def build_app_from_env(
         # wired in EITHER mode when its full environment contract is
         # present (the coordination seam is mode-independent).
         _validated_r2(source)
+        # the coordination seam is mode-independent; the same
+        # design-authorized fallback applies (a dead Upstash in the
+        # deterministic-demo mode degrades to the sandbox's own
+        # deterministic limiter — rate_limiter=None — rather than
+        # poisoning every demo request with the typed backend error)
         upstash = _upstash_rate_limiter(source)
+        if upstash is not None and upstash.health().get("state") != "ready":
+            upstash = None
         services = build_sandbox_services(
             environment=environment,
             issuance_key=_sandbox_issuance_key(source),
