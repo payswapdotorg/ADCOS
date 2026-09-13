@@ -34,6 +34,33 @@
   runbook: the locked rewrite excludes `/api/*`, so
   `/api/contracts/<id>` needs the Option A/B/C reconciliation at
   integration (verify.py check 5 is the canary).
+- T2-T5 COMPLETE: worker w1 delivered the DEC-0126 deployment runtime +
+  Neon durable adapter (branch `deployment/w1-runtime`: runtime/{asgi,demo,
+  health,sandbox,services,wiring}.py + backends/postgres.py + the runtime
+  and persistence batteries 24/24 + 24/24 + runtime-notes.md); worker w2
+  delivered the Upstash coordination + R2 artifact adapters (branch
+  `deployment/w2-coord`: backends/{upstash,r2}.py + the coordination and
+  artifact batteries 21/21 + 15/15 + coordination-notes.md, one disclosed
+  adapter repair — the missing R2 delete seam).
+- INTEGRATION COMPLETE on branch `deployment/integration-20260913`
+  (merge base 8de8706, the shared runtime-20260913 base): the three worker
+  deliveries merged (w1 T2+T3, w2 T4+T5, w3 T6); the runbook 6.4 routing
+  caveat RECONCILED with Option A (the vercel.json rewrite widened to
+  "/(.*)" so worker 1's canonical `GET /api/contracts/{id}` read route
+  reaches the app; filesystem routes still win for the function's own
+  path); all four deployment batteries green at the integrated head
+  (runtime 24/24, persistence 24/24, coordination 21/21, artifact 15/15)
+  plus the three governance gates (current_spec_check PASS,
+  tech_lead_guard PASS, architecture_drift_guard PASS —
+  implementation-only delta: 28 files) and an end-to-end in-process
+  smoke of the assembled ASGI surface (healthz/readyz/demo/read/404
+  determinism all green in sandbox mode).
+- T7 (provision + deploy) IN FLIGHT: the operator supplied the provider
+  credential set (GitHub PAT, Composio gateway with connected vercel/neon/
+  cloudflare/github toolkits, the Upstash REST coordinates); provisioning
+  via the Composio channel per the runbook order Neon -> Upstash -> R2 ->
+  app secrets -> Vercel project -> deploy.
+
 - T7 (provision + deploy) and T8 (live acceptance) PENDING: await the
   provider credentials, the integrated T2–T6 result, and the Tech Lead's
   execution of docs/deployment/runbook.md.
