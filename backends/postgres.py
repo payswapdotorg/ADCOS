@@ -255,6 +255,47 @@ def connection_factory_from_env(
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# The stale-socket repair (the Neon free-tier suspend reality)
+# ---------------------------------------------------------------------------
+
+
+class _ConnectionLoss(Exception):
+    """Internal control-flow marker: the failed attempt PROVED the
+    cached connection dead (a socket-family statement failure, or a
+    rollback that could not be delivered on the same connection).
+
+    The production reality this repairs: the Neon free-tier compute
+    suspends on idle (``suspend_timeout_seconds: 0``) and KILLS the
+    warm process's cached TCP connection; pg8000 then surfaces every
+    subsequent statement on that corpse as ``InterfaceError: network
+    error`` — and WITHOUT the drop, the warm Vercel instance fails
+    PERMANENTLY (the corpse is cached forever; only a cold start
+    recovers). With the drop: the next attempt reconnects (the
+    connect itself wakes the suspended compute) and the statement
+    succeeds. Exactly ONE bounded retry — a corpse whose replacement
+    also fails raises the typed error (fail closed unchanged).
+    """
+
+    def __init__(self, original: BaseException) -> None:
+        super().__init__(str(original))
+        self.original = original
+
+
+def _is_connection_loss(error: BaseException) -> bool:
+    """The socket-family failure signature: the stdlib broken-socket
+    exception family (``OSError`` covers ``BrokenPipeError`` /
+    ``ConnectionResetError`` / ``ConnectionAbortedError`` / the socket
+    timeout) plus pg8000's ``InterfaceError`` — duck-typed by NAME
+    because ``pg8000.exceptions.InterfaceError`` is exactly the
+    "network error" / "connection is closed" family, and importing
+    pg8000 here would break the stdlib-only import discipline (the
+    lazy-import contract the batteries rely on)."""
+    if isinstance(error, OSError):
+        return True
+    return type(error).__name__ == "InterfaceError"
+
+
 class _PostgresAccess:
     """The shared connection + execution core of the postgres adapters.
 
@@ -263,6 +304,19 @@ class _PostgresAccess:
     is committed explicitly; every failure rolls back and raises the
     typed backend error. The batteries' fakes implement exactly this
     minimal protocol.
+
+    The stale-socket repair (DISCLOSED integration repair): when a
+    failure PROVES the cached connection dead — a socket-family
+    statement failure, or a rollback that could not be delivered — the
+    corpse is closed and forgotten and the statement is retried
+    exactly ONCE on a fresh connection. Deterministic statement
+    failures (the batteries' injected ``RuntimeError`` markers, the
+    DB-API programming/constraint family) never take this path: they
+    raise the typed error immediately, exactly as before. The one
+    theoretical ambiguity — a commit whose ACK was lost when the
+    socket died mid-commit — is the standard reconnecting-driver
+    posture; the accepted stores' hash-chain/idempotency folds catch
+    any duplicate fail-closed, never silently.
     """
 
     def __init__(
@@ -295,7 +349,26 @@ class _PostgresAccess:
         """Execute ONE statement; return the fetched rows; commit when
         asked. Any failure (including the connection attempt itself)
         rolls the transaction back and raises the typed backend error
-        (fail closed)."""
+        (fail closed). A failure that PROVES the cached connection
+        dead drops the corpse and retries the statement exactly once
+        on a fresh connection (the stale-socket repair; see
+        :class:`_ConnectionLoss`)."""
+        try:
+            return self._execute_attempt(sql, params, commit=commit)
+        except _ConnectionLoss:
+            self._drop_dead_connection()
+            try:
+                return self._execute_attempt(sql, params, commit=commit)
+            except _ConnectionLoss as second:
+                raise PostgresBackendError(
+                    REASON_BACKEND_UNAVAILABLE,
+                    "postgres statement failed (%s): %s"
+                    % (sql.split()[0], second.original),
+                ) from None
+
+    def _execute_attempt(
+        self, sql: str, params: Sequence[Any] = (), *, commit: bool = False
+    ) -> List[Any]:
         cursor = None
         try:
             connection = self._connect()
@@ -317,7 +390,11 @@ class _PostgresAccess:
             self._rollback()
             raise
         except Exception as error:  # noqa: BLE001 - typed, never silent
-            self._rollback()
+            rolled_back = self._rollback()
+            if self._connection is not None and (
+                not rolled_back or _is_connection_loss(error)
+            ):
+                raise _ConnectionLoss(error) from None
             raise PostgresBackendError(
                 REASON_BACKEND_UNAVAILABLE,
                 "postgres statement failed (%s): %s" % (sql.split()[0], error),
@@ -335,7 +412,26 @@ class _PostgresAccess:
         """Execute MANY statements inside ONE transaction (all-or-
         nothing: a single commit after every statement succeeded; any
         failure — including the connection attempt — rolls the whole
-        batch back and raises the typed error)."""
+        batch back and raises the typed error). A failure that PROVES
+        the cached connection dead drops the corpse and retries the
+        whole batch exactly once on a fresh connection (the uncommitted
+        work died with the corpse — the retry is all-or-nothing again)."""
+        try:
+            self._execute_batch_attempt(sql, params_list)
+        except _ConnectionLoss:
+            self._drop_dead_connection()
+            try:
+                self._execute_batch_attempt(sql, params_list)
+            except _ConnectionLoss as second:
+                raise PostgresBackendError(
+                    REASON_BACKEND_UNAVAILABLE,
+                    "postgres batch failed (%s): %s"
+                    % (sql.split()[0], second.original),
+                ) from None
+
+    def _execute_batch_attempt(
+        self, sql: str, params_list: Sequence[Sequence[Any]]
+    ) -> None:
         cursor = None
         try:
             connection = self._connect()
@@ -345,7 +441,11 @@ class _PostgresAccess:
             cursor.close()
             connection.commit()
         except Exception as error:  # noqa: BLE001 - typed, never silent
-            self._rollback()
+            rolled_back = self._rollback()
+            if self._connection is not None and (
+                not rolled_back or _is_connection_loss(error)
+            ):
+                raise _ConnectionLoss(error) from None
             raise PostgresBackendError(
                 REASON_BACKEND_UNAVAILABLE,
                 "postgres batch failed (%s): %s" % (sql.split()[0], error),
@@ -357,13 +457,29 @@ class _PostgresAccess:
                 except Exception:  # noqa: BLE001 - cleanup only
                     pass
 
-    def _rollback(self) -> None:
+    def _rollback(self) -> bool:
+        """Best-effort rollback; RETURNS whether it was delivered. A
+        rollback that cannot be delivered on a live connection is
+        impossible — its failure PROVES the cached connection is a
+        corpse (the stale-socket discriminator)."""
         if self._connection is None:
-            return
+            return True
         try:
             self._connection.rollback()
+            return True
         except Exception:  # noqa: BLE001 - best-effort rollback
-            pass
+            return False
+
+    def _drop_dead_connection(self) -> None:
+        """Close and forget the proven-dead cached connection so the
+        next attempt reconnects (best-effort socket close — the corpse
+        may not even accept a close)."""
+        dead, self._connection = self._connection, None
+        if dead is not None:
+            try:
+                dead.close()
+            except Exception:  # noqa: BLE001 - cleanup only
+                pass
 
     # -- schema + health ---------------------------------------------------
 
