@@ -1,0 +1,1 @@
+Deployment implementation T2-T6 in flight (workers w1/w2/w3, DEC-0126 bounded authorization). T7/T8 await provider credentials.
