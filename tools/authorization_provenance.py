@@ -53,6 +53,39 @@ sys.path.insert(0, str(ROOT / "tools"))
 from architecture_drift_guard import CONTROL_FILES, CONTROL_PREFIXES  # type: ignore  # noqa: E402
 
 AUTH_ROOT = ROOT / "spec/architect" / "authorizations"
+DECISIONS_ROOT = ROOT / "spec/architect" / "decisions"
+
+#: The decision-borne path surface: each accepted decision record that
+#: carries an ``authorized_scope`` block (the repository-local
+#: decision-borne authorization class founded by DEC-0126 — authority
+#: recorded in the DECISIONS registry itself, OUTSIDE the
+#: authorizations/ gate machinery, exactly as the decision's own
+#: rejected_scope declares) maps to the concrete implementation path
+#: prefixes its bounded program authorizes.  The mapping is the
+#: checker's machine knowledge of the decision's declared prose scope
+#: (the worker-allocation surface of the recorded handoff and the
+#: T1-T6 delivery it governs).  A decision-borne record whose id is
+#: absent here fails CLOSED: the checker must be taught its scope
+#: before its implementation may proceed (no implicit coverage, ever).
+_DECISION_BORNE_PATH_SURFACE = {
+    "DEC-0126": (
+        "runtime/",
+        "backends/",
+        "api/",
+        "deploy/",
+        "docs/deployment/",
+        "docs/tech-lead/",
+        "tools/runtime_selftest.py",
+        "tools/persistence_selftest.py",
+        "tools/coordination_selftest.py",
+        "tools/artifact_selftest.py",
+        "docs/superpowers/specs/2026-09-13-adcos-free-tier-deployment-design.md",
+        "docs/superpowers/plans/2026-09-13-adcos-free-tier-deployment.md",
+        "vercel.json",
+        "requirements.txt",
+        ".vercelignore",
+    ),
+}
 
 
 def _is_control(path: str) -> bool:
@@ -99,6 +132,81 @@ def _field(text: str, key: str) -> Optional[str]:
     return m.group(1) if m else None
 
 
+def _decision_borne_authorization() -> tuple[Optional[dict], Optional[str]]:
+    """The single accepted decision-borne authorization, or a fail-closed reason.
+
+    The post-program class (founded by DEC-0126, the bounded ADCOS
+    software deployment authorization): a decision record whose own
+    ``authorized_scope`` block creates repository-local implementation
+    authority recorded in the DECISIONS registry — outside the
+    authorizations/ gate machinery — while the gate sequence R0-R9
+    stays COMPLETE and halted (DEC-0125, execution mode
+    awaiting-architect-decisions).  Exactly one such record may be
+    accepted at a time: the same single-active-authorization invariant,
+    extended to the decision registry.  Records without an
+    ``authorized_scope`` block are ordinary decisions and never count.
+    Fail closed on ambiguity and on unmapped scopes alike.
+
+    The baseline is the decision's own recorded live-main issuance
+    provenance (the first full 40-hex SHA in its ``review_basis``) —
+    frozen, never rewritten; the standing reconciliation convention
+    and the bounded program-range generalization reconcile it to the
+    execution-state snapshot exactly as a gate authorization's
+    baseline_sha would be.
+    """
+    if not DECISIONS_ROOT.is_dir():
+        return None, None
+    accepted: list[tuple[str, str]] = []
+    for path in sorted(DECISIONS_ROOT.glob("DEC-*.y*ml")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        if not re.search(r"^authorized_scope:\s*$", text, re.MULTILINE):
+            continue
+        if not (
+            re.search(r"^status:\s*ACCEPTED\s*$", text, re.MULTILINE)
+            and re.search(r"^decision:\s*ACCEPTED\s*$", text, re.MULTILINE)
+        ):
+            continue
+        accepted.append((path.name, text))
+    if not accepted:
+        return None, None
+    if len(accepted) > 1:
+        return None, (
+            "multiple accepted decision-borne authorizations (%s); exactly "
+            "one may be active" % ", ".join(n for n, _ in accepted)
+        )
+    name, text = accepted[0]
+    decision_id = _field(text, "decision_id") or ""
+    surface = _DECISION_BORNE_PATH_SURFACE.get(decision_id)
+    if not surface:
+        return None, (
+            "decision-borne authorization %s carries no path-surface mapping; "
+            "the checker must be taught its scope before its implementation "
+            "may proceed" % decision_id
+        )
+    baseline: Optional[str] = None
+    # the review_basis is a long single-line quoted value: extract the
+    # decision's own recorded live-main SHA (the first full 40-hex on
+    # that line — the issuance provenance, frozen at decision time)
+    m = re.search(r"^review_basis:.*?\b([0-9a-f]{40})\b", text, re.MULTILINE)
+    if m:
+        baseline = m.group(1)
+    record = {
+        "file": name,
+        "relpath": "spec/architect/decisions/%s" % name,
+        "authorization_id": "DECISION-BORNE:%s" % decision_id,
+        "decision_id": decision_id,
+        "work_item": None,
+        "current_child_work_item": None,
+        "baseline_sha": baseline,
+        "scope": list(surface),
+        "text": text,
+    }
+    return record, None
+
+
 def active_authorization() -> tuple[Optional[dict], Optional[str]]:
     """The single active repository-local authorization, or a fail-closed reason.
 
@@ -116,6 +224,16 @@ def active_authorization() -> tuple[Optional[dict], Optional[str]]:
         ):
             active.append((path.name, text))
     if not active:
+        # the post-program decision-borne class (DEC-0126): when no gate
+        # authorization is active (the halted post-R9 state under
+        # DEC-0125), the accepted decision-borne record is the active
+        # repository-local implementation authority — the SAME single-
+        # active invariant, the decision registry as the source
+        record, reason = _decision_borne_authorization()
+        if record is not None:
+            return record, None
+        if reason is not None:
+            return None, reason
         return None, "no repository-local authorization is active — NO CURRENT AUTHORIZATION = IMPLEMENTATION MUST STOP"
     if len(active) > 1:
         return None, "multiple active authorizations (%s); exactly one may be active" % ", ".join(n for n, _ in active)
@@ -238,7 +356,9 @@ def check() -> int:
             "main (spec/architect/authorizations/) before any implementation delta may proceed"
         )
     else:
-        auth_rel = "spec/architect/authorizations/%s" % record["file"]
+        auth_rel = record.get("relpath") or (
+            "spec/architect/authorizations/%s" % record["file"]
+        )
         scope = record.get("scope") or []
         uncovered = [p for p in implementation if not any(p == s or p.startswith(s) for s in scope)]
         if uncovered:
