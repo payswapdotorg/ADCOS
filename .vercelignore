@@ -6,13 +6,45 @@
 # replan/, resilience/) in the deployment. Rationale: a smaller, faster
 # bundle with no governance/CI/operator files shipped to production.
 # (.git/ and __pycache__/ artifacts are excluded automatically by Vercel.)
+#
+# spec/schemas/ is RUNTIME DATA, not governance: the accepted domain
+# authorities machine-load spec/schemas/protocol.json (protocol/
+# versioning.py) and the registries under spec/schemas/registries/
+# (capabilities/, adapters/validation.py, identity/profiles.py) at request
+# time — the first production deployment's live acceptance proved the
+# exclusion of spec/ wholesale starves the demonstration path (the typed
+# "missing access-profile registry" failure). spec/'s OTHER children stay
+# excluded: the architect package, the ACR/registries, the frozen
+# architecture documents, and the historical/research material are
+# governance, never runtime.
+spec/acr/
+spec/architect/
+spec/experience/
+spec/history/
+spec/integration/
+spec/migration/
+spec/prompts/
+spec/research/
+spec/application-model.md
+spec/architecture-1.1-proposed.md
+spec/architecture-lock-1.1-proposed.md
+spec/architecture-lock.md
+spec/architecture.md
+spec/change-control.md
+spec/dependency-graph-1.1.md
+spec/dependency-graph.md
+spec/governance.md
+spec/mission.md
+spec/work-items-1.1.md
+spec/work-items.md
+spec/workflow.md
 
-spec/
-docs/
+# the operator/CI surface (never production)
 tools/
 .github/
 deploy/
 worker-charters/
+docs/
 
 # root-level markdown (README/AGENTS/etc.) — none of it is needed at runtime
 /*.md
