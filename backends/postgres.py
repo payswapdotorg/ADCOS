@@ -53,6 +53,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any, Callable, List, Mapping, Optional, Sequence
 from urllib.parse import unquote, urlparse
@@ -108,6 +109,78 @@ class PostgresBackendError(Exception):
 # ---------------------------------------------------------------------------
 
 
+def _pin_stdlib_platform_for_driver() -> None:
+    """Pin the STDLIB ``uuid``/``platform`` pair for the driver import.
+
+    The repository root carries the accepted top-level ``platform/``
+    domain package (consumed by ``composition/world.py`` and the domain
+    batteries), and deployment runtimes place the repository root BEFORE
+    the stdlib on ``sys.path`` (Vercel's Python functions; any cwd/``-m``
+    execution from the root).  The pg8000 import chain (``converters``
+    does ``from uuid import UUID``; stdlib ``uuid.py`` calls
+    ``platform.system()`` at module level) would resolve the DOMAIN
+    package instead — either straight off ``sys.path`` or from the
+    ``sys.modules`` cache once ``composition.world`` has loaded it —
+    and crash with ``AttributeError: module 'platform' has no attribute
+    'system'``.
+
+    The pin: with any cached domain ``platform`` module temporarily
+    swapped out of ``sys.modules`` and the repository root temporarily
+    masked off ``sys.path``, import the stdlib ``uuid`` (whose module
+    body then binds the STDLIB ``platform`` by direct reference), then
+    restore the domain package and the path exactly as they were.  The
+    stdlib ``uuid`` keeps its own reference forever after, so the pin is
+    idempotent and needs no further masking on later connections.  The
+    accepted domain package is never modified — only the stdlib
+    resolution is pinned for the driver's import window.
+    """
+    modules = sys.modules
+    cached_uuid = modules.get("uuid")
+    if (
+        cached_uuid is not None
+        and isinstance(getattr(cached_uuid, "__file__", ""), str)
+        and cached_uuid.__file__.endswith("uuid.py")
+        and "site-packages" not in cached_uuid.__file__
+    ):
+        # the stdlib uuid is already cached: its module body imported
+        # (and successfully called) the platform it needs at ITS import
+        # time, and holds that reference directly — the driver import is
+        # already safe regardless of what ``platform`` resolves to now.
+        return
+    repo_root = Path(__file__).resolve().parent.parent
+    saved_platform = modules.pop("platform", None)
+    saved_path = list(sys.path)
+    try:
+        masked: list = []
+        for entry in saved_path:
+            text = str(entry)
+            if text in ("", "."):
+                try:
+                    if Path(".").resolve() == repo_root:
+                        continue
+                except OSError:
+                    pass
+                masked.append(entry)
+                continue
+            try:
+                if Path(text).resolve() == repo_root:
+                    continue
+            except OSError:
+                pass
+            masked.append(entry)
+        sys.path[:] = masked
+        import uuid as _stdlib_uuid  # noqa: F401 - the pinned import
+    finally:
+        sys.path[:] = saved_path
+        if saved_platform is not None:
+            modules["platform"] = saved_platform
+        else:
+            # leave no stdlib platform cached: the accepted domain
+            # ``platform`` package must stay importable by its own
+            # consumers (composition/world.py) through sys.path
+            modules.pop("platform", None)
+
+
 def _real_connection_factory(url: str) -> Callable[[], Any]:
     """Build the real connection factory from a Neon-style URL.
 
@@ -131,6 +204,7 @@ def _real_connection_factory(url: str) -> Callable[[], Any]:
         try:
             import ssl as _ssl
 
+            _pin_stdlib_platform_for_driver()
             import pg8000.dbapi  # the lazy third-party import site
         except ImportError as error:
             raise PostgresBackendError(
@@ -227,7 +301,14 @@ class _PostgresAccess:
             connection = self._connect()
             cursor = connection.cursor()
             cursor.execute(sql, tuple(params))
-            rows = list(cursor.fetchall() or ())
+            # DB-API 2.0 contract: ``description`` is None when the
+            # statement produces no result set (DDL, INSERT without
+            # RETURNING).  pg8000 raises ProgrammingError if fetchall
+            # is forced on such a statement — fetch conditionally.
+            if cursor.description is None:
+                rows: List[Any] = []
+            else:
+                rows = list(cursor.fetchall() or ())
             cursor.close()
             if commit:
                 connection.commit()

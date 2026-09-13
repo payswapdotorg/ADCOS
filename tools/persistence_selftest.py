@@ -107,6 +107,19 @@ class FakeCursor:
             raise RuntimeError("injected failure after %d executes" % budget)
         self._connection._apply(sql, tuple(params), self._rows)
 
+    @property
+    def description(self) -> Optional[Tuple[Any, ...]]:
+        """DB-API 2.0 mirror for the adapter's conditional fetch:
+        ``None`` when the last statement produced no result set (the
+        DDL shape), a truthy column-descriptor tuple when it did (the
+        SELECT shape).  The real pg8000 cursor raises ProgrammingError
+        when fetchall is forced on a description-less statement — the
+        fake mirrors the distinction so the adapter's conditional fetch
+        is exercised on both branches offline."""
+        if self._rows:
+            return (("<column>",),)
+        return None
+
     def fetchall(self) -> List[Tuple[Any, ...]]:
         return list(self._rows)
 

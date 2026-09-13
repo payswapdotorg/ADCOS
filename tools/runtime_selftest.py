@@ -196,6 +196,18 @@ class _FakeCursor:
             raise RuntimeError("injected probe failure")
         self._connection._apply(sql, tuple(params), self._rows)
 
+    @property
+    def description(self) -> Optional[Tuple[Any, ...]]:
+        """DB-API 2.0 mirror for the adapter's conditional fetch
+        (None when the last statement produced no result set — the DDL
+        shape; a truthy descriptor tuple when it did — the SELECT
+        shape).  Mirrors the persistence battery's FakeCursor so the
+        adapter's conditional fetch is exercised on both branches
+        offline, exactly as the real pg8000 cursor behaves."""
+        if self._rows:
+            return (("<column>",),)
+        return None
+
     def fetchall(self) -> List[Tuple[Any, ...]]:
         return list(self._rows)
 
