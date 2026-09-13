@@ -65,6 +65,28 @@ guard still rejects every other undeclared `adapters/` change). The verification
 numbers below disclose the 69/70 artifact explicitly wherever the adapter battery
 is cited at this head.
 
+**TECH LEAD RESOLUTION (2026-09-13, pre-merge amendment commit 5475196):** the
+resolution above is applied exactly as specified — the amendment (Tech-Lead-
+authored, `z-ai-architect`, on this branch before the merge) appends EXACTLY
+`adapters/reference/futureimt.py` to case_68's `expected_delta` (writing the
+block to the full R9-children union — the wireline/satellite entries as they
+stand on the accepted main, byte-identical comments, plus this delivery's
+futureimt.py: append-only in intent, no assertion weakened; the guard still
+rejects every other undeclared `adapters/` change). Because this branch roots
+at fe27c99 while main advanced through the M021/M022 acceptances (which each
+evolved the same expected-set block), the PR merge intersects two evolved
+versions of the shared battery file: the conflict resolves at the integration
+station to this branch's union (a strict superset of main's block), and the
+merge lands as a station-resolved merge commit (the boot §5 doctrine — shared-
+file conflicts between concurrent workers are resolved at the integration
+station, never in chat). Re-verified by direct execution at the resolved merge
+state: the adapter battery **70/70**; the futureimt battery **14/14 x3
+byte-identical**; accesstech 19/19; wireline 14/14; satellite 17/17; the five
+R8 batteries at their accepted counts; imt/oran/appliance green at the merge
+state (34/36/42 — the raw-head failures confirmed as the pre-existing
+main-advance class, byte-identical at the clean base); all six governance
+gates rc=0 (the acceptance decision DEC-0124 records the reviewed numbers).
+
 **The pre-existing main-advance artifact class (disclosed, not caused by this
 delivery):** at the RAW pre-merge head with TODAY'S live `origin/main` (`9ee8611`,
 post-DEC-0122), two further pre-existing failures appear in shared batteries
@@ -344,3 +366,15 @@ the M021 delivery set.
 - The known integration artifact (§0) is resolved by the Tech Lead's
   integration commit BEFORE the merge; this record and the PR body disclose
   the 69/70 expectation explicitly wherever the adapter battery is cited.
+
+**Amendment provenance:** the case_68 resolution amendment (see §0 — TECH LEAD
+RESOLUTION) is the ONE post-delivery commit on this branch beyond the worker's
+two delivery commits (a273642 the composition, 299208b the evidence §0/§5
+survey amendment — the worker's own append-only docs-only precision), authored
+by the Tech Lead (`z-ai-architect`), not the worker session; it touches only
+`tools/adapter_selftest.py`'s declared set and this record (the §0 resolution
+addendum + this note). The worker's delivery commits themselves are untouched
+(append-only; no rebase, no force-push, no amending — the amendment rides ON
+TOP, the same pattern as the M021 branch's 8966693 and the M022 branch's
+16eb274). The station-resolved merge commit beyond this head is the
+integration artifact the §0 TECH LEAD RESOLUTION discloses.

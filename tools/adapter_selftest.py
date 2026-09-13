@@ -3795,7 +3795,13 @@ def case_68_m007_work016_compat_seam(results: List[Result]) -> None:
                                 % (family, len(module.__all__), size)))
             return
     # (d) The adapters/ delta vs origin/main is exactly the declared
-    # M007 set (the harvest is disclosed as a harvest).
+    # M007 set (the harvest is disclosed as a harvest), plus each
+    # ACCEPTED R9 child's reference module (the R9 charter's Consumption
+    # rule sanctions this disclosed evolution of the accepted shared
+    # battery surface -- append-only in intent, never
+    # assertion-weakening; the M019 tools/scale_selftest.py precedent;
+    # M021's wireline.py joined at the DEC-0122 acceptance). The guard
+    # still rejects every other undeclared adapters/ change.
     expected_delta = {
         "adapters/__init__.py",
         "adapters/capability.py",
@@ -3806,6 +3812,13 @@ def case_68_m007_work016_compat_seam(results: List[Result]) -> None:
         "adapters/reference/mesh.py",
         "adapters/reference/ran.py",
         "adapters/reference/wifi.py",
+        # R9 children, one per acceptance (DEC-0122: M021 wireline;
+        # DEC-0123: M022 satellite; the M023 futureimt sibling joins at
+        # its OWN acceptance -- never before: pre-adding it would weaken
+        # the guard for unaccepted deliveries):
+        "adapters/reference/wireline.py",
+        "adapters/reference/satellite.py",
+        "adapters/reference/futureimt.py",
     }
     try:
         proc = subprocess.run(
