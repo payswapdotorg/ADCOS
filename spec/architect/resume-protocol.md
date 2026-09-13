@@ -40,8 +40,11 @@ Technology Capability Envelope ACCEPTED under DEC-0121 (PR #44 head
 `035242de`, merge `c75a7c70`); M021 — Wireline Access Adapters ACCEPTED under
 DEC-0122 (PR #45 head `8966693`, merge `8ebdb21`); M022 — Non-Terrestrial
 Access Adapters ACCEPTED under DEC-0123 (PR #46 head `16eb274`, merge
-`68060d9`); M024 — Future Access Convergence is the current child, BLOCKED
-until the chain-independent M023 lands).
+`68060d9`); M023 — Future Technology Extension Drill ACCEPTED under
+DEC-0124 (PR #47 head `385be97`, the station-resolved merge `67d99d1`); M024 —
+Future Access Convergence ACCEPTED under DEC-0125 (PR #48 head `5e7797a`,
+merge `d1dbe69` — the convergence child completing the R9 gate, the terminal
+roadmap gate; the roadmap's gate sequence R0-R9 COMPLETE).
 
 - R6 Provider Onboarding & Federation is complete under `DEC-0097`.
 - M001 — Architecture 1.1 Freeze is complete under `DEC-0100`: Architecture 1.1
@@ -175,22 +178,36 @@ until the chain-independent M023 lands).
   merge `8ebdb21` — the wireline battery step ACTIVATED green 14/14 by the
   delivery merge); M022 — Non-Terrestrial Access Adapters ACCEPTED under
   DEC-0123 (PR #46 head `16eb274`, merge `68060d9` — the satellite battery
-  step ACTIVATED green 17/17 by the delivery merge, the case_68 expected-set
-  evolution of the accepted adapter battery recorded per the DEC-0122
-  forward rule, the amendment 16eb274); M024 — Future Access Convergence
-  the CURRENT CHILD (`tools/futureimt_selftest.py` CI-wired with a
-  pre-delivery existence guard for the in-flight M023; M024's own
-  convergence battery wires at its acceptance), BLOCKED until the
-  chain-independent M023 lands; M023 — Future Technology
-  Extension Drill (CHAIN-INDEPENDENT — the synthetic future-IMT/6G-class
-  technology added purely through the accepted public extension surface, zero
-  contract-core delta); M024 — Future Access Convergence (the convergence
-  child — its acceptance completes the gate and evaluates the program_exit
-  conditions, SOFTWARE-class only). Per-child acceptance decisions (DEC-0124+)
-  are mandatory. The R9 charter's own objective constraint is an acceptance
+  step ACTIVATED green 17/17 by the delivery merge); M023 — Future
+  Technology Extension Drill ACCEPTED under DEC-0124 (PR #47 head `385be97`,
+  the station-resolved merge `67d99d1` — the futureimt battery step
+  ACTIVATED green 14/14 by the delivery merge; the case_68 expected-set
+  evolution per the DEC-0122/DEC-0123 forward rule: the amendment 385be97,
+  the R9 reference children complete, the adapter battery 70/70; the
+  chain-independent rooting at fe27c99 — the merge clean by scope
+  disjointness); M024 — Future Access Convergence ACCEPTED under DEC-0125
+  (PR #48 head `5e7797a`, merge `d1dbe69` — the accessconvergence battery
+  step ACTIVATED green 15/15 by the delivery merge, the FINAL battery wiring
+  of the roadmap; the convergence child completing the gate: the
+  cross-technology interchange drill, the technology replacement drill, the
+  converged-domain compatibility matrix, the federation-scale convergence —
+  delivered as the CLEANEST delivery of the gate: no case_68 conflict, no
+  parallel workers, CI green end-to-end). **R9 — Future Access Technology is COMPLETE under DEC-0125: ALL FIVE children accepted (M020 DEC-0121,
+  M021 DEC-0122, M022 DEC-0123, M023 DEC-0124 chain-independent, M024
+  DEC-0125), the R9-CORE-001 program authorization CLOSED (status accepted,
+  authorized false — the M001-CORE-001/R7-CORE-001/R8-CORE-001 closure
+  pattern), the roadmap's gate sequence R0-R9 COMPLETE (the TERMINAL gate —
+  no successor), and the program_exit evaluation recorded SOFTWARE-class
+  (the stripe-of-connectivity test and the architecture test composed from
+  repository evidence; the open physical obligations EVID-002..EVID-008
+  recorded open, never satisfied by software evidence). The execution mode
+  is awaiting-architect-decisions: no active work item, no active
+  authorization — the open items are R4/W040 (the independent
+  physical-validation track, in-review and unaccepted) and the physical
+  obligations. NO further per-child acceptance decisions are required.** The R9 charter's own objective constraint is an acceptance
   criterion on every child: access technologies are added or replaced through
   the adapter boundary WITHOUT altering the connectivity contract core
-  (LOCK-101). The execution mode is implementing (M024/R9-CORE-001, blocked-on-M023).
+  (LOCK-101). The execution mode is awaiting-architect-decisions (the R9 gate completed under DEC-0125; no active work item, no active authorization).
   **M020 — Access Technology Capability Envelope is ACCEPTED (DEC-0121; head
   035242de, merge c75a7c70 — the chain root, the FIRST R9 child acceptance:
   the accesstech/ envelope domain — typed fail-closed envelope validation
@@ -277,6 +294,38 @@ until the chain-independent M023 lands).
   stays ACTIVE (it closes only with the R9 gate completion at the M024
   acceptance — the terminal gate, whose acceptance evaluates the
   program_exit conditions).**
+  **M024 — Future Access Convergence is ACCEPTED (DEC-0125; head 5e7797a,
+  merge d1dbe69 — the FIFTH R9 child, the convergence child: THE R9 GATE
+  COMPLETES): accesstech/convergence.py NEW (2697 — the R9 convergence
+  surface under the M020-owned shared prefix, the frozen package surface
+  imported and never edited: the cross-technology interchange drill
+  (wireline ↔ radio-family ↔ non-terrestrial, the full domain circle over
+  the accepted M021/M007/M022 compositions, driven through the accepted
+  resilience/ handover machinery with LOCK-108 verbatim constraint-set
+  equality by construction and the WORK-012 explicit reconnect pairs
+  naming old AND new references), the technology REPLACEMENT drill (the
+  'or replace' half of the gate objective: a live technology replaced under
+  an active contract with contract continuity — the contract bytes
+  unchanged through replacement, every replacement an explicit recorded
+  reconnect, never a silent swap), the converged-domain compatibility
+  matrix over the R9 domains (input-order independent, byte-stable
+  digests), the federation-scale convergence over the R9 domains);
+  tools/accessconvergence_selftest.py NEW (2525, 15/15 x3
+  byte-identical — ACTIVATED green by the delivery merge, the FINAL
+  battery wiring of the roadmap); docs/M024-evidence.md NEW (406 — the
+  SOFTWARE-class matrix + THE R9 GATE COMPLETION REVIEW composed from
+  repository citations: the stripe-of-connectivity test evaluated
+  link-by-link (the SOFTWARE-class verdict: the stripe is complete as
+  deterministic-battery evidence; the LIVE-NETWORK halves recorded as the
+  open physical obligations) and the architecture test evaluated
+  requirement-by-requirement (all invariants held on every proven path));
+  delivered as the CLEANEST delivery of the gate (no case_68 conflict —
+  the convergence module lives under accesstech/; no parallel workers; CI
+  green end-to-end; the PR head IS the reviewed head) — THE R9-CORE-001
+  authorization CLOSES (status accepted, authorized false); the roadmap's
+  gate sequence R0-R9 is COMPLETE; the program_exit evaluation is recorded
+  SOFTWARE-class in DEC-0125; the open items: R4/W040 (the independent
+  physical-validation track) and EVID-002..EVID-008 (recorded open).**
 - `M001-CORE-001` is closed. **R7 — Universal Connectivity Commerce is COMPLETE
   under DEC-0101/DEC-0109**
 - `M001-CORE-001` is closed. **R7 — Universal Connectivity Commerce was

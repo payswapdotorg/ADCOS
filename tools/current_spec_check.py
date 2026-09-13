@@ -65,6 +65,7 @@ REQUIRED_FILES = [
     "spec/architect/decisions/DEC-0122-m021-acceptance.yaml",
     "spec/architect/decisions/DEC-0123-m022-acceptance.yaml",
     "spec/architect/decisions/DEC-0124-m023-acceptance.yaml",
+    "spec/architect/decisions/DEC-0125-m024-acceptance.yaml",
     "spec/architect/work-items/R7-charter.md",
     "spec/architect/work-items/R8-charter.md",
     "spec/architect/work-items/R9-charter.md",
@@ -176,7 +177,7 @@ def main() -> int:
                 fail(errors, "dispatch-state.yaml cannot declare more than 9 active subagents")
 
     for marker in (
-        'roadmap_version: "2.21"',
+        'roadmap_version: "2.22"',
         'status: FROZEN_AUTHORITATIVE',
         'source_of_truth: repository_only',
         'mandatory_forward_target: "Architecture 1.1"',
@@ -211,10 +212,10 @@ def main() -> int:
         'prerequisite: R8_RESILIENCE_MOBILITY_AND_SCALE',
         'work_item: M024',
         'work_item_chain: [M020, M021, M022, M023, M024]',
-        'program_state: R9_FUTURE_ACCESS_TECHNOLOGY_ACTIVE',
-        'execution_mode: implementing',
-        'active_work_item: M024',
-        'active_authorization: R9-CORE-001',
+        'program_state: ROADMAP_GATE_SEQUENCE_R0_R9_COMPLETE',
+        'execution_mode: awaiting-architect-decisions',
+        'active_work_item: null',
+        'active_authorization: null',
         'next_gate: null',
     ):
         if marker not in roadmap_text:
@@ -397,23 +398,33 @@ def main() -> int:
                 if f"  - {child}" not in r8a:
                     fail(errors, f"R8 authorization child_work_items must declare {child}")
 
-        # R9 program-authorization ACTIVE invariants (independent of mode:
-        # fail closed against the pre-activation halted markers)
+        # R9 program-authorization CLOSURE invariants (independent of mode:
+        # fail closed against the pre-completion ACTIVE markers — the
+        # DEC-0119 R8-closure conversion, applied at the DEC-0125 R9 gate
+        # completion)
         r9_auth = ROOT / "spec/architect/authorizations/R9.yaml"
         if not r9_auth.is_file():
             fail(errors, "R9-CORE-001 authorization file missing")
         else:
             r9a = r9_auth.read_text(encoding="utf-8")
-            if not re.search(r"^status:\s*active\s*$", r9a, re.MULTILINE):
-                fail(errors, "R9 authorization must be status active after the DEC-0120 activation")
-            if not re.search(r"^authorized:\s*true\s*$", r9a, re.MULTILINE):
-                fail(errors, "R9 authorization must be authorized true after the DEC-0120 activation")
+            if re.search(r"^status:\s*active\s*$", r9a, re.MULTILINE):
+                fail(errors, "R9 authorization is CLOSED under DEC-0125 (the R9 gate completion); it must never return to status active")
+            if re.search(r"^authorized:\s*true\s*$", r9a, re.MULTILINE):
+                fail(errors, "R9 authorization is CLOSED under DEC-0125 (the R9 gate completion); it must never return to authorized true")
+            if not re.search(r"^status:\s*accepted\s*$", r9a, re.MULTILINE):
+                fail(errors, "R9 authorization must record the CLOSED status (accepted — the M001-CORE-001/R7-CORE-001/R8-CORE-001 closure pattern)")
+            if not re.search(r"^authorized:\s*false\s*$", r9a, re.MULTILINE):
+                fail(errors, "R9 authorization must record authorized false (the closure pattern)")
             if "authorization_decision: DEC-0120" not in r9a:
                 fail(errors, "R9 authorization must record the DEC-0120 issuance decision")
             if "baseline_sha: ea4bb64e0d32cfe93384ece71ec0003f447e357f" not in r9a:
                 fail(errors, "R9 authorization must record the exact activation baseline (the DEC-0119 head)")
-            if "current_child_work_item: M024" not in r9a:
-                fail(errors, "R9 authorization must bind M024 as the current child work item (the DEC-0123 M022 acceptance advanced the pointer along the chain; M023 is chain-independent and never holds the pointer)")
+            if "current_child_work_item: null" not in r9a:
+                fail(errors, "R9 authorization must record the closed terminal state (current_child_work_item: null — the DEC-0125 R9 gate completion; no child may return to the active state)")
+            if "status: accepted" not in r9a or "authorized: false" not in r9a:
+                fail(errors, "R9 authorization must record the CLOSED state (status accepted, authorized false — the M001-CORE-001/R7-CORE-001/R8-CORE-001 closure pattern)")
+            if "acceptance_decision: DEC-0125" not in r9a:
+                fail(errors, "R9 authorization must record the DEC-0125 gate-completion acceptance")
             for child in ("M020", "M021", "M022", "M023", "M024"):
                 if f"  - {child}" not in r9a:
                     fail(errors, f"R9 authorization child_work_items must declare {child}")

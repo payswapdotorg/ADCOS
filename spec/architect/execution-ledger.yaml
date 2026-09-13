@@ -1,3 +1,16 @@
+# DEC-0125 / LEDGER-RECON-039: M024-acceptance reconciliation — THE R9 GATE
+# COMPLETION (the DEC-0109/R7-completion and DEC-0119/R8-completion precedent
+# class): the FIFTH R9 child (the convergence child) accepted; the
+# R9-CORE-001 program authorization CLOSED (status accepted, authorized
+# false); the roadmap's gate sequence R0-R9 COMPLETE (the terminal gate; no
+# successor); the program_exit evaluation recorded SOFTWARE-class with the
+# acceptance; the snapshot baseline advances dee7795 -> d1dbe69 (the
+# DEC-0124 acceptance commit between them is governance-only and is brought
+# into the pin by this governance action; this acceptance commit sits
+# beyond the new pin per the standing convention); the M024 accepted-merged
+# entry appended; the accessconvergence battery step ACTIVATED by the
+# delivery merge (green 15/15) — the FINAL battery wiring of the roadmap;
+# the synchronized checker evolution validates the v2.22 terminal state.
 # DEC-0124 / LEDGER-RECON-038: M023-acceptance reconciliation — the FOURTH R9
 # child, CHAIN-INDEPENDENT (the M013/M018 precedent class): the
 # current-child pointer does NOT move (M024 stays the current child —
@@ -1626,6 +1639,31 @@ work_items:
 
 
 reconciliations:
+  - work_item: M024
+    title: "Future Access Convergence"
+    phase: "R9 convergence child (M-gate implementation, R9-CORE-001; the FIFTH R9 child — requires M020+M021+M022+M023, ALL SATISFIED; its acceptance COMPLETES the R9 gate — the terminal roadmap gate)"
+    branch: "m024-convergence"
+    baseline_sha: dee77954e78653fd586ef5e277a76aecded2c3ff
+    pr: 48
+    pr_head: 5e7797a232ae5b0f1f549afc149d9762d6c8ae4d
+    reviewed_sha: 5e7797a232ae5b0f1f549afc149d9762d6c8ae4d
+    merge_sha: d1dbe69cb93ca77f82bf8ec1ab8496a195e13a62
+    merged_at: 2026-09-13T04:10:00Z
+    ci_run: 34736353752
+    review_rounds: 1
+    acceptance_decision: DEC-0125
+    correction_decisions: []
+    handoff: spec/architect/work-items/R9-charter.md
+    handoff_required: false
+    lifecycle: accepted-merged
+    note: "R9 convergence-child acceptance entry appended by LEDGER-RECON-039 (DEC-0125 — THE R9 GATE COMPLETION). Authorization provenance, preserved exactly: R9-CORE-001 issued by DEC-0120 (bounded program authorization, baseline ea4bb64); the authorization CLOSES with this acceptance (status accepted, authorized false — the M001-CORE-001/R7-CORE-001/R8-CORE-001 closure pattern); ALL FIVE children accepted; the roadmap's gate sequence R0-R9 COMPLETE (the terminal gate — no successor). Delivery provenance, preserved exactly: the implementation on branch m024-convergence delivered as TWO reviewed append-only worker-authored commits (f5d1bec the convergence module + the battery, 5e7797a the evidence record with the R9 GATE COMPLETION REVIEW — the PR head IS the reviewed head, no tip advance) rooted at the live DEC-0124 M023-acceptance head dee7795 (the live-main rule — the CLEANEST delivery of the gate: no case_68 conflict (the convergence module lives under accesstech/, no new adapters/reference module), no parallel workers, the PR CI green end-to-end): accesstech/convergence.py NEW (2697 — the R9 convergence surface under the M020-owned shared prefix (the frozen M020 package surface imported, never edited): the cross-technology interchange drill — deterministic handovers wireline <-> radio-family <-> non-terrestrial (the full domain circle over the accepted M021 wireline, M007 radio-family and M022 non-terrestrial compositions) driven through the accepted resilience.handover machinery with LOCK-108 verbatim constraint-set equality by construction (the candidate carries the contract's OWN constraint objects verbatim; every decision re-verified through the consumed replan gate plus fingerprint equality) and the WORK-012 explicit reconnect pairs (old AND new references named); the technology REPLACEMENT drill — the 'or replace' half of the gate objective: a live technology replaced under an active contract with contract continuity (the contract bytes unchanged through replacement, proven byte-identical), every replacement an explicit recorded reconnect, never a silent swap; the converged-domain compatibility matrix over the R9 domains (the accepted upgrade/ matrix discipline extended, input-order independent, byte-stable digests); the federation-scale convergence over the R9 domains (the accepted scale/ harness discipline extended)); tools/accessconvergence_selftest.py NEW (2525 lines, 15/15 x3 byte-identical — the charter battery incl. the LOCK-108 equality across every handover, the replacement continuity, the matrix determinism, the weakened-candidate probes, the no-technology-branching audit, the one-way imports, the evidence honesty); docs/M024-evidence.md NEW (406 — the SOFTWARE-class matrix + THE R9 GATE COMPLETION REVIEW composed from repository citations: the gate sequence R0-R9 with every acceptance decision cited; the stripe-of-connectivity test evaluated link-by-link from the accepted authorities and their green batteries (the SOFTWARE-class verdict: the stripe is complete as deterministic-battery evidence; the LIVE-NETWORK halves recorded as the open physical obligations, never claimed); the architecture test evaluated requirement-by-requirement (the single-authority model, the evidence discipline, the least authority, the access-technology neutrality, the graceful degradation — all held on every proven path)) — accepted on the exact reviewed head (PR #48, one Tech Lead review round: the station verification 2026-09-13T04:01Z — the six gates rc=0, the accessconvergence battery 15/15 x3 byte-identical, the adapter battery 70/70 (the R9 reference children complete), accesstech 19/19, wireline 14/14, satellite 17/17, futureimt 14/14, the five R8 batteries at their accepted counts, the PR CI run 34736353752 green end-to-end, the merge-commit run 34736938411 green verified before the governance push, scope 3/3 authorized files +5628/-0) and merged as d1dbe69 (2026-09-13T04:10:00Z — a clean merge-commit of a branch rooted at the live main head dee7795). The accessconvergence battery step (CI-wired by DEC-0124 with the pre-delivery existence guard, ACTIVATED by this delivery merge) runs green 15/15 at the accepted head — the FINAL battery wiring of the roadmap. THE R9 GATE COMPLETES: the program_exit evaluation recorded SOFTWARE-class in DEC-0125 (composed from this delivery's evidence review); the open physical obligations EVID-002..008 recorded open; W048 remains accepted-not-restored. No work-item history rewritten: every earlier entry is byte-identical; this entry is appended, never converted."
+  - reconciliation_id: LEDGER-RECON-039
+    recorded_by: "DEC-0125 (the M024 acceptance — THE R9 GATE COMPLETION: all five children accepted, the R9-CORE-001 authorization CLOSED, the roadmap's gate sequence R0-R9 complete)"
+    recorded_at: 2026-09-13T04:25:00Z
+    from_main_sha: dee77954e78653fd586ef5e277a76aecded2c3ff
+    to_main_sha: d1dbe69cb93ca77f82bf8ec1ab8496a195e13a62
+    reason: "post-PR-#48 mainline reconciliation and the FINAL per-child acceptance: main advanced from the LEDGER-RECON-038 snapshot baseline dee7795 through the PR #48 M024 delivery merge d1dbe69 (branch m024-convergence rooted at dee7795: the two append-only worker commits f5d1bec + 5e7797a; the PR CI run 34736353752 green end-to-end — the cleanest delivery of the gate, no case_68 conflict, no amendment needed) while the persistent state still referenced dee7795. This reconciliation moves the snapshot baseline to d1dbe69 in lockstep with execution-state.yaml; records the M024 acceptance (DEC-0125: reviewed_sha 5e7797a, merge_sha d1dbe69, merged_at 2026-09-13T04:10:00Z, acceptance decision ACCEPTED) with its execution-ledger entry at lifecycle accepted-merged; records THE R9 GATE COMPLETION (the DEC-0109/R7-completion and DEC-0119/R8-completion precedent class): ALL FIVE R9 children accepted (M020 DEC-0121, M021 DEC-0122, M022 DEC-0123, M023 DEC-0124 chain-independent, M024 DEC-0125 the convergence child), the R9-CORE-001 program authorization CLOSED (status accepted, authorized false), the roadmap's gate sequence R0-R9 COMPLETE (the terminal gate — no successor; the execution mode awaiting-architect-decisions with no active work item and no active authorization), and the program_exit evaluation recorded SOFTWARE-class (the stripe-of-connectivity test and the architecture test composed from repository evidence — every stripe link an accepted authority with its battery green, the architecture invariants held on every proven path; the LIVE-NETWORK halves and the physical obligations EVID-002..EVID-008 recorded open, never satisfied by software evidence)."
+    history: "No work-item history rewritten: every earlier entry is byte-identical (including the M020/M021/M022/M023 entries and LEDGER-RECON-035..038); the M024 entry is appended, never converted. No frozen architecture document is modified beyond the governance-plane state files (roadmap, execution-state, R9.yaml closure, decisions, ledger, current-state, resume-protocol, AGENTS/README projections, the CI workflow's accessconvergence ACTIVATION note, the two synchronized checkers). No implementation code changes at this commit: the entire implementation delta (the three charter files) landed through the reviewed PR #48 merge d1dbe69 — this governance commit sits beyond the new pin per the standing reconciliation convention (enforced by tools/fresh_session_check.py)."
   - work_item: M023
     title: "Future Technology Extension Drill"
     phase: "R9 chain-independent child (M-gate implementation, R9-CORE-001; the M013/M018 precedent class — acceptable in any order relative to the M020-M022 chain)"

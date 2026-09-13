@@ -2,19 +2,16 @@
 # (bounded R9 program authorization, the DEC-0120 governance-compression class —
 # the DEC-0101/DEC-0114 precedent). Issued by DEC-0120; ONE active
 # authorization for the whole M020-M024 tranche. Per-child acceptance
-# decisions (DEC-0121+) close each child; this authorization closes with the
-# R9 gate completion (the M024 convergence child accepted and the completion
-# review recorded — the terminal roadmap gate; the program_exit evaluation
-# rides with that acceptance). Children: M020 (Access Technology Capability
-# Envelope — ACCEPTED under DEC-0121: the chain-child pointer advanced
-# M020 -> M021), M021 (Wireline Access Adapters — ACCEPTED under DEC-0122:
-# the chain-child pointer advanced M021 -> M022), M022 (Non-Terrestrial
-# Access Adapters — ACCEPTED under DEC-0123: the chain-child pointer advanced
-# M022 -> M024 along the chain), M023 (Future Technology Extension Drill —
-# ACCEPTED under DEC-0124: chain-independent, the pointer does NOT move),
-# M024 (Future Access Convergence — the current child, the convergence
-# child; UNBLOCKED — its M023 dependency satisfied; its acceptance completes
-# the R9 gate).
+# decisions (DEC-0121..DEC-0125) closed each child; this authorization CLOSED
+# with the R9 gate completion (DEC-0125 — the M024 convergence child accepted
+# and the completion review recorded — the TERMINAL roadmap gate; the
+# program_exit evaluation recorded SOFTWARE-class with that acceptance).
+# Children closed: M020 (Access Technology Capability Envelope — DEC-0121),
+# M021 (Wireline Access Adapters — DEC-0122), M022 (Non-Terrestrial Access
+# Adapters — DEC-0123), M023 (Future Technology Extension Drill — DEC-0124,
+# chain-independent), M024 (Future Access Convergence — DEC-0125, the
+# convergence child completing the gate; ALL FIVE children accepted; the
+# gate COMPLETED).
 work_item: R9
 child_work_items:
   - M020
@@ -22,19 +19,19 @@ child_work_items:
   - M022
   - M023
   - M024
-current_child_work_item: M024
-status: active
-authorized: true
+current_child_work_item: null
+status: accepted
+authorized: false
 type: implementation
 authorization_id: "R9-CORE-001"
 authorization_decision: DEC-0120
 scope_amendment_chain: []
 superseded_by: null
 supersession_decision: null
-acceptance_decision: null
-acceptance_mode: null
-accepted_delivery_sha: null
-acceptance_merge_sha: null
+acceptance_decision: DEC-0125
+acceptance_mode: "R9 gate completion (all five children accepted; the program authorization closes with the gate — the M001-CORE-001/R7-CORE-001/R8-CORE-001 closure pattern)"
+accepted_delivery_sha: 5e7797a232ae5b0f1f549afc149d9762d6c8ae4d
+acceptance_merge_sha: d1dbe69cb93ca77f82bf8ec1ab8496a195e13a62
 baseline_sha: ea4bb64e0d32cfe93384ece71ec0003f447e357f
 review_basis: "DEC-0120 activated R9 as a bounded program authorization from the DEC-0119 R8-completion head ea4bb64 (live main, push CI green run 34675282864). R8 is COMPLETE (DEC-0119: all five children M015-M019 accepted; the R8-CORE-001 program authorization closed); Architecture 1.1 is the sole normative forward architecture; the accepted R7 and R8 child authorities are the composition substrate consumed BY REFERENCE. The gate-specific contract is the R9 charter (spec/architect/work-items/R9-charter.md); the dependency overlay is spec/architect/dependency-overlays/R9.yaml."
 dependencies:

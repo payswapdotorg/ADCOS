@@ -502,10 +502,15 @@ jobs:
       # M024 battery (DEC-0124 acceptance wiring — the established existence-
       # guard pattern: skips visibly until the delivery lands on main, then
       # runs; the M002/M015/M020/M021/M022/M023 wiring class). The M024
-      # convergence child is the FINAL R9 item — its acceptance completes the
-      # R9 gate (the terminal roadmap gate) and evaluates the program_exit
-      # conditions. NO case_68 conflict: the convergence module lives under
-      # accesstech/ (no new adapters/reference module).
+      # convergence child is the FINAL R9 item — its acceptance completed the
+      # R9 gate (DEC-0125, the terminal roadmap gate; the program_exit
+      # evaluation recorded SOFTWARE-class). NO case_68 conflict: the
+      # convergence module lives under accesstech/ (no new adapters/reference
+      # module) — this delivery was the cleanest of the gate (CI green
+      # end-to-end).
+      # ACTIVATED by the accepted M024 delivery (merge d1dbe69): the battery
+      # runs green 15/15, x3 byte-identical at the accepted head (DEC-0125)
+      # — the FINAL battery wiring of the roadmap.
       - name: Run future access convergence tests
         run: |
           if [ -f tools/accessconvergence_selftest.py ]; then

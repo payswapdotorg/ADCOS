@@ -151,8 +151,11 @@ Access Adapters ACCEPTED under DEC-0122 (PR #45 head 8966693, merge
 Access Adapters ACCEPTED under DEC-0123 (PR #46 head 16eb274, merge
 68060d9); M023 Future Technology Extension Drill ACCEPTED under DEC-0124
 (PR #47 head 385be97, the station-resolved merge 67d99d1 —
-chain-independent); M024 Future Access Convergence is the current child
-(UNBLOCKED — the FINAL child; its acceptance completes the R9 gate); M023 Future Technology
+chain-independent); M024 Future Access Convergence ACCEPTED under DEC-0125
+(PR #48 head 5e7797a, merge d1dbe69 — the convergence child completing the R9
+gate, the TERMINAL gate: the roadmap's gate sequence R0-R9 complete, the
+R9-CORE-001 authorization CLOSED, the program_exit evaluation recorded
+SOFTWARE-class); M023 Future Technology
 Extension Drill, chain-independent — the synthetic future-IMT/6G-class
 technology added purely through the accepted public extension surface; M024
 Future Access Convergence the convergence child) — access technologies added
