@@ -73,12 +73,17 @@ battery's `case_55_frozen_docs_unchanged` ("spec/ differs from origin/main") and
 case_68 additionally naming `adapters/reference/wireline.py` — both verified
 PRESENT at the CLEAN fe27c99 checkout with zero delta from this delivery
 (adapter battery 68/70 at the clean head with the advanced main ref; 70/70 with
-the dispatch-baseline ref). The same class touches the conformance/appliance/oran
-frozen-spec cases at the raw head. All of these are green at the dispatch-baseline
-context and at the PR merge-ref (the CI evaluation point, where the working tree
-carries main's post-advance content); they are governance-state reconciliation
-artifacts of main advancing past a chain-independent branch's pinned base — the
-Tech Lead's live-main convention — never silent patches by this delivery.
+the dispatch-baseline ref). The same class touches the frozen-spec cases of the
+conformance, appliance, oran and imt batteries at the raw head (verified
+identically at the CLEAN base and at this head with the advanced main ref:
+imt 32 passed + 2 failed, oran 34 + 2, appliance 40 + 2 — byte-identical
+failure counts with and without this delivery's delta: zero relation to it).
+All of these are green at the dispatch-baseline context and at the PR
+merge-ref (the CI evaluation point, where the working tree carries main's
+post-advance content — the CI run on this delivery's PR confirms: every step
+green except the one §0 artifact); they are governance-state reconciliation
+artifacts of main advancing past a chain-independent branch's pinned base —
+the Tech Lead's live-main convention — never silent patches by this delivery.
 
 ## 1. Delivered surface
 
@@ -234,12 +239,16 @@ main's DEC-0122 advance — see §0):
    at 19/19.
 
 The addendum-directed survey of the other hardcoded-allowlist batteries
-(oran, conformance, appliance) at this head: **none trips on this delivery's
-delta** (oran 36/36, conformance 63/63, appliance 42/42 in the
-dispatch-baseline context — the conformance battery's docs/ delta admission
-covers this evidence doc through the active authorization); their raw-head
+(oran, conformance, appliance — plus the adjacent imt battery) against this
+delivery's delta: **none trips on this delivery's delta** — verified in BOTH
+honest contexts: at the dispatch-baseline context (oran 36/36, conformance
+63/63, appliance 42/42, imt green) and at the PR merge-ref, which the CI run
+on this delivery's PR confirms directly (every workflow step green except the
+one §0 adapter artifact); the conformance battery's docs/ delta admission
+covers this evidence doc through the active authorization. Their raw-head
 spec/-identity failures with TODAY'S advanced main are the §0 main-advance
-class, green at both verification contexts above.
+class (identical at the CLEAN base with zero delta), green at both
+verification contexts above.
 
 ## 6. Judgment calls (disclosed)
 
