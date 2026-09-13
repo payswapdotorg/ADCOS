@@ -1,0 +1,8 @@
+T2-T6 COMPLETE and INTEGRATED (branch deployment/integration-20260913):
+runtime + Neon + Upstash + R2 + Vercel surface, all batteries + gates green
+at the integrated head, runbook 6.4 routing caveat reconciled (Option A).
+T7 IN FLIGHT: provision Neon (Composio), R2 bucket + token (Composio
+cloudflare), Upstash (operator-supplied REST coordinates), Vercel project +
+the 9-variable env contract (Composio vercel), then deploy. T8 next: run
+deploy/verify.py --expect-mode production, the D1/D2 rollback proof, and
+collect the acceptance evidence per runbook 10.

@@ -1,0 +1,18 @@
+# .vercelignore — files/directories EXCLUDED from the serverless bundle.
+# .vercelignore lists EXCLUSIONS only: everything not listed below is
+# included, which keeps the import-traced domain graph (runtime/, backends/,
+# contracts/, developerapi/, agent/, protocol/, evidence/, executionplans/,
+# adapters/, offers/, capabilities/, policy/, eligibility/, assurance/,
+# replan/, resilience/) in the deployment. Rationale: a smaller, faster
+# bundle with no governance/CI/operator files shipped to production.
+# (.git/ and __pycache__/ artifacts are excluded automatically by Vercel.)
+
+spec/
+docs/
+tools/
+.github/
+deploy/
+worker-charters/
+
+# root-level markdown (README/AGENTS/etc.) — none of it is needed at runtime
+/*.md
