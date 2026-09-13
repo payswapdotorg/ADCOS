@@ -69,7 +69,7 @@ composition's signature):
   on the accepted family's own class): two SIDELINK-classified relay
   legs over the accepted :class:`SidelinkRelayEngine` configured with
   the declared satellite DTN store-and-forward limits
-  (:data:`SATELLITE_DTN_CONFIG`).  The mount hands back the DTN
+  (:data:`MESH_IAB_DTN_CONFIG`).  The mount hands back the DTN
   wiring (the live family manager, the sidelink engine, the relay
   leg refs and the route ref) as composition-root wiring DATA — the
   caller drives the family's OWN public enqueue/forward/expire APIs
@@ -139,7 +139,7 @@ __all__ = [
     "GSO_DTN_CONFIG",
     "NGSO_DTN_CONFIG",
     "LEO_DTN_CONFIG",
-    "SATELLITE_DTN_CONFIG",
+    "MESH_IAB_DTN_CONFIG",
     "CREDENTIAL_SLOT_NAME",
     "gso_descriptor",
     "ngso_descriptor",
@@ -260,7 +260,7 @@ LEO_DTN_CONFIG = StoreAndForwardConfig(
 #: record): a bounded queue, a bundle lifetime long enough to BRIDGE
 #: the NGSO/LEO pass gaps (the declared pass schedules' inter-pass
 #: gaps), and the family's hop budget.
-SATELLITE_DTN_CONFIG = StoreAndForwardConfig(
+MESH_IAB_DTN_CONFIG = StoreAndForwardConfig(
     max_queued_bytes=100_000_000,
     max_queued_bundles=1024,
     ttl_seconds=7200,
@@ -657,7 +657,7 @@ def mount_mesh_iab_reference(
     the accepted family runtime with the accepted
     :class:`SidelinkRelayEngine` — the 3GPP IAB/sidelink-seam relay
     implementation — configured with the declared satellite DTN
-    store-and-forward limits (:data:`SATELLITE_DTN_CONFIG` by
+    store-and-forward limits (:data:`MESH_IAB_DTN_CONFIG` by
     default; the family engine's own public config record), TWO
     SIDELINK-classified relay legs (device -> sidelink relay ->
     donor/gateway, the caller's three node ids) and one ordinary
@@ -678,7 +678,7 @@ def mount_mesh_iab_reference(
     nodes = _require_chain_nodes("mesh-iab", node_ids)
     engine = SidelinkRelayEngine(
         queue_config=(
-            SATELLITE_DTN_CONFIG if dtn_config is None else dtn_config
+            MESH_IAB_DTN_CONFIG if dtn_config is None else dtn_config
         )
     )
     manager = _mount_family_runtime(

@@ -149,11 +149,11 @@ __all__ = [
     "NGSO_TECHNOLOGY_CLASS",
     "LEO_TECHNOLOGY_CLASS",
     "MESH_IAB_TECHNOLOGY_CLASS",
-    "SATELLITE_TECHNOLOGY_CLASSES",
-    "SATELLITE_FAMILIES",
-    "SATELLITE_ENVELOPES",
-    "SATELLITE_LADDERS",
-    "SATELLITE_HANDOVER_KINDS",
+    "NON_TERRESTRIAL_TECHNOLOGY_CLASSES",
+    "NON_TERRESTRIAL_FAMILIES",
+    "NON_TERRESTRIAL_ENVELOPES",
+    "NON_TERRESTRIAL_LADDERS",
+    "NON_TERRESTRIAL_HANDOVER_KINDS",
     "PASS_SCHEDULE_FAMILIES",
     "GSO_STANDING_INTERVAL",
     "MESH_IAB_DTN_INTERVAL",
@@ -178,7 +178,7 @@ __all__ = [
     "derive_pass_schedule_id",
     "pass_schedule_from_mapping",
     "declared_pass_schedule",
-    "satellite_handover_declarations",
+    "non_terrestrial_handover_declarations",
 ]
 
 #: The GSO family's technology class (the geostationary satellite
@@ -203,7 +203,7 @@ MESH_IAB_TECHNOLOGY_CLASS = "access.3gpp.iab"
 
 #: The declared non-terrestrial technology classes (deterministic
 #: order).
-SATELLITE_TECHNOLOGY_CLASSES: Tuple[str, ...] = (
+NON_TERRESTRIAL_TECHNOLOGY_CLASSES: Tuple[str, ...] = (
     GSO_TECHNOLOGY_CLASS,
     NGSO_TECHNOLOGY_CLASS,
     LEO_TECHNOLOGY_CLASS,
@@ -213,7 +213,7 @@ SATELLITE_TECHNOLOGY_CLASSES: Tuple[str, ...] = (
 #: The family labels the declarations key on (deterministic order;
 #: one declaration set per family, the M020/M021 family-keyed
 #: declaration shape).
-SATELLITE_FAMILIES: Tuple[str, ...] = ("gso", "ngso", "leo", "mesh-iab")
+NON_TERRESTRIAL_FAMILIES: Tuple[str, ...] = ("gso", "ngso", "leo", "mesh-iab")
 
 #: The pass-shaped families (the families whose coverage windows are
 #: pass windows and whose handover declarations carry the ``pass``
@@ -309,11 +309,11 @@ def declared_service_budget_ms(family: str) -> int:
     composition's deterministic budget — the relay families' 400 ms
     and the DTN family's 800 ms; the margin discipline is evaluated
     per family against its own declared budget)."""
-    if family not in SATELLITE_FAMILIES:
+    if family not in NON_TERRESTRIAL_FAMILIES:
         raise AccessTechError(
             AccessTechReason.INVALID_INPUT,
             "family %r is not a declared non-terrestrial family (declared: "
-            "%s)" % (family, ", ".join(SATELLITE_FAMILIES)),
+            "%s)" % (family, ", ".join(NON_TERRESTRIAL_FAMILIES)),
         )
     if family == "mesh-iab":
         return MESH_IAB_SERVICE_LATENCY_BUDGET_MS
@@ -352,7 +352,7 @@ def _standing(interval: Tuple[str, str]) -> AvailabilityWindows:
 #: family's declared deterministic coverage windows (the GSO standing
 #: window, the NGSO/LEO pass windows, the mesh/IAB DTN-bridged
 #: standing window).
-SATELLITE_ENVELOPES: Dict[str, CapabilityEnvelope] = {
+NON_TERRESTRIAL_ENVELOPES: Dict[str, CapabilityEnvelope] = {
     "gso": CapabilityEnvelope(
         technology_class=GSO_TECHNOLOGY_CLASS,
         bandwidth=BpsRange(2_000_000, 500_000_000),
@@ -390,7 +390,7 @@ SATELLITE_ENVELOPES: Dict[str, CapabilityEnvelope] = {
 #: middle margin rung, the explicit FAILED terminal rung; every step
 #: an evidence-visible deterministic transition through the accepted
 #: ladder_step).
-SATELLITE_LADDERS: Dict[str, DegradationLadder] = {
+NON_TERRESTRIAL_LADDERS: Dict[str, DegradationLadder] = {
     "gso": DegradationLadder(
         technology_class=GSO_TECHNOLOGY_CLASS,
         modes=(
@@ -444,7 +444,7 @@ SATELLITE_LADDERS: Dict[str, DegradationLadder] = {
 #: envelopes carry pass windows, the typed pass-consistency
 #: discipline below); the single-window families (GSO, mesh/IAB)
 #: declare NO pass kind.
-SATELLITE_HANDOVER_KINDS: Dict[str, Tuple[str, ...]] = {
+NON_TERRESTRIAL_HANDOVER_KINDS: Dict[str, Tuple[str, ...]] = {
     "gso": ("intra-technology", "cross-technology"),
     "ngso": ("intra-technology", "cross-technology", "pass"),
     "leo": ("intra-technology", "cross-technology", "pass"),
@@ -1033,7 +1033,7 @@ def declared_pass_schedule(family: str) -> PassSchedule:
         )
     return PassSchedule(
         family=family,
-        windows=SATELLITE_ENVELOPES[family].availability.windows,
+        windows=NON_TERRESTRIAL_ENVELOPES[family].availability.windows,
         serving_refs=(
             NGSO_SERVING_REFS if family == "ngso" else LEO_SERVING_REFS
         ),
@@ -1057,7 +1057,7 @@ LEO_PASS_SCHEDULE: PassSchedule = PassSchedule(
 )
 
 
-def satellite_handover_declarations(
+def non_terrestrial_handover_declarations(
     family: str,
 ) -> Tuple[HandoverCharacteristics, ...]:
     """The handover declarations of ONE non-terrestrial family, built
@@ -1070,14 +1070,14 @@ def satellite_handover_declarations(
     family's envelope (the typed cross-check above — the NGSO/LEO
     families carry the ``pass`` kind over pass windows; the GSO and
     mesh/IAB standing windows declare no pass kind)."""
-    if family not in SATELLITE_HANDOVER_KINDS:
+    if family not in NON_TERRESTRIAL_HANDOVER_KINDS:
         raise AccessTechError(
             AccessTechReason.INVALID_INPUT,
             "family %r is not a declared non-terrestrial family (declared: "
-            "%s)" % (family, ", ".join(SATELLITE_FAMILIES)),
+            "%s)" % (family, ", ".join(NON_TERRESTRIAL_FAMILIES)),
         )
-    kinds = SATELLITE_HANDOVER_KINDS[family]
+    kinds = NON_TERRESTRIAL_HANDOVER_KINDS[family]
     require_handover_kinds_pass_consistent(
-        kinds, SATELLITE_ENVELOPES[family]
+        kinds, NON_TERRESTRIAL_ENVELOPES[family]
     )
     return tuple(declare_handover_kind(kind) for kind in kinds)
