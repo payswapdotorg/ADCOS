@@ -3812,11 +3812,12 @@ def case_68_m007_work016_compat_seam(results: List[Result]) -> None:
         "adapters/reference/mesh.py",
         "adapters/reference/ran.py",
         "adapters/reference/wifi.py",
-        # R9 children, one per acceptance (DEC-0122: M021 wireline; the
-        # M022 satellite / M023 futureimt siblings join at their OWN
-        # acceptances -- never before: pre-adding them would weaken the
-        # guard for unaccepted deliveries):
+        # R9 children, one per acceptance (DEC-0122: M021 wireline;
+        # DEC-0123: M022 satellite; the M023 futureimt sibling joins at
+        # its OWN acceptance -- never before: pre-adding it would weaken
+        # the guard for unaccepted deliveries):
         "adapters/reference/wireline.py",
+        "adapters/reference/satellite.py",
     }
     try:
         proc = subprocess.run(

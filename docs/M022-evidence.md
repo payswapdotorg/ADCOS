@@ -45,6 +45,23 @@ battery surface — the M019 `tools/scale_selftest.py` / DEC-0122 case_68 preced
 a pre-merge amendment adds exactly this delivery's declared file to the expected set).
 Every other verification below is green at this head.
 
+**TECH LEAD RESOLUTION (2026-09-13, pre-merge amendment commit):** the conflict
+above is resolved exactly per the DEC-0122 forward rule (this charter
+pre-disclosed it; the worker's investigation was foreknowledge-directed, its
+report honest to the real CI conclusion). The amendment (Tech-Lead-authored,
+`z-ai-architect`, on this branch before the merge) adds EXACTLY
+`adapters/reference/satellite.py` to case_68's `expected_delta` — append-only,
+no assertion weakened: the W016 canonical flow, the 54-name baseline export
+table, the family export counts, and the six family-subpackage byte-identity
+checks are unchanged; the guard still rejects every other undeclared
+adapters/ change. The M023 (futureimt.py) sibling repeats this pattern at its
+own acceptance — never before. Re-verified at the amended head by the
+integration station (direct execution): the adapter battery **70/70**; the
+satellite battery **17/17 x3 byte-identical**; accesstech 19/19; wireline
+14/14; the five R8 batteries at their accepted counts (scale 53/53, credential
+32/32, recovery 36/36, resilience 36/36, localfirst 35/35); all six governance
+gates rc=0 (the acceptance decision DEC-0123 records the reviewed numbers).
+
 ## 1. Delivered surface
 
 - **`adapters/reference/satellite.py` (NEW — the non-terrestrial reference
@@ -405,3 +422,12 @@ verification numbers in §3/§5 were produced at the final delivery head by dire
 execution (battery x3 byte-identical; the full suite in exact CI order with
 exit-code-based detection — the one disclosed case_68 exception root-caused in
 §0; the five governance gates).
+
+**Amendment provenance:** the case_68 resolution amendment (see §0 — TECH LEAD
+RESOLUTION) is the ONE post-delivery commit on this branch, authored by the
+Tech Lead (`z-ai-architect`), not the worker session; it touches only
+`tools/adapter_selftest.py`'s declared set and this record (the §0 resolution
+addendum + this note). The delivery commits themselves are untouched
+(append-only; no rebase, no force-push, no amending — the amendment rides ON
+TOP, the same pattern as the M021 branch's resolution amendment 8966693 and
+the M019 precedent before it).
