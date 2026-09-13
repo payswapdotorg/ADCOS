@@ -55,6 +55,22 @@
   implementation-only delta: 28 files) and an end-to-end in-process
   smoke of the assembled ASGI surface (healthz/readyz/demo/read/404
   determinism all green in sandbox mode).
+- INTEGRATION VERIFICATION COMPLETE (the pre-merge full-suite pass):
+  all four deployment batteries green at the integrated head after the
+  Tech Lead's REAL-Neon pre-verification repairs (the stdlib-platform
+  shadowing pin + the DB-API conditional fetch; the R2 delete seam and
+  the Upstash readiness probe from the worker batteries); the three
+  governance gates PASS; the production-mode smoke against the REAL
+  provisioned Neon database green (readyz 200 with postgres +
+  evidence_store backends ready; the demo evidence_class=SOFTWARE with
+  the canonical contract read round-trip and byte-determinism).
+- LEDGER-RECON-041 recorded on main (3d80235 + the companion checker
+  evolution 71e06b5): the snapshot baseline advanced 4045ef0 -> 2d69418
+  and tools/authorization_provenance.py taught the DEC-0126
+  decision-borne authorization class — the simulated GitHub-direction
+  merge passes the provenance gate (the 28-file delta fully covered)
+  and the payment battery 44/44 (case_38 authorization-aware).
+
 - T7 (provision + deploy) IN FLIGHT: the operator supplied the provider
   credential set (GitHub PAT, Composio gateway with connected vercel/neon/
   cloudflare/github toolkits, the Upstash REST coordinates); provisioning
