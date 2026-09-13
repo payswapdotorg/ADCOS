@@ -1,0 +1,6 @@
+# pg8000 — the ONLY third-party dependency — lazily imported; the core
+# runtime is stdlib-only (docs/deployment/runtime-inventory.md). Vercel's
+# Python runtime pip-installs this file at build time; nothing else is
+# needed because backends/postgres.py imports pg8000 lazily, only when
+# ADCOS_DATABASE_URL is set.
+pg8000==1.31.2
