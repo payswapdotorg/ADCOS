@@ -1,5 +1,11 @@
 """ADCOS Vercel entry — the thinnest possible serverless function.
 
+D2 ROLLBACK-PROOF MARKER (runbook §8, 2026-09-13T18:05Z): this build exists
+solely as the deliberately-distinguishable, docstring-only D2 of the staged
+rollback proof — identical code semantics to D1 (the accepted 73856f1
+build), this paragraph is the only difference. Expect the production alias
+to return to D1 within minutes.
+
 ASGI export convention
 ======================
 

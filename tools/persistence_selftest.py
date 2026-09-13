@@ -35,7 +35,11 @@ all-or-nothing batches are exercised for real):
   ``build_production_services`` composition (durable schema bootstrap,
   materialization, journal-first gateway recovery, the deterministic
   demonstration writing through the durable stores) and its recovery
-  on a second assembly.
+  on a second assembly; the stale-socket drop-and-retry repair (the
+  Neon free-tier suspend reality: a proven-dead cached connection is
+  dropped and the statement retried exactly once on a fresh
+  connection — deterministic statement failures raise immediately and
+  a replacement that also fails fails closed).
 
 No third-party requirements; runs offline; byte-identical outputs
 across runs (fixed instants, no wall clock, no randomness).
@@ -140,6 +144,13 @@ class FakeConnection:
         self.rollbacks = 0
         self.fail_on_marker: Optional[str] = None
         self.fail_after_execute: Optional[int] = None
+        self.closed = False
+
+    def close(self) -> None:
+        """DB-API surface fidelity: the adapter's corpse-drop closes the
+        dead connection best-effort (recorded so the battery can assert
+        the corpse was actually closed, never just forgotten)."""
+        self.closed = True
 
     def cursor(self) -> FakeCursor:
         return FakeCursor(self)
@@ -244,6 +255,57 @@ def fake_factory(database: FakeDatabase, *, connect_error: Optional[str] = None)
         return FakeConnection(database)
 
     return _factory
+
+
+# ---------------------------------------------------------------------------
+# The stale-connection fakes (the Neon free-tier suspend reality)
+# ---------------------------------------------------------------------------
+
+
+class InterfaceError(Exception):
+    """pg8000's connection-death exception, mirrored BY NAME — the
+    adapter's socket-family discriminator duck-types it ("network
+    error" / "connection is closed"); the battery stays offline, no
+    pg8000 import ever happens."""
+
+
+class StaleCursor(FakeCursor):
+    """The cursor of a connection whose remote compute SUSPENDED: the
+    first socket write of every statement raises the pg8000
+    ``InterfaceError: network error``."""
+
+    def execute(self, sql: str, params: Sequence[Any] = ()) -> None:
+        raise InterfaceError("network error")
+
+
+class StaleConnection(FakeConnection):
+    """A connection whose remote compute suspended (the Neon free-tier
+    ``suspend_timeout_seconds: 0`` reality): every socket operation —
+    statement, commit, ROLLBACK — raises ``InterfaceError: network
+    error``. This is the warm process's cached corpse."""
+
+    def __init__(self, database: "FakeDatabase") -> None:
+        super().__init__(database)
+        self._stale = False
+
+    def go_stale(self) -> None:
+        """The compute suspends; the server kills the TCP connection."""
+        self._stale = True
+
+    def cursor(self) -> FakeCursor:
+        if self._stale:
+            return StaleCursor(self)
+        return super().cursor()
+
+    def commit(self) -> None:
+        if self._stale:
+            raise InterfaceError("network error")
+        super().commit()
+
+    def rollback(self) -> None:
+        if self._stale:
+            raise InterfaceError("network error")
+        super().rollback()
 
 
 # ---------------------------------------------------------------------------
@@ -860,6 +922,72 @@ def case_24_memory_store_not_silently_substituted() -> Result:
     return fail(name, "the failing append did not raise")
 
 
+def case_25_stale_connection_drop_and_retry() -> Result:
+    name = "case_25_stale_connection_drop_and_retry"
+    # -- the recovery half: the corpse is dropped, the statement is
+    #    retried exactly once on a fresh connection, and the warm
+    #    instance recovers WITHOUT a cold start -------------------------
+    database = FakeDatabase()
+    corpse = StaleConnection(database)
+    served = [corpse]
+
+    def warm_process_factory() -> FakeConnection:
+        if served:
+            return served.pop(0)
+        return FakeConnection(database)
+
+    store = PostgresApiStore(connection_factory=warm_process_factory)
+    store.ensure_schema()
+    store.append_line('{"a":1}\n')
+    # the Neon free-tier suspend: the cached connection is now a corpse
+    corpse.go_stale()
+    try:
+        store.append_line('{"b":2}\n')
+    except PostgresBackendError as error:
+        return fail(name, "the corpse was not dropped/retried: %s" % error)
+    if database.count("adcos_api_journal") != 2:
+        return fail(
+            name,
+            "expected 2 durable rows after recovery, found %d"
+            % database.count("adcos_api_journal"),
+        )
+    if corpse.closed is not True:
+        return fail(name, "the corpse was closed-and-forgotten, not just forgotten")
+    if store.health().get("state") != "ready":
+        return fail(name, "health did not recover on the warm instance")
+    # -- the fail-closed half: a corpse whose replacement connect ALSO
+    #    fails raises the typed error (no retry storm, no fallback) ----
+    journal_database = FakeDatabase()
+    second_corpse = StaleConnection(journal_database)
+    second_served = [second_corpse]
+
+    def dead_replacement_factory() -> FakeConnection:
+        if second_served:
+            return second_served.pop(0)
+        raise RuntimeError("Neon is unreachable")
+
+    journal = PostgresContractJournal(
+        connection_factory=dead_replacement_factory
+    )
+    journal.ensure_schema()
+    second_corpse.go_stale()
+    try:
+        journal.append_lines(['{"x":1}'])
+    except PostgresBackendError as error:
+        if error.reason_code != "backend-unavailable":
+            return fail(name, "wrong reason: %s" % error.reason_code)
+        if "unreachable" not in str(error):
+            return fail(name, "the reconnect failure was swallowed")
+        if journal_database.count("adcos_contract_journal") != 0:
+            return fail(name, "the corpse's uncommitted work survived")
+        return ok(
+            name,
+            "corpse dropped + one retry recovered the warm instance; "
+            "a dead replacement fails closed (typed, no fallback)",
+        )
+    return fail(name, "the double failure did not raise")
+
+
 _CASES = (
     case_01_lazy_import_discipline,
     case_02_typed_error_surface,
@@ -885,6 +1013,7 @@ _CASES = (
     case_22_production_environment_requires_database,
     case_23_file_store_semantics_parity,
     case_24_memory_store_not_silently_substituted,
+    case_25_stale_connection_drop_and_retry,
 )
 
 
