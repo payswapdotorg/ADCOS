@@ -149,8 +149,10 @@ head 035242de, merge c75a7c70); M021 Wireline
 Access Adapters ACCEPTED under DEC-0122 (PR #45 head 8966693, merge
 8ebdb21); M022 Non-Terrestrial
 Access Adapters ACCEPTED under DEC-0123 (PR #46 head 16eb274, merge
-68060d9); M024 Future Access Convergence is the current child (blocked
-until the chain-independent M023 lands); M023 Future Technology
+68060d9); M023 Future Technology Extension Drill ACCEPTED under DEC-0124
+(PR #47 head 385be97, the station-resolved merge 67d99d1 —
+chain-independent); M024 Future Access Convergence is the current child
+(UNBLOCKED — the FINAL child; its acceptance completes the R9 gate); M023 Future Technology
 Extension Drill, chain-independent — the synthetic future-IMT/6G-class
 technology added purely through the accepted public extension surface; M024
 Future Access Convergence the convergence child) — access technologies added

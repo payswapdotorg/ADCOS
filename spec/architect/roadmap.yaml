@@ -1,4 +1,32 @@
 # ADCOS Authoritative Execution Roadmap
+# FROZEN — roadmap version 2.21 (advanced from 2.20 by DEC-0124:
+# M023 — Future Technology Extension Drill COMPLETE — the FOURTH R9 child,
+# CHAIN-INDEPENDENT: the current-child pointer does NOT move (the DEC-0118
+# precedent class — M024 stays the current child, now UNBLOCKED: all four
+# of its declared dependencies accepted). The M023 futureimt battery step
+# (wired by DEC-0123 with the pre-delivery existence guard) ACTIVATED by
+# the PR #47 delivery merge (the station-resolved merge commit 67d99d1 —
+# the case_68 expected-set block evolved on both sides from the branch's
+# fe27c99 base, resolved at the integration station to the union per the
+# boot §5 doctrine; the push CI run 34733718751 GREEN as the decisive
+# merge verification — the futureimt step ACTIVATED 14/14, the adapter
+# battery 70/70 with the evolved case_68, every battery green at the merge
+# state, all six gates rc=0); the delivery rooted at the DEC-0121 head
+# fe27c99 (the chain-independent rooting, the M013/M018/M019 precedent
+# class — the charter-pinned live main at the 21:02Z dispatch, never
+# rebased; the merge clean by scope disjointness); the worker's evidence
+# §0/§5 amendments disclosed the imt/oran/appliance raw-head failures as
+# the pre-existing main-advance class (verified identical at the clean
+# base, zero relation to the delivery); the M024 accessconvergence battery
+# CI-wired by this acceptance with a pre-delivery existence guard; the
+# synchronized checker evolution (v2.21 markers, the M023
+# child-acceptance marker); the execution mode stays implementing
+# (M024/R9-CORE-001 — the FINAL child); the R9-CORE-001 authorization
+# stays ACTIVE (closes with the R9 gate completion at the M024 acceptance
+# — the terminal gate); LEDGER-RECON-038 (snapshot baseline 68060d9 ->
+# 67d99d1 through the DEC-0123 acceptance commit 0ab0307 and the PR #47
+# station-resolved delivery merge; the M023 accepted-merged ledger entry
+# appended).
 # FROZEN — roadmap version 2.20 (advanced from 2.19 by DEC-0123:
 # M022 — Non-Terrestrial Access Adapters COMPLETE — the THIRD R9 chain-child
 # acceptance, the current-child pointer ADVANCES M022 -> M024 along the
@@ -268,7 +296,7 @@
 # (the bounded R7 program authorization R7-CORE-001 with charter child scopes).
 
 schema_version: 2
-roadmap_version: "2.20"
+roadmap_version: "2.21"
 status: FROZEN_AUTHORITATIVE
 authority: "spec/architect/roadmap.yaml"
 human_projection: "spec/architect/roadmap.md"
@@ -511,6 +539,7 @@ roadmap:
     child_acceptance_decisions: "M020 accepted by DEC-0121 (head 035242de, merge c75a7c70 — the chain root)"
     child_acceptance_decisions: "M021 accepted by DEC-0122 (head 8966693, merge 8ebdb21 — the second chain child)"
     child_acceptance_decisions: "M022 accepted by DEC-0123 (head 16eb274, merge 68060d9 — the third chain child; the pointer advances to M024 along the chain, M023 chain-independent)"
+    child_acceptance_decisions: "M023 accepted by DEC-0124 (head 385be97, merge 67d99d1 — chain-independent; the pointer does NOT move, M024 unblocked)"
     work_item: M024
     work_item_chain: [M020, M021, M022, M023, M024]
     work_item_contract: "spec/architect/work-items/R9-charter.md"

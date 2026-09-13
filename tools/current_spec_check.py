@@ -64,6 +64,7 @@ REQUIRED_FILES = [
     "spec/architect/decisions/DEC-0121-m020-acceptance.yaml",
     "spec/architect/decisions/DEC-0122-m021-acceptance.yaml",
     "spec/architect/decisions/DEC-0123-m022-acceptance.yaml",
+    "spec/architect/decisions/DEC-0124-m023-acceptance.yaml",
     "spec/architect/work-items/R7-charter.md",
     "spec/architect/work-items/R8-charter.md",
     "spec/architect/work-items/R9-charter.md",
@@ -175,7 +176,7 @@ def main() -> int:
                 fail(errors, "dispatch-state.yaml cannot declare more than 9 active subagents")
 
     for marker in (
-        'roadmap_version: "2.20"',
+        'roadmap_version: "2.21"',
         'status: FROZEN_AUTHORITATIVE',
         'source_of_truth: repository_only',
         'mandatory_forward_target: "Architecture 1.1"',

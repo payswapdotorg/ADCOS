@@ -249,6 +249,34 @@ until the chain-independent M023 lands).
   M024's dispatch BLOCKED until the M023 acceptance — the DEC-0117/DEC-0118
   precedent class) — the R9-CORE-001 authorization stays ACTIVE (it closes
   only with the R9 gate completion at the M024 acceptance).**
+  **M023 — Future Technology Extension Drill is ACCEPTED (DEC-0124; head
+  385be97, the station-resolved merge 67d99d1 — the FOURTH R9 child,
+  CHAIN-INDEPENDENT: the current-child pointer does NOT move, the DEC-0118
+  precedent class held): the synthetic future-IMT/6G-class reference
+  composition — a technology the 1.1 architecture NEVER NAMED, added
+  ENTIRELY through the accepted public extension surface with ZERO
+  contract-core delta (the strongest proof of the gate objective): the
+  ReferenceFutureImtEngine (the module's own deterministic runtime, no
+  accepted family runtime for future-IMT) implementing the frozen
+  WORK-016 nine-op contract, registered through the accepted capability
+  seam with LOCK-110/LOCK-112 proven structurally (no technology-token
+  branching anywhere in the accepted surface); the declared
+  terahertz-carrier capability surface as deterministic declared data; the
+  14/14 battery CI-wired and green at the accepted head — the step
+  ACTIVATED by the delivery merge; delivered through the chain-independent
+  rooting at fe27c99 (never rebased; the merge clean by scope
+  disjointness) with the case_68 expected-set evolution per the
+  DEC-0122/DEC-0123 forward rule (the Tech-Lead-authored amendment
+  385be97 — the R9 reference children complete, the adapter battery
+  70/70); the station-resolved merge commit 67d99d1 (the expected-set
+  block evolved on both sides — resolved at the integration station to
+  the union, the boot §5 doctrine; the push CI green as the decisive
+  verification); THE CURRENT-CHILD POINTER DOES NOT MOVE — M024 (Future
+  Access Convergence) stays the current child, now UNBLOCKED with all
+  four declared dependencies accepted; the R9-CORE-001 authorization
+  stays ACTIVE (it closes only with the R9 gate completion at the M024
+  acceptance — the terminal gate, whose acceptance evaluates the
+  program_exit conditions).**
 - `M001-CORE-001` is closed. **R7 — Universal Connectivity Commerce is COMPLETE
   under DEC-0101/DEC-0109**
 - `M001-CORE-001` is closed. **R7 — Universal Connectivity Commerce was

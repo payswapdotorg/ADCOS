@@ -1,3 +1,18 @@
+# DEC-0124 / LEDGER-RECON-038: M023-acceptance reconciliation — the FOURTH R9
+# child, CHAIN-INDEPENDENT (the M013/M018 precedent class): the
+# current-child pointer does NOT move (M024 stays the current child —
+# UNBLOCKED, all four of its declared dependencies now accepted); the
+# snapshot baseline advances 68060d9 -> 67d99d1 (the DEC-0123 acceptance
+# commit between them is governance-only and is brought into the pin by
+# this governance action; this acceptance commit sits beyond the new pin
+# per the standing convention); the M023 accepted-merged entry appended;
+# the futureimt battery step ACTIVATED by the station-resolved delivery
+# merge (green 14/14) and the adapter battery's case_68 expected-set
+# evolved per the DEC-0122/DEC-0123 forward rule (the amendment 385be97,
+# the adapter battery 70/70 at the accepted head — the R9 reference
+# children complete); the M024 accessconvergence battery CI-wired with a
+# pre-delivery existence guard; the synchronized checker evolution
+# validates the v2.21 / M024 state.
 # DEC-0123 / LEDGER-RECON-037: M022-acceptance reconciliation — the THIRD R9
 # chain-child acceptance: the current-child pointer ADVANCES M022 -> M024
 # along the chain (M023 chain-independent, never holds the pointer — the
@@ -1611,6 +1626,31 @@ work_items:
 
 
 reconciliations:
+  - work_item: M023
+    title: "Future Technology Extension Drill"
+    phase: "R9 chain-independent child (M-gate implementation, R9-CORE-001; the M013/M018 precedent class — acceptable in any order relative to the M020-M022 chain)"
+    branch: "m023-futureimt"
+    baseline_sha: fe27c9962f5e5ad4da9b355bf3be1172825bf4fe
+    pr: 47
+    pr_head: 385be97c8030695416e6fe24f35b8f374253a57d
+    reviewed_sha: 385be97c8030695416e6fe24f35b8f374253a57d
+    merge_sha: 67d99d13a026a7a9358a9741e50a476d031f9474
+    merged_at: 2026-09-13T02:52:00Z
+    ci_run: 34733718751
+    review_rounds: 1
+    acceptance_decision: DEC-0124
+    correction_decisions: []
+    handoff: spec/architect/work-items/R9-charter.md
+    handoff_required: false
+    lifecycle: accepted-merged
+    note: "R9 fourth-child (chain-independent) acceptance entry appended by LEDGER-RECON-038 (DEC-0124). Authorization provenance, preserved exactly: R9-CORE-001 issued by DEC-0120 (bounded program authorization, baseline ea4bb64); the authorization STAYS ACTIVE (it closes only with the R9 gate completion at the M024 acceptance); THE CURRENT-CHILD POINTER DOES NOT MOVE (the DEC-0118 precedent class — M024 remains the current child, now UNBLOCKED: all four declared dependencies accepted). Delivery provenance, preserved exactly: the implementation on branch m023-futureimt delivered as FOUR reviewed append-only commits rooted at the DEC-0121 head fe27c99 (the CHAIN-INDEPENDENT rooting: the charter-pinned live main at the 21:02Z dispatch, never re-rooted/rebased — the M013/M018/M019 precedent class; the merge clean by scope disjointness — zero file overlap with the M021/M022 deliveries): a273642 the worker delivery (adapters/reference/futureimt.py NEW 541 — the synthetic future-IMT/6G-class reference composition, a technology the 1.1 architecture never named, composed ENTIRELY through the accepted public extension surface: the ReferenceFutureImtEngine — the module's OWN deterministic runtime (no accepted family runtime exists for future-IMT) implementing the frozen WORK-016 nine-op AdapterContract, registered through the accepted adapters/capability.py seam (LOCK-110/LOCK-112 proven structurally: the core imports nothing from the module, no technology-token branching), deterministic counters, fixed step charges, injected instants only (LOCK-119); the declared terahertz-carrier capability surface as deterministic declared DATA; tools/futureimt_selftest.py NEW 2145 lines, 14/14 — the charter battery incl. the structural no-branching proof, the open-world envelope validation, the one-way import audit; docs/M023-evidence.md NEW 326 + the amendments); 299208b + 6ef98bc the worker's evidence §0/§5 amendments (the addendum-directed survey: the imt/oran/appliance raw-head failures disclosed as the pre-existing main-advance class — verified identical at the clean fe27c99 base with zero delta; the CI-timeline disclosure incl. the pre-DEC-0123 race window analysis); 385be97 the TECH-LEAD-AUTHORED case_68 resolution amendment (the DEC-0122/DEC-0123 forward rule applied: expected_delta gains EXACTLY adapters/reference/futureimt.py — the block written to the full R9-children union, append-only, no assertion weakened; disclosed in the evidence §0 TECH LEAD RESOLUTION + §9 amendment provenance) — merged as the STATION-RESOLVED MERGE COMMIT 67d99d1 (the case_68 expected-set block evolved on BOTH sides from the fe27c99 base — main through the M021 (8966693)/M022 (16eb274) acceptance amendments, the branch through 385be97 — the conflict resolved at the integration station to the union per the boot §5 doctrine, the merge pushed directly to main, GitHub auto-marking PR #47 merged); the delivery verified through the CHAIN-INDEPENDENT PROTOCOL (the DEC-0113/M018 precedent class): the base-consistent-ref gates 5/6 + the raw-head artifacts disclosed (the two-dot authorization_provenance main-side reporting and the fresh_session advance-beyond-snapshot — both environmental, verified pre-existing at the clean base), the decisive merge state ALL GREEN (all six gates rc=0; the futureimt battery 14/14 x3 byte-identical; the adapter battery 69/70 pre-amendment -> 70/70 at the resolved merge; accesstech 19/19, wireline 14/14, satellite 17/17, the five R8 batteries at their accepted counts; imt/oran/appliance green 34/36/42 at the merge state — the raw-head failures confirmed environmental), the push CI run 34733718751 GREEN on the merge commit (the futureimt step ACTIVATED 14/14 — the decisive verification); the worker's own PR CI runs disclosed (34730876308, 34731660576 — green except the one sanctioned §0 artifact, the real FAILURE conclusion reported honestly in its landed in-chat completion report) — accepted on the exact reviewed amended head (one Tech Lead review round, 2026-09-13T02:40-03:00Z station verification). The futureimt battery step (CI-wired by DEC-0123 with the pre-delivery existence guard, ACTIVATED by this delivery merge) runs green 14/14 at the accepted head; the M024 accessconvergence battery is CI-wired by this acceptance with a pre-delivery existence guard. SOFTWARE-class deterministic evaluation only; physical obligations EVID-002..008 untouched and open; W048 remains accepted-not-restored. No work-item history rewritten: every earlier entry is byte-identical; this entry is appended, never converted."
+  - reconciliation_id: LEDGER-RECON-038
+    recorded_by: "DEC-0124 (the M023 acceptance — the FOURTH R9 child, CHAIN-INDEPENDENT: the current-child pointer does NOT move, M024 unblocked)"
+    recorded_at: 2026-09-13T03:05:00Z
+    from_main_sha: 68060d9cb42bfe24c06eee08376fb29a4194a328
+    to_main_sha: 67d99d13a026a7a9358a9741e50a476d031f9474
+    reason: "post-PR-#47 mainline reconciliation and per-child acceptance: main advanced from the LEDGER-RECON-037 snapshot baseline 68060d9 through the DEC-0123 M022-acceptance governance commit 0ab0307 (governance-only) and the PR #47 M023 station-resolved delivery merge 67d99d1 (branch m023-futureimt rooted at fe27c99: the worker delivery a273642 + the evidence amendments 299208b/6ef98bc + the Tech-Lead-authored case_68 resolution amendment 385be97; the case_68 expected-set conflict resolved at the integration station to the union; the push CI run 34733718751 green — the futureimt step ACTIVATED 14/14) while the persistent state still referenced 68060d9. This reconciliation moves the snapshot baseline to 67d99d1 in lockstep with execution-state.yaml; records the M023 acceptance (DEC-0124: reviewed_sha 385be97, merge_sha 67d99d1, merged_at 2026-09-13T02:52:00Z, acceptance decision ACCEPTED) with its execution-ledger entry at lifecycle accepted-merged; records the CHAIN-INDEPENDENT acceptance semantics (the current-child pointer does NOT move — M024 stays the current child, UNBLOCKED with all four declared dependencies accepted, the DEC-0118 precedent class) with the R9-CORE-001 authorization STAYING ACTIVE (it closes only with the R9 gate completion at the M024 acceptance); records the case_68 expected-set evolution completing the R9 reference children (the amendment 385be97 — the adapter battery 70/70 at the accepted head); wires the M024 accessconvergence battery CI step with a pre-delivery existence guard; and advances the synchronized checker state (roadmap v2.21, the M023 child-acceptance marker, the DEC-0124 required file)."
+    history: "No work-item history rewritten: every earlier entry is byte-identical (including the M020/M021/M022 entries and LEDGER-RECON-035/036/037); the M023 entry is appended, never converted. No frozen architecture document is modified beyond the governance-plane state files (roadmap, execution-state, R9.yaml, decisions, ledger, current-state, resume-protocol, AGENTS/README projections, the CI workflow's M024 guard + the futureimt ACTIVATION note, the two synchronized checkers). No implementation code changes at this commit: the entire implementation delta (the three charter files + the adapter battery's expected-set evolution) landed through the station-resolved merge 67d99d1 — this governance commit sits beyond the new pin per the standing reconciliation convention (enforced by tools/fresh_session_check.py)."
   - work_item: M022
     title: "Non-Terrestrial Access Adapters"
     phase: "R9 chain child (M-gate implementation, R9-CORE-001; the THIRD R9 chain child — requires M020 and M021, both SATISFIED by DEC-0121/DEC-0122)"
