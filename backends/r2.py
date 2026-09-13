@@ -327,13 +327,19 @@ def _sign_request(
 
 class R2ArtifactStore:
     """The Cloudflare R2 object store for ADCOS artifacts and
-    evidence bytes (put / get / head / verified read).
+    evidence bytes (put / get / head / delete / verified read).
 
     The ArtifactRef (what :meth:`put` returns and the DURABLE
     side records -- R2 itself holds only the bytes):
 
     ``{"key": ..., "size": <bytes>, "content_sha256": <hex>,
     "etag": <from response>, "backend": "r2"}``
+
+    :meth:`delete` returns the deletion reference
+    ``{"key": ..., "deleted": True, "backend": "r2"}`` (S3
+    idempotent semantics: the deletion is observable through
+    the follow-up read, which is the typed ``missing-object``
+    failure).
 
     Failure posture (DEC-0126: explicit, observable, never a
     silent degradation): a missing object is the typed
@@ -382,11 +388,17 @@ class R2ArtifactStore:
         return self._bucket
 
     def _send(
-        self, method: str, url: str, headers: Dict[str, str], body: bytes
+        self,
+        method: str,
+        url: str,
+        headers: Dict[str, str],
+        body: bytes,
+        ok_statuses: Tuple[int, ...] = (200,),
     ) -> Tuple[int, Dict[str, str], bytes]:
         """One signed transport call with the frozen status
-        mapping.  Details never carry credentials or raw header
-        bytes."""
+        mapping (``ok_statuses`` widens the success set for the
+        S3 no-content success -- DELETE answers 204).  Details
+        never carry credentials or raw header bytes."""
         try:
             status, response_headers, response_body = self._transport(
                 method, url, headers, body
@@ -397,7 +409,7 @@ class R2ArtifactStore:
                 "object %s: transport raised %s"
                 % (method, type(error).__name__),
             ) from error
-        if status == 200:
+        if status in ok_statuses:
             return status, response_headers, response_body
         if status == 404:
             raise R2ArtifactError(
@@ -480,6 +492,25 @@ class R2ArtifactStore:
             "etag": etag.strip('"'),
             "backend": "r2",
         }
+
+    def delete(self, key: str) -> dict:
+        """Delete one artifact's object bytes and return the
+        deletion reference
+        ``{"key": ..., "deleted": True, "backend": "r2"}``.
+
+        S3-compatible idempotent semantics: R2 answers 204 (or
+        200) whether or not the key existed -- existence is
+        never inferred here; the deletion is OBSERVABLE through
+        the follow-up read, which is the typed
+        ``missing-object`` failure.  Backend trouble is the
+        typed ``backend-unavailable`` error (a deletion is
+        never silent in either direction)."""
+        key = _require_nonempty_str(key, "key")
+        url, headers = self._object_url_and_headers(
+            method="DELETE", key=key, payload_hash=_EMPTY_PAYLOAD_SHA256
+        )
+        self._send("DELETE", url, headers, b"", ok_statuses=(200, 204))
+        return {"key": key, "deleted": True, "backend": "r2"}
 
     def get(self, key: str) -> bytes:
         """Fetch one artifact's bytes (byte-exact round trip);
