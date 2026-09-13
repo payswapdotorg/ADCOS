@@ -1,1 +1,0 @@
-Deployment implementation begins after runtime inventory verifies the actual repository entrypoint and persistence seams.

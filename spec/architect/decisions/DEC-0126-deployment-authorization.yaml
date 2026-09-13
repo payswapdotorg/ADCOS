@@ -1,0 +1,70 @@
+# DEC-0126 — ADCOS software deployment authorization (bounded, repository-local)
+# Post-program bounded authorization OUTSIDE the R0-R9 gate sequence: the
+# roadmap is COMPLETE (DEC-0125, the terminal gate; the gate sequence R0-R9
+# has no successor). This decision authorizes the ADCOS 1.1 software
+# control-plane deployment program — the approved free-tier deployment
+# design and implementation plan (Vercel runtime, Neon durable persistence,
+# Upstash ephemeral coordination, Cloudflare R2 evidence storage) — with
+# execution ownership handed to the Tech Lead
+# (docs/tech-lead/ADCOS-DEPLOYMENT-HANDOFF.md). Registry-schema conversion
+# of the deployment-branch decision record (the station packaging class:
+# the content is the Architect's verbatim decision, converted to the
+# DEC-NNNN-<slug>.yaml registry convention recorded by this reconciliation).
+decision_id: DEC-0126
+date: "2026-09-13"
+type: governance
+status: ACCEPTED
+owner: "Architect"
+work_item: null
+acr: null
+pr: null
+reviewed_sha: null
+authorization: "ADCOS software deployment (repository-local, decision-borne — outside the authorizations/ gate machinery)"
+timestamp: "2026-09-13T13:11:37Z"
+
+review_basis: "Deployment architecture approved by the product owner; bounded repository-local authority recorded by the Architect on the isolated deployment branch (deployment-design-20260913, PR #49) with the deployment design at docs/superpowers/specs/2026-09-13-adcos-free-tier-deployment-design.md and the implementation plan at docs/superpowers/plans/2026-09-13-adcos-free-tier-deployment.md (both delivered to main by the deployment implementation delivery that follows this authorization); live main 4045ef0943dec381a07180c508707e0232ef9d86 (the R9-complete terminal state 73908d1 plus the deployment-documentation reservation commits c5622c1/4045ef0); the roadmap's gate sequence R0-R9 is COMPLETE (DEC-0125) with execution mode awaiting-architect-decisions — this authorization is a bounded repository-local program outside the gate sequence, recorded without altering the halted roadmap state (no authorizations/ record is created; the standing one-active-authorization invariant over spec/architect/authorizations/ is untouched)."
+
+decision: ACCEPTED
+
+findings:
+  - "The accepted software roadmap is complete (DEC-0125, the terminal gate) and the ADCOS 1.1 software control plane is fully represented in the repository; a real deployment (a reachable service, durable state, working ephemeral coordination, artifact persistence, a deterministic contract-fulfillment path, reproducible deployment, and verified rollback) is the next product-owner-directed step."
+  - "Deployment is infrastructure/runtime composition AROUND the accepted software: it does not redefine Architecture 1.1, restore Architecture 1.0, or claim that any physical obligation EVID-002..EVID-008 is satisfied."
+  - "The free-tier provider stack separates durable authority from ephemeral coordination: Vercel (stateless runtime/hosting), Neon PostgreSQL (durable state and authoritative persisted records), Upstash Redis (ephemeral coordination only — no canonical authority may live solely in Redis), Cloudflare R2 (evidence and large-object storage with the database storing references and integrity metadata)."
+  - "The first production deployment is software-only: provider integrations use deterministic sandbox/emulator adapters where real provider credentials or physical network access are unavailable; the deployed surface exposes health/readiness and a deterministic end-to-end contract-fulfillment demonstration over the accepted software path."
+
+blockers: []
+required_corrections: []
+
+authorized_scope:
+  - "runtime/API deployment surface; health/readiness; a deterministic end-to-end contract-fulfillment demonstration through the thinnest adapter that calls existing accepted services"
+  - "Neon durable persistence integration where required by existing seams"
+  - "Upstash Redis ephemeral coordination (locks, rate limiting, caches, queues — never canonical state)"
+  - "Cloudflare R2 evidence/artifact storage (canonical metadata stays in durable state)"
+  - "Vercel hosting/deployment configuration and deployment automation"
+  - "deterministic sandbox-provider deployment verification; deployment runbook and deployment evidence"
+
+constraints:
+  - "Architecture 1.1 remains frozen and normative; accepted R7/R8/R9 authorities are consumed by reference — never forked, rewritten, or weakened; no Architecture 1.0 restoration or semantic fallback."
+  - "ConnectivityContract remains the canonical durable authority; Redis is never canonical state; provider SDKs remain behind adapter boundaries."
+  - "Hard contract constraints may not be silently weakened by infrastructure failure; free-tier exhaustion must fail explicitly and observably."
+  - "Software deployment evidence must not be presented as physical connectivity evidence; EVID-002..EVID-008 remain outside software deployment acceptance."
+  - "No secrets or credential values may be committed or printed."
+  - "Work is isolated on a deployment branch until reviewed and merged; existing ADCOS worker limits (at most 3 direct workers, at most 3 subagents each, depth at most 2) remain in force."
+
+acceptance:
+  - "Deployment acceptance is software-class only: a reachable service, durable state, working ephemeral coordination, artifact persistence, a deterministic contract-fulfillment path, reproducible deployment, and verified rollback. It does not close or modify the independent physical-validation track (R4/W040 remains in-review and unaccepted)."
+
+rejected_scope:
+  - "This decision does not activate any roadmap gate, does not create an authorizations/ record, and does not alter the post-R9 halted roadmap state (roadmap.yaml v2.22, execution mode awaiting-architect-decisions)."
+  - "This decision does not satisfy or modify any physical evidence obligation (EVID-002..EVID-008 remain open; W048 remains accepted-not-restored)."
+
+evidence:
+  merge_sha: null
+  ci_run: null
+  artifacts:
+    - "docs/superpowers/specs/2026-09-13-adcos-free-tier-deployment-design.md"
+    - "docs/superpowers/plans/2026-09-13-adcos-free-tier-deployment.md"
+    - "docs/tech-lead/ADCOS-DEPLOYMENT-HANDOFF.md"
+
+authority:
+  - "This decision creates repository-local implementation authority for the bounded deployment scope above until the deployment work is accepted or explicitly revoked. The Tech Lead owns all implementation and deployment execution (dispatch within the 3x3/9/depth-2 limits, integration, provisioning, deployment, production verification, rollback proof, and deployment acceptance evidence); the Architect does not directly implement the runtime, provision cloud resources, deploy to Vercel, run production migrations, or accept deployment evidence."
