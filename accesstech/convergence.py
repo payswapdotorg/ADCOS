@@ -814,6 +814,28 @@ class InterchangeHopResult:
     reconnect_instant: str
     event_ids: Tuple[str, ...]
     state_after: str
+    # The LIVE consumed decision record, held BY REFERENCE (the M020
+    # registry live-objects discipline: the identity-bearing canonical
+    # content serializes; the live in-memory object never does — it is
+    # not serializable state, never a persisted authority).  The
+    # composition root reads it through :meth:`live_decision` (e.g. to
+    # cite the drill material through the accepted federation
+    # constructors); the canonical ``to_dict`` projection excludes it.
+    _decision: object = None
+
+    @property
+    def live_decision(self) -> object:
+        """The LIVE :class:`replan.ReplanDecision` the accepted
+        machinery produced for this hop (identity-preserving, by
+        reference — never serialized, never re-created here)."""
+        if self._decision is None:
+            raise AccessTechError(
+                AccessTechReason.INVALID_INPUT,
+                "the hop result carries no live decision record (the live "
+                "objects ride only the drive-time construction, never the "
+                "reconstructed canonical material)",
+            )
+        return self._decision
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -1161,6 +1183,7 @@ def run_interchange_drill(
                 reconnect_instant=reconnect.reconnect_instant,
                 event_ids=tuple(drive.event_ids),
                 state_after=after.state,
+                _decision=decision,
             )
         )
         current_route = hop.new_route_decision_id
@@ -1215,7 +1238,25 @@ class ReplacementRecord:
     constraint_fingerprint: str
     state_after: str
     contract_continuity: bool
+    # The LIVE consumed decision record, held BY REFERENCE (the M020
+    # registry live-objects discipline — excluded from the canonical
+    # projection; read through :meth:`live_decision`).
+    _decision: object = None
     replacement_id: str = ""
+
+    @property
+    def live_decision(self) -> object:
+        """The LIVE :class:`replan.ReplanDecision` the accepted
+        machinery produced for this replacement (identity-preserving,
+        by reference — never serialized, never re-created here)."""
+        if self._decision is None:
+            raise AccessTechError(
+                AccessTechReason.INVALID_INPUT,
+                "the replacement record carries no live decision record "
+                "(the live objects ride only the drive-time construction, "
+                "never the reconstructed canonical material)",
+            )
+        return self._decision
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -1582,6 +1623,7 @@ def replace_technology(
         constraint_fingerprint=decision.constraint_fingerprint,
         state_after=after.state,
         contract_continuity=True,
+        _decision=decision,
     )
 
 
@@ -1958,7 +2000,10 @@ class AccessConvergenceMatrix:
                 )
             seen.add(domain)
             rows.append((domain, verdict, detail))
-        object.__setattr__(self, "rows", tuple(rows))
+        # the stored row sequence is SORTED by domain label (the
+        # record itself is input-order independent — the composed
+        # group order never leaks into the canonical form)
+        object.__setattr__(self, "rows", tuple(sorted(rows)))
 
     def digest(self) -> str:
         """The canonical composed-matrix digest (byte-stable; sorted by
