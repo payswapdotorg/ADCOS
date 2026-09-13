@@ -39,7 +39,9 @@ under DEC-0120 (the bounded R9 program authorization R9-CORE-001, baseline
 Technology Capability Envelope ACCEPTED under DEC-0121 (PR #44 head
 `035242de`, merge `c75a7c70`); M021 — Wireline Access Adapters ACCEPTED under
 DEC-0122 (PR #45 head `8966693`, merge `8ebdb21`); M022 — Non-Terrestrial
-Access Adapters is the current child).
+Access Adapters ACCEPTED under DEC-0123 (PR #46 head `16eb274`, merge
+`68060d9`); M024 — Future Access Convergence is the current child, BLOCKED
+until the chain-independent M023 lands).
 
 - R6 Provider Onboarding & Federation is complete under `DEC-0097`.
 - M001 — Architecture 1.1 Freeze is complete under `DEC-0100`: Architecture 1.1
@@ -171,20 +173,24 @@ Access Adapters is the current child).
   accesstech battery step ACTIVATED green 19/19 by the delivery merge); M021 —
   Wireline Access Adapters ACCEPTED under DEC-0122 (PR #45 head `8966693`,
   merge `8ebdb21` — the wireline battery step ACTIVATED green 14/14 by the
-  delivery merge, the case_68 expected-set evolution of the accepted adapter
-  battery recorded per the R9 Consumption rule, the M019 precedent); M022 —
-  Non-Terrestrial Access Adapters the CURRENT CHILD
-  (`tools/satellite_selftest.py` CI-wired with a pre-delivery existence
-  guard); M023 — Future Technology
+  delivery merge); M022 — Non-Terrestrial Access Adapters ACCEPTED under
+  DEC-0123 (PR #46 head `16eb274`, merge `68060d9` — the satellite battery
+  step ACTIVATED green 17/17 by the delivery merge, the case_68 expected-set
+  evolution of the accepted adapter battery recorded per the DEC-0122
+  forward rule, the amendment 16eb274); M024 — Future Access Convergence
+  the CURRENT CHILD (`tools/futureimt_selftest.py` CI-wired with a
+  pre-delivery existence guard for the in-flight M023; M024's own
+  convergence battery wires at its acceptance), BLOCKED until the
+  chain-independent M023 lands; M023 — Future Technology
   Extension Drill (CHAIN-INDEPENDENT — the synthetic future-IMT/6G-class
   technology added purely through the accepted public extension surface, zero
   contract-core delta); M024 — Future Access Convergence (the convergence
   child — its acceptance completes the gate and evaluates the program_exit
-  conditions, SOFTWARE-class only). Per-child acceptance decisions (DEC-0123+)
+  conditions, SOFTWARE-class only). Per-child acceptance decisions (DEC-0124+)
   are mandatory. The R9 charter's own objective constraint is an acceptance
   criterion on every child: access technologies are added or replaced through
   the adapter boundary WITHOUT altering the connectivity contract core
-  (LOCK-101). The execution mode is implementing (M022/R9-CORE-001).
+  (LOCK-101). The execution mode is implementing (M024/R9-CORE-001, blocked-on-M023).
   **M020 — Access Technology Capability Envelope is ACCEPTED (DEC-0121; head
   035242de, merge c75a7c70 — the chain root, the FIRST R9 child acceptance:
   the accesstech/ envelope domain — typed fail-closed envelope validation
@@ -218,6 +224,31 @@ Access Adapters is the current child).
   delivery, the m017/M019 wedged-render precedent class; THE CURRENT-CHILD
   POINTER ADVANCES M021 -> M022 — the R9-CORE-001 authorization stays ACTIVE
   (it closes only with the R9 gate completion at the M024 acceptance).**
+  **M022 — Non-Terrestrial Access Adapters is ACCEPTED (DEC-0123; head
+  16eb274, merge 68060d9 — the third R9 chain-child acceptance: the
+  satellite GSO/NGSO/LEO + mesh/IAB reference compositions on the accepted
+  `adapters/mesh/` family runtime BY REFERENCE through the accepted
+  capability seam; the coverage windows as declared availability intervals
+  (injected instants, never wall clock — the typed wall-clock-leak
+  rejection), the propagation-delay envelopes as typed declared ranges, the
+  propagation-aware margin-step ladders; the NGSO pass-handover geometry
+  through the accepted `resilience/` machinery with LOCK-108 verbatim
+  constraint-set equality and the WORK-012 explicit recorded reconnect
+  discipline; the envelope declarations under `accesstech/` built only
+  through the accepted M020 public surface; the 17/17 battery CI-wired and
+  green at the accepted head — the step ACTIVATED by the delivery merge;
+  the case_68 expected-set evolution per the DEC-0122 forward rule (the
+  Tech-Lead-authored amendment 16eb274, disclosed in the evidence record
+  §0/§9, the adapter battery 70/70 at the accepted head); delivered through
+  the charter-foreknowledge session (the conflict PRE-disclosed — the
+  worker's report landed in-chat with the honest CI note reporting the real
+  pre-disclosed FAILURE conclusion); THE CURRENT-CHILD POINTER ADVANCES
+  M022 -> M024 ALONG THE CHAIN (Future Access Convergence — the convergence
+  child, its M020/M021/M022 chain dependencies satisfied, its M023
+  dependency PENDING: the chain-independent M023 delivery PR #47 is open,
+  M024's dispatch BLOCKED until the M023 acceptance — the DEC-0117/DEC-0118
+  precedent class) — the R9-CORE-001 authorization stays ACTIVE (it closes
+  only with the R9 gate completion at the M024 acceptance).**
 - `M001-CORE-001` is closed. **R7 — Universal Connectivity Commerce is COMPLETE
   under DEC-0101/DEC-0109**
 - `M001-CORE-001` is closed. **R7 — Universal Connectivity Commerce was

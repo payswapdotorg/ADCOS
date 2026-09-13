@@ -467,15 +467,32 @@ jobs:
       # runs; the M002/M015/M020/M021 wiring class). ACTIVATION NOTE: the
       # case_68 expected-set evolution (the R9 Consumption-rule sanctioned
       # battery-surface evolution, DEC-0122) adds each accepted R9 child's
-      # reference module at its OWN acceptance — M022's satellite.py joins
-      # case_68's expected_delta at the M022 acceptance, exactly as M021's
-      # wireline.py joined at this one.
+      # reference module at its OWN acceptance — M022's satellite.py joined
+      # case_68's expected_delta at the DEC-0123 acceptance (amendment 16eb274),
+      # exactly as M021's wireline.py joined at DEC-0122.
+      # ACTIVATED by the accepted M022 delivery (merge 68060d9): the battery
+      # runs green 17/17, x3 byte-identical at the accepted head (DEC-0123).
       - name: Run non-terrestrial access adapter tests
         run: |
           if [ -f tools/satellite_selftest.py ]; then
             python3 tools/satellite_selftest.py
           else
             echo "SKIP (pre-delivery, disclosed): tools/satellite_selftest.py lands with the authorized M022 delivery (R9-CORE-001, DEC-0122)"
+          fi
+        continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
+
+      # M023 battery (DEC-0123 acceptance wiring — the established existence-
+      # guard pattern: skips visibly until the delivery lands on main, then
+      # runs; the M002/M015/M020/M021/M022 wiring class). The M023 delivery is
+      # chain-independent (the M013/M018 precedent class). ACTIVATION NOTE:
+      # M023's futureimt.py joins case_68's expected_delta at the M023
+      # acceptance (the DEC-0122/DEC-0123 forward rule) — never before.
+      - name: Run future technology extension drill tests
+        run: |
+          if [ -f tools/futureimt_selftest.py ]; then
+            python3 tools/futureimt_selftest.py
+          else
+            echo "SKIP (pre-delivery, disclosed): tools/futureimt_selftest.py lands with the authorized M023 delivery (R9-CORE-001, DEC-0123)"
           fi
         continue-on-error: ${{ steps.drift.outputs.governance == 'true' }}
 

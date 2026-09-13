@@ -9,9 +9,11 @@
 # Envelope — ACCEPTED under DEC-0121: the chain-child pointer advanced
 # M020 -> M021), M021 (Wireline Access Adapters — ACCEPTED under DEC-0122:
 # the chain-child pointer advanced M021 -> M022), M022 (Non-Terrestrial
-# Access Adapters — the current child), M023 (Future Technology Extension
-# Drill — chain-independent), M024 (Future Access Convergence — the
-# convergence child).
+# Access Adapters — ACCEPTED under DEC-0123: the chain-child pointer advanced
+# M022 -> M024 along the chain), M023 (Future Technology Extension Drill —
+# chain-independent, IN FLIGHT), M024 (Future Access Convergence — the
+# current child, the convergence child; blocked until the chain-independent
+# M023 lands).
 work_item: R9
 child_work_items:
   - M020
@@ -19,7 +21,7 @@ child_work_items:
   - M022
   - M023
   - M024
-current_child_work_item: M022
+current_child_work_item: M024
 status: active
 authorized: true
 type: implementation

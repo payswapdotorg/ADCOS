@@ -148,7 +148,9 @@ spec/architect/work-items/R9-charter.md) covers the child scopes M020–M024
 head 035242de, merge c75a7c70); M021 Wireline
 Access Adapters ACCEPTED under DEC-0122 (PR #45 head 8966693, merge
 8ebdb21); M022 Non-Terrestrial
-Access Adapters; M023 Future Technology
+Access Adapters ACCEPTED under DEC-0123 (PR #46 head 16eb274, merge
+68060d9); M024 Future Access Convergence is the current child (blocked
+until the chain-independent M023 lands); M023 Future Technology
 Extension Drill, chain-independent — the synthetic future-IMT/6G-class
 technology added purely through the accepted public extension surface; M024
 Future Access Convergence the convergence child) — access technologies added

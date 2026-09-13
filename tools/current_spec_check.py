@@ -63,6 +63,7 @@ REQUIRED_FILES = [
     "spec/architect/decisions/DEC-0120-r9-activation.yaml",
     "spec/architect/decisions/DEC-0121-m020-acceptance.yaml",
     "spec/architect/decisions/DEC-0122-m021-acceptance.yaml",
+    "spec/architect/decisions/DEC-0123-m022-acceptance.yaml",
     "spec/architect/work-items/R7-charter.md",
     "spec/architect/work-items/R8-charter.md",
     "spec/architect/work-items/R9-charter.md",
@@ -174,7 +175,7 @@ def main() -> int:
                 fail(errors, "dispatch-state.yaml cannot declare more than 9 active subagents")
 
     for marker in (
-        'roadmap_version: "2.19"',
+        'roadmap_version: "2.20"',
         'status: FROZEN_AUTHORITATIVE',
         'source_of_truth: repository_only',
         'mandatory_forward_target: "Architecture 1.1"',
@@ -211,7 +212,7 @@ def main() -> int:
         'work_item_chain: [M020, M021, M022, M023, M024]',
         'program_state: R9_FUTURE_ACCESS_TECHNOLOGY_ACTIVE',
         'execution_mode: implementing',
-        'active_work_item: M022',
+        'active_work_item: M024',
         'active_authorization: R9-CORE-001',
         'next_gate: null',
     ):
@@ -410,8 +411,8 @@ def main() -> int:
                 fail(errors, "R9 authorization must record the DEC-0120 issuance decision")
             if "baseline_sha: ea4bb64e0d32cfe93384ece71ec0003f447e357f" not in r9a:
                 fail(errors, "R9 authorization must record the exact activation baseline (the DEC-0119 head)")
-            if "current_child_work_item: M022" not in r9a:
-                fail(errors, "R9 authorization must bind M022 as the current child work item (the DEC-0122 M021 acceptance advanced the pointer)")
+            if "current_child_work_item: M024" not in r9a:
+                fail(errors, "R9 authorization must bind M024 as the current child work item (the DEC-0123 M022 acceptance advanced the pointer along the chain; M023 is chain-independent and never holds the pointer)")
             for child in ("M020", "M021", "M022", "M023", "M024"):
                 if f"  - {child}" not in r9a:
                     fail(errors, f"R9 authorization child_work_items must declare {child}")
