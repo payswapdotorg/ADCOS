@@ -3818,6 +3818,7 @@ def case_68_m007_work016_compat_seam(results: List[Result]) -> None:
         # the guard for unaccepted deliveries):
         "adapters/reference/wireline.py",
         "adapters/reference/satellite.py",
+        "adapters/reference/futureimt.py",
     }
     try:
         proc = subprocess.run(
