@@ -156,3 +156,198 @@ secrets never persisted (memory only).
    (`EvidenceBadge`).
 5. No fake production data — empty states when the backend is empty.
 6. Same-origin API calls only; dev via the Next rewrite proxy.
+
+## Worker 3 (console-developers) — Part C: evidence, assurance, settings, error workbench
+
+Completed at the integration station (Worker 3's session was rate-limited
+mid-delivery; Part C surfaces were delivered by the station subagent).
+Files: `src/app/{evidence,assurance,settings}/page.tsx`,
+`src/app/settings/errors/page.tsx` (the FROZEN workbench path), and the
+features under `src/features/{evidence,assurance,settings,errors}`.
+
+### /evidence — the evidence explorer
+
+Evidence is a first-class resource: source, timestamp, evidence class,
+provenance, related objects. The backend's only evidence surface today is
+the deterministic fulfillment demonstration (`GET|POST
+/demo/contract-fulfillment`), so the explorer lists the evidence of EVERY
+demonstration run this console session made (`features/evidence/demo-runs`
+— in-memory, newest first), including the run the page itself records on
+load (the current document, via `recordDemoRun`). Each record renders its
+members VERBATIM (type, record_id, subject_ref, contract_ref → the
+contract page, producer, instant, metric/value, confidence bps,
+freshness/valid-until, source_refs); a detail drawer carries the full
+record, the provenance (producer, source_refs, the run's boundary entry),
+the related contract (live read when connected) and the JSON view. The
+badge legend states the vocabulary explicitly: `SOFTWARE` and
+`sandbox-simulation` verbatim through `EvidenceBadge`; the physical/network
+family renders as **NOT-ACHIEVABLE-BY-THIS-DEPLOYMENT** — no UI state can
+transform a SOFTWARE record into a physical PASS.
+
+### /assurance — the assurance view
+
+Per contract (list contracts, then read `GET
+/api/2.0/contracts/{id}/assurance` per contract): the OBLIGATION
+REFERENCES VERBATIM — opaque typed refs with their provenance (the
+objectives the backend actually returns), the contract state, the honest
+notes, and each obligation linked to its contract and its evidence chain
+(the demonstration runs' attestation records by contract_ref). NO
+invented metric dashboards: semantics are referenced, never evaluated
+here. The contracts list is the bodyless browser form of the GET-body
+list discipline (fetch forbids GET bodies); deeper pagination is
+disclosed with the canonical curl form.
+
+### /settings — the settings page
+
+- **Environment & health**: the full `/readyz` document (mode,
+  environment, every backend state + detail, delegated backends) plus
+  `/healthz`, with the honest semantics stated: liveness says NOTHING
+  about backends; readiness names them. Both are unauthenticated platform
+  reads through the typed client.
+- **Session**: the connected application summary (including its
+  `evidence_class`, verbatim) + Disconnect, and the credential policy:
+  memory only, cleared on reload by design, never echoed in full.
+- **About**: the console's boundary statement — no second authority; the
+  canonical backend owns all state.
+- Links to the error workbench.
+
+### /settings/errors — the error workbench
+
+The session's captured errors (from `useRequestLog` + `isFailedRequest`
+— the in-memory request log, display data only) with the full anatomy:
+what happened (message), why (reason VERBATIM), the affected resource
+(resource_id / request path), next action (a Retry button that re-issues
+through the typed client via the coverage-registry executor when the
+backend marked the error retryable — or when the request never reached
+the runtime; guidance per reason code from the KNOWN dictionary with an
+honest generic fallback for unknown codes), and the reproducible API
+form (curl, copyable, credential ALWAYS masked). Deep-links one captured
+request via `?request=<sequence>` (`workbenchHref`); a stale sequence
+renders an honest note (the log is in-memory). Honest empty state: "no
+captured errors — every request succeeded".
+
+### Part C test suites (deterministic, no network)
+
+`tests/evidence.test.tsx`, `tests/assurance.test.tsx`,
+`tests/settings.test.tsx`, `tests/error-workbench.test.tsx` — each
+self-contained (a local fetch-boundary router over REAL captured shapes,
+rendered inside the real SessionProvider through the real `connect()`
+flow): evidence records render with the badge vocabulary verbatim
+(SOFTWARE never physical), the assurance obligations render verbatim
+with the honest empty evidence chain, the settings readiness/liveness
+documents render with the semantics note, and the workbench renders the
+full anatomy + known-code guidance + retry + deep-link preselection.
+
+## Worker 3 (console-developers) — Part B: the developers tooling (API Explorer, Request Inspector, search)
+
+Completed at the integration station (Worker 3's session was rate-limited
+mid-delivery; Part B surfaces were delivered by the station subagent).
+Files: `src/app/developers/explorer/page.tsx`,
+`src/app/developers/requests/page.tsx`, and the features under
+`src/features/{api-explorer,requests}` plus the real providers in
+`src/features/search/providers.tsx`. The Part A core
+(`/developers` itself — identity, capabilities, credentials, webhook
+endpoints) is documented in the station A delivery and renders the same
+workspace composition.
+
+### /developers/explorer — the API Explorer
+
+Built ENTIRELY from the coverage registry (`@/lib/api/coverage` — the
+boundary's own frozen surface; 25 rows: 21 developer + 4 platform, zero
+invented): a grouped, searchable operation browser (method chip, path,
+mutation/destructive badges, required capability — grouped by area), and
+an operation detail with the boundary headers (the session's ACTUAL
+application id when connected; the credential ALWAYS masked via
+`maskedRequestHeaders`), path parameters for templated routes, the JSON
+body editor seeded from the registry's own `example` (locally validated —
+a local problem is reported as LOCAL, never fabricated as a backend
+reason), and the idempotency-key field for mutations.
+
+- Executions are REAL requests through the typed client
+  (`features/api-explorer/executor.ts` — `executeOperation`); the
+  response pane renders the status chip, the recorder-captured response
+  headers (X-ADCOS-*, rate-limit), the parsed body, the envelope surface
+  (request id, api version, environment, rate limit, idempotent-replay
+  marker), reason codes VERBATIM with retryable/retry_after on errors,
+  and the copyable curl reproduction (credential masked as
+  `<your-credential>`).
+- Destructive operations (`DESTRUCTIVE_OPERATIONS` — termination, lease
+  revocation) require an explicit confirmation step before any request
+  fires; cancelling disarms without a request.
+- The GET-body list discipline: pagination/filters ride the developer
+  API list reads' GET JSON body — unsendable from a browser (fetch
+  forbids GET bodies) — so executing a list read performs the bodyless
+  default-page read and the canonical curl form is reproduced for
+  out-of-browser use.
+- Execution history: the replayable in-memory list of this session's
+  request/response pairs (mutations replay with the SAME idempotency key
+  — byte-identical replay semantics).
+- Honest search: an unknown path/method query (or `?operation=` deep
+  link) renders "is not a supported operation" — never a guess; a
+  concrete known path resolves through the registry and prefills its
+  path parameters. Deep link: `/developers/explorer?operation=<id>`
+  (+ any path-parameter names as query params prefill them).
+
+### /developers/requests — the Request Inspector
+
+The global request log surface: a table of the requests this console
+session made through the typed client (time, method, path, status,
+request id, duration) with free-text search and a failures-only toggle
+(`isFailedRequest`), and a per-request detail drawer: the request
+headers reconstructed from the matched registry operation + session
+(credential ALWAYS masked, the idempotency key shown as a placeholder —
+never recorded), the request body, the recorder-captured response
+headers/body (truncated with an explicit expand — nothing fabricated;
+entries recorded before any inspector-capable page mounted honestly
+render without the captured fields), the copyable curl reproduction, and
+the registry operation that produced the request, linked into the API
+Explorer.
+
+- Object-linking affordance: `requestsHref(sequence)` (and the
+  `RequestsLink` component, `@/features/requests`) deep-links to
+  `/developers/requests?request=<sequence>` with the entry preselected —
+  other object pages adopt this to link "the request that produced this
+  object".
+- `clearRequests` requires an explicit confirmation (arm → confirm /
+  cancel); the log is in-memory only — a reload clears it by design.
+
+### The real search providers (`features/search/providers.tsx`)
+
+`ConsoleSearchProviders` (mounted on the developers-surface pages)
+registers commands into the palette infrastructure on mount and
+unregisters every one on unmount:
+
+- CONTRACTS from the fetched list (connected + `intents:read`): the full
+  id, the state and the principal all match; rows navigate to the
+  contract detail.
+- WEBHOOK ENDPOINTS from the fetched list (connected + `webhooks:read`):
+  rows navigate into the API Explorer with `endpoint_get` preselected and
+  the endpoint id prefilled.
+- EVIDENCE RECORDS from this session's demonstration runs (`useDemoRuns`):
+  rows navigate to the Evidence surface.
+- API EXPLORER OPERATIONS from the coverage registry: read commands
+  always navigate to `/developers/explorer?operation=<operation>`;
+  MUTATION commands appear ONLY when a session is connected AND the
+  required capability is granted (`capabilityGranted` — the
+  application's capability list is the gate); DESTRUCTIVE operations
+  (termination, lease revocation) require an explicit confirmation step
+  before even NAVIGATING (the explorer re-confirms before executing; the
+  backend's own authorization is never bypassed).
+- No provider ever fabricates objects: a failed or ungranted fetch
+  registers nothing (honest absence).
+
+### Part B test suites (deterministic, no network)
+
+`tests/api-explorer.test.tsx`, `tests/requests-inspector.test.tsx`,
+`tests/search-providers.test.tsx` — each self-contained (a fetch-boundary
+router over REAL captured shapes with REAL `Response` objects so the
+recorder captures headers/bodies exactly as in a browser, rendered inside
+the real SessionProvider through the real `connect()` flow): the registry
+drives the operation list (25 rows, zero invented — counted), an execute
+flow asserting the exact boundary headers/body on the wire, the error
+path showing the reason verbatim with retryable/retry_after, the
+destructive confirmation gating (no request until confirmed), the
+replayable history (same idempotency key), the bodyless GET list
+discipline, the inspector recording + masked curl + deep-link
+preselection + pre-recorder honesty, and the permission-aware provider
+registration (mutation commands absent when disconnected or ungranted).

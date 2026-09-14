@@ -4,6 +4,7 @@
  * inspector (/developers/requests) renders this data; the API explorer
  * correlates response headers through it.
  */
+
 export {
   recordRequest,
   getRequests,
@@ -22,3 +23,11 @@ export {
   MAX_RESPONSE_BODY_CHARS,
 } from "./recorder";
 export type { RequestCompletion } from "./recorder";
+
+export { RequestInspectorView } from "./inspector-view";
+export { RequestDetailDrawer } from "./request-detail";
+export {
+  RequestsLink,
+  requestsHref,
+  REQUESTS_INSPECTOR_PATH,
+} from "./requests-link";

@@ -1,28 +1,16 @@
 import type { Metadata } from "next";
-import { AreaPlaceholder } from "@/components/shell/area-placeholder";
+import { AssuranceView } from "@/features/assurance";
 
 export const metadata: Metadata = {
   title: "Assurance",
 };
 
 /**
- * Assurance — placeholder surface for Worker 3.
- *
- * The frozen UX spec's assurance map: contract objectives tied to the
- * evidence that supports them and to any action they produced.
+ * Assurance — the assurance view (Worker 3, Part C): per contract, the
+ * OBLIGATION REFERENCES verbatim (opaque refs with their provenance),
+ * the contract state, the honest notes, and each obligation linked to
+ * its contract and its evidence chain. No invented metric dashboards.
  */
 export default function AssurancePage() {
-  return (
-    <AreaPlaceholder
-      title="Assurance"
-      intro="This area is being implemented (Worker 3 — evidence, developers, assurance)."
-      map={[
-        {
-          title: "Contract objectives",
-          description:
-            "Supported contract objectives such as latency, availability, capacity and provider health, linked to underlying evidence and any resulting action.",
-        },
-      ]}
-    />
-  );
+  return <AssuranceView />;
 }
