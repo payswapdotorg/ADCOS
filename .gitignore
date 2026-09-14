@@ -29,3 +29,5 @@ __pycache__/
 
 # Vercel CLI project link (station tooling — never commit)
 .vercel/
+.vercel
+.env*
