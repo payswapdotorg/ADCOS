@@ -22,11 +22,19 @@
  *   (platform surfaces stay executable — they need no session);
  * - a missing capability is surfaced honestly but never pre-denied: the
  *   backend owns authorization and answers `capability-denied` itself.
+ *
+ * V2 education addition (DEC-0128, Task 6 — design §12/§15): the
+ * "About this operation" block (features/api-learning) renders between
+ * the header and the execution surfaces, COLLAPSED by default. It is
+ * pure registry presentation — the execution semantics above (headers,
+ * body editor, idempotency key, destructive confirmation, execute) are
+ * untouched and regression-protected (§20).
  */
 
 import { useMemo } from "react";
 import type { CoverageRecord } from "@/lib/api/coverage";
 import { capabilityGranted } from "@/features/developers/capabilities";
+import { OperationEducationPanel } from "@/features/api-learning";
 import {
   DESTRUCTIVE_OPERATIONS,
   maskedRequestHeaders,
@@ -181,6 +189,10 @@ export function OperationDetail({
           {record.requiredCapability ? ` · capability: ${record.requiredCapability}` : ""}
         </p>
       </div>
+
+      {/* V2 education — "About this operation" (collapsed by default;
+          registry presentation only, zero execution-semantics change) */}
+      <OperationEducationPanel record={record} applicationId={applicationId} />
 
       {authenticated && !connected ? (
         <div className="rounded-md border border-dashed border-warning/60 bg-warning/5 px-3 py-2">

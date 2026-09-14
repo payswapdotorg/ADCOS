@@ -11,6 +11,11 @@
  * - Escape closes
  * - seeded recent objects render under the "Recent" section
  * - executing a navigation command self-feeds the recents store
+ * - the V2 Learn surfaces (DEC-0128, Task 7): the four new commands
+ *   (nav-docs / nav-quickstart / nav-playbooks / nav-tour) appear in
+ *   the palette alongside the eight V1 entries, and the sidebar renders
+ *   the same entries in its Learn group — additions only, the expert
+ *   V1 routes stay direct
  */
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -125,13 +130,28 @@ describe("CommandPalette", () => {
     const input = await openPalette();
     expect(input).toBeInTheDocument();
 
-    // empty query: all eight navigation commands are visible
+    // empty query: all TWELVE navigation commands are visible — the
+    // eight V1 expert entries plus the four V2 Learn entries
     const listbox = screen.getByRole("listbox", { name: "Results" });
     expect(within(listbox).getByRole("option", { name: "Home" })).toBeInTheDocument();
     expect(within(listbox).getByRole("option", { name: "Networks" })).toBeInTheDocument();
-    expect(within(listbox).getAllByRole("option")).toHaveLength(8);
+    expect(within(listbox).getAllByRole("option")).toHaveLength(12);
 
-    // type a fuzzy query
+    // the four V2 Learn surfaces appear in the palette
+    expect(within(listbox).getByRole("option", { name: "Docs" })).toBeInTheDocument();
+    expect(within(listbox).getByRole("option", { name: "Quickstart" })).toBeInTheDocument();
+    expect(within(listbox).getByRole("option", { name: "Playbooks" })).toBeInTheDocument();
+    expect(within(listbox).getByRole("option", { name: "The tour" })).toBeInTheDocument();
+
+    // typing a fuzzy Learn query isolates the new entry
+    await user.type(input, "playb");
+    expect(within(listbox).getAllByRole("option")).toHaveLength(1);
+    expect(within(listbox).getByRole("option", { name: "Playbooks" })).toBeInTheDocument();
+    expect(within(listbox).queryByRole("option", { name: "Home" })).toBeNull();
+
+    // back to the empty query (every command visible again), then the
+    // classic fuzzy filter
+    await user.clear(input);
     await user.type(input, "netw");
 
     // only Networks survives the filter
@@ -202,14 +222,14 @@ describe("CommandPalette", () => {
     expect(within(listbox).getByText("Recent")).toBeInTheDocument();
     // the navigation command AND the seeded recent both carry the label
     expect(within(listbox).getAllByRole("option", { name: "Evidence" })).toHaveLength(2);
-    expect(within(listbox).getAllByRole("option")).toHaveLength(9);
+    expect(within(listbox).getAllByRole("option")).toHaveLength(13);
 
     // the recent row navigates to its href: walk the keyboard down to it
-    // (the eight commands come first, the recent row is ninth)
+    // (the twelve commands come first, the recent row is thirteenth)
     const input = screen.getByRole("combobox", {
       name: "Search commands and objects",
     });
-    for (let step = 0; step < 8; step += 1) {
+    for (let step = 0; step < 12; step += 1) {
       fireEvent.keyDown(input, { key: "ArrowDown" });
     }
     fireEvent.keyDown(input, { key: "Enter" });
@@ -229,5 +249,67 @@ describe("CommandPalette", () => {
 
     expect(screen.getByText("No matches")).toBeInTheDocument();
     expect(screen.queryByRole("option")).toBeNull();
+  });
+
+  it("executes a V2 Learn command through the palette (Playbooks → /playbooks)", async () => {
+    const user = userEvent.setup();
+    renderShell();
+
+    const input = await openPalette();
+    await user.type(input, "playb");
+    await user.keyboard("{Enter}");
+
+    expect(pushMock).toHaveBeenCalledWith("/playbooks");
+    await waitFor(() => {
+      expect(screen.queryByRole("combobox")).toBeNull();
+    });
+  });
+});
+
+describe("Shell navigation — the V2 Learn surfaces (DEC-0128, Task 7)", () => {
+  it("renders the Learn group in the sidebar with the four new entries", () => {
+    renderShell();
+
+    const nav = screen.getByRole("navigation", { name: "Primary" });
+
+    // the eight V1 expert entries stay exactly where they were
+    for (const label of [
+      "Home",
+      "Connectivity",
+      "Networks",
+      "Fulfillment",
+      "Evidence",
+      "Developers",
+      "Assurance",
+      "Settings",
+    ]) {
+      expect(within(nav).getByRole("link", { name: label })).toBeInTheDocument();
+    }
+
+    // the Learn group renders its label and the four new entries
+    expect(within(nav).getByText("Learn")).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
+    expect(within(nav).getByRole("link", { name: "Quickstart" })).toHaveAttribute(
+      "href",
+      "/quickstart",
+    );
+    expect(within(nav).getByRole("link", { name: "Playbooks" })).toHaveAttribute(
+      "href",
+      "/playbooks",
+    );
+    expect(within(nav).getByRole("link", { name: "The tour" })).toHaveAttribute(
+      "href",
+      "/tour",
+    );
+
+    // twelve nav links total — additions only, nothing removed
+    expect(within(nav).getAllByRole("link")).toHaveLength(12);
+
+    // no forced onboarding: at "/" only Home is the current page
+    const current = within(nav)
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("aria-current") === "page");
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveAccessibleName("Home");
   });
 });

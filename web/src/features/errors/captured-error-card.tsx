@@ -11,6 +11,13 @@
  *   reason first, the backend-adapted canonical reason when the boundary
  *   code is outside it) with an honest generic fallback for unknown
  *   codes (`reasonGuidanceForCodes`);
+ * - the V2 TROUBLESHOOTING GUIDANCE section (DEC-0128, Task 7 — from
+ *   features/api-learning's canonical reason-code table) is an
+ *   ADDITIONAL, clearly-labelled section: the six-part anatomy (what
+ *   happened / why / affected resource / next action / API reproduction
+ *   / learn more). It renders ONLY for codes that exist in the canonical
+ *   errors module; unknown codes keep the V1 honest-unknown treatment
+ *   above, byte-identical — no invented semantics;
  * - synthesized client-side codes (backend-unreachable) are labeled as
  *   such — never presented as backend reasons;
  * - the curl reproduction masks the credential ALWAYS (the real value
@@ -23,6 +30,7 @@
  */
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import type { LoggedRequest } from "@/features/requests/request-log";
 import {
   DESTRUCTIVE_OPERATIONS,
@@ -31,6 +39,11 @@ import {
   maskedRequestHeaders,
   type ExecuteOutcome,
 } from "@/features/api-explorer/executor";
+import {
+  canonicalReasonTitle,
+  reasonLearnMoreHrefs,
+  reasonTroubleshootingForCodes,
+} from "@/features/api-learning";
 import { ApiRequestPanel, RefreshIcon } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
@@ -46,6 +59,7 @@ export const CAPTURED_ERROR_TEST_IDS = {
   reason: "workbench-reason",
   retry: "workbench-retry",
   curl: "workbench-curl",
+  troubleshooting: "workbench-troubleshooting-guidance",
 } as const;
 
 function StatusChip({ status }: { status: number }) {
@@ -96,6 +110,13 @@ export function CapturedErrorCard({
   // first, the backend-adapted canonical reason when the boundary code is
   // outside the KNOWN dictionary (both codes render verbatim regardless)
   const guidance = reasonGuidanceForCodes(
+    entry.reason ?? "",
+    details.canonicalReason,
+  );
+  // the V2 troubleshooting guidance resolves the same pair against the
+  // CANONICAL reason-code table — undefined for unknown codes BY DESIGN
+  // (the V1 honest-unknown treatment above stands unchanged)
+  const troubleshooting = reasonTroubleshootingForCodes(
     entry.reason ?? "",
     details.canonicalReason,
   );
@@ -334,6 +355,60 @@ export function CapturedErrorCard({
               </span>
             </FieldRow>
           </dl>
+
+          {/* the V2 troubleshooting guidance (ADDITIONAL, clearly
+              labelled — canonical codes only; unknown codes render
+              nothing here and keep the V1 treatment above) ---------- */}
+          {troubleshooting ? (
+            <div
+              data-testid={CAPTURED_ERROR_TEST_IDS.troubleshooting}
+              className="flex flex-col gap-2 rounded-md border border-dashed border-line bg-raised/40 px-3 py-3"
+            >
+              <p className="text-sm font-medium text-ink">
+                Troubleshooting guidance —{" "}
+                <code className="rounded border border-line bg-raised px-1.5 py-px font-mono text-xs text-ink">
+                  {troubleshooting.code}
+                </code>
+                <span className="ml-2 font-normal text-ink-faint">
+                  ({canonicalReasonTitle(troubleshooting.code)})
+                </span>
+              </p>
+              <p className="text-2xs text-ink-faint">
+                Human guidance mapped from the canonical reason-code table.
+                The verbatim reason chip and the backend&apos;s own message
+                above are the authority — this section explains the code,
+                it never replaces it.
+              </p>
+              <dl className="flex flex-col gap-2">
+                <FieldRow label="what happened">
+                  {troubleshooting.whatHappened}
+                </FieldRow>
+                <FieldRow label="why">{troubleshooting.why}</FieldRow>
+                <FieldRow label="affected resource">
+                  {troubleshooting.affectedResource}
+                </FieldRow>
+                <FieldRow label="next action">
+                  {troubleshooting.nextAction}
+                </FieldRow>
+                <FieldRow label="API reproduction">
+                  {troubleshooting.apiReproduction}
+                </FieldRow>
+                <FieldRow label="learn more">
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    {reasonLearnMoreHrefs(troubleshooting).map((target) => (
+                      <Link
+                        key={target.href}
+                        href={target.href}
+                        className="text-accent underline decoration-line-strong underline-offset-2 transition-colors hover:decoration-ink"
+                      >
+                        {target.label}
+                      </Link>
+                    ))}
+                  </span>
+                </FieldRow>
+              </dl>
+            </div>
+          ) : null}
 
           {/* the reproducible API form ---------------------------------- */}
           <div className="flex flex-col gap-2" data-testid={CAPTURED_ERROR_TEST_IDS.curl}>

@@ -7,6 +7,12 @@
  * console area, active route marked with `aria-current="page"` and the
  * teal left border. The nav vocabulary matches the command registry's
  * "Navigate" group exactly — one mental model for mouse and keyboard.
+ *
+ * V2 learning surfaces (DEC-0128, Task 7): a "Learn" group appended
+ * below the primary areas — Docs, Quickstart, Playbooks and the tour —
+ * the same hrefs the shell's nav-docs/nav-quickstart/nav-playbooks/
+ * nav-tour palette commands carry. Pure additions: the eight V1 expert
+ * entries above are untouched and no route ever redirects (§20).
  */
 
 import Link from "next/link";
@@ -20,6 +26,7 @@ import {
   FulfillmentIcon,
   HomeIcon,
   NetworksIcon,
+  SearchIcon,
   SettingsIcon,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -41,44 +48,86 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Settings", href: "/settings", icon: SettingsIcon },
 ];
 
+/** The V2 learning surfaces (DEC-0128, Task 7) — the Learn group. */
+const LEARN_ITEMS: NavItem[] = [
+  { label: "Docs", href: "/docs", icon: EvidenceIcon },
+  { label: "Quickstart", href: "/quickstart", icon: FulfillmentIcon },
+  { label: "Playbooks", href: "/playbooks", icon: SearchIcon },
+  { label: "The tour", href: "/tour", icon: NetworksIcon },
+];
+
 function isNavItemActive(href: string, pathname: string): boolean {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function Sidebar() {
+function NavList({
+  items,
+  id,
+  label,
+  grow = true,
+}: {
+  items: NavItem[];
+  id: string;
+  /** The list's accessible name ("Primary areas" / "Learn"). */
+  label: string;
+  grow?: boolean;
+}) {
   const pathname = usePathname() ?? "/";
+  return (
+    <ul
+      id={id}
+      aria-label={label}
+      className={cn(
+        "flex flex-col gap-0.5 overflow-y-auto p-2",
+        grow && "flex-1",
+      )}
+    >
+      {items.map((item) => {
+        const active = isNavItemActive(item.href, pathname);
+        const Icon = item.icon;
+        return (
+          <li key={item.href}>
+            <Link
+              href={item.href}
+              title={item.label}
+              aria-label={item.label}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex items-center justify-center gap-2.5 rounded border-l-2 px-2 py-1.5 text-sm lg:justify-start lg:px-2.5",
+                active
+                  ? "border-accent bg-raised text-ink"
+                  : "border-transparent text-ink-muted hover:bg-raised/60 hover:text-ink",
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="hidden lg:inline">{item.label}</span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
+export function Sidebar() {
   return (
     <nav
       aria-label="Primary"
       className="sticky top-0 z-10 flex h-screen w-14 shrink-0 flex-col border-r border-line bg-surface lg:w-56"
     >
-      <ul className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
-        {NAV_ITEMS.map((item) => {
-          const active = isNavItemActive(item.href, pathname);
-          const Icon = item.icon;
-          return (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                title={item.label}
-                aria-label={item.label}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex items-center justify-center gap-2.5 rounded border-l-2 px-2 py-1.5 text-sm lg:justify-start lg:px-2.5",
-                  active
-                    ? "border-accent bg-raised text-ink"
-                    : "border-transparent text-ink-muted hover:bg-raised/60 hover:text-ink",
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="hidden lg:inline">{item.label}</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      <NavList items={NAV_ITEMS} id="primary-nav-items" label="Primary areas" />
+
+      {/* the Learn group (V2 additions — the house separator pattern) */}
+      <div className="border-t border-line px-2 py-1.5 lg:px-3">
+        <p
+          id="learn-nav-heading"
+          className="hidden text-2xs uppercase tracking-wide text-ink-faint lg:block"
+        >
+          Learn
+        </p>
+      </div>
+      <NavList items={LEARN_ITEMS} id="learn-nav-items" label="Learn" grow={false} />
 
       <div className="border-t border-line p-2 font-mono text-2xs text-ink-faint lg:p-3">
         <p className="hidden lg:block">ADCOS console</p>

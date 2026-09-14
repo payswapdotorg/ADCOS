@@ -15,6 +15,10 @@
  *   and the endpoint id prefilled;
  * - EVIDENCE RECORDS from this session's demonstration runs
  *   (useDemoRuns): rows navigate to the Evidence surface;
+ * - PLAYBOOKS from the education guide registry (DEC-0128, Task 7):
+ *   each of the seven guided paths registers a "Playbook: …" command
+ *   navigating to /playbooks/<id> — static registry data, no fetch and
+ *   no capability gate (playbooks are education, always reachable);
  * - API EXPLORER OPERATIONS from the coverage registry: read commands
  *   always navigate to /developers/explorer?operation=<operation>;
  *   MUTATION commands appear ONLY when a session is connected AND the
@@ -32,6 +36,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Contract, WebhookEndpoint } from "@/lib/api/types";
 import { COVERAGE, type CoverageRecord } from "@/lib/api/coverage";
+import { GUIDES } from "@/lib/education";
 import { useSession } from "@/lib/session";
 import { capabilityGranted } from "@/features/developers/capabilities";
 import { useDemoRuns } from "@/features/evidence/demo-runs";
@@ -156,6 +161,29 @@ export function ConsoleSearchProviders() {
           group: "Evidence",
           icon: <EvidenceIcon className="h-3.5 w-3.5 text-ink-faint" />,
           href: "/evidence",
+        }),
+      );
+    }
+
+    // the seven guided paths (DEC-0128, Task 7) — static registry data:
+    // every playbook is reachable from any provider-mounted console page
+    for (const guide of GUIDES) {
+      unregisters.push(
+        registerCommand({
+          id: `search-playbook-${guide.id}`,
+          title: `Playbook: ${guide.title}`,
+          keywords: [
+            guide.id,
+            guide.title,
+            guide.purpose,
+            ...guide.relatedConcepts,
+            "playbook",
+            "guide",
+            "guided path",
+          ],
+          group: "Playbooks",
+          icon: <EvidenceIcon className="h-3.5 w-3.5 text-ink-faint" />,
+          href: `/playbooks/${guide.id}`,
         }),
       );
     }
