@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+/*
+ * The ADCOS console design language: calm, dense, scannable expert UI.
+ * Dark-mode-first developer workbench (near-black canvas) with a light
+ * mode toggle. Semantic tokens flip with the `.light` class on <html>;
+ * components never hard-code palette values. Token registry (the
+ * programmatic mirror of every variable below) lives in
+ * src/lib/design/tokens.ts.
+ */
+
+@theme inline {
+  --color-canvas: var(--c-canvas);
+  --color-surface: var(--c-surface);
+  --color-raised: var(--c-raised);
+  --color-sunken: var(--c-sunken);
+  --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
+  --color-ink: var(--c-ink);
+  --color-ink-secondary: var(--c-ink-secondary);
+  --color-ink-muted: var(--c-ink-muted);
+  --color-accent: var(--c-accent);
+  --color-accent-strong: var(--c-accent-strong);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-focus: var(--c-focus);
+  --color-positive: var(--c-positive);
+  --color-positive-soft: var(--c-positive-soft);
+  --color-warning: var(--c-warning);
+  --color-warning-soft: var(--c-warning-soft);
+  --color-danger: var(--c-danger);
+  --color-danger-soft: var(--c-danger-soft);
+  --color-info: var(--c-info);
+  --color-info-soft: var(--c-info-soft);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+/* Dark (the default workbench) */
+:root {
+  --c-canvas: #0c0e10;
+  --c-surface: #14171a;
+  --c-raised: #1a1e23;
+  --c-sunken: #0f1113;
+  --c-line: #262c33;
+  --c-line-strong: #39414b;
+  --c-ink: #e6e9ec;
+  --c-ink-secondary: #aab3bc;
+  --c-ink-muted: #7d8892;
+  --c-accent: #4fc0ae;
+  --c-accent-strong: #74d6c6;
+  --c-accent-soft: rgba(79, 192, 174, 0.12);
+  --c-focus: #5fd3c0;
+  --c-positive: #55c268;
+  --c-positive-soft: rgba(85, 194, 104, 0.13);
+  --c-warning: #d9a53a;
+  --c-warning-soft: rgba(217, 165, 58, 0.13);
+  --c-danger: #ef6457;
+  --c-danger-soft: rgba(239, 100, 87, 0.13);
+  --c-info: #5bb3c4;
+  --c-info-soft: rgba(91, 179, 196, 0.13);
+}
+
+/* Light (opt-in via the theme toggle; persisted preference only — never credentials) */
+:root.light {
+  --c-canvas: #f6f7f8;
+  --c-surface: #ffffff;
+  --c-raised: #ffffff;
+  --c-sunken: #eef0f2;
+  --c-line: #e2e5e8;
+  --c-line-strong: #c7ccd1;
+  --c-ink: #1c2126;
+  --c-ink-secondary: #4b535c;
+  --c-ink-muted: #667079;
+  --c-accent: #0e8d7c;
+  --c-accent-strong: #0a6e61;
+  --c-accent-soft: rgba(14, 141, 124, 0.1);
+  --c-focus: #0d9488;
+  --c-positive: #1a7f37;
+  --c-positive-soft: rgba(26, 127, 55, 0.1);
+  --c-warning: #9a6700;
+  --c-warning-soft: rgba(154, 103, 0, 0.11);
+  --c-danger: #cf222e;
+  --c-danger-soft: rgba(207, 34, 46, 0.09);
+  --c-info: #1b7c93;
+  --c-info-soft: rgba(27, 124, 147, 0.1);
+}
+
+@utility focus-ring {
+  outline: 2px solid var(--c-focus);
+  outline-offset: 2px;
+}
+
+html {
+  color-scheme: dark;
+}
+html.light {
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--c-canvas);
+  color: var(--c-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--c-accent-soft);
+}
+
+/* Calm, unobtrusive scrollbars for the dense workbench surfaces. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-line-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--c-line-strong);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}

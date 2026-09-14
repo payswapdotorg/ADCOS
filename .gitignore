@@ -1,28 +1,8 @@
-# OS/editor
-.DS_Store
-.idea/
-.vscode/
-*.swp
-
-# Local secrets
-.env
-.env.*
-!.env.example
-
-# Build/cache
 node_modules/
-target/
-dist/
-build/
+.next/
+out/
 coverage/
-.cache/
-
-# Runtime state
-*.db
-*.sqlite
-*.log
-
-
-# Python tooling (added by WORK-001: spec checker bytecode caches)
-__pycache__/
-*.pyc
+*.tsbuildinfo
+next-env.d.ts
+.env*.local
+.DS_Store
