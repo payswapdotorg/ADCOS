@@ -1,6 +1,8 @@
 /**
- * Requests feature — the in-memory request log (Worker 3 renders it in
- * the request inspector / API explorer; Worker 1 owns the store).
+ * Requests feature — the in-memory request log (Worker 1's store,
+ * enriched by Worker 3's recorder) and the recorder itself. The request
+ * inspector (/developers/requests) renders this data; the API explorer
+ * correlates response headers through it.
  */
 export {
   recordRequest,
@@ -13,3 +15,10 @@ export {
   __resetRequestLogForTests,
 } from "./request-log";
 export type { LoggedRequest } from "./request-log";
+export {
+  ensureRequestRecorder,
+  matchRequestCompletion,
+  __resetRecorderForTests,
+  MAX_RESPONSE_BODY_CHARS,
+} from "./recorder";
+export type { RequestCompletion } from "./recorder";

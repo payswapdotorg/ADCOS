@@ -2,18 +2,32 @@
  * The in-memory request log — display DATA only, never authority.
  *
  * Records the requests the console itself made (method, path, body,
- * status, request id, reason when failed). It holds NO response payloads
- * (refresh always re-fetches truth from the backend) and NO secrets
- * beyond what the UI already shows. Worker 3's request inspector / API
+ * status, request id, reason when failed). It holds NO secrets beyond
+ * what the UI already shows. Worker 3's request inspector / API
  * explorer renders this via `useRequestLog`.
+ *
+ * Worker 3 extension (charter §3.3 — the request inspector): entries
+ * are ENRICHED from the recorder (features/requests/recorder.ts) with
+ * duration, the truncated response body and the surfaced response
+ * headers WHENEVER the recorder captured them. Enrichment is
+ * best-effort and honest: an entry recorded without the recorder
+ * (e.g. before any inspector-capable page mounted) simply carries no
+ * extra fields — nothing is ever fabricated.
  */
 
 import { useCallback, useSyncExternalStore } from "react";
 import type { RequestLogEntry } from "@/lib/api/client";
+import { matchRequestCompletion } from "./recorder";
 
 export interface LoggedRequest extends RequestLogEntry {
   /** Monotonic sequence for stable rendering. */
   sequence: number;
+  /** Wall-clock duration of the request (recorder-captured, ms). */
+  durationMs?: number;
+  /** The response body text, truncated (recorder-captured). */
+  responseBody?: string;
+  /** The surfaced response headers (X-ADCOS-*, rate-limit, content-type). */
+  responseHeaders?: { name: string; value: string }[];
 }
 
 const MAX_ENTRIES = 50;
@@ -25,10 +39,33 @@ function emit(): void {
   for (const listener of listeners) listener();
 }
 
-/** Record one completed request attempt (success or failure). */
+/**
+ * Record one completed request attempt (success or failure). The base
+ * entry comes from the typed client's interceptor; when the recorder
+ * captured the matching completion, its richer fields are merged in.
+ */
 export function recordRequest(entry: RequestLogEntry): void {
   sequence += 1;
-  entries = [{ ...entry, sequence }, ...entries].slice(0, MAX_ENTRIES);
+  const completion = matchRequestCompletion({
+    method: entry.method,
+    path: entry.path,
+    body: entry.body,
+    status: entry.status,
+  });
+  entries = [
+    {
+      ...entry,
+      sequence,
+      ...(completion
+        ? {
+            durationMs: completion.durationMs,
+            responseBody: completion.responseBody,
+            responseHeaders: completion.responseHeaders,
+          }
+        : {}),
+    },
+    ...entries,
+  ].slice(0, MAX_ENTRIES);
   emit();
 }
 
