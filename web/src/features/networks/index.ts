@@ -1,18 +1,11 @@
 /**
  * Networks feature (Worker 2 — plan Task 6: networks + eligibility + policy).
  *
- * Provider/adapter identity, capabilities, eligibility-relevant facts and
- * provider-owned boundaries (labeled explicitly — never an ADCOS-owned
- * universal topology). Placeholder barrel until Worker 2 lands it.
+ * Provider/adapter inspection built ONLY from what the backend exposes:
+ * the execution composition facts from the deterministic demonstration
+ * document, the provider-owned topology boundary (stated explicitly —
+ * no topology graph is ever drawn), and the consumed backends from
+ * readiness. No fake provider data, no invented health metrics.
  */
 
-export const NETWORKS_FEATURE = {
-  area: "networks",
-  route: "/networks",
-  owner: "worker-2",
-  notes: [
-    "provider-owned topology data must be labeled explicitly",
-    "unknown/degraded provider states must be explicit",
-    "no fake production network data — empty states when backend is empty",
-  ],
-} as const;
+export { NetworksView } from "./networks-view";

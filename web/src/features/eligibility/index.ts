@@ -1,16 +1,22 @@
 /**
- * Eligibility feature (Worker 2 — plan Task 6: eligibility/policy presentation).
+ * Eligibility / policy presentation (Worker 2 — plan Task 6).
  *
- * Renders WHY a provider is eligible/ineligible using backend reason data;
- * never recreates the policy engine in TypeScript. Placeholder barrel.
+ * The cross-cutting presentation layer for Worker 2's areas: WHY a flow
+ * state is what it is, from backend reason data only (notes, reason
+ * codes, evidence classes, statements vocabulary — all rendered
+ * VERBATIM), plus the shared in-memory read discipline (`useAdcosRead`)
+ * and the object-section composition primitives the feature pages are
+ * built from. The console never re-implements policy in TypeScript.
  */
 
-export const ELIGIBILITY_FEATURE = {
-  area: "eligibility",
-  route: "/networks",
-  owner: "worker-2",
-  notes: [
-    "surface policy constraints without a TypeScript policy engine",
-    "backend reason data drives eligibility explanations",
-  ],
-} as const;
+export {
+  useAdcosRead,
+  type AdcosReadState,
+} from "./use-adcos-read";
+export {
+  FlowStatePanel,
+  RefList,
+  RefValue,
+  VerbatimNote,
+} from "./flow-state";
+export { ObjectFieldGrid, ObjectSection } from "./object-section";
