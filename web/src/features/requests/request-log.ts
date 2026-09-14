@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * The in-memory request log — display DATA only, never authority.
  *

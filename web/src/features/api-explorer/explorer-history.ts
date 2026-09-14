@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * The explorer EXECUTION HISTORY — display data only, never authority.
  *

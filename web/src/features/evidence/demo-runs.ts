@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * The session's demonstration runs — display DATA only, never authority.
  *
