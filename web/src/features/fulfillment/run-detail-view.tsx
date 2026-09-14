@@ -1,4 +1,5 @@
 "use client";
+import "@/features/eligibility/fetch-binding-shim";
 
 /**
  * The demonstration run detail — the full fulfillment chain rendered from

@@ -146,6 +146,48 @@ values and reason codes VERBATIM; SOFTWARE vs physical evidence always
 through `EvidenceBadge`; every mutation surface embeds `ApiRequestPanel`;
 secrets never persisted (memory only).
 
+## Worker 2 surfaces (console/connectivity)
+
+Routes (all thin server pages rendering client feature views):
+
+| Route | Feature | What it renders |
+| --- | --- | --- |
+| `/` | `@/features/home` | system health (real `/readyz`), contracts summary by state (linked), recent activity (latest contracts + this session's request log), action-required (INTENT/OFFER_SELECTED + degraded backends), the fulfillment-demonstration affordance — no vanity KPIs |
+| `/connectivity` | `@/features/contracts` | the contracts DataTable; state / free-text / validity-overlap narrowing (client-side over the fetched list) |
+| `/connectivity/new` | `@/features/contracts/builder` | the intent builder: guided fields 1:1 with the canonical members + advanced canonical-JSON mode; unknown members preserved; byte-equal constraint serialization; exact `POST /api/2.0/intents` preview |
+| `/connectivity/contracts/[id]` | `@/features/contracts` | the lifecycle chain Requirements → Eligibility → Plan → Execution → Assurance → Continuous fulfillment; next-step cards (accept offers / activate); termination drawer (the contract's OWN condition vocabulary); leases (grant/renew/revoke with the validity-window rule); raw JSON |
+| `/networks` | `@/features/networks` | the execution composition (provider/adapter/access technology/standard mechanisms, SOFTWARE badge), the provider-topology boundary notice, consumed backends — no invented metrics |
+| `/fulfillment` | `@/features/fulfillment` | run the demonstration (custom instant), the session run registry (honest scope note), the contracts list, the replan link |
+| `/fulfillment/run/[instant]` | `@/features/fulfillment` | the full chain: boundary trace (with API reproduction), contract, plan (constraint_fingerprint, segments, state chain), execution milestones + samples, provider, evidence records, assurance, determinism note |
+| `/fulfillment/replan` | `@/features/replan` | the honest replan surface — no replan decisions are exposed by this deployment; the future card shape renders as a labeled wireframe |
+
+Worker 2's published interfaces (on top of Worker 1's):
+
+| Surface | Import | Notes |
+| --- | --- | --- |
+| Eligibility presentation | `@/features/eligibility` | `useAdcosRead` (the shared read discipline — refresh re-fetches, no cache), `FlowStatePanel` / `VerbatimNote` / `RefValue` / `RefList` (backend reason data VERBATIM), `ObjectSection` / `ObjectFieldGrid` (the section-card composition primitives) |
+| Demo-run registry | `@/features/fulfillment/demo-runs` | `useDemoRuns`, `registerDemoRun`, `DEFAULT_DEMO_INSTANT` — in-memory, session-scoped (the backend exposes no run registry) |
+| Builder serialization | `@/features/contracts/builder/serialization` | `buildIntentBody`, `parseAdvancedToGuided`, `validateGuidedState` — the pure constraint-preservation seam the tests pin byte-equality on |
+| Test fixtures | `web/tests/fixtures.ts` | every shape transcribed VERBATIM from captured runtime responses |
+| Test harness | `web/tests/harness.tsx` | `routeFetch` / `envelope` / `renderWithSession` — the real `SessionProvider` with the real connect() flow over a stubbed fetch boundary |
+
+### Two browser-reality findings (foundation; disclosed, worked around within Worker 2's surface)
+
+1. **`AdcosClient`'s detached fetch reference throws in every real
+   browser.** `this.doFetch(...)` (a prototype getter returning
+   `globalThis.fetch`) invokes the native fetch with `this` = the client
+   instance → `TypeError: Failed to execute 'fetch' on 'Window': Illegal
+   invocation` → every call surfaces as `backend-unreachable`. Tests never
+   caught it (they inject `fetchImpl`). Workaround on this branch:
+   `src/features/eligibility/fetch-binding-shim.ts` (idempotent, documented,
+   DELETE when the client binds its fetch).
+2. **The list discipline (pagination/filters in the GET request's JSON
+   body) is unsendable from browsers** — fetch/XHR forbid GET bodies. The
+   console performs the BODYLESS list read (the backend's default page,
+   20 items) and narrows client-side; when `has_more` is true the surface
+   shows the honest deeper-pagination notice with the canonical API form.
+   A query-string or POST list form is a Tech-Lead gap-closure candidate.
+
 ## Non-negotiables enforced here
 
 1. No alternate authority: React state holds presentation only; refresh

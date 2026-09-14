@@ -1,24 +1,32 @@
 "use client";
+import "@/features/eligibility/fetch-binding-shim";
 
 /**
  * ContractsIndexView — the Connectivity landing surface (Worker 2, plan
- * Task 5): the application's contracts with a REAL backend state filter,
- * client-side free-text + validity-overlap narrowing, cursor pagination
- * through the frozen list discipline (pagination rides the GET request's
- * JSON body), and row activation into the contract detail chain.
+ * Task 5): the application's contracts with state / free-text /
+ * validity-overlap narrowing (client-side over the fetched list, per the
+ * frozen work order) and row activation into the contract detail chain.
+ *
+ * BROWSER/LIST DISCIPLINE (a real console constraint, disclosed in the
+ * completion report): the developer API's list operations carry their
+ * pagination and filters in the GET request's JSON body — a form browsers
+ * categorically refuse to send (fetch/XHR forbid GET bodies). The console
+ * therefore performs the BODYLESS list read (the backend's default page,
+ * 20 items) and narrows client-side; when the backend reports more pages,
+ * the honest "deeper pagination" notice surfaces the canonical API form
+ * (reproducible outside the browser) instead of pretending to page.
  *
  * Truth discipline: every rendered row comes from the backend through
- * useAdcosRead; "Load more" grows the page target so the WHOLE visible
- * chain is always freshly fetched (refresh re-fetches truth — the backend
- * is the single authority, React state holds no cached truth).
+ * useAdcosRead (refresh re-fetches truth — the backend is the single
+ * authority, React state holds no cached truth).
  */
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { AdcosClient } from "@/lib/api/client";
-import type { Contract } from "@/lib/api/types";
+import type { Contract, ListResponse } from "@/lib/api/types";
 import {
+  ApiRequestPanel,
   DataTable,
   FilterBar,
   RefreshIcon,
@@ -30,43 +38,8 @@ import { registerCommand } from "@/features/search";
 import { useSession } from "@/lib/session";
 import { ConnectGuidance } from "./connect-guidance";
 
-const PAGE_LIMIT = 100;
-
 /** The backend states the developer API actually returns (verbatim vocabulary). */
 const STATE_FILTER_OPTIONS = ["INTENT", "OFFER_SELECTED", "CONTRACT_ACTIVE", "TERMINATED"];
-
-/** The freshly-fetched page chain (no cached pages — see fetchContractsChain). */
-interface ContractsChain {
-  items: Contract[];
-  hasMore: boolean;
-}
-
-/**
- * Fetch `pageTarget` pages of the contracts list through the typed client.
- * Growing the target re-fetches from page 1, so nothing shown is ever a
- * cached page: the rendered list is always exactly what the backend just
- * returned.
- */
-async function fetchContractsChain(
-  client: AdcosClient,
-  stateFilter: string,
-  pageTarget: number,
-): Promise<ContractsChain> {
-  let items: Contract[] = [];
-  let cursor: string | undefined;
-  let hasMore = true;
-  for (let page = 0; page < pageTarget && hasMore; page += 1) {
-    const envelope = await client.listContracts({
-      limit: PAGE_LIMIT,
-      ...(cursor ? { cursor } : {}),
-      ...(stateFilter ? { filters: { state: stateFilter } } : {}),
-    });
-    items = items.concat(envelope.data.items);
-    hasMore = envelope.data.has_more;
-    cursor = envelope.data.next_cursor;
-  }
-  return { items, hasMore };
-}
 
 export function ContractsIndexView() {
   const { status, client } = useSession();
@@ -76,7 +49,6 @@ export function ContractsIndexView() {
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState("");
   const [overlapDate, setOverlapDate] = useState("");
-  const [pageTarget, setPageTarget] = useState(1);
 
   // the palette entry for the builder (registered on mount, cleaned up)
   useEffect(
@@ -90,17 +62,23 @@ export function ContractsIndexView() {
     [],
   );
 
+  // the BODYLESS list read — the browser-compatible form of the list
+  // discipline (see the module docstring); filtering is client-side
   const read = useAdcosRead(
-    connected ? () => fetchContractsChain(client, stateFilter, pageTarget) : null,
-    [client, stateFilter, pageTarget],
+    connected ? () => client.listContracts() : null,
+    [client],
   );
-  const chain = read.data ?? null;
+  const chain: ListResponse<Contract> | null = read.data?.data ?? null;
 
-  // client-side narrowing over the freshly fetched chain
+  // client-side narrowing over the fetched default page (state, free
+  // text, validity overlap — all presentation-only, per the work order)
   const rows = useMemo(() => {
     const items = chain?.items ?? [];
     const needle = search.trim().toLowerCase();
     return items.filter((contract) => {
+      if (stateFilter && contract.state !== stateFilter) {
+        return false;
+      }
       if (
         needle &&
         !contract.id.toLowerCase().includes(needle) &&
@@ -124,10 +102,11 @@ export function ContractsIndexView() {
       }
       return true;
     });
-  }, [chain, search, overlapDate]);
+  }, [chain, search, overlapDate, stateFilter]);
 
   const fetchedCount = chain?.items.length ?? 0;
-  const clientNarrowing = search.trim() !== "" || overlapDate !== "";
+  const clientNarrowing =
+    search.trim() !== "" || overlapDate !== "" || stateFilter !== "";
 
   const columns: Column<Contract>[] = [
     {
@@ -241,10 +220,7 @@ export function ContractsIndexView() {
                 { value: "", label: "All states" },
                 ...STATE_FILTER_OPTIONS.map((state) => ({ value: state, label: state })),
               ],
-              onChange: (value) => {
-                setStateFilter(value);
-                setPageTarget(1);
-              },
+              onChange: setStateFilter,
             },
           ]}
           right={
@@ -298,7 +274,7 @@ export function ContractsIndexView() {
           rowAriaLabel={(row) => `Contract ${row.id}, state ${row.state}`}
         />
 
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-col gap-2">
           <p className="text-xs text-ink-faint" data-testid="contracts-count">
             {read.loaded
               ? clientNarrowing
@@ -306,15 +282,27 @@ export function ContractsIndexView() {
                 : `${fetchedCount} contracts`
               : "loading…"}
           </p>
-          {chain?.hasMore ? (
-            <button
-              type="button"
-              onClick={() => setPageTarget((target) => target + 1)}
-              disabled={read.loading}
-              className="inline-flex h-8 items-center rounded-md border border-line-strong bg-raised px-3 text-sm text-ink transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+          {chain?.has_more ? (
+            <div
+              data-testid="deeper-pagination-notice"
+              className="rounded-md border border-dashed border-warning/60 bg-warning/5 px-3 py-2"
             >
-              {read.loading ? "Loading…" : "Load more"}
-            </button>
+              <p className="text-sm text-ink-muted">
+                The backend reports more pages than shown. List pagination
+                and filters ride the developer API&apos;s GET request JSON
+                body — a form browsers cannot send (fetch forbids GET
+                bodies), so the console shows the bodyless default page.
+                Page through the API directly:
+              </p>
+              <div className="mt-2">
+                <ApiRequestPanel
+                  variant="compact"
+                  method="GET"
+                  path="/api/2.0/contracts"
+                  body={{ limit: 20, cursor: chain.next_cursor || "<next_cursor>", filters: { state: "<state>" } }}
+                />
+              </div>
+            </div>
           ) : null}
         </div>
       </div>

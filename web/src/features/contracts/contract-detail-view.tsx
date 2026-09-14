@@ -1,4 +1,5 @@
 "use client";
+import "@/features/eligibility/fetch-binding-shim";
 
 /**
  * ContractDetailView — the full lifecycle chain (Worker 2, plan Task 5):
@@ -98,7 +99,9 @@ export function ContractDetailView({ contractId }: { contractId: string }) {
     [client, contractId],
   );
   const leasesRead = useAdcosRead(
-    connected ? () => client.listLeases({ limit: 100 }).then((envelope) => envelope.data) : null,
+    // bodyless list read (the browser-compatible form; filtered
+    // client-side by contract_id below)
+    connected ? () => client.listLeases().then((envelope) => envelope.data) : null,
     [client, contractId],
   );
 

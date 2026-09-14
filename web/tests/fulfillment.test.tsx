@@ -9,7 +9,7 @@
  * - "Run demonstration" POSTs {"instant"} to /demo/contract-fulfillment
  *   and renders the compact summary (contract link, SOFTWARE badge);
  * - disconnected: NO authenticated contracts fetch; connect guidance;
- * - connected: GET /api/2.0/contracts (limit 100) with auth headers and
+ * - connected: GET /api/2.0/contracts (bodyless default page) with auth headers and
  *   the contract rows link into /connectivity/contracts/{id};
  * - the run detail renders the FULL chain verbatim (boundary trace, plan
  *   with constraint_fingerprint/segment state/operations/tie_break,
@@ -253,7 +253,7 @@ describe("Fulfillment overview", () => {
     ).toBeInTheDocument();
   });
 
-  it("connected: reads GET /api/2.0/contracts (limit 100, authed) and links rows to the contract detail", async () => {
+  it("connected: reads GET /api/2.0/contracts (bodyless default page, authed) and links rows to the contract detail", async () => {
     const fetchMock = makeFetcher({
       ...APPLICATION_ROUTE,
       "GET /api/2.0/contracts": envelope(FIXTURE_CONTRACTS_LIST),
@@ -270,14 +270,15 @@ describe("Fulfillment overview", () => {
       expect(screen.getByText(first.contract_id)).toBeInTheDocument();
     });
 
-    // the authenticated list read: GET with the pagination body + headers
+    // the authenticated list read: the BODYLESS GET (browsers cannot send
+    // the API's GET-body list discipline) with the auth headers
     const contractsCalls = fetchCalls(fetchMock).filter(
       ([path]) => path === "/api/2.0/contracts",
     );
     expect(contractsCalls.length).toBeGreaterThanOrEqual(1);
     const [, init] = contractsCalls[0];
     expect(init?.method).toBe("GET");
-    expect(JSON.parse(String(init?.body))).toEqual({ limit: 100 });
+    expect(init?.body).toBeUndefined();
     const headers = init?.headers as Record<string, string>;
     expect(headers["X-ADCOS-Application"]).toBe(FIXTURE_SESSION.applicationId);
     expect(headers["X-ADCOS-Credential"]).toBe(FIXTURE_SESSION.credential);

@@ -1,4 +1,5 @@
 "use client";
+import "@/features/eligibility/fetch-binding-shim";
 
 /**
  * HomeView — the dashboard that answers, immediately and honestly:
@@ -43,9 +44,12 @@ export function HomeView() {
   ]);
 
   // authenticated read — suspended (null fetcher) until a session exists,
-  // so the contracts route is NEVER called while disconnected
+  // so the contracts route is NEVER called while disconnected. The
+  // BODYLESS list form (the backend's default page) is the only one a
+  // browser can send: the API's list pagination rides the GET request's
+  // JSON body, which fetch refuses to transmit (disclosed in the report).
   const contractsRead = useAdcosRead(
-    connected ? () => client.listContracts({ limit: 100 }) : null,
+    connected ? () => client.listContracts() : null,
     [client, connected],
   );
   const contracts: Contract[] | null =

@@ -1,4 +1,5 @@
 "use client";
+import "@/features/eligibility/fetch-binding-shim";
 
 /**
  * NetworksView — provider/adapter inspection built ONLY from what the

@@ -112,7 +112,7 @@ describe("Connectivity — contracts index", () => {
     });
   });
 
-  it("sends the REAL backend state filter in the GET body when a lifecycle state is selected", async () => {
+  it("narrows client-side by lifecycle state (the BODYLESS read — browsers cannot send the API's GET-body list discipline)", async () => {
     const fetchMock = trackedFetch({
       ...APPLICATION_ROUTE,
       "GET /api/2.0/contracts": envelope(FIXTURE_CONTRACTS_LIST),
@@ -128,27 +128,62 @@ describe("Connectivity — contracts index", () => {
       expect(screen.getByText(FIXTURE_CONTRACTS_LIST.items[0].id)).toBeInTheDocument();
     });
 
+    // the read is BODYLESS (the browser-compatible form of the frozen
+    // list discipline — fetch refuses GET bodies, so pagination/filters
+    // cannot ride the request from a browser)
+    const callsBefore = fetchMock.mock.calls.filter(
+      ([path]) => path === "/api/2.0/contracts",
+    );
+    expect(callsBefore).toHaveLength(1);
+    expect(callsBefore[0][1]?.body).toBeUndefined();
+
     fireEvent.change(screen.getByLabelText("Lifecycle state"), {
       target: { value: "CONTRACT_ACTIVE" },
     });
 
+    // the narrowing is client-side over the fetched list: no new fetch,
+    // and only CONTRACT_ACTIVE rows remain
     await waitFor(() => {
-      const contractsCalls = fetchMock.mock.calls.filter(
-        ([path]) => path === "/api/2.0/contracts",
-      );
-      expect(contractsCalls.length).toBeGreaterThanOrEqual(2);
+      expect(screen.getByText(FIXTURE_CONTRACTS_LIST.items[0].id)).toBeInTheDocument();
     });
-
-    // the filter rides the GET request's JSON body — the backend's frozen
-    // list discipline — alongside the page limit
-    const calls = fetchMock.mock.calls.filter(
+    const callsAfter = fetchMock.mock.calls.filter(
       ([path]) => path === "/api/2.0/contracts",
     );
-    const body = JSON.parse(String(calls[calls.length - 1][1]?.body));
-    expect(body).toEqual({
-      limit: 100,
-      filters: { state: "CONTRACT_ACTIVE" },
+    expect(callsAfter).toHaveLength(1);
+
+    fireEvent.change(screen.getByLabelText("Lifecycle state"), {
+      target: { value: "TERMINATED" },
     });
+    await waitFor(() => {
+      expect(
+        screen.queryByText(FIXTURE_CONTRACTS_LIST.items[0].id),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("surfaces the honest deeper-pagination notice when the backend reports more pages", async () => {
+    const fetchMock = trackedFetch({
+      ...APPLICATION_ROUTE,
+      "GET /api/2.0/contracts": envelope({
+        ...FIXTURE_CONTRACTS_LIST,
+        has_more: true,
+        next_cursor: "cursor-2",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithSession(
+      <ContractsIndexView />,
+      fetchMock as unknown as ReturnType<typeof routeFetch>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("deeper-pagination-notice")).toBeInTheDocument();
+    });
+    // the notice explains WHY (browsers cannot send the GET-body list
+    // discipline) and reproduces the canonical API form
+    expect(screen.getByText(/fetch forbids GET bodies/)).toBeInTheDocument();
+    expect(screen.getByText("/api/2.0/contracts")).toBeInTheDocument();
   });
 
   it("narrows client-side by free-text search and by the validity-overlapping date (no extra fetch)", async () => {

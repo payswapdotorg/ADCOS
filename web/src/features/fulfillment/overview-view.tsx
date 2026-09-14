@@ -1,4 +1,5 @@
 "use client";
+import "@/features/eligibility/fetch-binding-shim";
 
 /**
  * The Fulfillment overview — run the deterministic demonstration, revisit
@@ -110,7 +111,9 @@ export function FulfillmentOverview() {
   // the contracts read is AUTHENTICATED — suspended (null fetcher) until a
   // session exists, with honest connect guidance in its place
   const contractsRead = useAdcosRead(
-    connected ? () => client.listContracts({ limit: 100 }) : null,
+    // bodyless list read — the browser-compatible form (the API's list
+    // pagination rides the GET JSON body, which browsers cannot send)
+    connected ? () => client.listContracts() : null,
     [connected, client],
   );
   const contracts: Contract[] = contractsRead.data?.data.items ?? [];
