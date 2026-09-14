@@ -728,7 +728,8 @@ class Harness:
             )
             return
         marker = "No console route matches this path."
-        if marker not in (root.body or ""):
+        root_text = (root.body or b"").decode("utf-8", "replace")
+        if marker not in root_text:
             self.record(
                 "FAIL",
                 "error-surface",
