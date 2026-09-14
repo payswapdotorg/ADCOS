@@ -136,3 +136,26 @@
 
 T6 complete (w3: Vercel config, runbook, verify harness). T7/T8: run the
 runbook with provider credentials after T2–T6 integration.
+
+## Console deployment (DEC-0127 close, 2026-09-14)
+
+- The operator supplied the Vercel deployment token; the console tree
+  (main through the four DEC-0127 PRs + RECON-049) deployed to the
+  existing `adcos` production project.
+- The first console deployment exposed a REAL routing defect: the
+  legacy `builds`+`routes` catch-all terminates at literal filesystem
+  resolution — the console's dynamic routes, its not-found funnel and
+  their RSC payloads were answered by the platform static 404. Repaired
+  with the one-word `"continue": true` (a04b3ee) after local
+  build-output forensics (the builder's routing phases + handle
+  checkpoints understood from `vercel build`'s emitted config).
+- The console's not-found boundary is now REACHABLE in production
+  (`[...unmatched]` catch-all added, 8764e4e) and presents the backend's
+  `route-unknown` vocabulary verbatim.
+- The T8 harness's check 8 carries the disclosed console-topology
+  amendment (API-space typed envelope + console-space not-found
+  boundary) — the de1a220 reconciliation class.
+- FINAL STATE: main = a04b3ee, T8 PASS 8/8 on the production alias,
+  the console handoff's seven deployment-acceptance items VERIFIED
+  (browser acceptance over https://adcos.vercel.app with zero page
+  errors; the full record in docs/deployment/acceptance-record.md §C).

@@ -178,3 +178,176 @@ provider idle-suspension without cold starts, holds its durable state
 in Neon, discloses its one degraded backend honestly (Upstash, with
 the operator action item recorded in §3), and has exercised the
 rollback path end-to-end. T7 and T8 are COMPLETE.
+
+---
+
+# The Developer Console deployment acceptance (DEC-0127 program close)
+
+**Date**: 2026-09-14 (UTC) · **Authority**: DEC-0127 (the developer
+console implementation program) via `docs/tech-lead/ADCOS-DEVELOPER-CONSOLE-HANDOFF.md`
+§Deployment acceptance · **Operator directive**: the Vercel deployment
+token supplied 2026-09-14 (the one credential this step awaited).
+
+This section is the runbook §10 evidence collection for the console
+deployment. The acceptance is **SOFTWARE-CLASS ONLY** (the statement
+in §8 carries forward unchanged).
+
+## C1. The accepted implementation SHA
+
+`a04b3ee` — `console(deploy): the catch-all route continues into the
+builder's routing phases` on `main`, on top of the merged console
+delivery line (PRs #55/#56/#57/#58 — the DEC-0127 program — RECON-pinned
+through LEDGER-RECON-049) plus the deployment-session commits:
+
+- `e4dd80c` the home checked-at test determinism repair (test-side)
+- `aab5182`/`c5a8b78` the Vercel station-link gitignore hygiene
+- `8764e4e` the `[...unmatched]` catch-all + the T8 check-8 console-topology
+  amendment (the disclosed reconciliation, same class as `de1a220`)
+- `a04b3ee` **the accepted head** (the one-word routing repair:
+  `"continue": true` on the legacy catch-all route)
+
+## C2. The console production deployments
+
+- **D1c (the first console deployment)**:
+  `dpl_7jiHPEJGSLCSw4hjCTdDTUGunxBu` @ the tree of `8764e4e` —
+  https://adcos.vercel.app served the console at `GET /` for the first
+  time; T8 7/8 (check 8 FAIL exposed the routing defect, below).
+- **D2c (the catch-all attempt)**: `adcos-4xigagf86…` @ the same tree —
+  proved the catch-all alone does NOT reach the Next function for
+  unmatched paths (the platform static 404 persisted).
+- **D3c (THE ACCEPTED CONSOLE DEPLOYMENT)**: `adcos-p6bu2hlhu…` @ the
+  tree of `a04b3ee` (uploaded from a working tree byte-identical to the
+  `a04b3ee` commit; the repair was committed immediately after) —
+  https://adcos.vercel.app (READY, PROMOTED; the production alias routes
+  here). T8 **8/8 PASS** (§C4). A final deploy from the clean committed
+  checkout re-affirms the SHA↔deployment identity (§C6).
+
+## C3. The routing defect and the disclosed repair (integration
+forensics)
+
+The legacy `builds`+`routes` catch-all
+`{"src": "/(.*)", "dest": "/web/$1"}` **terminates at literal filesystem
+resolution**: every path with no static build output — the console's
+dynamic routes (`/connectivity/contracts/[id]`,
+`/fulfillment/run/[instant]`), the `[...unmatched]` not-found funnel,
+and every RSC payload request for them — was answered by the platform's
+static 404 before any function was consulted. `GET /connectivity/contracts/<id>`
+→ platform 404 in D1c/D2c while `/web/connectivity/contracts/<id>`
+(direct, prefixed) → 200 proved the builder's own routing phases worked
+and only the user-route delegation was broken. The repair —
+`"continue": true` on that one route — lets the rewritten path flow into
+the @vercel/next builder's routing phases (filesystem checkpoints, RSC
+variant rewrites, dynamic function addressing). Verified live: the
+dynamic contract detail, the not-found boundary, RSC client navigation
+(`text/x-component` payloads), and the Python runtime surface all serve
+correctly on the production alias.
+
+## C4. The T8 harness (the amended check 8)
+
+`python3 deploy/verify.py --base-url https://adcos.vercel.app
+--expect-mode production` → **PASS 8/8** on D3c:
+
+1. healthz — 200 ok=true service=adcos-runtime
+2. readyz — 200 mode=production; postgres=ready, evidence_store=ready,
+   upstash=degraded-ok (the unchanged honest disclosure; §3 of the prior
+   record carries the operator action item)
+3. demo-fulfillment — 200 evidence_class=SOFTWARE, chain non-empty
+4. determinism — byte-identical (sha256:577e24cfd361 — the same digest
+   as the prior acceptance: the demo contract is unchanged by the
+   console deployment)
+5. persistence — the canonical contract round-trip across serverless
+   invocations (Neon holds it)
+6. coordination-backend — configured-healthy (degraded-ok)
+7. artifact-backend — configured-healthy (ready)
+8. error-surface (the console-topology amendment, disclosed in the
+   harness docstring): **(a)** API space — `GET /api/nonexistent` → the
+   runtime's typed envelope `reason_code=not-found` (the boundary the
+   runtime owns; the handoff's "API errors retain canonical reason
+   codes" holds); **(b)** console space — `GET /nonexistent` → 404
+   rendered by the console's not-found boundary (the `[...unmatched]`
+   funnel presenting the backend's own `route-unknown` vocabulary —
+   developerapi/errors.py ROUTE_UNKNOWN — never an invented surface).
+
+## C5. The console handoff's deployment acceptance — item by item
+
+1. **`GET /` returns the actual ADCOS console** — VERIFIED (browser:
+   the workbench renders; title `Home`; the full nav, the session menu,
+   the command palette).
+2. **`/healthz` and `/readyz` semantics intact** — VERIFIED (T8 checks
+   1–2 unchanged; the Settings page renders the live documents; the
+   Home system-health card shows mode/environment VERBATIM with the
+   per-backend states).
+3. **Core resource journeys work in the deployed environment** —
+   VERIFIED (browser: the demo create journey on Fulfillment →
+   "Demonstration complete", evidence_class SOFTWARE; the demo-run read
+   journey `/fulfillment/run/2026-09-14T15:00:00Z` with the full record
+   anatomy; the evidence read journey with the verbatim class
+   vocabulary; the contract detail page honestly discloses its reads
+   are authenticated developer-API reads; zero page errors across the
+   whole browser session).
+4. **A create/mutation journey reproducible through the displayed API
+   request** — VERIFIED (the Fulfillment demo card displays
+   `POST /demo/contract-fulfillment` with the body AND the copyable
+   curl; the Request Inspector captured the console-made POST with the
+   per-request drawer's curl reproduction — screenshot
+   `scripts/logs/prod-request-drawer.png` at the station).
+5. **API errors retain canonical reason codes** — VERIFIED (§C4 item 8a;
+   plus the console's not-found boundary renders `route-unknown`
+   VERBATIM with the request descriptor).
+6. **R0–R9 governance and deployment checks green** — VERIFIED (the
+   governance trio at `a04b3ee`: current_spec_check PASS,
+   tech_lead_guard PASS, architecture_drift_guard PASS; the web suite
+   212/212 incl. the 2 new not-found-boundary tests; T8 8/8).
+7. **No physical evidence obligations claimed** — VERIFIED (the
+   evidence-class legend renders `physical / network` as
+   NOT-ACHIEVABLE-BY-THIS-DEPLOYMENT verbatim; the demo evidence is
+   SOFTWARE and the page states "SOFTWARE evidence never becomes a
+   physical PASS").
+
+## C6. Rollback posture
+
+The rollback PATH was proven end-to-end in the prior acceptance (§2:
+the D1/D2 alias switch, instant, state preserved). The same
+routing-layer mechanism applies to the console deployments; the app
+remains stateless (Neon journal rows and R2 artifacts persist through
+any alias switch). No new rollback drill was required by the console
+handoff's acceptance list; the operator can exercise
+`vercel rollback` against D1c/D2c at will.
+
+## C7. Deviations and disclosures (console deployment)
+
+- The routing repair (`a04b3ee`) is a deployment-topology fix, not an
+  implementation-domain change (vercel.json only).
+- The T8 check-8 amendment is disclosed in the harness docstring and
+  this record (the same class as the `de1a220` widening).
+- The console-space not-found boundary (`[...unmatched]` → not-found)
+  presents the backend's `route-unknown` reason with a locally-authored
+  message ("No console route matches this path.") — the reason code is
+  backend vocabulary VERBATIM; the message is the boundary's own
+  framing, disclosed here.
+- The Upstash degraded-ok state is UNCHANGED from the prior acceptance
+  (the operator action item — the REST hostname of record — still
+  stands; one env change + redeploy activates the distributed limiter).
+- The production demo credential remains out-of-band by design (the
+  issuance key is encrypted in the Vercel project env; the console's
+  session journeys that need it were accepted locally against the
+  sandbox runtime and are exercisable in production the moment an
+  operator connects a real issued credential).
+
+## C8. Software-class-only statement (carried forward)
+
+The console deployment acceptance is **SOFTWARE-CLASS ONLY**. It does
+not prove physical connectivity and does not satisfy or modify the
+physical evidence obligations EVID-002..EVID-008 — the independent
+physical-validation track (the R4/W040 hardware batteries) is untouched
+by this deployment and remains governed by its own accepted
+authorities.
+
+## Verdict (console program)
+
+**THE ADCOS DEVELOPER CONSOLE IS DEPLOYED.** The production service at
+https://adcos.vercel.app serves the console at `GET /`, the runtime's
+health/readiness/error semantics are intact at their boundaries, the
+core resource journeys work in the deployed environment, the mutation
+journey is reproducible through displayed API requests, and the
+governance gates are green. DEC-0127's deployment step is COMPLETE.
