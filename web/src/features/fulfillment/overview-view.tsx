@@ -1,5 +1,4 @@
 "use client";
-import "@/features/eligibility/fetch-binding-shim";
 
 /**
  * The Fulfillment overview — run the deterministic demonstration, revisit

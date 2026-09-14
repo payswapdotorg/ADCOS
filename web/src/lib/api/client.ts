@@ -136,7 +136,15 @@ export class AdcosClient {
   }
 
   private get doFetch(): typeof fetch {
-    return this.injectedFetch ?? globalThis.fetch;
+    // BOUND at resolution: a native fetch invoked through a prototype
+    // getter's member-call receives the client instance as `this` and
+    // every real browser's WebIDL binding rejects it with "Illegal
+    // invocation" (the console-connectivity delivery's disclosed
+    // foundation defect — fixed here at the root; the temporary
+    // compatibility shim installed by Worker 2 is retired with this
+    // change). Injected test fetches are plain this-tolerant functions
+    // and never needed the binding.
+    return this.injectedFetch ?? globalThis.fetch.bind(globalThis);
   }
 
   /** The raw transport — one place for headers, decode, and errors.

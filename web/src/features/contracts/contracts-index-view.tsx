@@ -1,5 +1,4 @@
 "use client";
-import "@/features/eligibility/fetch-binding-shim";
 
 /**
  * ContractsIndexView — the Connectivity landing surface (Worker 2, plan

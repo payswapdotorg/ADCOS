@@ -1,5 +1,4 @@
 "use client";
-import "@/features/eligibility/fetch-binding-shim";
 
 /**
  * BuilderView — the connectivity-intent builder (Worker 2, plan Task 5):

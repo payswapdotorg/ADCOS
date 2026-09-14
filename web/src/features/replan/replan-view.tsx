@@ -1,5 +1,4 @@
 "use client";
-import "@/features/eligibility/fetch-binding-shim";
 
 /**
  * The Replanning surface — an HONEST explainable page, not a dashboard of
