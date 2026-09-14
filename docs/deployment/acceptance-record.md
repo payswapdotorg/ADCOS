@@ -215,12 +215,18 @@ through LEDGER-RECON-049) plus the deployment-session commits:
 - **D2c (the catch-all attempt)**: `adcos-4xigagf86…` @ the same tree —
   proved the catch-all alone does NOT reach the Next function for
   unmatched paths (the platform static 404 persisted).
-- **D3c (THE ACCEPTED CONSOLE DEPLOYMENT)**: `adcos-p6bu2hlhu…` @ the
-  tree of `a04b3ee` (uploaded from a working tree byte-identical to the
-  `a04b3ee` commit; the repair was committed immediately after) —
-  https://adcos.vercel.app (READY, PROMOTED; the production alias routes
-  here). T8 **8/8 PASS** (§C4). A final deploy from the clean committed
-  checkout re-affirms the SHA↔deployment identity (§C6).
+- **D3c (the routing-repair deployment)**: `adcos-p6bu2hlhu…`
+  (`dpl_2N438DE5Aj9Jx89CXCkBudFtTMfT`) @ the tree of `a04b3ee`
+  (uploaded from a working tree byte-identical to the `a04b3ee`
+  commit; the repair was committed immediately after). T8 **8/8 PASS**
+  (§C4) — the first fully-green console deployment.
+- **D4c (THE ACCEPTED CONSOLE DEPLOYMENT, final)**:
+  `adcos-ivgdapdec…` (`dpl_6v6CPeoiBLw2Bxkn44wAQm4YeZT4`) @ the clean
+  committed checkout of `eaa2c77` (this record + the progress entry;
+  runtime content identical to `a04b3ee`) — https://adcos.vercel.app
+  (READY, PROMOTED; the production alias routes here). T8 re-run
+  **8/8 PASS** against it; the browser acceptance (§C5) was performed
+  against the same content.
 
 ## C3. The routing defect and the disclosed repair (integration
 forensics)
