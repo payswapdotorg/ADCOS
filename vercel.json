@@ -16,6 +16,6 @@
     { "src": "/api/(.*)", "dest": "/api/index.py" },
     { "src": "/(healthz|readyz)", "dest": "/api/index.py" },
     { "src": "/demo/(.*)", "dest": "/api/index.py" },
-    { "src": "/(.*)", "dest": "/web/$1" }
+    { "src": "/(.*)", "dest": "/web/$1", "continue": true }
   ]
 }
