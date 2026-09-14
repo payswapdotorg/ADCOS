@@ -31,3 +31,7 @@ __pycache__/
 .vercel/
 .vercel
 .env*
+
+# vercel CLI local-build side artifacts (station debris — regenerated per build)
+pyproject.toml
+.python-version
