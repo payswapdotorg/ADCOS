@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { AdcosEnvelope, Application } from "@/lib/api/types";
 import { useSession } from "@/lib/session";
 import { registerCommand } from "@/features/search";
@@ -70,6 +71,22 @@ export function DevelopersWorkspace() {
           and webhook endpoints. Every value renders exactly as the backend
           returns it; every request the page makes is reproducible in place.
         </p>
+        {/* the area's sub-surfaces (the frozen UX: the API Explorer and
+            the Request Inspector are Developers-area content) */}
+        <nav aria-label="Developers area" className="mt-2 flex flex-wrap gap-4 text-sm">
+          <Link
+            href="/developers/explorer"
+            className="font-medium text-accent hover:underline"
+          >
+            API Explorer →
+          </Link>
+          <Link
+            href="/developers/requests"
+            className="font-medium text-accent hover:underline"
+          >
+            Request inspector →
+          </Link>
+        </nav>
       </div>
     </header>
   );
