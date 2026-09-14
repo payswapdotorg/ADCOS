@@ -112,8 +112,12 @@ describe("Home — system health", () => {
     expect(
       screen.getByText("no durable backends (sandbox mode)"),
     ).toBeInTheDocument();
-    // the check is labeled with a client-side timestamp
-    expect(screen.getByText(/checked at/)).toBeInTheDocument();
+    // the check is labeled with a client-side timestamp — set in an effect
+    // on the commit AFTER the data lands, so the assertion must wait for
+    // that second commit (deterministic under full-suite event-loop load)
+    await waitFor(() => {
+      expect(screen.getByText(/checked at/)).toBeInTheDocument();
+    });
     // provider/adapter inspection is one link away
     expect(
       screen
