@@ -39,12 +39,16 @@ spec/work-items-1.1.md
 spec/work-items.md
 spec/workflow.md
 
-# the operator/CI surface (never production)
-tools/
-.github/
-deploy/
-worker-charters/
-docs/
+# the operator/CI surface (never production) — ANCHORED to the repo root:
+# unanchored gitignore patterns (docs/) match the SAME name at EVERY level,
+# which silently excluded web/src/features/docs/ (the V2 docs feature) from
+# the upload and broke the production build (the module-not-found forensics
+# of the first V2 deploy attempt).
+/tools/
+/.github/
+/deploy/
+/worker-charters/
+/docs/
 
 # the console's local build/test artifacts — installed and built by the
 # @vercel/next build step itself; never runtime data for the Python
