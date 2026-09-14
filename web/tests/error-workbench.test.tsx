@@ -558,3 +558,141 @@ describe("Error workbench", () => {
     expect(screen.getByText(/#99, which is not in the captured log/)).toBeInTheDocument();
   });
 });
+
+describe("Error workbench — the V2 troubleshooting guidance (DEC-0128, Task 7)", () => {
+  it("renders the ADDITIONAL six-part guidance section for a canonical code, with the V1 anatomy intact", async () => {
+    const fetchMock = routeFetch({
+      "GET /api/2.0/application": envelope(FIXTURE_APPLICATION),
+      "GET /api/2.0/contracts": { __status: 404, body: NOT_FOUND_ERROR },
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    ensureRequestRecorder();
+
+    renderWorkbench(
+      <>
+        <ListContractsDriver />
+        <ErrorWorkbench />
+      </>,
+    );
+
+    const card = await waitFor(() => {
+      return screen.getByTestId("captured-error");
+    });
+
+    // the guidance section renders for the canonical boundary code
+    const guidance = within(card).getByTestId("workbench-troubleshooting-guidance");
+    expect(guidance).toBeInTheDocument();
+    expect(guidance.textContent).toContain("Troubleshooting guidance");
+    expect(within(guidance).getByText("resource-unknown")).toBeInTheDocument();
+    expect(guidance.textContent).toContain("Resource not found");
+    expect(guidance.textContent).toContain("never replaces it");
+
+    // the six-part structure, scoped to the guidance section (the V1
+    // anatomy carries four of these labels too — the section is clearly
+    // labelled and separately scoped)
+    for (const label of [
+      "what happened",
+      "why",
+      "affected resource",
+      "next action",
+      "API reproduction",
+      "learn more",
+    ]) {
+      expect(within(guidance).getByText(label)).toBeInTheDocument();
+    }
+    expect(
+      within(guidance).getByText(/The addressed resource id resolves to nothing/),
+    ).toBeInTheDocument();
+
+    // learn more links to the reason-code reference anchor, the
+    // troubleshooting hub and the concept pages
+    expect(
+      within(guidance).getByRole("link", { name: "The reason-code reference" }),
+    ).toHaveAttribute("href", "/docs/errors#code-resource-unknown");
+    expect(
+      within(guidance).getByRole("link", { name: "Troubleshooting paths" }),
+    ).toHaveAttribute("href", "/docs/troubleshooting");
+    expect(
+      within(guidance).getByRole("link", { name: "Connectivity contract" }),
+    ).toHaveAttribute("href", "/docs/concepts/connectivity-contract");
+
+    // the V1 anatomy surfaces stay INTACT around the addition: the
+    // verbatim message, the verbatim reason chips, the V1 dictionary
+    // guidance and the masked curl reproduction
+    expect(
+      within(card).getByText(`contract ${UNKNOWN_CONTRACT_ID} is unknown`),
+    ).toBeInTheDocument();
+    for (const reason of within(card).getAllByTestId("workbench-reason")) {
+      expect(reason).toHaveTextContent("resource-unknown");
+    }
+    expect(within(card).getByText("Contract not found")).toBeInTheDocument();
+    expect(within(card).getByTestId("workbench-curl")).toBeInTheDocument();
+  });
+
+  it("renders the guidance for a canonical code OUTSIDE V1's small dictionary, with V1's honest note still present", async () => {
+    const fetchMock = routeFetch({
+      "GET /api/2.0/application": envelope(FIXTURE_APPLICATION),
+      "GET /api/2.0/contracts": { __status: 429, body: RATE_LIMITED_ERROR },
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    ensureRequestRecorder();
+
+    renderWorkbench(
+      <>
+        <ListContractsDriver />
+        <ErrorWorkbench />
+      </>,
+    );
+
+    const card = await waitFor(() => {
+      return screen.getByTestId("captured-error");
+    });
+
+    // rate-limited is canonical (the errors module knows it) → the V2
+    // guidance section renders with the six-part anatomy
+    const guidance = within(card).getByTestId("workbench-troubleshooting-guidance");
+    expect(within(guidance).getByText("rate-limited")).toBeInTheDocument();
+    expect(
+      within(guidance).getByText(/The request exceeded the application's rate limit/),
+    ).toBeInTheDocument();
+    expect(
+      within(guidance).getByRole("link", { name: "The reason-code reference" }),
+    ).toHaveAttribute("href", "/docs/errors#code-rate-limited");
+
+    // the V1 honest dictionary note stays, byte-identical (the addition
+    // never rewrites the V1 guidance row)
+    expect(within(card).getByText(/not in the known-code dictionary/)).toBeInTheDocument();
+  });
+
+  it("keeps unknown reason codes on the V1 honest-unknown treatment — NO guidance section", async () => {
+    const fetchMock = routeFetch({
+      "GET /api/2.0/application": envelope(FIXTURE_APPLICATION),
+      "GET /api/2.0/contracts": { __status: 422, body: MYSTERY_ERROR },
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    ensureRequestRecorder();
+
+    renderWorkbench(
+      <>
+        <ListContractsDriver />
+        <ErrorWorkbench />
+      </>,
+    );
+
+    const card = await waitFor(() => {
+      return screen.getByTestId("captured-error");
+    });
+
+    // no canonical code → no troubleshooting section, nothing invented
+    expect(within(card).queryByTestId("workbench-troubleshooting-guidance")).toBeNull();
+
+    // the V1 honest fallback treatment stands unchanged
+    expect(within(card).getAllByTestId("workbench-reason")[0]).toHaveTextContent(
+      "mystery-code",
+    );
+    expect(
+      within(card).getByText("Reason code not in the known dictionary"),
+    ).toBeInTheDocument();
+    expect(within(card).getByText(/no specific guidance for this code/)).toBeInTheDocument();
+  });
+});

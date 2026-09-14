@@ -2,21 +2,32 @@
  * Home dashboard tests — REAL captured shapes only (tests/fixtures.ts),
  * fetch mocked at the global boundary through the shared harness.
  *
- * Covers the frozen UX spec's Home demands:
+ * Covers the frozen UX spec's Home demands (V1, regression-protected)
+ * plus the V2 first-run assertions (plan Task 4):
  * - readiness mode/environment VERBATIM + honest degraded presentation;
  * - the contracts summary (state counts "of N fetched", detail links);
  * - the session gate: NO authenticated contracts read while
  *   disconnected, honest connect guidance instead;
- * - fresh-account guidance when the list is empty;
+ * - fresh-account guidance when the list is empty (V1 assertions kept;
+ *   the V2 education surface is covered in depth by first-run.test.tsx);
  * - the demonstration affordance: exact POST body/method/path, honest
  *   summary (SOFTWARE evidence badge, verbatim mode/environment,
  *   RELEASED final segment state), registration in the shared
- *   demo-run registry, and verbatim reason display on rejection.
+ *   demo-run registry, and verbatim reason display on rejection;
+ * - V2: connected-nonempty keeps the EXPERT dashboard primary (no
+ *   education surface, the V1 header), while disconnected shows the
+ *   education surface (the §5 anchor sentence) alongside the honest
+ *   V1 disconnected cards.
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { HomeView } from "@/features/home";
+import {
+  ADCOS_ANCHOR_SENTENCE,
+  FIRST_CONTRACT_PATH_TEST_ID,
+  FIRST_RUN_TEST_ID,
+} from "@/features/home/first-run-card";
 import {
   __resetDemoRunsForTests,
   getDemoRuns,
@@ -169,6 +180,13 @@ describe("Home — what connectivity is managed", () => {
     await waitFor(() => {
       expect(screen.getByText(/of 2 fetched/)).toBeInTheDocument();
     });
+    // V2: a connected session WITH contracts keeps the expert dashboard
+    // primary — the product-education surface does not mount, and the V1
+    // workbench header stays.
+    expect(screen.queryByTestId(FIRST_RUN_TEST_ID)).toBeNull();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Home" }),
+    ).toBeInTheDocument();
     // state counts computed from the fetched list (2 × CONTRACT_ACTIVE)
     expect(screen.getByTestId("state-count-CONTRACT_ACTIVE")).toHaveTextContent(
       "2",
@@ -225,6 +243,13 @@ describe("Home — what connectivity is managed", () => {
 
     renderBare(<HomeView />);
 
+    // V2: the disconnected (fresh) state shows the product-education
+    // surface — the frozen §5 anchor sentence, verbatim — alongside the
+    // honest V1 disconnected cards below.
+    expect(
+      screen.getByText(ADCOS_ANCHOR_SENTENCE),
+    ).toBeInTheDocument();
+
     // the platform read still works without a session
     await waitFor(() => {
       expect(screen.getByText("all backends ready")).toBeInTheDocument();
@@ -257,6 +282,15 @@ describe("Home — what connectivity is managed", () => {
     await waitFor(() => {
       expect(screen.getByText("No contracts yet")).toBeInTheDocument();
     });
+    // V2: connected-and-empty shows the education surface WITH the
+    // obvious first-contract path (the V1 empty-state guidance stays).
+    expect(screen.getByTestId(FIRST_RUN_TEST_ID)).toBeInTheDocument();
+    expect(
+      screen.getByTestId(FIRST_CONTRACT_PATH_TEST_ID),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Create your first contract/ }),
+    ).toBeInTheDocument();
     const builder = screen
       .getAllByRole("link")
       .find(

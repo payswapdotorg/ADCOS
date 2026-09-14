@@ -9,6 +9,12 @@
  * On mount it registers the default navigation commands into the command
  * registry (the palette's "Navigate" group) — the same vocabulary the
  * sidebar shows, so keyboard and mouse navigation agree.
+ *
+ * V2 learning surfaces (DEC-0128, Task 7): the Learn entries — Docs,
+ * Quickstart, Playbooks and the tour — register here exactly like the
+ * V1 entries (nav-docs / nav-quickstart / nav-playbooks / nav-tour) and
+ * appear in the sidebar's Learn group. Expert routes stay direct: the
+ * entries are ADDITIONS, never redirects (the V1 preservation rule §20).
  */
 
 import { useEffect, useState, type ReactNode } from "react";
@@ -20,6 +26,7 @@ import {
   FulfillmentIcon,
   HomeIcon,
   NetworksIcon,
+  SearchIcon,
   SettingsIcon,
 } from "@/components/ui";
 import { CommandPaletteMount } from "@/features/search/command-palette-mount";
@@ -91,6 +98,40 @@ const NAV_COMMANDS: CommandRecord[] = [
     group: "Navigate",
     keywords: ["settings", "appearance", "theme", "connection", "environment"],
     icon: <SettingsIcon className="h-3.5 w-3.5" />,
+  },
+  // the V2 learning surfaces (the Learn group — additions only, never
+  // redirects; the expert V1 routes above stay exactly where they were)
+  {
+    id: "nav-docs",
+    title: "Docs",
+    href: "/docs",
+    group: "Learn",
+    keywords: ["docs", "documentation", "concepts", "guides", "api", "errors", "troubleshooting", "reference", "learn"],
+    icon: <EvidenceIcon className="h-3.5 w-3.5" />,
+  },
+  {
+    id: "nav-quickstart",
+    title: "Quickstart",
+    href: "/quickstart",
+    group: "Learn",
+    keywords: ["quickstart", "start", "getting started", "first contract", "journey", "learn"],
+    icon: <FulfillmentIcon className="h-3.5 w-3.5" />,
+  },
+  {
+    id: "nav-playbooks",
+    title: "Playbooks",
+    href: "/playbooks",
+    group: "Learn",
+    keywords: ["playbooks", "guided paths", "goals", "build", "understand", "integrate", "diagnose", "learn"],
+    icon: <SearchIcon className="h-3.5 w-3.5" />,
+  },
+  {
+    id: "nav-tour",
+    title: "The tour",
+    href: "/tour",
+    group: "Learn",
+    keywords: ["tour", "walkthrough", "demonstration", "fulfillment demo", "learn"],
+    icon: <NetworksIcon className="h-3.5 w-3.5" />,
   },
 ];
 
