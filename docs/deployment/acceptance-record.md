@@ -357,3 +357,182 @@ health/readiness/error semantics are intact at their boundaries, the
 core resource journeys work in the deployed environment, the mutation
 journey is reproducible through displayed API requests, and the
 governance gates are green. DEC-0127's deployment step is COMPLETE.
+
+---
+
+# D. The Console V2 learning-first product experience (DEC-0128)
+
+## D1. The program and the frozen direction
+
+The operator delivered the frozen Console V2 direction via PR #59
+(branch `console/v2-learning-experience`, docs-only +492/-0): the
+product, learning & documentation design
+(`docs/superpowers/specs/2026-09-14-adcos-console-v2-learning-experience-design.md`,
+APPROVED / FROZEN FOR IMPLEMENTATION) and the eight-task implementation
+plan
+(`docs/superpowers/plans/2026-09-14-adcos-console-v2-learning-experience.md`).
+DEC-0128 registered the bounded program (repository-local,
+decision-borne, outside the halted gate sequence) with the authorized
+surface: the V2 learning layer inside `web/`, the planning documents,
+the Tech Lead dispatch state, the deployment verification records and
+the routing. DEC-0127 was retired to SUPERSEDED with the same
+reconciliation (RECON-051).
+
+## D2. The implementation waves (all merged, all RECON-pinned)
+
+- **PR #60 — the W1 education wave** (merge `e12ff83`, pin
+  LEDGER-RECON-053): the education model (`web/src/lib/education/` — 14
+  concepts, 25/25 operation-learning records referencing the accepted
+  coverage-registry operation ids verbatim, 7 playbook guides, 449
+  machine-checked cross-references with the coverage test failing on
+  unknown links), the learning primitives (`ConceptLink`,
+  `ConceptExplainer` with full focus management, `NextStep(s)`,
+  `ObjectEducation`; honest unknown states everywhere), and the
+  documentation system (15 `app/docs` routes: Start here, the
+  registry-generated Concepts/Guides/API pages with the real
+  method/path VERBATIM, the honest no-SDK page, Errors VERBATIM,
+  Troubleshooting with the §17 replan-events disclosure stated
+  verbatim, Reference, route-local search, contextual return paths).
+- **PR #61 — the W2+W3 waves** (merge `9069714`, pin
+  LEDGER-RECON-054): the first-run product surface (the frozen anchor
+  sentence verbatim, the clickable mental-model lifecycle, the eight
+  I-want-to goals; connected users keep the V1 expert dashboard), the
+  nine-step Quickstart on the REAL typed client, the interactive
+  fulfillment tour (Requirement → Eligibility → Plan → Execution →
+  Evidence → Assurance with the Explain/View affordances), the seven
+  Playbooks from the guide registry with the Open-in-workbench context
+  preservation, the About-this-operation Explorer education (collapsed
+  by default, zero execution-semantics regression), the
+  canonical-reason troubleshooting guidance (the frozen anatomy, the
+  verbatim backend reasons untouched, unknown codes keep the V1 honest
+  treatment), and the shell nav/palette integration.
+- **PR #62 — the Task-8 browser-acceptance repairs** (merge `f54cde5`,
+  pinned with PR #63 by LEDGER-RECON-055): two dynamic-route-template
+  defects the LIVE browser acceptance caught (both invisible to the
+  mocked-Link unit suites): `next-step.tsx` passed route templates raw
+  to `<Link>` (the eligibility lifecycle drawer crashed), and
+  `CONSOLE_ROUTE_SET` contained the template string itself so the
+  "de-templating" walk returned the raw template (the concept page
+  crashed). Both render paths now de-template to the static workspace
+  ancestor; regression tests added.
+- **PR #63 — the .vercelignore anchoring repair** (merge `b687f42`):
+  the unanchored `docs/` gitignore pattern matched
+  `web/src/features/docs/` at EVERY level and silently excluded the
+  entire V2 documentation system from the Vercel upload — the first
+  production deploy attempt (dpl_HcZkjwFsa2ExZmhTMSnoJJN2b641, from
+  f54cde5) failed `module-not-found` exactly there while every local
+  gate passed (the upload, not the build, was the divergence). The
+  root-level operator/CI excludes are now anchored
+  (`/docs/`, `/tools/`, `/.github/`, `/deploy/`,
+  `/worker-charters/`).
+- **LEDGER-RECON-055** also records the disclosed process lesson: the
+  PR-#62 merge closed without its immediate pin and the PR-#63 CI
+  caught the stale pin failing closed exactly as designed; the
+  merge-order mistake (a non-gated merge script) is recorded honestly
+  and was repaired by that one reconciliation.
+
+## D3. The production deployment
+
+- **Deployed:** `dpl_ACsCcGbeewjWpqGF9KY1TYG7Bd6F`
+  (`adcos-ao8hi4g5q-ekonplacidegmailcoms-projects.vercel.app`) from
+  the clean committed checkout at `6a08487` (the RECON-055 head) —
+  READY, aliased to https://adcos.vercel.app.
+- The routing topology (the `"continue": true` catch-all + the
+  `[...unmatched]` boundary) carries the V2 routes unchanged: `/`
+  serves the V2 learning-first home; `/quickstart`, `/tour`, `/docs`,
+  `/docs/*`, `/playbooks`, `/playbooks/*` all reachable; `/api/*`,
+  `/healthz`, `/readyz`, `/demo/*` remain the Python runtime
+  (`/healthz` → `{"ok":true,"service":"adcos-runtime"}` at the time of
+  this record).
+
+## D4. The V2 acceptance standard — verified item by item
+
+The frozen design's ten-point acceptance standard (§18), verified over
+production with the agent-browser (zero page errors across every
+visited route):
+
+1. **Understand ADCOS's purpose without external explanation** — the
+   first-run home renders the frozen anchor sentence verbatim under
+   "WHAT ADCOS DOES", with the honest expert note.
+2. **Describe the core lifecycle after the quickstart** — the clickable
+   mental model (Describe requirement → Eligibility → Plan →
+   Fulfillment → Assurance → Continuous fulfillment) opens the real
+   registry education per stage (verified: the Eligibility drawer on
+   production).
+3. **Complete the guided connectivity journey** — the Quickstart walked
+   all nine steps end to end on production, finishing at the
+   registry-composed next paths.
+4. **Understand the important objects encountered** — steps 3-7 render
+   the real contract/plan/execution/evidence objects (ObjectEducation +
+   JSON views).
+5. **Find the relevant API operation from the workflow** — step 8 shows
+   the curl and links the Explorer deep-link; the tour's View-API
+   affordances.
+6. **Execute at least one supported operation and understand the
+   response** — the demo POST on production:
+   `POST /demo/contract-fulfillment {"instant":"2026-09-14T20:40:00Z"}`
+   → `mode: production, evidence_class: SOFTWARE`, 2 evidence records;
+   the Explorer's About-this-operation education renders for
+   intent_create (collapsed by default).
+7. **Locate documentation for every primary concept** —
+   `/docs/concepts/<id>` for all 14 registry concepts; the eligibility
+   page renders the six questions (What is it? / Why does it matter? /
+   When do I use it? / What happens in ADCOS? / What does the API look
+   like? / Where do I go next?).
+8. **Find troubleshooting guidance for canonical errors** —
+   `/docs/troubleshooting` with the §17 replan-events disclosure
+   verbatim; the error workbench's guidance section.
+9. **Move from beginner guidance into the expert V1 workbench without
+   losing context** — the Quickstart's "Open the expert workbench", the
+   Playbooks' Open-in-workbench affordances carrying `?from=`, the
+   LEARN nav group beside the V1 primary nav; `/connectivity` (the V1
+   workbench) verified alive on production.
+10. **Complete the primary journey without unexplained jargon** — every
+    architecture-heavy term in the V2 surfaces carries a ConceptLink /
+    ConceptExplainer affordance (the W1 registry is the single
+    vocabulary source; the coverage test fails on drift).
+
+## D5. The release gate (the plan's Task 8)
+
+- The V1 regression battery: **307/307 tests** (the V1 210 + 97 V2
+  tests) at the acceptance head; tsc clean; lint clean; the production
+  build green (31 static pages + the platform routes).
+- The governance gates at every merge: current_spec_check,
+  tech_lead_guard, drift_guard, fresh-session — green on every pinned
+  head (the four failing-closed PR-#59 runs recorded at RECON-052 are
+  the gates' own evidence trail).
+- The browser acceptance over the local stack (13 routes, zero page
+  errors — the acceptance that caught the two PR-#62 defects) AND over
+  production (the D4 journey above).
+- The CI runs: PR #60 (#34892352231-class green), PR #61 green, PR #62
+  green (34891335584), the RECON pushes green.
+
+## D6. Deviations and disclosures (V2)
+
+- The W1-c station subagent was cut off by a tool-context deadline
+  mid-test-fix pass; the station completed the remainder (three test
+  assertions + the api-hub first-match-wins grouping repair). The
+  W2/W3 station subagents' final reports were lost the same way — the
+  work itself was complete on disk and verified by the station gate
+  (304/304 at the wave head); the Tech Lead integration pass is the
+  record of what was verified.
+- The docs pages link `/quickstart` (W2's route) — the links landed
+  with the W1 wave while the route arrived with W2; both waves merged
+  within the program so the links were never dead on main.
+- The first production deploy attempt failed (dpl_HcZkjwFsa…) — the
+  `.vercelignore` anchoring defect (D2, PR #63); the failed deployment
+  never served traffic (the alias never moved).
+- The Upstash degraded-ok state and the production demo credential
+  posture are UNCHANGED from §C7 (carried forward verbatim).
+
+## Verdict (Console V2 program)
+
+**THE CONSOLE V2 LEARNING-FIRST PRODUCT EXPERIENCE IS DEPLOYED AND
+ACCEPTED.** https://adcos.vercel.app now serves a self-teaching console
+at `GET /` — Understand → Build → Integrate → Operate → Diagnose —
+with every V1 expert capability regression-protected (307/307), the
+frozen acceptance standard verified item-by-item over production with
+zero page errors, and the DEC-0128 program's eight tasks complete.
+SOFTWARE-CLASS ONLY (§C8 carries forward unchanged): no physical
+evidence obligation is claimed, EVID-002..EVID-008 stay open, and the
+R4/W040 physical-validation track is untouched.

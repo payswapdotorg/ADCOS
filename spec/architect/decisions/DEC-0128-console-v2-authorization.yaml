@@ -18,10 +18,25 @@
 # registered here in the DEC-NNNN-<slug>.yaml convention by this
 # reconciliation, exactly as DEC-0127 registered the Architect's frozen
 # console-planning documents at the RECON-045 reconciliation.
+# DEC-0128-console-v2-authorization.yaml — status retired to SUPERSEDED by
+# DEC-0129 (2026-09-14): the Console V2 program is COMPLETE — all eight
+# tasks of the frozen plan delivered, merged and RECON-pinned (PR #60 the W1
+# education wave at LEDGER-RECON-053; PR #61 the W2+W3 waves at
+# LEDGER-RECON-054; PR #62/#63 the acceptance repairs and the deploy
+# anchoring at LEDGER-RECON-055); the production deployment
+# dpl_ACsCcGbeewjWpqGF9KY1TYG7Bd6F (from the clean committed checkout at
+# 6a08487) serves the V2 console at https://adcos.vercel.app with the
+# frozen ten-point acceptance standard verified item-by-item over production
+# (docs/deployment/acceptance-record.md section D; 307/307 tests with the
+# V1 workbench regression-protected). Its decision-borne authority is
+# retired with no successor program authorized — the repository returns to
+# the halted post-R9 state. The rendered verdict (decision: ACCEPTED) is
+# never edited; the record and its scope are preserved verbatim as the
+# completed program's durable authority history.
 decision_id: DEC-0128
 date: "2026-09-14"
 type: governance
-status: ACCEPTED
+status: SUPERSEDED
 owner: "Architect"
 work_item: null
 acr: null

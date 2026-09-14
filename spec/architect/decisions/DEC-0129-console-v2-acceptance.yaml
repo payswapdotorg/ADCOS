@@ -1,0 +1,67 @@
+# DEC-0129 — ADCOS Console V2 learning-first product experience ACCEPTANCE
+# (the program completion; DEC-0128 retired)
+# The DEC-0128 Console V2 program is COMPLETE: all eight tasks of the frozen
+# implementation plan delivered, merged and RECON-pinned (PR #60 the W1
+# education wave at LEDGER-RECON-053; PR #61 the W2+W3 product-experience +
+# expert-handoff waves at LEDGER-RECON-054; PR #62 the Task-8
+# browser-acceptance repairs and PR #63 the .vercelignore anchoring repair,
+# both at LEDGER-RECON-055); the production deployment dpl_ACsCcGbeewjWpqGF9KY1TYG7Bd6F
+# from the clean committed checkout at 6a08487 serves the V2 console at
+# https://adcos.vercel.app (GET / is the learning-first product; /api/*,
+# /healthz, /readyz, /demo/* remain the Python runtime at their boundaries);
+# the frozen design's ten-point acceptance standard verified item-by-item
+# over production with the browser acceptance (zero page errors — the full
+# record at docs/deployment/acceptance-record.md §D). This decision records
+# the acceptance and retires DEC-0128's decision-borne authority to status
+# SUPERSEDED (the DEC-0126/DEC-0127 retirement form): with no successor
+# program authorized, the single-active decision-borne invariant returns the
+# repository to the halted post-R9 state (zero active authorizations — the
+# DEC-0125 terminal state). The rendered verdict (decision: ACCEPTED) is
+# never edited; the record and its scope are preserved verbatim as the
+# completed program's durable authority history.
+decision_id: DEC-0129
+date: "2026-09-14"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: null
+acr: null
+pr: 60
+reviewed_sha: null
+authorization: "the Console V2 program acceptance (repository-local, decision-borne — outside the authorizations/ gate machinery)"
+timestamp: "2026-09-14T20:45:00Z"
+
+review_basis: "The Console V2 learning-first product experience accepted on the live production deployment: dpl_ACsCcGbeewjWpqGF9KY1TYG7Bd6F from the clean committed checkout at 6a08487 (the LEDGER-RECON-055 head) serving https://adcos.vercel.app; the frozen ten-point acceptance standard (docs/superpowers/specs/2026-09-14-adcos-console-v2-learning-experience-design.md section 18) verified item-by-item with the browser acceptance over production — the anchor sentence verbatim on the first-run home, the clickable mental model opening the real registry education, the nine-step Quickstart completed end to end, the real objects at every step, the curl + Explorer deep-link reproduction, the demo POST on production (mode: production, evidence_class: SOFTWARE), the six-question concept pages for all fourteen registry concepts, the troubleshooting guidance with the section-17 replan-events disclosure verbatim, the Open-in-workbench handoff preserving context into the live V1 workbench, and zero unexplained jargon (the ConceptLink affordances carry the W1 registry vocabulary); the V1 regression battery 307/307 tests at the acceptance head with tsc/lint/build green; the governance gates green at every pinned head (the four failing-closed PR-#59 runs are the gates' own evidence trail, recorded at LEDGER-RECON-052); the deployment acceptance record at docs/deployment/acceptance-record.md section D (the deviations honestly disclosed: the station-subagent cutoffs, the two PR-#62 route-template defects the live acceptance caught, the PR-#63 .vercelignore anchoring repair, the merge-order lesson recorded at LEDGER-RECON-055); the full evidence chain: PR #59 the frozen direction, PR #60/#61/#62/#63 the delivery waves, LEDGER-RECON-052/053/054/055 the pins"
+
+decision: ACCEPTED
+
+findings:
+  - "The frozen V2 direction (PR #59) is implemented end to end: the education model (14 concepts, 25/25 operation-learning records, 7 playbook guides, 449 machine-checked cross-references with the coverage test failing on unknown links), the learning primitives (ConceptLink, ConceptExplainer with full focus management, NextStep, ObjectEducation; honest unknown states everywhere), the 15-route documentation system, the first-run product surface, the nine-step Quickstart on the real typed client, the interactive fulfillment tour, the seven Playbooks, the About-this-operation Explorer education with zero execution-semantics regression, the canonical-reason troubleshooting guidance, and the shell integration."
+  - "The V1 expert workbench is regression-protected: 307/307 tests (the V1 210 included), the production build green, the V1 routes live on production, and the V2 layer never removed or altered an accepted V1 capability (the frozen design's section-20 preservation rule held through every wave)."
+  - "The console creates no second authority: every education string comes from the W1 registries, every API call goes through the typed client, backend reason codes render VERBATIM, SOFTWARE evidence stays visibly software (the production demo POST: evidence_class SOFTWARE), and the truth-and-disclosure rules (section 17) are stated verbatim where capabilities are not exposed."
+
+blockers: []
+required_corrections: []
+
+authorized_scope: []
+
+constraints:
+  - "SOFTWARE-CLASS ONLY: this acceptance does not prove physical connectivity and does not satisfy or modify the physical evidence obligations EVID-002..EVID-008; the R4/W040 independent physical-validation track remains untouched, in-review and unaccepted."
+  - "The Upstash degraded-ok disclosure and its operator action item (the REST hostname of record) stand unchanged; the production demo credential remains out-of-band by design (the issuance key is encrypted in the Vercel project env)."
+  - "No successor program is authorized by this decision; the repository returns to the halted post-R9 state (roadmap.yaml v2.22, execution mode awaiting-architect-decisions, zero active authorizations)."
+
+rejected_scope:
+  - "This decision does not activate any roadmap gate, does not create an authorizations/ record, and does not alter the post-R9 halted roadmap state."
+  - "This decision does not authorize further implementation work; any new program requires a new decision-borne authorization registered by the Architect."
+
+evidence:
+  merge_sha: "6a08487"
+  ci_run: null
+  artifacts:
+    - "docs/deployment/acceptance-record.md (section D — the Console V2 acceptance record)"
+    - "https://adcos.vercel.app (the production deployment dpl_ACsCcGbeewjWpqGF9KY1TYG7Bd6F)"
+    - "docs/superpowers/specs/2026-09-14-adcos-console-v2-learning-experience-design.md"
+    - "docs/superpowers/plans/2026-09-14-adcos-console-v2-learning-experience.md"
+
+authority:
+  - "This decision records the acceptance of the DEC-0128 Console V2 program and retires its decision-borne authority to status SUPERSEDED. No implementation authority is created or carried forward."
