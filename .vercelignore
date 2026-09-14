@@ -46,5 +46,14 @@ deploy/
 worker-charters/
 docs/
 
+# the console's local build/test artifacts — installed and built by the
+# @vercel/next build step itself; never runtime data for the Python
+# function (python bundle hygiene: keeps node_modules/.next/test suites
+# out of the serverless bundle; the web build re-creates what it needs)
+web/node_modules
+web/.next
+web/tests
+web/coverage
+
 # root-level markdown (README/AGENTS/etc.) — none of it is needed at runtime
 /*.md

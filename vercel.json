@@ -6,7 +6,16 @@
       "src": "api/index.py",
       "use": "@vercel/python",
       "config": { "maxDuration": 60 }
+    },
+    {
+      "src": "web/package.json",
+      "use": "@vercel/next"
     }
   ],
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index.py" }]
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index.py" },
+    { "src": "/(healthz|readyz)", "dest": "/api/index.py" },
+    { "src": "/demo/(.*)", "dest": "/api/index.py" },
+    { "src": "/(.*)", "dest": "/web/$1" }
+  ]
 }
