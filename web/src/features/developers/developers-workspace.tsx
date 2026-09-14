@@ -19,6 +19,7 @@ import type { AdcosEnvelope, Application } from "@/lib/api/types";
 import { useSession } from "@/lib/session";
 import { registerCommand } from "@/features/search";
 import { ConsoleSearchProviders } from "@/features/search/providers";
+import { ensureRequestRecorder } from "@/features/requests/recorder";
 import { capabilityGranted } from "./capabilities";
 import { useDevelopersRead } from "./use-developers-read";
 import { ConnectGuidance } from "./connect-guidance";
@@ -50,6 +51,17 @@ export function DevelopersWorkspace() {
   // palette action can open it (permission-aware: registered only
   // while webhooks:write is granted)
   const [registerOpen, setRegisterOpen] = useState(false);
+
+  // the recorder wraps global fetch BEFORE any typed-client call on
+  // this page. Without it, the client's doFetch getter hands the
+  // UNBOUND native fetch to a method-style invocation — chromium
+  // rejects that with "Illegal invocation", so connect/reads fail as
+  // backend-unreachable in a REAL browser (tests stub fetch with plain
+  // functions and never see it). The recorder's plain wrapper is
+  // receiver-safe and captures the wire truth for the inspector.
+  useEffect(() => {
+    ensureRequestRecorder();
+  }, []);
 
   useEffect(() => {
     if (!connected || canWriteWebhooks !== true) return;

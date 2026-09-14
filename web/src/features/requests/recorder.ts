@@ -69,17 +69,24 @@ function installed(): InstalledRecorder | undefined {
 /** The interesting response headers (X-ADCOS-…, rate-limit, content-type). */
 function captureHeaders(headers: Headers): { name: string; value: string }[] {
   const captured: { name: string; value: string }[] = [];
-  headers.forEach((value, name) => {
-    const lower = name.toLowerCase();
-    const interesting =
-      lower.startsWith("x-adcos-") ||
-      lower.startsWith("x-ratelimit") ||
-      lower.startsWith("ratelimit-") ||
-      lower === "content-type";
-    if (interesting) {
-      captured.push({ name, value });
-    }
-  });
+  try {
+    headers.forEach((value, name) => {
+      const lower = name.toLowerCase();
+      const interesting =
+        lower.startsWith("x-adcos-") ||
+        lower.startsWith("x-ratelimit") ||
+        lower.startsWith("ratelimit-") ||
+        lower === "content-type";
+      if (interesting) {
+        captured.push({ name, value });
+      }
+    });
+  } catch {
+    // a headers object that does not implement forEach (a partial fetch
+    // stub) captures NOTHING — best-effort by contract; the log entry
+    // stays honest ("response headers not captured") and the request
+    // itself must never fail because of the capture.
+  }
   captured.sort((a, b) => a.name.localeCompare(b.name));
   return captured;
 }
