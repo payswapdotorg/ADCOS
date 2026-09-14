@@ -477,3 +477,27 @@ describe("learning primitives", () => {
     expect(screen.getByTestId(OBJECT_EDUCATION_TEST_ID)).toBeInTheDocument();
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * Regression: route-kind links de-template dynamic hrefs
+ *
+ * The app router forbids dynamic hrefs (`/connectivity/contracts/[id]`)
+ * in <Link> — a template route link must resolve to its static workspace
+ * ancestor, never pass the template through (the eligibility drawer
+ * crashed on exactly this before the repair).
+ * ------------------------------------------------------------------ */
+describe("route template de-templating (the app-router dynamic-href rule)", () => {
+  it("a route template resolves to its static workspace ancestor, never the raw template", async () => {
+    const { NextStep } = await import("@/features/learning/next-step");
+    render(<NextStep link={{ kind: "route", id: "/connectivity/contracts/[id]", label: "A contract detail page" }} />);
+    const link = screen.getByRole("link", { name: /A contract detail page/i });
+    expect(link).toHaveAttribute("href", "/connectivity");
+    expect(link.getAttribute("href")).not.toContain("[");
+  });
+
+  it("a static route passes through unchanged", async () => {
+    const { NextStep } = await import("@/features/learning/next-step");
+    render(<NextStep link={{ kind: "route", id: "/developers/explorer", label: "API Explorer" }} />);
+    expect(screen.getByRole("link", { name: /API Explorer/i })).toHaveAttribute("href", "/developers/explorer");
+  });
+});

@@ -138,10 +138,13 @@ const DOCS_LINK_HREFS: Record<string, string> = {
  * Templates carry a `[id]`-shaped segment; a docs link to a template
  * route lands on the real surface that owns the object instead.
  */
+// NOTE: only REAL STATIC routes belong in this set — a dynamic template
+// ("/connectivity/contracts/[id]") must never be a member: the de-templating
+// walk would match it on the first candidate and hand the raw template to
+// <Link>, which the app router forbids (the eligibility-concept crash).
 const CONSOLE_ROUTE_SET = new Set([
   "/",
   "/connectivity",
-  "/connectivity/contracts/[id]",
   "/networks",
   "/fulfillment",
   "/evidence",
@@ -151,6 +154,10 @@ const CONSOLE_ROUTE_SET = new Set([
   "/developers/requests",
   "/settings",
   "/settings/errors",
+  "/quickstart",
+  "/tour",
+  "/playbooks",
+  "/docs",
 ]);
 
 /**
