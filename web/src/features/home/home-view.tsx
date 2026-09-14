@@ -1,5 +1,4 @@
 "use client";
-import "@/features/eligibility/fetch-binding-shim";
 
 /**
  * HomeView — the dashboard that answers, immediately and honestly:

@@ -1,5 +1,4 @@
 "use client";
-import "@/features/eligibility/fetch-binding-shim";
 
 /**
  * ContractDetailView — the full lifecycle chain (Worker 2, plan Task 5):
