@@ -1258,6 +1258,638 @@ def case_25_coordination_fallback(results: List[Result]) -> None:
         )
 
 
+# ---------------------------------------------------------------------------
+# The developer API request boundary (DEC-0127 console era): the generic
+# /api/{version}/* TRANSPORT-ONLY translation onto the accepted gateway
+# ---------------------------------------------------------------------------
+
+
+def _boundary_headers(
+    services: Any,
+    *extra: Tuple[str, str],
+) -> List[Tuple[bytes, bytes]]:
+    """The developer credential headers (plus optional extras) for a
+    boundary request (lower-case names — the ASGI header convention)."""
+    headers = [
+        (b"x-adcos-application", services.demo_application_id.encode("utf-8")),
+        (b"x-adcos-credential", services.demo_credential.encode("utf-8")),
+    ]
+    for name, value in extra:
+        headers.append((name.encode("utf-8"), value.encode("utf-8")))
+    return headers
+
+
+def _boundary_intent_body(base: str) -> Dict[str, Any]:
+    """The canonical intent-creation body (the demonstration's own
+    idiom — every semantics-bearing member rides its frozen reference
+    kind; the boundary never invents a schema)."""
+    from runtime.demo import _intent_body
+
+    return _intent_body(base)
+
+
+def _response_headers(sent: List[Mapping[str, Any]]) -> Dict[str, str]:
+    start = next(
+        (m for m in sent if m.get("type") == "http.response.start"), None
+    )
+    if start is None:
+        return {}
+    return {
+        name.decode("latin-1"): value.decode("latin-1")
+        for name, value in start.get("headers") or ()
+    }
+
+
+def case_26_boundary_application_self(results: List[Result]) -> None:
+    """Criterion: the versioned boundary translates the application
+    self read onto the gateway — the boundary's own envelope verbatim,
+    its response headers forwarded, and the route-prefix version used
+    when the version header is absent."""
+    problems: List[str] = []
+    services = build_sandbox_services()
+    app = build_app(services)
+    status, payload, sent = drive(
+        app, "GET", "/api/2.0/application", headers=_boundary_headers(services)
+    )
+    document = json.loads(payload)
+    if status != 200:
+        problems.append("status %d" % status)
+    if document.get("api_version") != "2.0":
+        problems.append("api_version %r" % document.get("api_version"))
+    if document.get("environment") != services.environment:
+        problems.append("environment %r" % document.get("environment"))
+    data = document.get("data") or {}
+    if data.get("application_id") != services.demo_application_id:
+        problems.append("application_id %r" % data.get("application_id"))
+    if not data.get("capabilities"):
+        problems.append("capabilities %r" % data.get("capabilities"))
+    headers = _response_headers(sent)
+    if not headers.get("X-ADCOS-Request-Id"):
+        problems.append("no X-ADCOS-Request-Id forwarded")
+    if headers.get("X-ADCOS-API-Version") != "2.0":
+        problems.append("X-ADCOS-API-Version %r" % headers.get("X-ADCOS-API-Version"))
+    if headers.get("X-ADCOS-Environment") != services.environment:
+        problems.append(
+            "X-ADCOS-Environment %r" % headers.get("X-ADCOS-Environment")
+        )
+    if headers.get("content-type") != "application/json":
+        problems.append("content-type %r" % headers.get("content-type"))
+    if canonical_json_bytes(document) != payload:
+        problems.append("body is not canonical bytes")
+    if problems:
+        results.append(fail("26 boundary application self", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "26 boundary application self",
+                "200; the boundary envelope verbatim + its headers forwarded "
+                "(request-id/api-version/environment)",
+            )
+        )
+
+
+def case_27_boundary_intent_contract_journey(results: List[Result]) -> None:
+    """Criterion: the FULL intent -> offer -> activation -> contract
+    read/usage/assurance journey rides the versioned boundary (each
+    leg the gateway's own admission: idempotency key required on
+    mutations; every body the canonical envelope)."""
+    problems: List[str] = []
+    services = build_sandbox_services()
+    app = build_app(services)
+    base = "2026-09-14T03:00:00Z"
+    intent_body = _boundary_intent_body(base)
+
+    status, payload, _ = drive(
+        app,
+        "POST",
+        "/api/2.0/intents",
+        body=json.dumps(intent_body).encode("utf-8"),
+        headers=_boundary_headers(services, ("x-adcos-idempotency-key", "b27:create")),
+    )
+    document = json.loads(payload)
+    if status != 200:
+        problems.append("intent create status %d" % status)
+    contract_id = (document.get("data") or {}).get("id", "")
+    if not contract_id:
+        problems.append("intent create returned no id")
+    if (document.get("data") or {}).get("contract_id") != contract_id:
+        problems.append("intent contract_id mismatch")
+
+    offers_body = {
+        "offers": [
+            {
+                "ref_kind": "offer",
+                "value": "demo:boundary:offer:v1",
+                "provenance": {
+                    "issuer": "demo:boundary:offer-issuer",
+                    "decision_refs": ["demo:boundary:offer:v1"],
+                },
+            }
+        ],
+        "recorded_at": "2026-09-14T03:00:10Z",
+    }
+    status, payload, _ = drive(
+        app,
+        "POST",
+        "/api/2.0/intents/%s/offers" % contract_id,
+        body=json.dumps(offers_body).encode("utf-8"),
+        headers=_boundary_headers(services, ("x-adcos-idempotency-key", "b27:offers")),
+    )
+    if status != 200:
+        problems.append("offers accept status %d: %s" % (status, payload[:120]))
+
+    activation_body = {
+        "activated_at": "2026-09-14T03:00:20Z",
+        "signature_refs": [
+            {"ref_kind": "signature", "value": "demo:boundary:signature:v1"}
+        ],
+    }
+    status, payload, _ = drive(
+        app,
+        "POST",
+        "/api/2.0/intents/%s/activation" % contract_id,
+        body=json.dumps(activation_body).encode("utf-8"),
+        headers=_boundary_headers(
+            services, ("x-adcos-idempotency-key", "b27:activate")
+        ),
+    )
+    if status != 200:
+        problems.append("activation status %d: %s" % (status, payload[:120]))
+
+    for route in (
+        "/api/2.0/intents",
+        "/api/2.0/intents/%s" % contract_id,
+        "/api/2.0/intents/%s/lifecycle" % contract_id,
+        "/api/2.0/contracts",
+        "/api/2.0/contracts/%s" % contract_id,
+        "/api/2.0/contracts/%s/usage" % contract_id,
+        "/api/2.0/contracts/%s/assurance" % contract_id,
+    ):
+        status, payload, _ = drive(
+            app, "GET", route, headers=_boundary_headers(services)
+        )
+        document = json.loads(payload)
+        if status != 200 or "data" not in document:
+            problems.append(
+                "%s -> %d %s"
+                % (route, status, (document.get("error") or {}).get("reason", "?"))
+            )
+        elif canonical_json_bytes(document) != payload:
+            problems.append("%s -> not canonical bytes" % route)
+
+    if problems:
+        results.append(
+            fail("27 boundary intent/contract journey", "; ".join(problems))
+        )
+    else:
+        results.append(
+            ok(
+                "27 boundary intent/contract journey",
+                "intent -> offers -> activation -> list/get/usage/assurance "
+                "all 200 through the boundary (idempotency keys on every "
+                "mutation)",
+            )
+        )
+
+
+def case_28_boundary_lease_journey(results: List[Result]) -> None:
+    """Criterion: the lease lifecycle rides the versioned boundary —
+    grant -> list -> get for both leases, RENEWAL on one (the accepted
+    lease state machine moves it to renewed) and REVOCATION on the
+    other (only granted/active leases revoke — the domain's own
+    transition rule, exercised through the boundary)."""
+    problems: List[str] = []
+    services = build_sandbox_services()
+    app = build_app(services)
+    base = "2026-09-14T04:00:00Z"
+    status, payload, _ = drive(
+        app,
+        "POST",
+        "/api/2.0/intents",
+        body=json.dumps(_boundary_intent_body(base)).encode("utf-8"),
+        headers=_boundary_headers(services, ("x-adcos-idempotency-key", "b28:create")),
+    )
+    contract_id = (json.loads(payload).get("data") or {}).get("id", "")
+    if not contract_id:
+        results.append(
+            fail("28 boundary lease journey", "intent create returned no id")
+        )
+        return
+
+    def _grant(key: str, granted_at: str, not_before: str, not_after: str) -> str:
+        lease_body = {
+            "granted_at": granted_at,
+            "not_before": not_before,
+            "not_after": not_after,
+        }
+        status, payload, _ = drive(
+            app,
+            "POST",
+            "/api/2.0/contracts/%s/leases" % contract_id,
+            body=json.dumps(lease_body).encode("utf-8"),
+            headers=_boundary_headers(services, ("x-adcos-idempotency-key", key)),
+        )
+        document = json.loads(payload)
+        if status != 200:
+            problems.append(
+                "lease grant(%s) %d: %s" % (key, status, payload[:140])
+            )
+            return ""
+        return (document.get("data") or {}).get("id", "")
+
+    # lease A: granted, then REVOKED (granted/active -> revoked)
+    lease_a = _grant(
+        "b28:lease-a",
+        "2026-09-14T04:00:30Z",
+        "2026-09-14T04:00:30Z",
+        "2026-09-14T05:00:30Z",
+    )
+    # lease B: granted, then RENEWED (the renewal window strictly after)
+    lease_b = _grant(
+        "b28:lease-b",
+        "2026-09-14T04:01:00Z",
+        "2026-09-14T04:01:00Z",
+        "2026-09-14T05:01:00Z",
+    )
+    if problems:
+        results.append(fail("28 boundary lease journey", "; ".join(problems)))
+        return
+
+    for route in ("/api/2.0/leases", "/api/2.0/leases/%s" % lease_a):
+        status, payload, _ = drive(
+            app, "GET", route, headers=_boundary_headers(services)
+        )
+        if status != 200:
+            problems.append(
+                "%s -> %d %s"
+                % (
+                    route,
+                    status,
+                    (json.loads(payload).get("error") or {}).get("reason", "?"),
+                )
+            )
+
+    renew_body = {
+        "granted_at": "2026-09-14T04:30:00Z",
+        "not_before": "2026-09-14T05:01:00Z",
+        "not_after": "2026-09-14T06:01:00Z",
+    }
+    status, payload, _ = drive(
+        app,
+        "POST",
+        "/api/2.0/leases/%s/renewal" % lease_b,
+        body=json.dumps(renew_body).encode("utf-8"),
+        headers=_boundary_headers(services, ("x-adcos-idempotency-key", "b28:renew")),
+    )
+    if status != 200:
+        problems.append("lease renewal %d: %s" % (status, payload[:140]))
+
+    revoke_body = {
+        "recorded_at": "2026-09-14T04:45:00Z",
+        "reason": "battery: deterministic lease revocation",
+    }
+    status, payload, _ = drive(
+        app,
+        "POST",
+        "/api/2.0/leases/%s/revocation" % lease_a,
+        body=json.dumps(revoke_body).encode("utf-8"),
+        headers=_boundary_headers(services, ("x-adcos-idempotency-key", "b28:revoke")),
+    )
+    if status != 200:
+        problems.append("lease revocation %d: %s" % (status, payload[:140]))
+
+    status, payload, _ = drive(
+        app, "GET", "/api/2.0/leases/%s" % lease_a, headers=_boundary_headers(services)
+    )
+    if status == 200:
+        state = ((json.loads(payload).get("data") or {}).get("state")) or ""
+        if state != "revoked":
+            problems.append("revoked lease state %r" % state)
+
+    if problems:
+        results.append(fail("28 boundary lease journey", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "28 boundary lease journey",
+                "grant -> list/get for both leases; renewal (granted -> "
+                "renewed) and revocation (granted -> revoked, the domain's "
+                "own transition rule) all 200 through the boundary",
+            )
+        )
+
+
+def case_29_boundary_webhook_journey(results: List[Result]) -> None:
+    """Criterion: the webhook endpoint surface (register -> list -> get
+    -> deliveries) rides the versioned boundary."""
+    problems: List[str] = []
+    services = build_sandbox_services()
+    app = build_app(services)
+    register_body = {
+        "url": "https://console.example/adcos/webhook",
+        "event_types": [
+            "connectivity_intent.created",
+            "connectivity_lease.granted",
+            "webhook_endpoint.registered",
+        ],
+    }
+    status, payload, _ = drive(
+        app,
+        "POST",
+        "/api/2.0/webhook-endpoints",
+        body=json.dumps(register_body).encode("utf-8"),
+        headers=_boundary_headers(
+            services, ("x-adcos-idempotency-key", "b29:register")
+        ),
+    )
+    document = json.loads(payload)
+    if status != 200:
+        results.append(
+            fail(
+                "29 boundary webhook journey",
+                "register %d: %s" % (status, payload[:160]),
+            )
+        )
+        return
+    endpoint_id = (document.get("data") or {}).get("id", "")
+    if not endpoint_id:
+        results.append(
+            fail("29 boundary webhook journey", "register returned no id")
+        )
+        return
+
+    for route in (
+        "/api/2.0/webhook-endpoints",
+        "/api/2.0/webhook-endpoints/%s" % endpoint_id,
+        "/api/2.0/webhook-endpoints/%s/deliveries" % endpoint_id,
+    ):
+        status, payload, _ = drive(
+            app, "GET", route, headers=_boundary_headers(services)
+        )
+        if status != 200:
+            problems.append(
+                "%s -> %d %s"
+                % (
+                    route,
+                    status,
+                    (json.loads(payload).get("error") or {}).get("reason", "?"),
+                )
+            )
+    if problems:
+        results.append(fail("29 boundary webhook journey", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "29 boundary webhook journey",
+                "register -> list -> get -> deliveries all 200 through the "
+                "boundary",
+            )
+        )
+
+
+def case_30_boundary_error_discipline(results: List[Result]) -> None:
+    """Criterion: the boundary's ERROR discipline — the gateway's own
+    canonical reasons preserved verbatim (authentication-invalid,
+    route-unknown, version-unsupported), the runtime's typed envelopes
+    for transport-level failures (malformed JSON), and every body
+    canonical JSON."""
+    problems: List[str] = []
+    services = build_sandbox_services()
+    app = build_app(services)
+
+    status, payload, sent = drive(app, "GET", "/api/2.0/application")
+    document = json.loads(payload)
+    error = document.get("error") or {}
+    if status != 401 or error.get("reason") != "authentication-invalid":
+        problems.append(
+            "unauthenticated %d %r" % (status, error.get("reason"))
+        )
+    headers = _response_headers(sent)
+    if not headers.get("X-ADCOS-Request-Id"):
+        problems.append("unauthenticated error carries no request id header")
+
+    status, payload, _ = drive(
+        app, "GET", "/api/2.0/application", headers=_boundary_headers(services)
+    )
+    if status != 200:
+        problems.append("credentialed prelude %d" % status)
+
+    status, payload, _ = drive(
+        app,
+        "GET",
+        "/api/2.0/application",
+        headers=_boundary_headers(services, ("x-adcos-api-version", "3.0")),
+    )
+    error = (json.loads(payload).get("error")) or {}
+    if status != 400 or error.get("reason") != "version-unsupported":
+        problems.append(
+            "version disagreement %d %r" % (status, error.get("reason"))
+        )
+
+    status, payload, _ = drive(
+        app, "GET", "/api/2.0/unknown", headers=_boundary_headers(services)
+    )
+    error = (json.loads(payload).get("error")) or {}
+    if status != 404 or error.get("reason") != "route-unknown":
+        problems.append("unknown route %d %r" % (status, error.get("reason")))
+
+    status, payload, _ = drive(
+        app,
+        "POST",
+        "/api/2.0/intents",
+        body=b"{bad",
+        headers=_boundary_headers(services),
+    )
+    error = (json.loads(payload).get("error")) or {}
+    if status != 400 or error.get("reason_code") != "malformed-json":
+        problems.append(
+            "malformed boundary body %d %r" % (status, error.get("reason_code"))
+        )
+
+    for method, path, body, headers in (
+        ("GET", "/api/2.0/application", b"", ()),
+        ("GET", "/api/2.0/unknown", b"", _boundary_headers(services)),
+        ("POST", "/api/2.0/intents", b"{bad", _boundary_headers(services)),
+    ):
+        _s, payload, _sent = drive(app, method, path, body=body, headers=headers)
+        try:
+            document = json.loads(payload)
+        except ValueError:
+            problems.append("%s %s: body is not JSON" % (method, path))
+            continue
+        if canonical_json_bytes(document) != payload:
+            problems.append("%s %s: not canonical bytes" % (method, path))
+
+    if problems:
+        results.append(fail("30 boundary error discipline", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "30 boundary error discipline",
+                "401 authentication-invalid / 400 version-unsupported / 404 "
+                "route-unknown / 400 malformed-json — canonical reasons "
+                "preserved verbatim; bodies canonical",
+            )
+        )
+
+
+def case_31_boundary_idempotent_replay(results: List[Result]) -> None:
+    """Criterion: the durable idempotency replay through the boundary —
+    the SAME mutation with the SAME key replays byte-identically with
+    the X-ADCOS-Idempotent-Replay header; a DIFFERENT key is a NEW
+    admission (a distinct resource identity)."""
+    problems: List[str] = []
+    services = build_sandbox_services()
+    app = build_app(services)
+    body = json.dumps(_boundary_intent_body("2026-09-14T05:00:00Z")).encode("utf-8")
+
+    status_a, payload_a, sent_a = drive(
+        app,
+        "POST",
+        "/api/2.0/intents",
+        body=body,
+        headers=_boundary_headers(services, ("x-adcos-idempotency-key", "b31:one")),
+    )
+    status_b, payload_b, sent_b = drive(
+        app,
+        "POST",
+        "/api/2.0/intents",
+        body=body,
+        headers=_boundary_headers(services, ("x-adcos-idempotency-key", "b31:one")),
+    )
+    if status_a != 200 or status_b != 200:
+        problems.append("statuses %d/%d" % (status_a, status_b))
+    if payload_a != payload_b:
+        problems.append("replay body not byte-identical")
+    headers_b = _response_headers(sent_b)
+    if headers_b.get("X-ADCOS-Idempotent-Replay") != "true":
+        problems.append(
+            "replay marker %r" % headers_b.get("X-ADCOS-Idempotent-Replay")
+        )
+    headers_a = _response_headers(sent_a)
+    if headers_a.get("X-ADCOS-Idempotent-Replay") is not None:
+        problems.append("first admission carries a replay marker")
+
+    status_c, payload_c, sent_c = drive(
+        app,
+        "POST",
+        "/api/2.0/intents",
+        body=body,
+        headers=_boundary_headers(services, ("x-adcos-idempotency-key", "b31:two")),
+    )
+    if status_c != 200:
+        problems.append("second key status %d" % status_c)
+    document_c = json.loads(payload_c)
+    id_b = (json.loads(payload_b).get("data") or {}).get("id", "")
+    id_c = (document_c.get("data") or {}).get("id", "")
+    if id_b != id_c:
+        problems.append(
+            "the content-derived contract identity changed across keys "
+            "(%r vs %r)" % (id_b[:24], id_c[:24])
+        )
+    idem_b = (json.loads(payload_b).get("idempotency") or {}).get("key", "")
+    idem_c = (document_c.get("idempotency") or {}).get("key", "")
+    if idem_c != "b31:two" or idem_b != "b31:one":
+        problems.append(
+            "per-key admission ledger wrong (%r / %r)" % (idem_b, idem_c)
+        )
+    if (document_c.get("idempotency") or {}).get("replayed") is not False:
+        problems.append("the different-key admission claims a replay")
+    headers_c = _response_headers(sent_c)
+    if headers_c.get("X-ADCOS-Idempotent-Replay") is not None:
+        problems.append("the different-key admission carries a replay marker")
+    if payload_c == payload_b:
+        problems.append(
+            "the different-key admission body is byte-identical to the "
+            "first (the idempotency block must name its own key)"
+        )
+
+    if problems:
+        results.append(fail("31 boundary idempotent replay", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "31 boundary idempotent replay",
+                "same key -> byte-identical replay + the replay header; "
+                "different key -> the SAME content-derived contract identity "
+                "through a DISTINCT per-key admission (its own idempotency "
+                "block, no replay marker)",
+            )
+        )
+
+
+def case_32_boundary_platform_read_preserved(results: List[Result]) -> None:
+    """Criterion: the UNVERSIONED platform-side contract read keeps its
+    accepted semantics beside the versioned boundary — the same
+    contract read through /api/contracts/{id} (the platform dict, no
+    credentials required) and through /api/2.0/contracts/{id} (the
+    boundary envelope, credentials required) — and an undeclared
+    version segment never collides with the platform namespace."""
+    problems: List[str] = []
+    services = build_sandbox_services()
+    app = build_app(services)
+    status, payload, _ = drive(
+        app,
+        "POST",
+        "/api/2.0/intents",
+        body=json.dumps(_boundary_intent_body("2026-09-14T06:00:00Z")).encode(
+            "utf-8"
+        ),
+        headers=_boundary_headers(services, ("x-adcos-idempotency-key", "b32:create")),
+    )
+    contract_id = (json.loads(payload).get("data") or {}).get("id", "")
+    if not contract_id:
+        results.append(
+            fail("32 platform read preserved", "intent create returned no id")
+        )
+        return
+
+    status, payload, _ = drive(
+        app, "GET", "/api/contracts/%s" % contract_id
+    )
+    platform = json.loads(payload)
+    if status != 200 or platform.get("contract_id") != contract_id:
+        problems.append(
+            "platform read %d contract_id %r"
+            % (status, platform.get("contract_id"))
+        )
+    if canonical_json_bytes(platform) != payload:
+        problems.append("platform read not canonical bytes")
+
+    status, payload, _ = drive(
+        app,
+        "GET",
+        "/api/2.0/contracts/%s" % contract_id,
+        headers=_boundary_headers(services),
+    )
+    boundary = json.loads(payload)
+    if status != 200:
+        problems.append("boundary read %d" % status)
+    elif (boundary.get("data") or {}).get("id") != contract_id:
+        problems.append("boundary read id mismatch")
+
+    status, payload, _ = drive(
+        app, "GET", "/api/2.0/contracts/%s" % contract_id
+    )
+    error = (json.loads(payload).get("error")) or {}
+    if status != 401 or error.get("reason") != "authentication-invalid":
+        problems.append(
+            "unauthenticated boundary read %d %r" % (status, error.get("reason"))
+        )
+
+    if problems:
+        results.append(fail("32 platform read preserved", "; ".join(problems)))
+    else:
+        results.append(
+            ok(
+                "32 platform read preserved",
+                "the unversioned platform read (200, no credentials) and the "
+                "versioned boundary read (200, credentials / 401 without) "
+                "coexist with their accepted semantics",
+            )
+        )
+
+
 _CASES = (
     case_01_liveness_shape,
     case_02_readiness_sandbox,
@@ -1284,6 +1916,13 @@ _CASES = (
     case_23_production_mode_demo,
     case_24_cross_process_determinism,
     case_25_coordination_fallback,
+    case_26_boundary_application_self,
+    case_27_boundary_intent_contract_journey,
+    case_28_boundary_lease_journey,
+    case_29_boundary_webhook_journey,
+    case_30_boundary_error_discipline,
+    case_31_boundary_idempotent_replay,
+    case_32_boundary_platform_read_preserved,
 )
 
 

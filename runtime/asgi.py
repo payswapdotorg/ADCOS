@@ -22,11 +22,28 @@ Routes (canonical-JSON in/out, ``content-type: application/json``):
 - ``GET /demo/contract-fulfillment`` — the same demonstration,
   idempotently (the GET form; byte-identical body to the default
   POST);
-- ``GET /api/contracts/{contract_id}`` — the canonical contract read.
-  WITH the developer credential headers (``X-ADCOS-Application`` /
-  ``X-ADCOS-Credential`` [/ ``X-ADCOS-API-Version``]) the request is
-  translated onto the accepted ``developerapi`` request boundary
-  (route ``/api/2.0/contracts/{id}``) and the boundary's own canonical
+- ``ANY /api/{version}/{resource...}`` — the developer API request
+  boundary (DEC-0127 console era): every request whose second path
+  segment is a DECLARED API version (``developerapi.schema.
+  API_VERSIONS`` — currently ``2.0``) is translated, TRANSPORT ONLY,
+  onto the accepted ``developerapi`` gateway — the gateway's own
+  admission path performs the version resolution (the route prefix
+  and ``X-ADCOS-API-Version`` must agree), the constant-time
+  authentication (``X-ADCOS-Application`` / ``X-ADCOS-Credential``),
+  the per-application rate limiting, the route/capability match
+  against the frozen route table, the durable idempotency admission
+  (``X-ADCOS-Idempotency-Key``) and the canonical error mapping —
+  and the boundary returns the gateway's own envelope and response
+  headers (``X-ADCOS-Request-Id`` / ``X-ADCOS-API-Version`` /
+  ``X-ADCOS-Environment`` / the rate-limit headers / the replay
+  marker) VERBATIM. NO domain logic lives in this translation;
+- ``GET /api/contracts/{contract_id}`` — the canonical contract read
+  (the UNVERSIONED platform-side surface; a declared-version route
+  never lands here). WITH the developer credential headers
+  (``X-ADCOS-Application`` / ``X-ADCOS-Credential``
+  [/ ``X-ADCOS-API-Version``]) the request is translated onto the
+  accepted ``developerapi`` request boundary (route
+  ``/api/2.0/contracts/{id}``) and the boundary's own canonical
   envelope is returned verbatim; WITHOUT them the platform-side public
   read of the canonical authority is served (the store's
   ``contract()`` read — the runtime holds the composed authority, so
@@ -62,8 +79,12 @@ from developerapi.errors import (
     DeveloperApiReasonCode,
 )
 from developerapi.gateway import ApiRequest
-from developerapi.schema import API_VERSION_HEADER
-from developerapi.sdk import APPLICATION_HEADER, CREDENTIAL_HEADER
+from developerapi.schema import API_VERSIONS, API_VERSION_HEADER
+from developerapi.sdk import (
+    APPLICATION_HEADER,
+    CREDENTIAL_HEADER,
+    IDEMPOTENCY_KEY_HEADER,
+)
 
 from contracts.model import ContractError, ContractReason
 
@@ -259,7 +280,7 @@ def _contract_read(
     services: RuntimeServices,
     contract_id: str,
     headers: Mapping[str, str],
-) -> Tuple[int, Mapping[str, Any]]:
+) -> Tuple[int, Mapping[str, Any], Optional[Dict[str, str]]]:
     """The canonical contract read (gateway boundary when the
     developer credential headers are present; the platform-side store
     public read otherwise)."""
@@ -275,16 +296,73 @@ def _contract_read(
             secret=credential,
         )
         response = services.gateway.handle(request)
-        return response.status, dict(response.body)
+        return response.status, dict(response.body), dict(response.headers)
     contract = services.contracts.contract(contract_id)
-    return 200, contract.to_dict()
+    return 200, contract.to_dict(), None
 
 
 def _demo_document(
     services: RuntimeServices, instant: Optional[str]
-) -> Tuple[int, Dict[str, Any]]:
+) -> Tuple[int, Dict[str, Any], None]:
     document = run_contract_fulfillment_demo(services, instant)
-    return 200, document
+    return 200, document, None
+
+
+def _route_api_version(path: str) -> str:
+    """The API version declared by the route prefix
+    (``/api/{version}/...`` — the declared-version namespace; "" for
+    every other path shape)."""
+    parts = [part for part in path.split("/") if part]
+    if len(parts) >= 2 and parts[0] == "api" and parts[1] in API_VERSIONS:
+        return parts[1]
+    return ""
+
+
+def _versioned_api_path(path: str) -> bool:
+    """True when the path is ``/api/{version}/{resource...}`` with a
+    DECLARED API version (``developerapi.schema.API_VERSIONS`` — the
+    developer boundary's versioned namespace). The UNVERSIONED
+    platform-side routes (``/api/contracts/{id}``) never match here:
+    their second segment (``contracts``) is not a declared version."""
+    parts = [part for part in path.split("/") if part]
+    return len(parts) >= 3 and parts[0] == "api" and parts[1] in API_VERSIONS
+
+
+async def _gateway_boundary(
+    services: RuntimeServices,
+    method: str,
+    path: str,
+    headers: Mapping[str, str],
+    receive: Callable[[], Any],
+    content_length: Optional[int],
+) -> Tuple[int, Any, Dict[str, str]]:
+    """Translate ONE ``/api/{version}/*`` request onto the accepted
+    developer API request boundary (TRANSPORT ONLY).
+
+    The gateway's own admission path performs every semantic step —
+    the version resolution (route prefix and ``X-ADCOS-API-Version``
+    must agree), the constant-time authentication, the per-application
+    rate limiting, the route/capability match against the frozen
+    route table, the durable idempotency admission and the canonical
+    error mapping — and this translation returns the boundary's own
+    envelope and response headers VERBATIM (reason codes preserved
+    word-for-word; never a runtime-side re-encoding)."""
+    raw = await _read_body(receive, content_length)
+    body = _json_body(raw)
+    request = ApiRequest(
+        method=method,
+        route=path,
+        body=body,
+        api_version=(
+            headers.get(API_VERSION_HEADER.lower(), "")
+            or _route_api_version(path)
+        ),
+        idempotency_key=headers.get(IDEMPOTENCY_KEY_HEADER.lower(), ""),
+        application_id=headers.get(APPLICATION_HEADER.lower(), ""),
+        secret=headers.get(CREDENTIAL_HEADER.lower(), ""),
+    )
+    response = services.gateway.handle(request)
+    return response.status, dict(response.body), dict(response.headers)
 
 
 # ---------------------------------------------------------------------------
@@ -315,11 +393,12 @@ def build_app(services: RuntimeServices) -> Callable[..., Any]:
             except ValueError:
                 content_length = None
         try:
-            status, body = await _dispatch(
+            status, body, extra_headers = await _dispatch(
                 services, method, path, headers, receive, content_length
             )
         except Exception as error:  # noqa: BLE001 - the typed envelope only
             status, body = _translate_domain_error(error)
+            extra_headers = None
         try:
             payload = canonical_json_bytes(body)
         except (CanonicalizationError, TypeError, ValueError):
@@ -327,14 +406,25 @@ def build_app(services: RuntimeServices) -> Callable[..., Any]:
             payload = canonical_json_bytes(
                 _error_document("internal-error", "response serialization failed")
             )
+            extra_headers = None
+        response_headers = [
+            (b"content-type", b"application/json"),
+            (b"content-length", str(len(payload)).encode("latin-1")),
+        ]
+        if extra_headers:
+            # the accepted boundary's own response headers (request id,
+            # API version, environment, rate-limit surface, replay
+            # marker) forwarded VERBATIM — latin-1 safe by construction
+            # (the gateway emits ASCII names/values only)
+            for name, value in extra_headers.items():
+                response_headers.append(
+                    (name.encode("latin-1"), str(value).encode("latin-1"))
+                )
         await send(
             {
                 "type": "http.response.start",
                 "status": status,
-                "headers": [
-                    (b"content-type", b"application/json"),
-                    (b"content-length", str(len(payload)).encode("latin-1")),
-                ],
+                "headers": response_headers,
             }
         )
         await send({"type": "http.response.body", "body": payload})
@@ -349,13 +439,16 @@ async def _dispatch(
     headers: Mapping[str, str],
     receive: Callable[[], Any],
     content_length: Optional[int],
-) -> Tuple[int, Any]:
-    """Route one HTTP request to its handler (thin translation)."""
+) -> Tuple[int, Any, Optional[Dict[str, str]]]:
+    """Route one HTTP request to its handler (thin translation;
+    the third tuple member carries the accepted boundary's own
+    response headers when the handler surfaced them)."""
     if method == "GET" and path == "/healthz":
-        return 200, liveness_body()
+        return 200, liveness_body(), None
 
     if method == "GET" and path == "/readyz":
-        return readiness(services)
+        status, document = readiness(services)
+        return status, document, None
 
     if path == "/demo/contract-fulfillment":
         if method == "POST":
@@ -373,6 +466,13 @@ async def _dispatch(
             return _demo_document(services, DEFAULT_DEMO_INSTANT)
         raise RuntimeBoundaryError(
             "not-found", "no route matches %s %s" % (method, path), status=404
+        )
+
+    # the developer API request boundary (the versioned namespace —
+    # DEC-0127 console era): TRANSPORT ONLY onto the accepted gateway
+    if path.startswith("/api/") and _versioned_api_path(path):
+        return await _gateway_boundary(
+            services, method, path, headers, receive, content_length
         )
 
     if method == "GET" and path.startswith("/api/contracts/"):
