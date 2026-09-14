@@ -30,9 +30,25 @@ Checks
                                         backend is configured-healthy
 7.  ARTIFACTS (production only)      — /readyz sub-check: the artifact
                                         backend is configured-healthy
-8.  ERROR SURFACES                   — GET /nonexistent returns a typed
-                                        404 envelope
+8.  ERROR SURFACES (console topology)    — TWO spaces, both 404:
+                                        a) API space: GET /api/nonexistent
+                                        returns the runtime's typed envelope
                                         {"error": {"reason_code": "not-found"}}
+                                        b) console space: GET /nonexistent
+                                        renders the console's not-found
+                                        boundary (the delivered
+                                        not-found.tsx, presenting the backend's
+                                        own route-unknown vocabulary)
+
+    Console-topology amendment (disclosed, same class as the de1a220
+    key-path widening): since the developer-console deployment the root
+    vercel.json routes the non-API space to the Next.js console — the
+    Python runtime owns /api/*, /healthz, /readyz, /demo/* and NOTHING
+    else. The runtime's typed-envelope contract therefore holds and is
+    asserted at the boundary the runtime owns (/api/nonexistent); the
+    root-space unknown path is the console's jurisdiction and must render
+    the console's not-found boundary (HTTP 404 + its marker text), never
+    an invented or platform-default error surface.
 
 Checks 5-7 are mode-conditional: in sandbox mode they are skipped with
 [skip] rows (no durable/coordination/artifact backends exist to prove).
@@ -659,7 +675,8 @@ class Harness:
     # -- check 8
 
     def check_error_surface(self) -> None:
-        response = get(self.base_url, "/nonexistent")
+        # -- (a) the API space: the runtime's own typed-envelope contract --
+        response = get(self.base_url, "/api/nonexistent")
         if response.error is not None:
             self.record("FAIL", "error-surface", response.describe())
             return
@@ -668,31 +685,63 @@ class Harness:
             self.record(
                 "FAIL",
                 "error-surface",
-                f"expected 404, got {response.status} — {snippet(response.body, 120)}",
+                f"api-space: expected 404, got {response.status} — {snippet(response.body, 120)}",
             )
             return
         if not isinstance(payload, dict):
             self.record(
                 "FAIL",
                 "error-surface",
-                f"404 without a typed JSON envelope — {response.describe()}",
+                f"api-space 404 without a typed JSON envelope — {response.describe()}",
             )
             return
         error = payload.get("error")
         if not isinstance(error, dict):
-            self.record("FAIL", "error-surface", "404 envelope has no error object")
+            self.record("FAIL", "error-surface", "api-space 404 envelope has no error object")
             return
         reason = error.get("reason_code")
         if reason != "not-found":
             self.record(
                 "FAIL",
                 "error-surface",
-                f"reason_code={reason!r}, expected 'not-found' (envelope: {snippet(response.body, 160)})",
+                f"api-space reason_code={reason!r}, expected 'not-found' (envelope: {snippet(response.body, 160)})",
             )
             return
         message = error.get("message") or error.get("detail") or ""
-        suffix = f"; message={message!r}" if message else ""
-        self.record("ok", "error-surface", f"404 typed envelope reason_code=not-found{suffix}")
+        api_detail = f"reason_code=not-found"
+        if message:
+            api_detail += f" message={message!r}"
+
+        # -- (b) the console space: the console's not-found boundary (the --
+        #    [...unmatched] catch-all renders not-found.tsx, which presents --
+        #    the backend's route-unknown vocabulary; a platform static 404 --
+        #    or any other surface FAILS — the boundary is the contract) --
+        root = get(self.base_url, "/nonexistent")
+        if root.error is not None:
+            self.record("FAIL", "error-surface", f"console-space: {root.describe()}")
+            return
+        if root.status != 404:
+            self.record(
+                "FAIL",
+                "error-surface",
+                f"console-space: expected 404, got {root.status} — {snippet(root.body, 120)}",
+            )
+            return
+        marker = "No console route matches this path."
+        if marker not in (root.body or ""):
+            self.record(
+                "FAIL",
+                "error-surface",
+                "console-space 404 is NOT the console's not-found boundary "
+                f"(marker {marker!r} absent) — {snippet(root.body, 200)}",
+            )
+            return
+        self.record(
+            "ok",
+            "error-surface",
+            f"api-space 404 typed envelope {api_detail}; "
+            "console-space 404 not-found boundary rendered (route-unknown vocabulary)",
+        )
 
     # -- orchestration
 
