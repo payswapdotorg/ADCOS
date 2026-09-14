@@ -627,3 +627,20 @@ describe("the troubleshooting hub and the reference vocabularies", () => {
     }
   });
 });
+
+/* ------------------------------------------------------------------ *
+ * Regression: consoleRouteHref never returns a dynamic template
+ *
+ * The set once contained the template itself, so the "de-templating"
+ * walk matched it first and passed the raw template to <Link> (the
+ * app-router dynamic-href crash on the eligibility concept page).
+ * ------------------------------------------------------------------ */
+describe("consoleRouteHref de-templating regression", () => {
+  it("a route template resolves to its static workspace ancestor", async () => {
+    const { consoleRouteHref } = await import("@/features/docs/docs-shared");
+    expect(consoleRouteHref("/connectivity/contracts/[id]")).toBe("/connectivity");
+    expect(consoleRouteHref("/connectivity")).toBe("/connectivity");
+    expect(consoleRouteHref("/fulfillment/run/[instant]")).toBe("/fulfillment");
+    expect(consoleRouteHref("/developers/explorer")).toBe("/developers/explorer");
+  });
+});

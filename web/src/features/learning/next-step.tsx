@@ -61,6 +61,43 @@ export function docsHref(id: string): string {
 }
 
 /**
+ * Resolve a route-kind link's id onto a REAL navigable href. Route
+ * templates (`/connectivity/contracts/[id]`) are registry vocabulary for
+ * per-object pages — the app router forbids dynamic hrefs in <Link>, so a
+ * template de-resolves to its static workspace ancestor (the same
+ * de-templating contract the docs feature's consoleRouteHref applies).
+ */
+export function routeHref(route: string): string {
+  if (!route.includes("[")) return route;
+  const segments = route.split("/").filter(Boolean);
+  while (segments.length > 0) {
+    const candidate = `/${segments.join("/")}`;
+    if (CONSOLE_ROUTES.has(candidate)) return candidate;
+    segments.pop();
+  }
+  return "/";
+}
+
+/** The console's static routes (the de-templating targets). */
+const CONSOLE_ROUTES = new Set([
+  "/",
+  "/connectivity",
+  "/networks",
+  "/fulfillment",
+  "/evidence",
+  "/developers",
+  "/developers/explorer",
+  "/developers/requests",
+  "/assurance",
+  "/settings",
+  "/settings/errors",
+  "/quickstart",
+  "/tour",
+  "/playbooks",
+  "/docs",
+]);
+
+/**
  * NextStep — one kind-aware "where to go next" affordance. Every href is
  * derived from the link's own id; every label from the link's own label.
  * An unknown concept id renders the honest compact unknown state (the
@@ -119,7 +156,7 @@ export function NextStep({ link }: { link: LearningLink }) {
       );
     case "route":
       return (
-        <Link href={link.id} className={LINK_CLASSES}>
+        <Link href={routeHref(link.id)} className={LINK_CLASSES}>
           <ExternalLinkIcon size={14} className="shrink-0 text-ink-faint" />
           {link.label}
         </Link>
