@@ -1,0 +1,85 @@
+# DEC-0128 — ADCOS Console V2 learning-first product experience authorization
+# (bounded, repository-local)
+# Post-program bounded authorization OUTSIDE the R0-R9 gate sequence: the
+# roadmap is COMPLETE (DEC-0125, the terminal gate), the DEC-0126 deployment
+# program is COMPLETE, and the DEC-0127 developer console program is COMPLETE
+# (implementation + production deployment + acceptance: PRs #55-#58 merged,
+# RECON-046..RECON-050 pinned, production https://adcos.vercel.app serves the
+# console at GET / with T8 8/8 and the browser acceptance over production —
+# retired to SUPERSEDED by this decision; the rendered verdict is never
+# edited). This decision authorizes the ADCOS Console V2 learning-first
+# product experience program — the operator-approved frozen V2 product,
+# learning & documentation design and the eight-task implementation plan
+# delivered via PR #59 (branch console/v2-learning-experience) — with
+# execution ownership at the Tech Lead. The station packaging class: the
+# content is the operator's own frozen planning documents (PR #59: the frozen
+# V2 learning-experience design APPROVED / FROZEN FOR IMPLEMENTATION + the
+# eight-task implementation plan with the W1/W2/W3 worker allocation),
+# registered here in the DEC-NNNN-<slug>.yaml convention by this
+# reconciliation, exactly as DEC-0127 registered the Architect's frozen
+# console-planning documents at the RECON-045 reconciliation.
+decision_id: DEC-0128
+date: "2026-09-14"
+type: governance
+status: ACCEPTED
+owner: "Architect"
+work_item: null
+acr: null
+pr: 59
+reviewed_sha: null
+authorization: "ADCOS Console V2 learning-first product experience (repository-local, decision-borne — outside the authorizations/ gate machinery)"
+timestamp: "2026-09-14T18:00:00Z"
+
+review_basis: "Console V2 learning-first product experience approved by the product owner: the frozen V2 design (docs/superpowers/specs/2026-09-14-adcos-console-v2-learning-experience-design.md — Status: APPROVED / FROZEN FOR IMPLEMENTATION) and the eight-task implementation plan (docs/superpowers/plans/2026-09-14-adcos-console-v2-learning-experience.md — W1 education model + learning primitives + documentation, W2 first-run product experience + Quickstart + interactive tour + visual transformation, W3 Playbooks + API education + troubleshooting + expert handoff, the 3-direct-worker / 3-subagent ceiling preserved) delivered via PR #59 (branch console/v2-learning-experience @ 0a30eab2e, rooted at the RECON-049/050-era main 5ecd5c5), registered at live main 64b90a97a26fb75d27d3010f8bb63daebe8cb173 (the RECON-050 governance head — the frozen artifacts arrive on main via the PR #59 merge whose files this program's declared scope covers, exactly as the DEC-0127 planning docs were pinned by RECON-045); the operator directed the Tech Lead to implement PR #59 next rather than further ad-hoc UI changes; the roadmap's gate sequence R0-R9 stays COMPLETE (DEC-0125) and the DEC-0127 console program is COMPLETE (implementation + production deployment + acceptance), so its decision-borne authority is retired to status SUPERSEDED by this decision (the rendered verdict is never edited — the completion is recorded here and in the registry row); the execution mode stays awaiting-architect-decisions with no active work item and no active authorizations/ record — the Console V2 authority lives in this decision record (the standing one-active-authorization invariant over spec/architect/authorizations/ is untouched; the single-active decision-borne invariant over the decisions registry is preserved by the retirement)."
+
+decision: ACCEPTED
+
+findings:
+  - "The DEC-0127 developer console is deployed and accepted in production, but it is an expert workbench: a developer with no prior ADCOS knowledge cannot learn what ADCOS is, what its core mental model means, or how to complete a first workflow, without consulting repository-internal architecture documents."
+  - "The operator froze the Console V2 product, learning & documentation design (teach the mental model before exposing the machinery; Understand -> Build -> Integrate -> Operate -> Diagnose; the self-teaching documentation system; Playbooks; API education inside the Explorer; contextual learning; the visual/product language; the truth-and-disclosure rules) and the eight-task implementation plan, and directed the Tech Lead to implement it."
+  - "V2 is a presentation/education layer over the accepted backend: it creates no second authority for contracts, offers, plans, execution, evidence, assurance, provider state, credentials, policy or eligibility; the Quickstart and the interactive fulfillment tour are deliberately built on the REAL existing backend and typed client, never a fake tutorial environment; the V1 expert workbench and its developer capabilities are explicitly preserved (the V1 preservation rule)."
+  - "The work is bounded and Technical-Lead-owned: the education registries reference the accepted coverage-registry operation IDs (never a second endpoint catalog); user-facing documentation is distinct from internal architecture/evidence records; the release acceptance runs the existing V1 batteries and V1 frontend tests plus the V2 education-registry consistency/coverage tests and the V2 browser acceptance."
+
+blockers: []
+required_corrections: []
+
+authorized_scope:
+  - "the Console V2 learning layer inside the web console application (web/ — the education model and concept/operation/guide registries with their typed LearningLink contracts, the learning primitives with accessible contextual explainers, the user-facing documentation system and its routes, the first-run product experience and the home transformation, the Quickstart and the interactive fulfillment tour, the Playbooks, the API-learning integration in the API Explorer, the troubleshooting education, the shell/search/context links that carry object/operation context into the expert workbench, and the V2 + preserved-V1 frontend tests)"
+  - "the Console V2 planning documents delivered by PR #59 (docs/superpowers/specs/2026-09-14-adcos-console-v2-learning-experience-design.md, docs/superpowers/plans/2026-09-14-adcos-console-v2-learning-experience.md)"
+  - "the Tech Lead dispatch state during the program (docs/tech-lead/)"
+  - "the deployment verification and acceptance records for the V2 release (deploy/verify.py, docs/deployment/)"
+  - "the explicit web/API deployment routing if the V2 release requires it (vercel.json, .vercelignore)"
+
+constraints:
+  - "Architecture 1.1 remains frozen and normative; every accepted authority is consumed by reference through the canonical HTTP boundary — browser code never imports Python/domain internals, never forks domain semantics and never creates an alternate durable authority."
+  - "ConnectivityContract remains the sole durable contract authority; provider-native topology/routing/subscriber authority remains provider-owned — the UI never implies an ADCOS-owned universal topology graph."
+  - "Every interactive example and API example corresponds to a real accepted backend operation or is explicitly labeled conceptual; the Explorer remains generated from the accepted coverage registry and unsupported operations never appear as executable controls."
+  - "Backend reason codes remain canonical and verbatim; teaching layers may explain them but must not replace them; unknown reason codes are preserved without invented semantics."
+  - "SOFTWARE evidence and physical/network evidence remain visibly distinct; no UI state may transform software evidence into a physical acceptance; EVID-002..EVID-008 remain outside console acceptance."
+  - "Hard contract constraints are never silently weakened by forms, examples or learning flows; no frontend business rule weakens a backend requirement."
+  - "Secrets follow backend issuance/reveal rules and are never persisted in browser storage; no fake provider, network, fulfillment, assurance, performance or production telemetry data; no decorative visualization without operational or educational meaning."
+  - "Documentation must distinguish conceptual explanation from current implementation truth; documentation, UI terminology and API examples share a canonical concept/operation vocabulary so drift is detectable (the coverage test fails when a supported canonical operation has no educational description unless explicitly marked internal-only or not-user-actionable)."
+  - "When a capability is not available in the current HTTP deployment, the UI explains the actual state instead of presenting a dead button or a fabricated result (the truth-and-disclosure rule)."
+  - "All currently accepted V1 capabilities remain regression-protected: contracts, builder, networks, eligibility/policy explanation, fulfillment, evidence, assurance, developer application/capability views, API Explorer, requests, settings, health/readiness, search and error workbench."
+  - "No secrets or credential values may be committed or printed."
+  - "Work is isolated on console branches until reviewed and merged; the ADCOS worker limits (at most 3 direct workers, at most 3 subagents each, at most 9 active descendants, depth at most 2) remain in force; the Tech Lead owns integration, verification, browser acceptance, production promotion, rollback and acceptance."
+
+acceptance:
+  - "Console V2 acceptance is SOFTWARE-class only and follows the frozen design's acceptance standard: a new developer with no prior ADCOS knowledge must understand ADCOS's purpose without external explanation, describe the core lifecycle in their own words after the Quickstart, complete the guided connectivity journey, understand the important objects encountered, find the relevant API operation from the workflow, execute at least one supported API operation and understand the response, locate documentation for every primary console concept, find troubleshooting guidance for canonical errors, move from beginner guidance into the expert V1 workbench without losing context, and complete the primary journey without encountering unexplained architecture jargon."
+  - "The release gate (the plan's Task 8): the backend spec/fresh-session checks, all V1 batteries and V1 frontend tests green; the education registry consistency/coverage tests green; the V2 browser acceptance (first visit -> product explanation -> mental model -> Quickstart -> tour -> API Explorer -> docs -> expert workbench; the canonical error and degraded/unavailable-backend education; keyboard/accessibility and compact-width behavior); the preview deploy inspected before promotion; production must prove / is the V2 learning-first product while /api/*, /healthz, /readyz and the V1 routes remain functional. No physical evidence obligation is claimed as satisfied by UI/software tests."
+
+rejected_scope:
+  - "This decision does not activate any roadmap gate, does not create an authorizations/ record, and does not alter the post-R9 halted roadmap state (roadmap.yaml v2.22, execution mode awaiting-architect-decisions)."
+  - "This decision does not replace the accepted ADCOS backend architecture, does not replace V1 API tooling with chat, does not create a fake sandbox implying production network access, does not invent provider topology, does not add frontend-only business rules, and does not rewrite internal architecture/evidence documents as end-user documentation."
+  - "V2 is not a marketing site, not a generic admin template and not a second execution engine; a second durable authority in the browser, an ADCOS-owned universal topology, any silent weakening of hard requirements for UX convenience, and any fake provider/network/production telemetry data are escalation-to-Architect stop conditions, not implementation options."
+
+evidence:
+  merge_sha: null
+  ci_run: null
+  artifacts:
+    - "docs/superpowers/specs/2026-09-14-adcos-console-v2-learning-experience-design.md"
+    - "docs/superpowers/plans/2026-09-14-adcos-console-v2-learning-experience.md"
+    - "https://github.com/payswapdotorg/ADCOS/pull/59"
+
+authority:
+  - "This decision creates repository-local implementation authority for the bounded Console V2 learning-first product experience scope above until the V2 work is accepted or explicitly revoked. The Tech Lead owns all implementation and deployment execution (dispatch within the 3x3/9/depth-2 limits, integration, verification, browser acceptance, preview deployment, production promotion, rollback and the V2 acceptance evidence); the Architect does not directly implement V2, deploy to Vercel, or accept V2 evidence."

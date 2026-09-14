@@ -13,10 +13,23 @@
 # IMPLEMENTATION, bb620ec the 12-task implementation plan, f69a359 the Tech
 # Lead handoff), registered here in the DEC-NNNN-<slug>.yaml convention by
 # this reconciliation.
+# DEC-0127-developer-console-authorization.yaml — status retired to SUPERSEDED
+# by DEC-0128 (2026-09-14): the developer console program is COMPLETE
+# (implementation + production deployment + acceptance: PRs #55/#56/#57/#58
+# merged and pinned by RECON-046..RECON-049; the production deployment
+# session pinned by RECON-050 — production https://adcos.vercel.app serves
+# the console at GET / with the runtime health/readiness/error semantics
+# intact; docs/deployment/acceptance-record.md §C — T8 8/8 and the browser
+# acceptance over production with zero page errors), and its decision-borne
+# authority is superseded as the single active post-program authorization by
+# the ADCOS Console V2 learning-first product experience authorization
+# (DEC-0128). The rendered verdict (decision: ACCEPTED) is never edited; the
+# record and its scope are preserved verbatim as the completed console
+# program's durable authority history.
 decision_id: DEC-0127
 date: "2026-09-14"
 type: governance
-status: ACCEPTED
+status: SUPERSEDED
 owner: "Architect"
 work_item: null
 acr: null

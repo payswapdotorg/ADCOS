@@ -107,6 +107,32 @@ _DECISION_BORNE_PATH_SURFACE = {
         "deploy/verify.py",
         "docs/deployment/",
     ),
+    # DEC-0128 (2026-09-14): the bounded ADCOS Console V2 learning-first
+    # product experience program — the successor of the COMPLETED DEC-0127
+    # developer console program (implementation + production deployment +
+    # acceptance; retired to status SUPERSEDED by the same reconciliation
+    # that registers this record). The surface is the V2 program's declared
+    # scope: the Console V2 learning layer inside the web console
+    # application (the education model and concept/operation/guide
+    # registries, the learning primitives, the user-facing documentation
+    # system and its routes, the first-run product experience, the Quickstart
+    # and the interactive fulfillment tour, the Playbooks, the API-learning
+    # integration in the API Explorer, the troubleshooting education, the
+    # expert-handoff context links, and the V2/V1 frontend tests), the V2
+    # planning documents delivered by PR #59, the Tech Lead dispatch state
+    # during the program, the deployment verification/acceptance records for
+    # the V2 release, and the explicit web/API deployment routing if needed.
+    # Fail closed on everything else.
+    "DEC-0128": (
+        "web/",
+        "docs/superpowers/specs/2026-09-14-adcos-console-v2-learning-experience-design.md",
+        "docs/superpowers/plans/2026-09-14-adcos-console-v2-learning-experience.md",
+        "docs/tech-lead/",
+        "deploy/verify.py",
+        "docs/deployment/",
+        "vercel.json",
+        ".vercelignore",
+    ),
 }
 
 
