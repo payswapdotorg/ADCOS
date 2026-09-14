@@ -15,6 +15,6 @@ import { notFound } from "next/navigation";
  * boundary, which presents the miss with the backend's own unknown-route
  * reason vocabulary (`route-unknown`) — never an invented surface.
  */
-export default function UnmatchedPage() {
+export default function UnmatchedPage(): never {
   notFound();
 }
