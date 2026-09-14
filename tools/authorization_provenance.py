@@ -85,6 +85,28 @@ _DECISION_BORNE_PATH_SURFACE = {
         "requirements.txt",
         ".vercelignore",
     ),
+    # DEC-0127 (2026-09-14): the bounded ADCOS developer console program —
+    # the successor of the COMPLETED DEC-0126 deployment program (retired to
+    # status SUPERSEDED by the same reconciliation that registers this
+    # record). The surface is the console program's declared scope: the web
+    # console application, the runtime boundary widening onto the accepted
+    # developerapi gateway route table (asgi.py only — the wiring/sandbox/
+    # services/health/demo modules stay at their accepted deployment-era
+    # semantics), the runtime battery extension, the explicit web/API Vercel
+    # routing, the deployment verification/runbook extension, and the
+    # console planning/handoff documents. Fail closed on everything else.
+    "DEC-0127": (
+        "web/",
+        "runtime/asgi.py",
+        "tools/runtime_selftest.py",
+        "docs/superpowers/specs/2026-09-14-adcos-developer-console-design.md",
+        "docs/superpowers/plans/2026-09-14-adcos-developer-console.md",
+        "docs/tech-lead/",
+        "vercel.json",
+        ".vercelignore",
+        "deploy/verify.py",
+        "docs/deployment/",
+    ),
 }
 
 

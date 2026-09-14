@@ -1,0 +1,77 @@
+# DEC-0127 — ADCOS developer console authorization (bounded, repository-local)
+# Post-program bounded authorization OUTSIDE the R0-R9 gate sequence: the
+# roadmap is COMPLETE (DEC-0125, the terminal gate) and the DEC-0126 bounded
+# deployment program is COMPLETE (its delivery accepted end-to-end: PR #53,
+# the runbook §10 acceptance record at docs/deployment/acceptance-record.md,
+# production live at https://adcos.vercel.app). This decision authorizes the
+# ADCOS Developer Console program — the operator-approved frozen UX
+# architecture, implementation plan and Tech Lead handoff the Architect
+# delivered directly to main — with execution ownership handed to the Tech
+# Lead (docs/tech-lead/ADCOS-DEVELOPER-CONSOLE-HANDOFF.md). The station
+# packaging class: the content is the Architect's own frozen planning
+# documents (58f5c1d the UX architecture APPROVED / FROZEN FOR
+# IMPLEMENTATION, bb620ec the 12-task implementation plan, f69a359 the Tech
+# Lead handoff), registered here in the DEC-NNNN-<slug>.yaml convention by
+# this reconciliation.
+decision_id: DEC-0127
+date: "2026-09-14"
+type: governance
+status: ACCEPTED
+owner: "Architect"
+work_item: null
+acr: null
+pr: null
+reviewed_sha: null
+authorization: "ADCOS developer console (repository-local, decision-borne — outside the authorizations/ gate machinery)"
+timestamp: "2026-09-14T02:41:20Z"
+
+review_basis: "Developer console approved by the product owner: live main 0e69fdac00e32783ba0d4ffa93996d145fceab51 (the RECON-044 pin 82a939a plus the RECON-044 governance commit d468470 plus the Architect's three direct console-planning commits — 58f5c1d the frozen UX architecture (docs/superpowers/specs/2026-09-14-adcos-developer-console-design.md, APPROVED / FROZEN FOR IMPLEMENTATION), bb620ec the implementation plan (docs/superpowers/plans/2026-09-14-adcos-developer-console.md), f69a359 the Tech Lead handoff (docs/tech-lead/ADCOS-DEVELOPER-CONSOLE-HANDOFF.md) — merged as 0e69fda); the roadmap's gate sequence R0-R9 is COMPLETE (DEC-0125) and the DEC-0126 deployment program is COMPLETE (PR #53, acceptance-record.md, production live), so its decision-borne authority is retired to status SUPERSEDED by this decision (the rendered verdict is never edited — the completion is recorded here and in the registry row); the execution mode stays awaiting-architect-decisions with the console authority living in this decision record (no authorizations/ record is created; the standing one-active-authorization invariant over spec/architect/authorizations/ is untouched; the single-active decision-borne invariant over the decisions registry is preserved by the retirement)."
+
+decision: ACCEPTED
+
+findings:
+  - "The accepted ADCOS software control plane is deployed (DEC-0126 complete: production https://adcos.vercel.app, T8 8/8 live acceptance, verified rollback), but the deployed product is reachable only as an HTTP API — the operator's frozen UX architecture requires a coherent developer console so the product is useful to developers, not merely reachable."
+  - "The Architect froze the console UX architecture (APPROVED / FROZEN FOR IMPLEMENTATION), a 12-task implementation plan with a 3-worker allocation, and a Tech Lead handoff that fixes the mission, worker split, integration authority, backend fidelity checks, UX quality bar, deployment acceptance and stop conditions."
+  - "The console is presentation/control only: it emerges the existing accepted backend capabilities through the canonical HTTP boundary and creates no second source of truth for contracts, plans, execution, evidence, assurance, provider state, credentials, policy or eligibility."
+  - "The backend gap the console exposes is bounded and Technical-Lead-owned: the accepted developerapi gateway route table (21 operations) is currently reachable through the runtime ASGI boundary only as the contract read; the console program authorizes the smallest boundary widening (a thin generic /api/{version}/* translation onto the already-accepted gateway) with runtime handlers staying translations only."
+
+blockers: []
+required_corrections: []
+
+authorized_scope:
+  - "the web console application (web/ — app shell and routing, design system, typed API client and coverage registry, connectivity/contract-builder/networks/fulfillment/replan workflows, developers/credentials/API-explorer/request-inspector, evidence/assurance, search/command palette, errors and trust surfaces, frontend tests)"
+  - "the runtime HTTP boundary widening that exposes the accepted developerapi gateway route table generically at /api/{version}/* (runtime/asgi.py — thin translation only; the existing /healthz, /readyz, /demo/contract-fulfillment and platform-side /api/contracts/{id} semantics preserved byte-identically)"
+  - "the runtime battery extension for the widened boundary (tools/runtime_selftest.py — the boundary-translation cases)"
+  - "the explicit web/API deployment routing (vercel.json, .vercelignore — / serves the console while /api/*, /healthz, /readyz and /demo/* remain the Python runtime; no second backend, no canonical API semantics change)"
+  - "the deployment verification and runbook extension for the console (deploy/verify.py, docs/deployment/ — the console live-acceptance checks, the console deployment/acceptance records)"
+  - "the console planning/handoff documents (the frozen UX spec, the implementation plan, the Tech Lead console handoff, the tech-lead dispatch state during the program)"
+
+constraints:
+  - "Architecture 1.1 remains frozen and normative; every accepted authority is consumed by reference through the canonical HTTP boundary — browser code never imports Python/domain internals, never forks domain semantics and never creates an alternate durable authority."
+  - "ConnectivityContract remains the canonical durable authority; provider-native topology/routing/subscriber authority remains provider-owned — the UI never implies an ADCOS-owned universal topology graph."
+  - "Every meaningful UI mutation maps to a supported backend operation and exposes an API representation; API Explorer exposes only actually-supported operations; backend reason codes are preserved verbatim and searchable in developer errors."
+  - "Hard contract constraints are never silently weakened by UI serialization; no frontend business rule weakens a backend requirement; backend validation semantics govern the contract builder."
+  - "SOFTWARE evidence and physical/network evidence remain visibly distinct; no UI state may transform software evidence into a physical acceptance; EVID-002..EVID-008 remain outside console acceptance."
+  - "Secrets obey backend issuance/reveal semantics and are never persisted in browser state; no fake production network/provider data; no decorative metric without an operational interpretation."
+  - "Backend changes are limited to the smallest missing read/mutation endpoints and stable typed payloads required by the coverage audit; runtime handlers remain translations only; the existing /healthz, /readyz, /demo and deployment acceptance semantics stay intact."
+  - "No secrets or credential values may be committed or printed."
+  - "Work is isolated on console branches until reviewed and merged; the ADCOS worker limits (at most 3 direct workers, at most 3 subagents each, depth at most 2) remain in force; the Tech Lead owns integration, backend gap closure, deployment, browser verification, production promotion, rollback and acceptance."
+
+acceptance:
+  - "Console acceptance is SOFTWARE-class only and follows the handoff's deployment acceptance: GET / returns the actual ADCOS console; the existing /healthz and /readyz semantics remain intact (the backend stays the resolver for the whole /api/* namespace); core resource journeys work in a deployed environment; at least one create/read/mutation journey is reproducible through the displayed API request; API errors retain canonical reason codes; the existing R0-R9 software governance and deployment checks remain green; no physical evidence obligation is claimed as satisfied by UI/software tests. The frozen plan's acceptance checklist (root URL serves the console, all primary navigation functional, contract lifecycle inspectable, supported mutations reachable, API Explorer reproducible, object JSON inspectable, provider boundaries accurate, fulfillment/replanning explainable, evidence/assurance first-class and provenance-aware, credentials understandable and safe, reason codes surviving into UI errors, no frontend authority or semantic fork, no fake production data, existing gates green, browser acceptance passing against deployed preview and production) governs the final acceptance record."
+
+rejected_scope:
+  - "This decision does not activate any roadmap gate, does not create an authorizations/ record, and does not alter the post-R9 halted roadmap state (roadmap.yaml v2.22, execution mode awaiting-architect-decisions)."
+  - "This decision does not change ConnectivityContract semantics, does not replace the accepted deployment authority, does not convert software validation into physical connectivity claims, and does not satisfy or modify any physical evidence obligation (EVID-002..EVID-008 remain open; R4/W040 remains in-review and unaccepted)."
+  - "The console is not a marketing site, not a generic admin template, and not a second execution engine; a new durable authority in the browser, an ADCOS-owned universal topology, and any silent weakening of hard requirements for UX convenience are escalation-to-Architect stop conditions, not implementation options."
+
+evidence:
+  merge_sha: null
+  ci_run: null
+  artifacts:
+    - "docs/superpowers/specs/2026-09-14-adcos-developer-console-design.md"
+    - "docs/superpowers/plans/2026-09-14-adcos-developer-console.md"
+    - "docs/tech-lead/ADCOS-DEVELOPER-CONSOLE-HANDOFF.md"
+
+authority:
+  - "This decision creates repository-local implementation authority for the bounded developer-console scope above until the console work is accepted or explicitly revoked. The Tech Lead owns all implementation and deployment execution (dispatch within the 3x3/9/depth-2 limits, integration, backend gap closure, deployment, browser verification, production promotion, rollback and console acceptance evidence); the Architect does not directly implement the console, deploy to Vercel, or accept console evidence."

@@ -10,10 +10,20 @@
 # of the deployment-branch decision record (the station packaging class:
 # the content is the Architect's verbatim decision, converted to the
 # DEC-NNNN-<slug>.yaml registry convention recorded by this reconciliation).
+# DEC-0126-deployment-authorization.yaml — status retired to SUPERSEDED by
+# DEC-0127 (2026-09-14): the deployment program is COMPLETE (PR #53 merged;
+# docs/deployment/acceptance-record.md — T8 8/8 before AND after the
+# D2->D1 routing-layer rollback; production live at https://adcos.vercel.app
+# at D1 dpl_JE6EuY6evcYfHxKP4S6N1fecKdFf), and its decision-borne authority
+# is superseded as the single active post-program authorization by the
+# ADCOS Developer Console authorization (DEC-0127). The rendered verdict
+# (decision: ACCEPTED) is never edited; the record and its scope are
+# preserved verbatim as the completed deployment program's durable
+# authority history.
 decision_id: DEC-0126
 date: "2026-09-13"
 type: governance
-status: ACCEPTED
+status: SUPERSEDED
 owner: "Architect"
 work_item: null
 acr: null
