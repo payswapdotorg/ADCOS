@@ -133,6 +133,35 @@ _DECISION_BORNE_PATH_SURFACE = {
         "vercel.json",
         ".vercelignore",
     ),
+    # DEC-0130 (2026-09-15): the bounded Build with ADCOS & LLM Integration
+    # program — the successor of the COMPLETED DEC-0128 Console V2 program
+    # (implementation + production deployment + acceptance; retired to status
+    # SUPERSEDED by DEC-0129 with no successor authorized — the zero-active
+    # interlude this registration ends). The surface is the program's
+    # declared scope: the Build with ADCOS integration layer inside the web
+    # console application (the typed integration registry referencing the
+    # accepted coverage/education/webhook vocabularies, the LLM pack
+    # generator with the public llms.txt/llms-full.txt/adcos-* assets
+    # regenerated as its output, the nine-section /build experience with the
+    # blueprint as presentation state, the docs Build with ADCOS section and
+    # its routes, the cross-surface API/LLM education, the shell/search
+    # additions, and the Build + preserved-V1/V2 frontend tests), the
+    # planning documents delivered by PR #64, the Tech Lead handoff and
+    # dispatch state, the deployment verification/acceptance records, and
+    # the deployment routing/repository hygiene the release requires
+    # (including the .gitignore build/ anchoring — the PR-#63 .vercelignore
+    # anchoring class). Fail closed on everything else.
+    "DEC-0130": (
+        "web/",
+        "docs/superpowers/specs/2026-09-15-adcos-build-with-adcos-llm-integration-design.md",
+        "docs/superpowers/plans/2026-09-15-adcos-build-with-adcos-llm-integration.md",
+        "docs/tech-lead/",
+        "deploy/verify.py",
+        "docs/deployment/",
+        "vercel.json",
+        ".vercelignore",
+        ".gitignore",
+    ),
 }
 
 

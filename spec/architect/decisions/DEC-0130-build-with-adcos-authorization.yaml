@@ -1,0 +1,92 @@
+# DEC-0130 — Build with ADCOS & LLM Integration authorization
+# (bounded, repository-local)
+# Post-program bounded authorization OUTSIDE the R0-R9 gate sequence: the
+# roadmap is COMPLETE (DEC-0125, the terminal gate), the DEC-0126 deployment
+# program, the DEC-0127 developer console program and the DEC-0128 Console V2
+# program are ALL COMPLETE (implementation + production deployment +
+# acceptance; production https://adcos.vercel.app serves the V2 learning-first
+# console; DEC-0128 retired to SUPERSEDED by DEC-0129 with no successor
+# authorized — the repository returned to the halted post-R9 state with zero
+# active authorizations). This decision registers the successor program the
+# operator directed: the Build with ADCOS & LLM Integration experience — the
+# operator-approved frozen integration design (five integration patterns;
+# application/ADCOS/provider authority boundaries; the /build product
+# experience; the integration blueprint; ShareNet as the canonical
+# gateway/relay example; the LLM Integration Pack; machine-readable
+# capability/operation/context assets; anti-drift rules; production
+# acceptance criteria) and its six-task implementation plan, delivered via
+# PR #64 (branch console/build-with-adcos), with the dedicated Tech Lead
+# handoff delivered via PR #65 (branch docs/build-with-adcos-handoff — the
+# architecture-drift guard's control/implementation separation enforced the
+# split exactly as designed). Execution ownership at the Tech Lead (the
+# handoff's ≤3-direct-worker orchestration, the W1 knowledge/generated-assets,
+# W2 product/docs and W3 API-education/acceptance allocation).
+# The station packaging class: the content is the operator's own frozen
+# planning documents (PR #64: the frozen integration design APPROVED / FROZEN
+# FOR IMPLEMENTATION + the six-task implementation plan with the W1/W2/W3
+# worker allocation), registered here in the DEC-NNNN-<slug>.yaml convention
+# by this reconciliation, exactly as DEC-0128 registered the operator's
+# frozen V2 planning documents at the RECON-051 reconciliation.
+decision_id: DEC-0130
+date: "2026-09-15"
+type: governance
+status: ACCEPTED
+owner: "Architect"
+work_item: null
+acr: null
+pr: 64
+reviewed_sha: null
+authorization: "Build with ADCOS & LLM Integration (repository-local, decision-borne — outside the authorizations/ gate machinery)"
+timestamp: "2026-09-15T04:44:34Z"
+
+review_basis: "Build with ADCOS & LLM Integration approved by the operator: the frozen integration design (docs/superpowers/specs/2026-09-15-adcos-build-with-adcos-llm-integration-design.md — Status: APPROVED / FROZEN FOR IMPLEMENTATION: the five integration patterns; the application/ADCOS/provider authority boundaries; the /build product experience; the integration blueprint as presentation state; ShareNet as the canonical gateway/relay reference; the LLM Integration Pack; the machine-readable capability/operation/context assets; the LLM anti-drift rules; the production acceptance criteria) and the six-task implementation plan (docs/superpowers/plans/2026-09-15-adcos-build-with-adcos-llm-integration.md — W1 knowledge model and generated assets, W2 build experience and documentation, W3 API/LLM education and release acceptance; the 3-direct-worker × 3-subagent ceiling preserved) delivered via PR #64 (branch console/build-with-adcos @ 034f96e, rooted at the RECON-056-era main 3535ba1), and the dedicated Tech Lead handoff (docs/tech-lead/ADCOS-BUILD-WITH-ADCOS-HANDOFF.md — the ≤3-worker orchestration, the architecture authorities, the ten non-negotiables, the required product result, the public LLM asset requirements, the ShareNet acceptance boundary and the production/browser verification gates) delivered via PR #65 (branch docs/build-with-adcos-handoff @ 148fd6a; the first CI attempt's architecture-drift-guard rejection of the mixed PR enforced the handoff/implementation split, and the operator performed it), registered at live main 3535ba1939826241ed49e1cb256af497c82a1519 (the RECON-056 governance head — the frozen artifacts arrive on main via the PR #64/#65 merges whose files this program's declared scope covers, exactly as the DEC-0128 planning docs were pinned by RECON-052); the operator directed the Tech Lead to implement and productionize the approved experience (the PR #65 handoff's mission); the roadmap's gate sequence R0-R9 stays COMPLETE (DEC-0125) and the DEC-0129 close state (DEC-0128 retired, no successor authorized) is succeeded by THIS registration — the single-active decision-borne authorization invariant over the decisions registry is restored with DEC-0130 as the one active record; the execution mode stays awaiting-architect-decisions with no active work item and no active authorizations/ record — the Build with ADCOS authority lives in this decision record (the standing one-active-authorization invariant over spec/architect/authorizations/ is untouched)."
+
+decision: ACCEPTED
+
+findings:
+  - "The deployed Console V2 is a self-teaching product for human developers, but a developer or architect asking 'exactly how should ADCOS fit into my architecture?' must still assemble the answer from concept pages, and a coding/architect LLM has no authoritative machine-readable integration model without conversation history or repository-internal knowledge."
+  - "The operator froze the Build with ADCOS & LLM Integration design (the five integration patterns; the authority boundaries; the /build experience; the blueprint as presentation state; ShareNet as the canonical gateway/relay example — an accepted ADCOS vertical proof; the LLM Integration Pack generated from the same registries the console uses; the anti-drift rules) and the six-task implementation plan, delivered the first /build surface, integration-pattern registry, navigation entry and public LLM assets via PR #64, and delivered the dedicated Tech Lead handoff via PR #65 after the architecture-drift guard correctly rejected the mixed PR."
+  - "The work is bounded and Technical-Lead-owned: the integration registry references the accepted coverage-registry operation IDs and the education/concept/guide/webhook/error metadata (never a second endpoint catalog); the public JSON/text assets are generated from the same registries so they cannot drift from the console; /build is presentation/education state creating no new domain authority; the V1 expert workbench and all V2 surfaces remain regression-protected."
+
+blockers: []
+required_corrections: []
+
+authorized_scope:
+  - "the Build with ADCOS integration layer inside the web console application (web/ — the typed integration registry with its patterns/capabilities/workflows/blueprint modules referencing the accepted coverage/education/webhook vocabularies, the LLM pack generator and the public machine-readable/text assets web/public/{llms.txt,llms-full.txt,adcos-integration-context.json,adcos-capabilities.json,adcos-operations.json} regenerated as its output, the /build product experience with the integration blueprint as presentation state, the docs Build with ADCOS section and its routes, the cross-surface API/LLM education integration in the API-learning and docs operation surfaces, the shell/search/navigation additions, and the Build + preserved-V1/V2 frontend tests)"
+  - "the Build with ADCOS planning documents delivered via PR #64 (docs/superpowers/specs/2026-09-15-adcos-build-with-adcos-llm-integration-design.md, docs/superpowers/plans/2026-09-15-adcos-build-with-adcos-llm-integration.md)"
+  - "the Tech Lead handoff and dispatch state during the program (docs/tech-lead/)"
+  - "the deployment verification and acceptance records for the Build with ADCOS release (deploy/verify.py, docs/deployment/)"
+  - "the explicit web/API deployment routing and repository hygiene the release requires (vercel.json, .vercelignore, .gitignore — the unanchored build/ pattern anchoring, the PR-#63 .vercelignore anchoring class)"
+
+constraints:
+  - "Architecture 1.1 remains frozen and normative; every accepted authority is consumed by reference through the canonical HTTP boundary — browser code never imports Python/domain internals, never forks domain semantics and never creates an alternate durable authority."
+  - "ConnectivityContract remains the sole durable ADCOS contract authority; a consuming application is never granted a second connectivity-contract authority; ADCOS sells/allocates technology-neutral connectivity outcomes, never provider-specific access technology; provider-native topology, routing and subscriber authority stay provider-owned."
+  - "Provider SDKs and provider-native network objects never appear in application-facing integration examples; webhooks remain observations, never canonical business state; API success is never represented as proof of physical connectivity success; software/deployment evidence and physical/network evidence remain visibly distinct (EVID-002..EVID-008 stay outside console acceptance)."
+  - "Every operation identifier in the integration registry, the Build UI, the human docs and the LLM assets maps to the accepted coverage registry; examples correspond to real accepted operations or are explicitly labeled conceptual; unsupported operations never appear as executable; no invented endpoints, capabilities, webhook event types, credentials, providers or telemetry."
+  - "The integration blueprint is presentation state only — never persisted, never claimed as deployment configuration; /build creates no new backend/domain authority."
+  - "The public LLM assets are generated from the same frontend registries the UI uses (the anti-drift derivation) and are validated against them by tests; the LLM context carries the anti-drift rules verbatim in meaning (no second contract authority; no provider topology in application domains; webhooks not canonical; API success not physical proof; no invented endpoints/capabilities; data-plane/control-plane independence preserved unless explicitly chosen; canonical reason codes and API version/compatibility rules preserved; idempotency and declared request semantics honored; software evidence distinguished from physical evidence)."
+  - "The ShareNet boundary is taught exactly: ShareNet keeps authority over content, P2P distribution, publisher trust, delivery receipts and application economics; ADCOS is authoritative for connectivity contract/orchestration; providers remain authoritative for provider-native realization/topology; a local ShareNet P2P transfer is never routed through ADCOS merely because ADCOS is used for gateway/backhaul connectivity; ShareNet's local/P2P data plane operates when ADCOS is unreachable."
+  - "All currently accepted V1 and V2 capabilities remain regression-protected (the V1 expert workbench; the V2 Docs, Quickstart, Playbooks, tour, Explorer education and troubleshooting surfaces)."
+  - "No secrets or credential values may be committed or printed; the LLM context pointer is a public-asset URL only."
+  - "Work is isolated on console/docs branches until reviewed and merged; the ADCOS worker limits (at most 3 direct workers, at most 3 subagents each, at most 9 active descendants, depth at most 2) remain in force; the Tech Lead owns integration, verification, browser acceptance, production promotion, rollback and acceptance."
+
+acceptance:
+  - "Build with ADCOS acceptance is SOFTWARE-class only and follows the frozen design's section 14: a developer can choose an integration pattern and obtain a complete boundary explanation; the console enumerates the relevant supported capabilities and operations without inventing them; the generated blueprint identifies application/ADCOS/provider ownership explicitly; the human docs and LLM assets agree on operation IDs and rules; /llms.txt, /llms-full.txt, /adcos-integration-context.json, /adcos-capabilities.json and /adcos-operations.json are deployed, reachable (HTTP 200) and internally consistent; an LLM given only the LLM pack can produce a compliant architecture for the ShareNet pattern without importing provider-specific APIs or creating a second connectivity authority; existing Console V2 Docs, Quickstart, Playbooks and API Explorer remain accessible; no fake credentials, telemetry, provider state or physical-evidence claims are introduced; production browser acceptance proves /build and the LLM assets are reachable on adcos.vercel.app."
+  - "The release gate (the plan's Task 6 / the handoff's verification): the backend spec/fresh-session checks, all V1 batteries and the existing frontend tests green; the integration-registry and LLM-pack consistency tests green; the browser acceptance over the full /build journey (choose pattern -> inspect ownership/lifecycle -> open API operation -> open docs -> retrieve LLM context) and the existing V2 entry points and expert workbench routes re-tested before promotion; the Tech Lead dispatch guard and architecture drift guard green at every pinned head."
+
+rejected_scope:
+  - "This decision does not activate any roadmap gate, does not create an authorizations/ record, and does not alter the post-R9 halted roadmap state (roadmap.yaml, execution mode awaiting-architect-decisions)."
+  - "This decision does not replace the accepted ADCOS backend architecture, does not create a second API specification or endpoint catalog, does not generate or store secrets in public documentation, and does not automatically modify any application's architecture or codebase."
+  - "A second durable authority in the browser or the LLM assets, an ADCOS-owned universal topology graph, provider SDK vocabulary in application-facing examples, webhook observations promoted to canonical state, API success presented as physical connectivity success, and any fake provider/network/production telemetry data are escalation-to-Architect stop conditions, not implementation options."
+
+evidence:
+  merge_sha: null
+  ci_run: null
+  artifacts:
+    - "docs/superpowers/specs/2026-09-15-adcos-build-with-adcos-llm-integration-design.md"
+    - "docs/superpowers/plans/2026-09-15-adcos-build-with-adcos-llm-integration.md"
+    - "https://github.com/payswapdotorg/ADCOS/pull/64"
+    - "https://github.com/payswapdotorg/ADCOS/pull/65"
+
+authority:
+  - "This decision creates repository-local implementation authority for the bounded Build with ADCOS & LLM Integration scope above until the work is accepted or explicitly revoked. The Tech Lead owns all implementation and deployment execution (dispatch within the 3x3/9/depth-2 limits, integration, verification, browser acceptance, preview deployment, production promotion, rollback and the acceptance evidence); the Architect does not directly implement, deploy to Vercel, or accept the evidence."
