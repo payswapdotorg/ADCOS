@@ -1,0 +1,250 @@
+# ADCOS — Complete Architect / Developer Context
+
+## Mission
+
+ADCOS is an Adaptive Distributed Connectivity Operating System and programmable connectivity exchange/orchestration layer. Its product promise is **one connectivity contract, many networks, continuous fulfillment**.
+
+ADCOS composes heterogeneous provider capabilities without taking ownership of provider-native radio/core/topology/routing authority.
+
+## The mental model
+
+A consuming application describes the connectivity outcome it needs. ADCOS records that requirement as a canonical connectivity intent/contract, evaluates the accepted policy/eligibility path, composes provider offers into an execution plan, and continuously observes fulfillment with evidence and assurance references.
+
+```text
+Application
+  ↓ technology-neutral requirement
+Connectivity Intent
+  ↓
+Eligibility / Policy
+  ↓
+Provider Offers
+  ↓
+ConnectivityContract
+  ↓
+Execution Plan
+  ↓
+Provider realization
+  ↓
+Evidence + Assurance
+  ↓
+Continuous fulfillment / observation
+```
+
+## Authority model
+
+### Application authority
+
+The application owns its product domain, customer/user context, device context, content, product UX, application economics and domain-specific data-plane semantics.
+
+### ADCOS authority
+
+ADCOS owns the durable connectivity contract lifecycle and connectivity exchange/orchestration: recording intent, accepting typed offer references, activation/termination, bounded leases, execution/assurance references and developer-facing lifecycle observation.
+
+### Provider authority
+
+Providers retain provider-native topology, routing, subscriber authority, physical network realization and provider APIs. Those details belong behind ADCOS adapters, not in consuming product domains.
+
+## Rules every integration must preserve
+
+1. Never build a second connectivity-contract authority.
+2. Never create a second offer/provider-selection authority inside the application.
+3. Request connectivity outcomes rather than provider technology.
+4. Do not encode `provider X`, `wlan0`, `gNB`, tunnel implementation or equivalent provider internals into the application contract.
+5. Browser and application examples use the canonical HTTP developer boundary only.
+6. Webhooks are observations. They do not replace canonical contract reads.
+7. API success is not proof of physical connectivity success.
+8. Software/deployment evidence and physical/network evidence are different evidence classes.
+9. Preserve canonical ADCOS reason codes.
+10. Respect API versioning and compatibility rules.
+11. Use mutation/idempotency semantics exactly as defined by the API.
+12. Do not invent endpoints, provider capabilities or telemetry.
+13. Do not create a global provider topology graph in an application.
+14. A product can keep operating its own local/data plane when ADCOS is unavailable if its business design permits it; ADCOS reachability should not silently become a dependency of unrelated local behavior.
+
+## Integration patterns
+
+### Application consumes connectivity
+
+Use when an application needs connectivity for itself, a service endpoint or a bounded cohort.
+
+Typical sequence:
+`application_self → intent_create → intents/intent_get → intent_lifecycle → offers_accept → contract_activate → contract_get → contract_assurance`
+
+The application owns product behavior. ADCOS owns connectivity contract state. Providers own realization.
+
+### Gateway / relay platform
+
+Use when a platform has its own application/data plane and needs backhaul or gateway/relay connectivity.
+
+Important design rule: ADCOS manages the gateway/relay connectivity outcome, not the application's internal content/data routing. A local or P2P transfer inside the platform does not become an ADCOS connectivity transaction simply because ADCOS provides backhaul connectivity.
+
+### Fleet / subscriber connectivity
+
+Use when a product purchases/allocates connectivity for devices or subscribers. The product retains cohort membership and business semantics; ADCOS owns the connectivity contract and bounded lease lifecycle; provider subscriber/network mechanics remain provider-owned.
+
+### Provider / adapter integration
+
+Use when a network provider exposes capabilities to ADCOS. Provider SDK/API objects stay behind the adapter. Consuming applications see technology-neutral offers and contract/execution outcomes.
+
+### Marketplace / orchestration product
+
+A higher-level marketplace may own commercial UX and customer context while delegating actual connectivity orchestration to ADCOS. Do not turn the marketplace into a second connectivity ledger or reinterpret opaque provider references.
+
+## API model
+
+Current developer API major line: **2.0**.
+
+The public boundary includes operations for:
+- application identity/capabilities
+- connectivity intent creation/list/get/lifecycle
+- offer acceptance
+- contract activation/list/get/usage/assurance/termination
+- lease grant/list/get/renew/revoke
+- webhook endpoint registration/list/get/deliveries
+
+The console coverage registry is the authoritative list of executable developer operations. Use `/adcos-operations.json` for the current published projection.
+
+Mutations require the capabilities and idempotency semantics defined by the API. Do not create client-side business rules that silently weaken hard contract constraints.
+
+## Object semantics
+
+### ConnectivityContract
+
+The canonical durable record of the connectivity an application asks ADCOS to continuously fulfill. Requirements and hard constraints are part of the canonical material. Plans, execution artifacts, evidence and assurance are referenced against the contract.
+
+### Offer
+
+Opaque typed provider offer reference. The consuming application should preserve its declared structure and provenance; it should not reinterpret provider-internal semantics.
+
+### Eligibility / Policy
+
+Reasoning and authorization that determine which lifecycle operations are admitted. The application consumes backend statements/reason codes rather than reimplementing the policy engine in frontend code.
+
+### Execution plan
+
+Composition of provider capabilities that realizes the accepted contract. Replanning must preserve hard contract constraints.
+
+### Fulfillment
+
+The continuous process of honoring an active contract. Operational observation reports execution state; it does not automatically prove physical success.
+
+### Evidence / Assurance
+
+Evidence records support statements about what happened and where it came from. Assurance obligations describe what should hold for a contract to count as assured. Do not turn software deployment evidence into physical-network proof.
+
+### Lease
+
+A bounded validity window over a contract. Lease mutations are separate lifecycle operations and should not be confused with creating a new connectivity authority.
+
+### Webhook
+
+Signed observation delivery. Use it to react asynchronously, but maintain canonical state from authoritative API reads.
+
+## Error handling
+
+When an ADCOS operation fails:
+1. Preserve the exact backend reason code.
+2. Identify the affected resource.
+3. Determine whether the error is retryable according to API metadata.
+4. Read the canonical resource before issuing a state-dependent retry.
+5. Never hide an unavailable deployment capability behind a fake result.
+
+Unknown reason codes must remain unknown; the client must not invent semantics.
+
+## Versioning
+
+The API uses explicit versioning. Route version and `X-ADCOS-API-Version` must agree. Compatible versions allow additive optional fields; breaking field changes require a new major version. Consumers must not depend on deprecated/retired behavior as if it were current.
+
+## ShareNet reference architecture
+
+ShareNet is an accepted ADCOS vertical proof and is the canonical gateway/relay example.
+
+```text
+ShareNet content + P2P data plane
+            |
+            | technology-neutral gateway/relay connectivity need
+            v
+        ADCOS contract
+            |
+            v
+      provider realization
+```
+
+ShareNet retains authority over:
+- content addressing and distribution
+- Nearby/P2P transport
+- publisher trust and catalog semantics
+- delivery receipts / local attestation
+- contribution/corpus/training semantics
+- application economics
+
+ADCOS provides:
+- connectivity intent/contract lifecycle
+- offer acceptance and provider orchestration
+- execution and assurance references
+- bounded connectivity leases
+- asynchronous observations
+
+Providers retain:
+- topology
+- access technology realization
+- routing
+- subscriber/network authority
+
+ShareNet must therefore introduce an `AdcosConnectivityClient`/equivalent application port at its control-plane boundary, not put ADCOS into its local `core-transport`. Ordinary device-to-device content transfers remain within ShareNet. ADCOS is used when ShareNet needs connectivity outcomes for gateway/relay/backhaul infrastructure.
+
+ShareNet's current repository includes an SDK whose intended public surface owns publish/subscribe/fetch/local availability/contribution submission/sync observation, plus core crypto/content/catalog/transport/attest modules. Integrate ADCOS above those modules rather than creating direct provider dependencies in them.
+
+## Provider adapter rule
+
+A provider adapter is an ADCOS integration boundary. It may translate provider-native capability/realization details into ADCOS typed capability/offer/execution material. That translation must not become a globally visible provider-topology model.
+
+## Security and secrets
+
+Never place API credentials or webhook signing secrets into public docs, examples, browser local storage, or LLM context assets. Public examples may show header names and synthetic non-secret placeholders only.
+
+## LLM implementation workflow
+
+When an LLM is asked to add ADCOS to a product:
+
+1. Identify the product's connectivity outcome and integration pattern.
+2. Mark application/ADCOS/provider authorities explicitly.
+3. Choose only capabilities and operations present in the published registry.
+4. Define the application-side connectivity port/client.
+5. Map the product lifecycle to the ADCOS contract lifecycle.
+6. Add webhook observations only where asynchronous awareness is needed.
+7. Keep ADCOS control-plane failures separate from unrelated product/data-plane behavior.
+8. Implement typed error handling and idempotent mutations.
+9. Preserve hard constraints exactly.
+10. Test provider-independence and authority boundaries.
+11. Validate examples against the live Developer API/Explorer before claiming integration completeness.
+
+## Anti-patterns
+
+Never:
+- add `AdcosContract` as a second source of truth for connectivity contracts;
+- copy ADCOS contract state into a second mutable ledger and let both authorities change it;
+- make an app call provider APIs directly for the same capability ADCOS is orchestrating;
+- interpret webhooks as authoritative state mutations without a canonical read;
+- claim physical availability based only on an API 2xx response;
+- build a global ADCOS topology map from provider data;
+- invent an endpoint because the product story seems to require one;
+- use a fake provider/network result in a production-status surface;
+- route every local/P2P ShareNet data transfer through ADCOS;
+- expose public secrets in generated LLM context.
+
+## Production checklist
+
+Before production integration:
+- [ ] Application identity and required capability grants are understood.
+- [ ] API version is explicit and route/header versions agree.
+- [ ] Mutations use required idempotency semantics.
+- [ ] Contract hard constraints are treated as immutable after creation.
+- [ ] Error handling preserves canonical reason codes.
+- [ ] Webhook signature verification and replay protections are implemented where webhooks are used.
+- [ ] Provider implementation is isolated behind the appropriate ADCOS boundary.
+- [ ] Software vs physical/network evidence is represented honestly.
+- [ ] Degraded ADCOS control-plane behavior is explicit.
+- [ ] No second connectivity contract authority exists.
+- [ ] No provider-native APIs leak into the product domain.
+- [ ] The integration has been tested through the actual ADCOS HTTP boundary.
