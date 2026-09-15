@@ -1,0 +1,57 @@
+{
+  "schema_version": "1",
+  "generated_for": "ADCOS Build with ADCOS",
+  "capabilities": [
+    {
+      "id": "application-connectivity",
+      "title": "Application connectivity",
+      "description": "Describe and manage technology-neutral connectivity outcomes for an application or service.",
+      "operation_ids": [
+        "application_self",
+        "intent_create",
+        "intents_list",
+        "intent_get",
+        "intent_lifecycle",
+        "offers_accept",
+        "contract_activate",
+        "contracts_list",
+        "contract_get",
+        "contract_usage",
+        "contract_assurance",
+        "contract_terminate"
+      ]
+    },
+    {
+      "id": "leases",
+      "title": "Bounded connectivity leases",
+      "description": "Grant, inspect, renew and revoke bounded validity windows over active connectivity contracts.",
+      "operation_ids": [
+        "lease_grant",
+        "leases_list",
+        "lease_get",
+        "lease_renew",
+        "lease_revoke"
+      ]
+    },
+    {
+      "id": "webhook-observations",
+      "title": "Signed webhook observations",
+      "description": "Receive asynchronous observations about developer-platform events without treating them as a second authority.",
+      "operation_ids": [
+        "endpoints_list",
+        "endpoint_register",
+        "endpoint_get",
+        "deliveries_list"
+      ]
+    },
+    {
+      "id": "deterministic-reference-demo",
+      "title": "Deterministic contract fulfillment reference",
+      "description": "Inspect the accepted reference chain from contract boundary through plan, execution and evidence without claiming physical connectivity.",
+      "operation_ids": [
+        "demo_contract_fulfillment"
+      ]
+    }
+  ],
+  "rule": "This is a documentation projection of the canonical console coverage registry. It must not become a second executable endpoint catalog."
+}

@@ -18,6 +18,7 @@
 import Link from "next/link";
 import { CodeBlock, EmptyState } from "@/components/ui";
 import { getConcept, getOperationEducation } from "@/lib/education";
+import { BuildContextBlock } from "@/features/api-learning";
 import { coverageByOperation, type CoverageRecord } from "@/lib/api/coverage";
 import {
   DocsLink,
@@ -236,6 +237,18 @@ export function OperationPage({ operationId }: { operationId: string }) {
           </p>
         </DocsSection>
       ) : null}
+
+      <DocsSection
+        id="build-context"
+        title="Build context"
+        description="The documented integration patterns that use this operation, and the machine-readable context an LLM can consume."
+      >
+        {/* omitLifecycle: this page's own Lifecycle-position section carries
+            the registry's position statement — the block contributes the
+            pattern membership and the LLM asset pointer (the plan's Task-5
+            cross-surface loop: /build links here, this links back). */}
+        <BuildContextBlock operationId={record.operation} omitLifecycle />
+      </DocsSection>
 
       <DocsSection
         id="run-it"

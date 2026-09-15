@@ -4,17 +4,8 @@
  * The app shell — the single console frame.
  *
  * Sidebar (nav rail) + right column (top bar + main region). Owns the
- * command palette's open state: the global Cmd/Ctrl+K listener toggles
- * it, the top bar trigger opens it, and the palette mount reports close.
- * On mount it registers the default navigation commands into the command
- * registry (the palette's "Navigate" group) — the same vocabulary the
- * sidebar shows, so keyboard and mouse navigation agree.
- *
- * V2 learning surfaces (DEC-0128, Task 7): the Learn entries — Docs,
- * Quickstart, Playbooks and the tour — register here exactly like the
- * V1 entries (nav-docs / nav-quickstart / nav-playbooks / nav-tour) and
- * appear in the sidebar's Learn group. Expert routes stay direct: the
- * entries are ADDITIONS, never redirects (the V1 preservation rule §20).
+ * command palette's open state and registers the same learning/build
+ * vocabulary shown by the sidebar.
  */
 
 import { useEffect, useState, type ReactNode } from "react";
@@ -35,118 +26,29 @@ import { Sidebar } from "./sidebar";
 import { TopBar } from "./top-bar";
 
 const NAV_COMMANDS: CommandRecord[] = [
-  {
-    id: "nav-home",
-    title: "Home",
-    href: "/",
-    group: "Navigate",
-    keywords: ["home", "overview", "dashboard"],
-    icon: <HomeIcon className="h-3.5 w-3.5" />,
-  },
-  {
-    id: "nav-connectivity",
-    title: "Connectivity",
-    href: "/connectivity",
-    group: "Navigate",
-    keywords: ["connectivity", "contracts", "intent", "builder"],
-    icon: <ConnectivityIcon className="h-3.5 w-3.5" />,
-  },
-  {
-    id: "nav-networks",
-    title: "Networks",
-    href: "/networks",
-    group: "Navigate",
-    keywords: ["networks", "providers", "adapters", "topology"],
-    icon: <NetworksIcon className="h-3.5 w-3.5" />,
-  },
-  {
-    id: "nav-fulfillment",
-    title: "Fulfillment",
-    href: "/fulfillment",
-    group: "Navigate",
-    keywords: ["fulfillment", "execution", "plan", "replan", "failover", "leases"],
-    icon: <FulfillmentIcon className="h-3.5 w-3.5" />,
-  },
-  {
-    id: "nav-evidence",
-    title: "Evidence",
-    href: "/evidence",
-    group: "Navigate",
-    keywords: ["evidence", "provenance", "lineage"],
-    icon: <EvidenceIcon className="h-3.5 w-3.5" />,
-  },
-  {
-    id: "nav-developers",
-    title: "Developers",
-    href: "/developers",
-    group: "Navigate",
-    keywords: ["developers", "applications", "credentials", "capabilities", "api", "explorer", "requests"],
-    icon: <DevelopersIcon className="h-3.5 w-3.5" />,
-  },
-  {
-    id: "nav-assurance",
-    title: "Assurance",
-    href: "/assurance",
-    group: "Navigate",
-    keywords: ["assurance", "objectives", "latency", "availability", "capacity", "health"],
-    icon: <AssuranceIcon className="h-3.5 w-3.5" />,
-  },
-  {
-    id: "nav-settings",
-    title: "Settings",
-    href: "/settings",
-    group: "Navigate",
-    keywords: ["settings", "appearance", "theme", "connection", "environment"],
-    icon: <SettingsIcon className="h-3.5 w-3.5" />,
-  },
-  // the V2 learning surfaces (the Learn group — additions only, never
-  // redirects; the expert V1 routes above stay exactly where they were)
-  {
-    id: "nav-docs",
-    title: "Docs",
-    href: "/docs",
-    group: "Learn",
-    keywords: ["docs", "documentation", "concepts", "guides", "api", "errors", "troubleshooting", "reference", "learn"],
-    icon: <EvidenceIcon className="h-3.5 w-3.5" />,
-  },
-  {
-    id: "nav-quickstart",
-    title: "Quickstart",
-    href: "/quickstart",
-    group: "Learn",
-    keywords: ["quickstart", "start", "getting started", "first contract", "journey", "learn"],
-    icon: <FulfillmentIcon className="h-3.5 w-3.5" />,
-  },
-  {
-    id: "nav-playbooks",
-    title: "Playbooks",
-    href: "/playbooks",
-    group: "Learn",
-    keywords: ["playbooks", "guided paths", "goals", "build", "understand", "integrate", "diagnose", "learn"],
-    icon: <SearchIcon className="h-3.5 w-3.5" />,
-  },
-  {
-    id: "nav-tour",
-    title: "The tour",
-    href: "/tour",
-    group: "Learn",
-    keywords: ["tour", "walkthrough", "demonstration", "fulfillment demo", "learn"],
-    icon: <NetworksIcon className="h-3.5 w-3.5" />,
-  },
+  { id: "nav-home", title: "Home", href: "/", group: "Navigate", keywords: ["home", "overview", "dashboard"], icon: <HomeIcon className="h-3.5 w-3.5" /> },
+  { id: "nav-connectivity", title: "Connectivity", href: "/connectivity", group: "Navigate", keywords: ["connectivity", "contracts", "intent", "builder"], icon: <ConnectivityIcon className="h-3.5 w-3.5" /> },
+  { id: "nav-networks", title: "Networks", href: "/networks", group: "Navigate", keywords: ["networks", "providers", "adapters", "topology"], icon: <NetworksIcon className="h-3.5 w-3.5" /> },
+  { id: "nav-fulfillment", title: "Fulfillment", href: "/fulfillment", group: "Navigate", keywords: ["fulfillment", "execution", "plan", "replan", "failover", "leases"], icon: <FulfillmentIcon className="h-3.5 w-3.5" /> },
+  { id: "nav-evidence", title: "Evidence", href: "/evidence", group: "Navigate", keywords: ["evidence", "provenance", "lineage"], icon: <EvidenceIcon className="h-3.5 w-3.5" /> },
+  { id: "nav-developers", title: "Developers", href: "/developers", group: "Navigate", keywords: ["developers", "applications", "credentials", "capabilities", "api", "explorer", "requests"], icon: <DevelopersIcon className="h-3.5 w-3.5" /> },
+  { id: "nav-assurance", title: "Assurance", href: "/assurance", group: "Navigate", keywords: ["assurance", "objectives", "latency", "availability", "capacity", "health"], icon: <AssuranceIcon className="h-3.5 w-3.5" /> },
+  { id: "nav-settings", title: "Settings", href: "/settings", group: "Navigate", keywords: ["settings", "appearance", "theme", "connection", "environment"], icon: <SettingsIcon className="h-3.5 w-3.5" /> },
+  { id: "nav-docs", title: "Docs", href: "/docs", group: "Learn", keywords: ["docs", "documentation", "concepts", "guides", "api", "errors", "troubleshooting", "reference", "learn"], icon: <EvidenceIcon className="h-3.5 w-3.5" /> },
+  { id: "nav-build", title: "Build with ADCOS", href: "/build", group: "Learn", keywords: ["build", "architecture", "integration", "integrate", "llm", "developer", "gateway", "relay"], icon: <ConnectivityIcon className="h-3.5 w-3.5" /> },
+  { id: "nav-quickstart", title: "Quickstart", href: "/quickstart", group: "Learn", keywords: ["quickstart", "start", "getting started", "first contract", "journey", "learn"], icon: <FulfillmentIcon className="h-3.5 w-3.5" /> },
+  { id: "nav-playbooks", title: "Playbooks", href: "/playbooks", group: "Learn", keywords: ["playbooks", "guided paths", "goals", "build", "understand", "integrate", "diagnose", "learn"], icon: <SearchIcon className="h-3.5 w-3.5" /> },
+  { id: "nav-tour", title: "The tour", href: "/tour", group: "Learn", keywords: ["tour", "walkthrough", "demonstration", "fulfillment demo", "learn"], icon: <NetworksIcon className="h-3.5 w-3.5" /> },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
 
-  // the default navigation commands (idempotent re-registration)
   useEffect(() => {
     const unregister = NAV_COMMANDS.map((command) => registerCommand(command));
-    return () => {
-      unregister.forEach((fn) => fn());
-    };
+    return () => unregister.forEach((fn) => fn());
   }, []);
 
-  // Cmd/Ctrl+K toggles the palette from anywhere
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {

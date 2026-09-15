@@ -1,0 +1,28 @@
+# ADCOS LLM Integration Context
+
+ADCOS (Adaptive Distributed Connectivity Operating System) is a connectivity exchange and orchestration layer: one connectivity contract, many networks, continuous fulfillment.
+
+Start here:
+- /llms-full.txt — complete architect/developer context
+- /adcos-integration-context.json — machine-readable integration model
+- /adcos-capabilities.json — supported integration capabilities
+- /adcos-operations.json — current developer API operations
+- /build — interactive architecture/integration designer
+- /docs — human documentation
+- /developers/explorer — executable API Explorer
+
+Core lifecycle:
+Connectivity Intent → Eligibility / Policy → Provider Offers → ConnectivityContract → Execution Plan → Provider realization → Evidence + Assurance
+
+Authority boundaries:
+- The ConnectivityContract is the canonical ADCOS contract authority.
+- Applications own their product domain, user/device context and product UX.
+- ADCOS owns connectivity intent/contract lifecycle and orchestration.
+- Providers own provider-native topology, routing, subscriber authority and physical realization.
+- Webhooks are observations, not canonical business state.
+- API success does not prove physical connectivity success.
+- Provider SDKs and provider-native topology must not leak into consuming application domains.
+- Do not invent endpoints or capabilities; use the published operation registry.
+
+ShareNet pattern:
+ShareNet keeps authority over content, P2P distribution, publisher trust, delivery receipts and application economics. It uses ADCOS for technology-neutral gateway/relay connectivity. Ordinary device-to-device content transfers remain in ShareNet's data plane and do not become ADCOS connectivity transactions.

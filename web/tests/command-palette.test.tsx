@@ -11,11 +11,12 @@
  * - Escape closes
  * - seeded recent objects render under the "Recent" section
  * - executing a navigation command self-feeds the recents store
- * - the V2 Learn surfaces (DEC-0128, Task 7): the four new commands
- *   (nav-docs / nav-quickstart / nav-playbooks / nav-tour) appear in
- *   the palette alongside the eight V1 entries, and the sidebar renders
- *   the same entries in its Learn group — additions only, the expert
- *   V1 routes stay direct
+ * - the V2 Learn surfaces (DEC-0128, Task 7): the five commands of
+ *   the "Learn & build" group (nav-docs / nav-build / nav-quickstart /
+ *   nav-playbooks / nav-tour) appear in the palette alongside the
+ *   eight V1 entries, and the sidebar renders the same entries in its
+ *   Learn & build group — additions only, the expert V1 routes stay
+ *   direct
  */
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -130,15 +131,17 @@ describe("CommandPalette", () => {
     const input = await openPalette();
     expect(input).toBeInTheDocument();
 
-    // empty query: all TWELVE navigation commands are visible — the
-    // eight V1 expert entries plus the four V2 Learn entries
+    // empty query: all THIRTEEN navigation commands are visible — the
+    // eight V1 expert entries plus the five Learn & build entries
+    // (Docs, Build with ADCOS, Quickstart, Playbooks, The tour)
     const listbox = screen.getByRole("listbox", { name: "Results" });
     expect(within(listbox).getByRole("option", { name: "Home" })).toBeInTheDocument();
     expect(within(listbox).getByRole("option", { name: "Networks" })).toBeInTheDocument();
-    expect(within(listbox).getAllByRole("option")).toHaveLength(12);
+    expect(within(listbox).getAllByRole("option")).toHaveLength(13);
 
-    // the four V2 Learn surfaces appear in the palette
+    // the five Learn & build surfaces appear in the palette
     expect(within(listbox).getByRole("option", { name: "Docs" })).toBeInTheDocument();
+    expect(within(listbox).getByRole("option", { name: "Build with ADCOS" })).toBeInTheDocument();
     expect(within(listbox).getByRole("option", { name: "Quickstart" })).toBeInTheDocument();
     expect(within(listbox).getByRole("option", { name: "Playbooks" })).toBeInTheDocument();
     expect(within(listbox).getByRole("option", { name: "The tour" })).toBeInTheDocument();
@@ -154,12 +157,18 @@ describe("CommandPalette", () => {
     await user.clear(input);
     await user.type(input, "netw");
 
-    // only Networks survives the filter
-    expect(within(listbox).getByRole("option", { name: "Networks" })).toBeInTheDocument();
+    // Networks tops the filter; the Build with ADCOS entry also matches
+    // "netw" weakly through its integration/gateway keywords, ranking far
+    // below — and Home is gone
+    const netwOptions = within(listbox).getAllByRole("option");
+    expect(netwOptions).toHaveLength(2);
+    expect(netwOptions[0]).toHaveAccessibleName("Networks");
+    expect(netwOptions[1]).toHaveAccessibleName("Build with ADCOS");
     expect(within(listbox).queryByRole("option", { name: "Home" })).toBeNull();
-    expect(within(listbox).getAllByRole("option")).toHaveLength(1);
 
-    // keyboard execution: ArrowDown (wraps onto the single item) + Enter
+    // keyboard execution: ArrowDown twice wraps the two filtered items
+    // back onto Networks (the top-ranked match) + Enter
+    await user.keyboard("{ArrowDown}");
     await user.keyboard("{ArrowDown}");
     await user.keyboard("{Enter}");
 
@@ -222,14 +231,14 @@ describe("CommandPalette", () => {
     expect(within(listbox).getByText("Recent")).toBeInTheDocument();
     // the navigation command AND the seeded recent both carry the label
     expect(within(listbox).getAllByRole("option", { name: "Evidence" })).toHaveLength(2);
-    expect(within(listbox).getAllByRole("option")).toHaveLength(13);
+    expect(within(listbox).getAllByRole("option")).toHaveLength(14);
 
     // the recent row navigates to its href: walk the keyboard down to it
-    // (the twelve commands come first, the recent row is thirteenth)
+    // (the thirteen commands come first, the recent row is fourteenth)
     const input = screen.getByRole("combobox", {
       name: "Search commands and objects",
     });
-    for (let step = 0; step < 12; step += 1) {
+    for (let step = 0; step < 13; step += 1) {
       fireEvent.keyDown(input, { key: "ArrowDown" });
     }
     fireEvent.keyDown(input, { key: "Enter" });
@@ -267,7 +276,7 @@ describe("CommandPalette", () => {
 });
 
 describe("Shell navigation — the V2 Learn surfaces (DEC-0128, Task 7)", () => {
-  it("renders the Learn group in the sidebar with the four new entries", () => {
+  it("renders the Learn & build group in the sidebar with the five entries", () => {
     renderShell();
 
     const nav = screen.getByRole("navigation", { name: "Primary" });
@@ -286,9 +295,13 @@ describe("Shell navigation — the V2 Learn surfaces (DEC-0128, Task 7)", () => 
       expect(within(nav).getByRole("link", { name: label })).toBeInTheDocument();
     }
 
-    // the Learn group renders its label and the four new entries
-    expect(within(nav).getByText("Learn")).toBeInTheDocument();
+    // the Learn & build group renders its label and the five entries
+    expect(within(nav).getByText("Learn & build")).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/docs");
+    expect(within(nav).getByRole("link", { name: "Build with ADCOS" })).toHaveAttribute(
+      "href",
+      "/build",
+    );
     expect(within(nav).getByRole("link", { name: "Quickstart" })).toHaveAttribute(
       "href",
       "/quickstart",
@@ -302,8 +315,8 @@ describe("Shell navigation — the V2 Learn surfaces (DEC-0128, Task 7)", () => 
       "/tour",
     );
 
-    // twelve nav links total — additions only, nothing removed
-    expect(within(nav).getAllByRole("link")).toHaveLength(12);
+    // thirteen nav links total — additions only, nothing removed
+    expect(within(nav).getAllByRole("link")).toHaveLength(13);
 
     // no forced onboarding: at "/" only Home is the current page
     const current = within(nav)
