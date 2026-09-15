@@ -1,0 +1,44 @@
+{
+  "schema_version": "1",
+  "product": {"name":"ADCOS","mission":"One connectivity contract, many networks, continuous fulfillment."},
+  "mental_model":["Connectivity Intent","Eligibility / Policy","Provider Offers","ConnectivityContract","Execution Plan","Provider realization","Evidence + Assurance","Continuous fulfillment"],
+  "authority_boundaries": {
+    "application":["product domain","user/device context","application UX","content/data plane","application economics"],
+    "adcos":["connectivity intent","ConnectivityContract lifecycle","offer acceptance as typed references","execution/assurance references","bounded leases","developer API boundary"],
+    "provider":["provider-native topology","routing","subscriber authority","physical/network realization","provider APIs"]
+  },
+  "integration_patterns":[
+    {"id":"application","name":"Application consumes connectivity","primary_rule":"Request technology-neutral connectivity outcomes; keep product authority in the application."},
+    {"id":"gateway-relay","name":"Gateway / relay platform","primary_rule":"Use ADCOS for gateway/backhaul connectivity while keeping the product's local/data plane independent."},
+    {"id":"fleet-subscriber","name":"Fleet / subscriber connectivity","primary_rule":"ADCOS owns connectivity contract/lease lifecycle; the application owns cohort semantics."},
+    {"id":"provider-adapter","name":"Provider / adapter integration","primary_rule":"Keep provider SDKs and topology behind the ADCOS adapter boundary."},
+    {"id":"marketplace-orchestration","name":"Connectivity marketplace / orchestration","primary_rule":"Build commercial/product UX around ADCOS without creating a second connectivity authority."}
+  ],
+  "absolute_rules":[
+    "ConnectivityContract is the sole durable ADCOS connectivity-contract authority.",
+    "Applications consume technology-neutral connectivity outcomes, not provider-native topology or APIs.",
+    "Provider-native topology, routing and subscriber authority remain provider-owned.",
+    "Webhooks are observations, not canonical business state.",
+    "API success is not physical connectivity proof.",
+    "Software evidence and physical/network evidence remain distinct.",
+    "Preserve canonical reason codes.",
+    "Do not invent unsupported endpoints, capabilities or telemetry.",
+    "Do not expose secrets in public documentation or LLM context.",
+    "Use the published operation registry as the current API surface and preserve API-version rules."
+  ],
+  "shareNet_reference": {
+    "pattern_id":"gateway-relay",
+    "boundary":"ShareNet content/P2P plane -> technology-neutral gateway/relay connectivity requirement -> ADCOS -> provider realization",
+    "sharenet_owns":["content addressing","P2P distribution","publisher trust","delivery receipts","contribution/corpus/training semantics","application economics"],
+    "adcos_owns":["connectivity intent/contract lifecycle","provider orchestration","execution/assurance references","leases","developer observations"],
+    "provider_owns":["topology","access realization","routing","subscriber/network authority"],
+    "critical_rule":"Ordinary device-to-device ShareNet transfers remain inside ShareNet and do not become ADCOS connectivity transactions.",
+    "integration_shape":"Introduce an application-level ADCOS connectivity port/client for gateway/backhaul needs; do not put ADCOS inside ShareNet core-transport."
+  },
+  "operation_source":"/adcos-operations.json",
+  "capability_source":"/adcos-capabilities.json",
+  "human_entry":"/build",
+  "human_docs":"/docs",
+  "api_explorer":"/developers/explorer",
+  "complete_context":"/llms-full.txt"
+}
