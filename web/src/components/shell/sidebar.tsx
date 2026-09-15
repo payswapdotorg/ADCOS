@@ -8,11 +8,9 @@
  * teal left border. The nav vocabulary matches the command registry's
  * "Navigate" group exactly — one mental model for mouse and keyboard.
  *
- * V2 learning surfaces (DEC-0128, Task 7): a "Learn" group appended
- * below the primary areas — Docs, Quickstart, Playbooks and the tour —
- * the same hrefs the shell's nav-docs/nav-quickstart/nav-playbooks/
- * nav-tour palette commands carry. Pure additions: the eight V1 expert
- * entries above are untouched and no route ever redirects (§20).
+ * V2 learning surfaces include Docs, Build with ADCOS, Quickstart,
+ * Playbooks and the tour. Expert routes remain direct and are never
+ * replaced by an onboarding redirect.
  */
 
 import Link from "next/link";
@@ -48,9 +46,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Settings", href: "/settings", icon: SettingsIcon },
 ];
 
-/** The V2 learning surfaces (DEC-0128, Task 7) — the Learn group. */
 const LEARN_ITEMS: NavItem[] = [
   { label: "Docs", href: "/docs", icon: EvidenceIcon },
+  { label: "Build with ADCOS", href: "/build", icon: ConnectivityIcon },
   { label: "Quickstart", href: "/quickstart", icon: FulfillmentIcon },
   { label: "Playbooks", href: "/playbooks", icon: SearchIcon },
   { label: "The tour", href: "/tour", icon: NetworksIcon },
@@ -69,7 +67,6 @@ function NavList({
 }: {
   items: NavItem[];
   id: string;
-  /** The list's accessible name ("Primary areas" / "Learn"). */
   label: string;
   grow?: boolean;
 }) {
@@ -118,16 +115,15 @@ export function Sidebar() {
     >
       <NavList items={NAV_ITEMS} id="primary-nav-items" label="Primary areas" />
 
-      {/* the Learn group (V2 additions — the house separator pattern) */}
       <div className="border-t border-line px-2 py-1.5 lg:px-3">
         <p
           id="learn-nav-heading"
           className="hidden text-2xs uppercase tracking-wide text-ink-faint lg:block"
         >
-          Learn
+          Learn & build
         </p>
       </div>
-      <NavList items={LEARN_ITEMS} id="learn-nav-items" label="Learn" grow={false} />
+      <NavList items={LEARN_ITEMS} id="learn-nav-items" label="Learn and build" grow={false} />
 
       <div className="border-t border-line p-2 font-mono text-2xs text-ink-faint lg:p-3">
         <p className="hidden lg:block">ADCOS console</p>
