@@ -536,3 +536,174 @@ zero page errors, and the DEC-0128 program's eight tasks complete.
 SOFTWARE-CLASS ONLY (§C8 carries forward unchanged): no physical
 evidence obligation is claimed, EVID-002..EVID-008 stay open, and the
 R4/W040 physical-validation track is untouched.
+
+
+## E1. The program and the frozen direction (Build with ADCOS)
+
+The DEC-0130 program (registered from the operator's frozen design and
+six-task plan delivered via PR #64, with the dedicated Tech Lead
+handoff split into PR #65 by the architecture-drift guard exactly as
+designed): the five integration patterns, the application/ADCOS/provider
+authority boundaries, the nine-section /build product experience, the
+integration blueprint as presentation state, ShareNet as the canonical
+gateway/relay reference, the LLM Integration Pack generated from the same
+registries the console uses, and the anti-drift rules.
+
+## E2. The delivery chain (all merged, all RECON-pinned)
+
+- **PR #64** (branch `console/build-with-adcos`): the operator's frozen
+  surface (the canonical integration context/capabilities/operations
+  docs, the first `/build` surface, the nav-build entry, the first
+  public LLM assets, the drift-guard-enforced handoff split) plus the
+  W1/W2/W3 completion at head `603bb42` — the canonical integration
+  registry (`web/src/lib/integration/`: 5 patterns with capabilityIds
+  and the seven-stage lifecycle, 4 capabilities, 5 workflows as a view,
+  the pure blueprint builder, the LLM pack generator, all
+  module-load-guarded), the nine-section `/build` experience, the
+  seven-page docs Build section with the ShareNet §13 reference, the
+  cross-surface API education, the five regenerated public assets,
+  the `.gitignore` `build/` anchoring repair. Merged `4c38209`, pinned
+  **LEDGER-RECON-058**.
+- **PR #65** (branch `docs/build-with-adcos-handoff`): the Tech Lead
+  handoff (`docs/tech-lead/ADCOS-BUILD-WITH-ADCOS-HANDOFF.md`), merged
+  `ffb2f68` after the content-free merge-ref refresh commit (8e795a9 —
+  disclosed: it exists only to rebuild the test merge commit against
+  the post-RECON-058 main; the frozen content untouched).
+- **LEDGER-RECON-057**: the DEC-0130 program registration pin (the
+  RECON-051 precedent class). **LEDGER-RECON-058**: the
+  implementation-merge pin (the LEDGER-RECON-053 class — the delivery
+  merge pinned immediately after its green merge-ref CI).
+
+## E3. The production deployment
+
+- **Deployed:** `dpl_fsm9Nm1RiCEJZoaRdBaN6ZRXj6tZ`
+  (`adcos-ptarwunpo-ekonplacidegmailcoms-projects.vercel.app`) from the
+  clean committed checkout at `ffb2f68` (the PR #65 merge head; the
+  implementation content identical to the RECON-058-pinned `4c38209`
+  tree — the handoff docs are excluded from the deploy bundle by the
+  anchored `.vercelignore`) — READY in 59s, aliased to
+  https://adcos.vercel.app. First-attempt clean (no routing or
+  upload defects — the PR-#63 `.vercelignore` anchoring and the
+  Task-65 `.gitignore` `build/` anchoring held).
+- The runtime boundaries are intact: `/healthz` and `/readyz` 200
+  (`ok: true, service: adcos-runtime`); the demo POST on production
+  returns `mode: production, evidence_class: SOFTWARE` with 2 evidence
+  records (the API reproducibility).
+- The Vercel project env contract is unchanged (the production
+  environment variables verified present by name, including both
+  Upstash REST variables — the deployed runtime's consumption
+  unchanged from the §D deployment).
+
+## E4. The frozen section-14 acceptance standard — verified item by item
+
+Verified over production with the browser acceptance (the standing CDP
+Chrome; zero page errors, zero console errors across the whole journey):
+
+1. **A developer can choose an integration pattern and obtain a
+   complete boundary explanation** — `/build` renders the nine sections
+   (Choose your architecture / Design the boundary / Choose
+   capabilities / See the lifecycle / Get the integration plan / See
+   implementation examples / Review anti-patterns / Production
+   checklist / Export for an LLM); the "Design this integration" CTA
+   produces the on-screen blueprint with the ordered REAL registry
+   operations linked to `/docs/api/*`, the selected-capability chips,
+   the recommended webhook events, the boundary rules, the failure
+   modes, the next steps, and the presentation-state disclosure
+   ("not deployment configuration … not persisted") rendered verbatim
+   in the DOM.
+2. **The console enumerates the relevant supported capabilities and
+   operations without inventing them** — the integration registry is
+   module-load-guarded against the coverage/education/concept/webhook/
+   reason-code registries; the capability toggles are aria-pressed
+   buttons; the blueprint's operation links resolve to real coverage
+   operations.
+3. **The generated blueprint identifies application/ADCOS/provider
+   ownership explicitly** — the three ownership columns render under
+   "Design the boundary".
+4. **The human docs and the LLM assets agree on operation IDs and
+   rules** — the five public assets are BYTE-IDENTICAL between
+   production and the repository at `ffb2f68` (verified by SHA-256:
+   `llms.txt`, `llms-full.txt`, `adcos-integration-context.json`,
+   `adcos-capabilities.json`, `adcos-operations.json`); the operations
+   asset projects EXACTLY the 25 coverage operations; the JSON assets
+   parse and carry the context model (the 15-section §10 shape), the 4
+   capabilities and the frozen reason-code/error vocabulary.
+5. **The LLM assets are deployed, reachable (HTTP 200) and internally
+   consistent** — all five 200 on the production alias; `/llms.txt`
+   renders in-browser with the start-here pointers.
+6. **The ShareNet boundary is taught exactly** —
+   `/docs/build/gateway-relay` renders the §13 authority sentences
+   (content/P2P/publisher-trust/delivery-receipts/economics stay
+   ShareNet's; ADCOS manages technology-neutral gateway/relay
+   connectivity contracts; providers own provider-native realization;
+   local P2P transfers never become ADCOS connectivity transactions
+   merely because gateway/backhaul uses ADCOS; the local/P2P data
+   plane operates independently when ADCOS is unreachable) plus the
+   five explicit anti-patterns (second contract authority, provider
+   coupling, webhook-as-authority, API-success-as-physical-success,
+   routing local P2P transfers through ADCOS).
+7. **The docs operation pages carry the Build context** — the Build
+   context block on `/docs/api/contract_get` lists the five patterns
+   that use the operation, each deep-linking `/build?pattern={id}`,
+   with the Copy-LLM-context affordance and the View
+   machine-readable-context link pointing at the public asset URL
+   only (no execution controls).
+8. **The deep link works** — `/build?pattern=application` (followed
+   from the docs operation page) pre-selects the Application pattern
+   (aria-pressed verified).
+9. **The existing Console V2 and V1 surfaces remain accessible** — the
+   eleven-route production walk: `/`, `/docs`, `/quickstart`,
+   `/playbooks`, `/tour`, `/developers`, `/connectivity`, `/networks`,
+   `/fulfillment`, `/evidence`, `/settings` all render.
+10. **No fake credentials, telemetry, provider state or
+    physical-evidence claims** — the provider-SDK leak scan is a
+    CI-green test; the evidence vocabulary stays SOFTWARE-class.
+
+## E5. The release gate
+
+The frontend release gate at the delivery head: 372/372 tests (the V2
+307 regression-protected + 65 new: the integration-registry and
+LLM-pack data-contract tests, the build/docs-build suites, the
+cross-surface anti-drift battery, the repaired palette/shell suites),
+tsc clean, lint clean, the production build green (38 routes incl.
+`/build`, `/docs/build`, `/docs/build/[id]`). The governance gates at
+every pinned head: the pre-registration CI run 34925682641 failed
+closed at the networkpath authorization-surface check exactly as
+designed (no active authorization on main pre-DEC-0130); after the
+DEC-0130 registration push the synchronize-rebuilt merge-ref run
+34942265051 ran GREEN end-to-end under DECISION-BORNE:DEC-0130 —
+the networkpath case_35 and the authorization-provenance gates
+passing exactly as the locally-verified merge simulation predicted.
+The main-push audits (the DEC-0130 registration, the RECON-058
+governance push, both merge-commit runs) all green.
+
+## E6. Deviations and disclosures (Build with ADCOS)
+
+- The PR #65 merge required a content-free merge-ref refresh commit
+  (8e795a9) — the standing PR-#59 class: the branch's existing green
+  run was attached to the pre-RECON-058 base; the refresh forces the
+  synchronize event so the tested merge tree equals the merge that
+  closed. The frozen handoff content is untouched.
+- The pre-registration CI failure on PR #64 (run 34925682641, the
+  operator's own head 034f96e) is the governance chain's own evidence
+  trail — the fail-closed gates caught the unregistered program
+  exactly as designed; the DEC-0130 registration (55f5d57) was the
+  prepared repair, locally proven via the merge simulation before any
+  push.
+- The Upstash degraded-ok state and the production demo credential
+  posture are UNCHANGED from §C7/§D6 (carried forward verbatim).
+
+## Verdict (Build with ADCOS program)
+
+**THE BUILD WITH ADCOS & LLM INTEGRATION EXPERIENCE IS DEPLOYED AND
+ACCEPTED.** https://adcos.vercel.app now serves the complete
+integration-education surface at `/build` — the five patterns, the
+explicit application/ADCOS/provider ownership boundaries, the
+presentation-state blueprint, the ShareNet reference — with the five
+public LLM assets deployed byte-identical to the generated artifacts,
+every V2/V1 capability regression-protected (372/372), and the frozen
+section-14 acceptance standard verified item-by-item over production
+with zero page errors. The DEC-0130 program's six tasks are complete.
+SOFTWARE-CLASS ONLY (§C8 carries forward unchanged): no physical
+evidence obligation is claimed, EVID-002..EVID-008 stay open, and the
+R4/W040 physical-validation track is untouched.

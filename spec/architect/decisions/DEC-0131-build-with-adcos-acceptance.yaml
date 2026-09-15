@@ -1,0 +1,69 @@
+# DEC-0131 — Build with ADCOS & LLM Integration ACCEPTANCE
+# (the program completion; DEC-0130 retired)
+# The DEC-0130 Build with ADCOS & LLM Integration program is COMPLETE: the
+# frozen six-task implementation plan delivered and merged (PR #64 the
+# implementation — the operator's frozen surface plus the W1 registry/LLM-pack,
+# W2 build-experience/docs and W3 cross-surface-education completion waves —
+# merged at 4c38209 and pinned by LEDGER-RECON-058; PR #65 the dedicated Tech
+# Lead handoff merged at ffb2f68 after the content-free merge-ref refresh); the
+# production deployment dpl_fsm9Nm1RiCEJZoaRdBaN6ZRXj6tZ from the clean
+# committed checkout at ffb2f68 serves the Build with ADCOS experience at
+# https://adcos.vercel.app (/build and the five public LLM assets live; /api/*,
+# /healthz, /readyz, /demo/* remain the Python runtime at their boundaries);
+# the frozen design's section-14 acceptance standard verified item-by-item over
+# production with the browser acceptance (zero page errors — the full record at
+# docs/deployment/acceptance-record.md §E). This decision records the
+# acceptance and retires DEC-0130's decision-borne authority to status
+# SUPERSEDED (the DEC-0126/DEC-0127/DEC-0128 retirement form): with no
+# successor program authorized, the single-active decision-borne invariant
+# returns the repository to the halted post-R9 state (zero active
+# authorizations — the DEC-0125 terminal state). The rendered verdict
+# (decision: ACCEPTED) is never edited; the record and its scope are preserved
+# verbatim as the completed program's durable authority history.
+decision_id: DEC-0131
+date: "2026-09-15"
+type: acceptance
+status: ACCEPTED
+owner: "Architect"
+work_item: null
+acr: null
+pr: 64
+reviewed_sha: null
+authorization: "the Build with ADCOS & LLM Integration program acceptance (repository-local, decision-borne — outside the authorizations/ gate machinery)"
+timestamp: "2026-09-15T08:05:00Z"
+
+review_basis: "The Build with ADCOS & LLM Integration experience accepted on the live production deployment: dpl_fsm9Nm1RiCEJZoaRdBaN6ZRXj6tZ from the clean committed checkout at ffb2f68 (the PR #65 merge head — the implementation content identical to the RECON-058-pinned 4c38209 tree, the handoff docs excluded from the deploy bundle by the anchored .vercelignore) serving https://adcos.vercel.app; the frozen section-14 acceptance standard (docs/superpowers/specs/2026-09-15-adcos-build-with-adcos-llm-integration-design.md section 14) verified item-by-item with the browser acceptance over production — a developer can choose an integration pattern and obtain a complete boundary explanation (the nine-section /build with the pattern cards, the ownership columns, the capability toggles, the Design-this-integration CTA producing the on-screen blueprint with the ORDERED REAL registry operations linked to /docs/api/*, the presentation-state disclosure rendered); the console enumerates the relevant supported capabilities and operations without inventing them (the integration registry module-load-guarded against the coverage/education/concept/webhook/reason-code registries; adcos-operations.json projects EXACTLY the 25 coverage operations, both directions asserted by the CI-green cross-surface battery); the generated blueprint identifies application/ADCOS/provider ownership explicitly (the three ownership columns and the boundary rules); the human docs and the LLM assets agree on operation IDs and rules (the five public assets BYTE-IDENTICAL between production and the repository at ffb2f68 — llms.txt, llms-full.txt, adcos-integration-context.json, adcos-capabilities.json, adcos-operations.json all HTTP 200, valid, generated from the same registries the UI uses with the byte-pin tests failing on drift); the ShareNet boundary taught exactly (docs/build/gateway-relay renders the §13 authority sentences — content/P2P/publisher-trust/delivery-receipts/economics stay ShareNet's, ADCOS manages technology-neutral gateway/relay connectivity, providers own provider-native realization, local P2P transfers never become ADCOS connectivity transactions, the data plane operates independently when ADCOS is unreachable — plus the five explicit anti-patterns); the docs operation pages carry the Build context block (the five pattern links deep-linking /build?pattern=, the Copy LLM context link and the View machine-readable context link to the public asset URL only); the deep link verified (/build?pattern=application pre-selects the pattern); the existing Console V2 Docs, Quickstart, Playbooks and API Explorer plus the V1 expert workbench routes all live (eleven routes walked in-browser, zero page errors, zero console errors); the demo POST on production (mode: production, evidence_class: SOFTWARE, 2 evidence records — the API reproducibility); no fake credentials, telemetry, provider state or physical-evidence claims introduced; the frontend release gate 372/372 tests (the V2 307 regression-protected + 65 new) with tsc/lint/build green at the delivery head; the governance gates green at every pinned head (the pre-registration CI failure 34925682641 failing closed at networkpath exactly as designed, then the merge-ref run 34942265051 GREEN under DECISION-BORNE:DEC-0130 after the DEC-0130 registration push — the gates' own evidence trail, recorded at LEDGER-RECON-057/058); the full evidence chain: PR #64 the implementation, PR #65 the Tech Lead handoff, LEDGER-RECON-057 the registration pin, LEDGER-RECON-058 the implementation-merge pin"
+
+decision: ACCEPTED
+
+findings:
+  - "The frozen Build with ADCOS direction (PR #64's planning documents) is implemented end to end: the canonical integration registry (web/src/lib/integration/ — 5 patterns with capabilityIds and the seven-stage lifecycle, 4 capabilities, 5 workflows as a view over pattern.lifecycle, the pure blueprint builder, the LLM pack generator with the 15-section context and the 25-operation projection, all module-load-guarded), the nine-section /build experience (the pattern cards, the ownership map, the capability toggles, the lifecycle strip, the Design-this-integration blueprint as presentation state, the real-plus-conceptual examples, the anti-patterns, the production checklist, the LLM export), the seven-page docs Build section including the ShareNet §13 reference, and the cross-surface API education with the anti-drift battery."
+  - "The public LLM assets are generated artifacts of the same registries the UI uses (the anti-drift derivation): the five assets deployed byte-identical to the repository, validated by the byte-pin tests, with the operations asset projecting EXACTLY the coverage registry and the context asset carrying the verbatim-meaning anti-drift rules — an LLM given only the pack receives the same operation IDs, boundaries and rules the console teaches."
+  - "The V1 expert workbench and all V2 capabilities remain regression-protected (372/372 tests; the eleven-route production walk); the blueprint creates no durable authority (presentation state only, never persisted, the disclosure rendered); webhooks stay observations; API success is never represented as physical connectivity proof; SOFTWARE evidence stays visibly software."
+
+blockers: []
+required_corrections: []
+
+authorized_scope: []
+
+constraints:
+  - "SOFTWARE-CLASS ONLY: this acceptance does not prove physical connectivity and does not satisfy or modify the physical evidence obligations EVID-002..EVID-008; the R4/W040 independent physical-validation track remains untouched, in-review and unaccepted."
+  - "The Upstash degraded-ok disclosure and its operator action item (the REST hostname of record) stand unchanged; the production demo credential remains out-of-band by design (the issuance key is encrypted in the Vercel project env)."
+  - "No successor program is authorized by this decision; the repository returns to the halted post-R9 state (roadmap.yaml v2.22, execution mode awaiting-architect-decisions, zero active authorizations)."
+
+rejected_scope:
+  - "This decision does not activate any roadmap gate, does not create an authorizations/ record, and does not alter the post-R9 halted roadmap state."
+  - "This decision does not authorize further implementation work; any new program requires a new decision-borne authorization registered by the Architect."
+
+evidence:
+  merge_sha: "ffb2f68"
+  ci_run: 34942265051
+  artifacts:
+    - "docs/deployment/acceptance-record.md (section E — the Build with ADCOS acceptance record)"
+    - "https://adcos.vercel.app (the production deployment dpl_fsm9Nm1RiCEJZoaRdBaN6ZRXj6tZ; /build + the five public LLM assets)"
+    - "docs/superpowers/specs/2026-09-15-adcos-build-with-adcos-llm-integration-design.md"
+    - "docs/superpowers/plans/2026-09-15-adcos-build-with-adcos-llm-integration.md"
+    - "docs/tech-lead/ADCOS-BUILD-WITH-ADCOS-HANDOFF.md"
+
+authority:
+  - "This decision records the acceptance of the DEC-0130 Build with ADCOS & LLM Integration program and retires its decision-borne authority to status SUPERSEDED. No implementation authority is created or carried forward."

@@ -27,10 +27,26 @@
 # worker allocation), registered here in the DEC-NNNN-<slug>.yaml convention
 # by this reconciliation, exactly as DEC-0128 registered the operator's
 # frozen V2 planning documents at the RECON-051 reconciliation.
+# DEC-0130-build-with-adcos-authorization.yaml — status retired to SUPERSEDED by
+# DEC-0131 (2026-09-15): the Build with ADCOS & LLM Integration program is
+# COMPLETE — the six-task plan delivered, merged and RECON-pinned (PR #64 the
+# implementation merged at 4c38209, pinned by LEDGER-RECON-058; PR #65 the
+# dedicated Tech Lead handoff merged at ffb2f68 after the content-free
+# merge-ref refresh); the production deployment
+# dpl_fsm9Nm1RiCEJZoaRdBaN6ZRXj6tZ (from the clean committed checkout at
+# ffb2f68) serves the Build with ADCOS experience at https://adcos.vercel.app
+# with the frozen section-14 acceptance standard verified item-by-item over
+# production (docs/deployment/acceptance-record.md section E; 372/372 tests
+# with the V1/V2 surfaces regression-protected; the five public LLM assets
+# deployed byte-identical to the repository). Its decision-borne authority is
+# retired with no successor program authorized — the repository returns to
+# the halted post-R9 state. The rendered verdict (decision: ACCEPTED) is
+# never edited; the record and its scope are preserved verbatim as the
+# completed program's durable authority history.
 decision_id: DEC-0130
 date: "2026-09-15"
 type: governance
-status: ACCEPTED
+status: SUPERSEDED
 owner: "Architect"
 work_item: null
 acr: null

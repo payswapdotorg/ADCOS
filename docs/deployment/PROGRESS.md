@@ -159,3 +159,36 @@ runbook with provider credentials after T2–T6 integration.
   the console handoff's seven deployment-acceptance items VERIFIED
   (browser acceptance over https://adcos.vercel.app with zero page
   errors; the full record in docs/deployment/acceptance-record.md §C).
+
+
+## Build with ADCOS (DEC-0130 close, 2026-09-15)
+
+- The operator re-issued the credentials after the sandbox reset; the
+  prepared promotion sequence executed end to end: the DEC-0130
+  registration governance push (55f5d57), the implementation
+  completion push to the PR #64 branch (603bb42) with the
+  synchronize-rebuilt merge ref running the full battery GREEN
+  (run 34942265051 — the networkpath and authorization-provenance
+  gates passing under DECISION-BORNE:DEC-0130 exactly as the locally
+  verified merge simulation predicted), the PR #64 merge (4c38209)
+  pinned by LEDGER-RECON-058 (989150b), the PR #65 content-free
+  merge-ref refresh (8e795a9) with its battery GREEN (34943173531),
+  and the PR #65 merge (ffb2f68).
+- The production deployment dpl_fsm9Nm1RiCEJZoaRdBaN6ZRXj6tZ from the
+  clean committed checkout at ffb2f68 — READY in 59s, aliased to
+  https://adcos.vercel.app, first-attempt clean. The runtime
+  boundaries intact (healthz/readyz 200; the demo POST returning
+  mode: production, evidence_class: SOFTWARE with 2 evidence records).
+- The production browser acceptance over the full /build journey with
+  ZERO page errors: the nine sections, the Design-this-integration
+  blueprint with the ordered real operations, the docs operation-page
+  Build context block with the five pattern deep links, the
+  /build?pattern= deep link, the ShareNet §13 boundary page, /llms.txt
+  in-browser, and the eleven-route V2/V1 regression walk. The five
+  public LLM assets deployed BYTE-IDENTICAL to the repository
+  (SHA-256 verified).
+- FINAL STATE: main = ffb2f68, the DEC-0130 program COMPLETE (the
+  frozen six-task plan delivered; the acceptance recorded at
+  docs/deployment/acceptance-record.md §E; DEC-0131 the acceptance
+  with DEC-0130 retired to SUPERSEDED — the repository returns to the
+  halted post-R9 state). SOFTWARE-CLASS ONLY.
