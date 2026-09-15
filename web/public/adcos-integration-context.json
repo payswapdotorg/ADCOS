@@ -1,44 +1,1594 @@
 {
-  "schema_version": "1",
-  "product": {"name":"ADCOS","mission":"One connectivity contract, many networks, continuous fulfillment."},
-  "mental_model":["Connectivity Intent","Eligibility / Policy","Provider Offers","ConnectivityContract","Execution Plan","Provider realization","Evidence + Assurance","Continuous fulfillment"],
+  "mission": {
+    "name": "ADCOS",
+    "statement": "ADCOS is an Adaptive Distributed Connectivity Operating System and programmable connectivity exchange/orchestration layer.",
+    "product_promise": "One connectivity contract, many networks, continuous fulfillment.",
+    "composition_rule": "ADCOS composes heterogeneous provider capabilities without taking ownership of provider-native radio/core/topology/routing authority.",
+    "audience": "Both human developers and coding/architect LLMs can integrate ADCOS from this context without access to internal architecture documents or conversation history.",
+    "published_assets": {
+      "llms_txt": "/llms.txt",
+      "llms_full_txt": "/llms-full.txt",
+      "integration_context": "/adcos-integration-context.json",
+      "capabilities": "/adcos-capabilities.json",
+      "operations": "/adcos-operations.json",
+      "human_entry": "/build",
+      "human_docs": "/docs",
+      "api_explorer": "/developers/explorer"
+    }
+  },
+  "mental_model": {
+    "description": "A consuming application describes the connectivity outcome it needs. ADCOS records that requirement as a canonical connectivity intent/contract, evaluates the accepted policy/eligibility path, composes provider offers into an execution plan, and continuously observes fulfillment with evidence and assurance references.",
+    "lifecycle": [
+      "Connectivity Intent",
+      "Eligibility / Policy",
+      "Provider Offers",
+      "ConnectivityContract",
+      "Execution Plan",
+      "Provider realization",
+      "Evidence + Assurance"
+    ],
+    "diagram": "Application\n  ↓ technology-neutral requirement\nConnectivity Intent\n  ↓\nEligibility / Policy\n  ↓\nProvider Offers\n  ↓\nConnectivityContract\n  ↓\nExecution Plan\n  ↓\nProvider realization\n  ↓\nEvidence + Assurance\n  ↓\nContinuous fulfillment / observation"
+  },
+  "architecture": {
+    "canonical_integration_model": "Connectivity Intent → Eligibility / Policy → Provider Offers → ConnectivityContract → Execution Plan → Provider realization → Evidence + Assurance",
+    "api_model": {
+      "current_developer_api_major_line": "2.0",
+      "boundary_includes": "The public boundary includes operations for:\n- application identity/capabilities\n- connectivity intent creation/list/get/lifecycle\n- offer acceptance\n- contract activation/list/get/usage/assurance/termination\n- lease grant/list/get/renew/revoke\n- webhook endpoint registration/list/get/deliveries",
+      "developer_operations": [
+        "application_self",
+        "intent_create",
+        "intents_list",
+        "intent_get",
+        "intent_lifecycle",
+        "offers_accept",
+        "contract_activate",
+        "contracts_list",
+        "contract_get",
+        "contract_usage",
+        "contract_assurance",
+        "contract_terminate",
+        "lease_grant",
+        "leases_list",
+        "lease_get",
+        "lease_renew",
+        "lease_revoke",
+        "endpoints_list",
+        "endpoint_register",
+        "endpoint_get",
+        "deliveries_list"
+      ],
+      "platform_surfaces": [
+        "healthz",
+        "readyz",
+        "demo_contract_fulfillment",
+        "platform_contract_read"
+      ],
+      "authoritative_list": "The console coverage registry is the authoritative list of executable developer operations. Use /adcos-operations.json for the current published projection.",
+      "mutation_rule": "Mutations require the capabilities and idempotency semantics defined by the API. Do not create client-side business rules that silently weaken hard contract constraints."
+    },
+    "object_semantics": {
+      "ConnectivityContract": "The canonical durable record of the connectivity an application asks ADCOS to continuously fulfill. Requirements and hard constraints are part of the canonical material. Plans, execution artifacts, evidence and assurance are referenced against the contract.",
+      "Offer": "Opaque typed provider offer reference. The consuming application should preserve its declared structure and provenance; it should not reinterpret provider-internal semantics.",
+      "Eligibility / Policy": "Reasoning and authorization that determine which lifecycle operations are admitted. The application consumes backend statements/reason codes rather than reimplementing the policy engine in frontend code.",
+      "Execution plan": "Composition of provider capabilities that realizes the accepted contract. Replanning must preserve hard contract constraints.",
+      "Fulfillment": "The continuous process of honoring an active contract. Operational observation reports execution state; it does not automatically prove physical success.",
+      "Evidence / Assurance": "Evidence records support statements about what happened and where it came from. Assurance obligations describe what should hold for a contract to count as assured. Do not turn software deployment evidence into physical-network proof.",
+      "Lease": "A bounded validity window over a contract. Lease mutations are separate lifecycle operations and should not be confused with creating a new connectivity authority.",
+      "Webhook": "Signed observation delivery. Use it to react asynchronously, but maintain canonical state from authoritative API reads."
+    },
+    "provider_adapter_rule": "A provider adapter is an ADCOS integration boundary. It may translate provider-native capability/realization details into ADCOS typed capability/offer/execution material. That translation must not become a globally visible provider-topology model."
+  },
   "authority_boundaries": {
-    "application":["product domain","user/device context","application UX","content/data plane","application economics"],
-    "adcos":["connectivity intent","ConnectivityContract lifecycle","offer acceptance as typed references","execution/assurance references","bounded leases","developer API boundary"],
-    "provider":["provider-native topology","routing","subscriber authority","physical/network realization","provider APIs"]
+    "application": [
+      "product domain",
+      "user/device context",
+      "application UX",
+      "content/data plane",
+      "application economics"
+    ],
+    "adcos": [
+      "connectivity intent",
+      "ConnectivityContract lifecycle",
+      "offer acceptance as typed references",
+      "execution/assurance references",
+      "bounded leases",
+      "developer API boundary"
+    ],
+    "provider": [
+      "provider-native topology",
+      "routing",
+      "subscriber authority",
+      "physical/network realization",
+      "provider APIs"
+    ],
+    "application_authority": "The application owns its product domain, customer/user context, device context, content, product UX, application economics and domain-specific data-plane semantics.",
+    "adcos_authority": "ADCOS owns the durable connectivity contract lifecycle and connectivity exchange/orchestration: recording intent, accepting typed offer references, activation/termination, bounded leases, execution/assurance references and developer-facing lifecycle observation.",
+    "provider_authority": "Providers retain provider-native topology, routing, subscriber authority, physical network realization and provider APIs. Those details belong behind ADCOS adapters, not in consuming product domains.",
+    "absolute_rules": [
+      "ConnectivityContract is the sole durable ADCOS connectivity-contract authority.",
+      "Applications consume technology-neutral connectivity outcomes, not provider-native topology or APIs.",
+      "Provider-native topology, routing and subscriber authority remain provider-owned.",
+      "Webhooks are observations, not canonical business state.",
+      "API success is not physical connectivity proof.",
+      "Software evidence and physical/network evidence remain distinct.",
+      "Preserve canonical reason codes.",
+      "Do not invent unsupported endpoints, capabilities or telemetry.",
+      "Do not expose secrets in public documentation or LLM context.",
+      "Use the published operation registry as the current API surface and preserve API-version rules."
+    ],
+    "integration_rules": [
+      "Never build a second connectivity-contract authority.",
+      "Never create a second offer/provider-selection authority inside the application.",
+      "Request connectivity outcomes rather than provider technology.",
+      "Do not encode `provider X`, `wlan0`, `gNB`, tunnel implementation or equivalent provider internals into the application contract.",
+      "Browser and application examples use the canonical HTTP developer boundary only.",
+      "Webhooks are observations. They do not replace canonical contract reads.",
+      "API success is not proof of physical connectivity success.",
+      "Software/deployment evidence and physical/network evidence are different evidence classes.",
+      "Preserve canonical ADCOS reason codes.",
+      "Respect API versioning and compatibility rules.",
+      "Use mutation/idempotency semantics exactly as defined by the API.",
+      "Do not invent endpoints, provider capabilities or telemetry.",
+      "Do not create a global provider topology graph in an application.",
+      "A product can keep operating its own local/data plane when ADCOS is unavailable if its business design permits it; ADCOS reachability should not silently become a dependency of unrelated local behavior."
+    ]
   },
-  "integration_patterns":[
-    {"id":"application","name":"Application consumes connectivity","primary_rule":"Request technology-neutral connectivity outcomes; keep product authority in the application."},
-    {"id":"gateway-relay","name":"Gateway / relay platform","primary_rule":"Use ADCOS for gateway/backhaul connectivity while keeping the product's local/data plane independent."},
-    {"id":"fleet-subscriber","name":"Fleet / subscriber connectivity","primary_rule":"ADCOS owns connectivity contract/lease lifecycle; the application owns cohort semantics."},
-    {"id":"provider-adapter","name":"Provider / adapter integration","primary_rule":"Keep provider SDKs and topology behind the ADCOS adapter boundary."},
-    {"id":"marketplace-orchestration","name":"Connectivity marketplace / orchestration","primary_rule":"Build commercial/product UX around ADCOS without creating a second connectivity authority."}
+  "integration_patterns": {
+    "patterns": [
+      {
+        "id": "application",
+        "title": "Application consumes connectivity",
+        "summary": "Your application asks ADCOS for a technology-neutral connectivity outcome and operates from the resulting contract and observations.",
+        "primary_rule": "Request technology-neutral connectivity outcomes; keep product authority in the application.",
+        "application_owns": [
+          "product domain",
+          "user/device context",
+          "application UX"
+        ],
+        "adcos_owns": [
+          "connectivity intent",
+          "contract lifecycle",
+          "fulfillment orchestration"
+        ],
+        "provider_owns": [
+          "provider realization",
+          "provider-native topology",
+          "routing and subscriber authority"
+        ],
+        "operation_ids": [
+          "application_self",
+          "intent_create",
+          "intent_lifecycle",
+          "offers_accept",
+          "contract_activate",
+          "contract_get",
+          "contract_assurance"
+        ],
+        "concept_ids": [
+          "application-capability",
+          "connectivity-contract",
+          "eligibility",
+          "execution-plan",
+          "fulfillment",
+          "assurance"
+        ]
+      },
+      {
+        "id": "gateway-relay",
+        "title": "Gateway / relay platform",
+        "summary": "Use ADCOS for gateway or relay connectivity while your platform retains control of its own application and data plane.",
+        "primary_rule": "Use ADCOS for gateway/backhaul connectivity while keeping the product's local/data plane independent.",
+        "application_owns": [
+          "gateway/relay identity",
+          "content/data plane",
+          "local/offline behavior",
+          "application economics"
+        ],
+        "adcos_owns": [
+          "gateway connectivity requirement",
+          "contract",
+          "provider orchestration",
+          "assurance references"
+        ],
+        "provider_owns": [
+          "access realization",
+          "network topology",
+          "provider routing"
+        ],
+        "operation_ids": [
+          "application_self",
+          "intent_create",
+          "intent_lifecycle",
+          "offers_accept",
+          "contract_activate",
+          "contract_get",
+          "contract_assurance",
+          "contracts_list"
+        ],
+        "concept_ids": [
+          "connectivity-contract",
+          "provider-capability",
+          "offer",
+          "execution-plan",
+          "fulfillment",
+          "assurance"
+        ]
+      },
+      {
+        "id": "fleet-subscriber",
+        "title": "Fleet / subscriber connectivity",
+        "summary": "Allocate connectivity for a device or subscriber cohort without taking provider-native subscriber authority into your product domain.",
+        "primary_rule": "ADCOS owns connectivity contract/lease lifecycle; the application owns cohort semantics.",
+        "application_owns": [
+          "cohort membership",
+          "product policy",
+          "device/user context"
+        ],
+        "adcos_owns": [
+          "connectivity intent and contract",
+          "offer acceptance",
+          "contract/lease lifecycle"
+        ],
+        "provider_owns": [
+          "subscriber/network realization",
+          "provider-native identity and routing"
+        ],
+        "operation_ids": [
+          "application_self",
+          "intent_create",
+          "offers_accept",
+          "contract_activate",
+          "contracts_list",
+          "contract_get",
+          "lease_grant",
+          "leases_list",
+          "lease_renew",
+          "lease_revoke"
+        ],
+        "concept_ids": [
+          "application-capability",
+          "connectivity-contract",
+          "offer",
+          "policy"
+        ]
+      },
+      {
+        "id": "provider-adapter",
+        "title": "Provider / adapter integration",
+        "summary": "Expose provider capabilities through the ADCOS adapter boundary while keeping topology and routing authority with the provider.",
+        "primary_rule": "Keep provider SDKs and topology behind the ADCOS adapter boundary.",
+        "application_owns": [
+          "consumer product requirements"
+        ],
+        "adcos_owns": [
+          "capability exchange",
+          "contract orchestration",
+          "adapter boundary"
+        ],
+        "provider_owns": [
+          "provider APIs",
+          "topology",
+          "routing",
+          "subscriber/network operations"
+        ],
+        "operation_ids": [
+          "intent_create",
+          "offers_accept",
+          "contract_activate",
+          "contract_get",
+          "contract_assurance"
+        ],
+        "concept_ids": [
+          "provider-capability",
+          "provider-adapter-boundary",
+          "offer",
+          "execution-plan"
+        ]
+      },
+      {
+        "id": "marketplace-orchestration",
+        "title": "Connectivity marketplace / orchestration",
+        "summary": "Build a higher-level product around connectivity outcomes while ADCOS remains the contract and orchestration authority.",
+        "primary_rule": "Build commercial/product UX around ADCOS without creating a second connectivity authority.",
+        "application_owns": [
+          "commercial/product experience",
+          "customer context",
+          "marketplace UX"
+        ],
+        "adcos_owns": [
+          "technology-neutral contract",
+          "offer references",
+          "fulfillment",
+          "assurance references"
+        ],
+        "provider_owns": [
+          "provider capability and realization"
+        ],
+        "operation_ids": [
+          "application_self",
+          "intent_create",
+          "intents_list",
+          "offers_accept",
+          "contract_activate",
+          "contracts_list",
+          "contract_get",
+          "contract_usage",
+          "contract_assurance",
+          "contract_terminate",
+          "endpoint_register"
+        ],
+        "concept_ids": [
+          "connectivity-contract",
+          "offer",
+          "policy",
+          "execution-plan",
+          "assurance",
+          "webhook"
+        ]
+      }
+    ],
+    "reference_integration": {
+      "name": "ShareNet",
+      "pattern_id": "gateway-relay",
+      "status": "ShareNet is an accepted ADCOS vertical proof and is the canonical gateway/relay example.",
+      "boundary": "ShareNet content/P2P plane -> technology-neutral gateway/relay connectivity requirement -> ADCOS -> provider realization",
+      "sharenet_owns": [
+        "content addressing and distribution",
+        "Nearby/P2P transport",
+        "publisher trust and catalog semantics",
+        "delivery receipts / local attestation",
+        "contribution/corpus/training semantics",
+        "application economics"
+      ],
+      "adcos_owns": [
+        "connectivity intent/contract lifecycle",
+        "offer acceptance and provider orchestration",
+        "execution and assurance references",
+        "bounded connectivity leases",
+        "asynchronous observations"
+      ],
+      "provider_owns": [
+        "topology",
+        "access technology realization",
+        "routing",
+        "subscriber/network authority"
+      ],
+      "critical_rule": "Ordinary device-to-device ShareNet transfers remain inside ShareNet and do not become ADCOS connectivity transactions.",
+      "integration_shape": "Introduce an application-level ADCOS connectivity port/client for gateway/backhaul needs; do not put ADCOS inside ShareNet core-transport.",
+      "sdk_note": "ShareNet's current repository includes an SDK whose intended public surface owns publish/subscribe/fetch/local availability/contribution submission/sync observation, plus core crypto/content/catalog/transport/attest modules. Integrate ADCOS above those modules rather than creating direct provider dependencies in them."
+    }
+  },
+  "capabilities": [
+    {
+      "id": "application-connectivity",
+      "title": "Application connectivity",
+      "description": "Describe and manage technology-neutral connectivity outcomes for an application or service.",
+      "operation_ids": [
+        "application_self",
+        "intent_create",
+        "intents_list",
+        "intent_get",
+        "intent_lifecycle",
+        "offers_accept",
+        "contract_activate",
+        "contracts_list",
+        "contract_get",
+        "contract_usage",
+        "contract_assurance",
+        "contract_terminate"
+      ]
+    },
+    {
+      "id": "leases",
+      "title": "Bounded connectivity leases",
+      "description": "Grant, inspect, renew and revoke bounded validity windows over active connectivity contracts.",
+      "operation_ids": [
+        "lease_grant",
+        "leases_list",
+        "lease_get",
+        "lease_renew",
+        "lease_revoke"
+      ]
+    },
+    {
+      "id": "webhook-observations",
+      "title": "Signed webhook observations",
+      "description": "Receive asynchronous observations about developer-platform events without treating them as a second authority.",
+      "operation_ids": [
+        "endpoints_list",
+        "endpoint_register",
+        "endpoint_get",
+        "deliveries_list"
+      ]
+    },
+    {
+      "id": "deterministic-reference-demo",
+      "title": "Deterministic contract fulfillment reference",
+      "description": "Inspect the accepted reference chain from contract boundary through plan, execution and evidence without claiming physical connectivity.",
+      "operation_ids": [
+        "demo_contract_fulfillment"
+      ]
+    }
   ],
-  "absolute_rules":[
-    "ConnectivityContract is the sole durable ADCOS connectivity-contract authority.",
-    "Applications consume technology-neutral connectivity outcomes, not provider-native topology or APIs.",
-    "Provider-native topology, routing and subscriber authority remain provider-owned.",
-    "Webhooks are observations, not canonical business state.",
-    "API success is not physical connectivity proof.",
-    "Software evidence and physical/network evidence remain distinct.",
+  "operations": [
+    {
+      "operation_id": "healthz",
+      "method": "GET",
+      "path": "/healthz",
+      "description": "Runtime liveness (always 200). The shell's environment indicator also derives readiness from /readyz.",
+      "purpose": "Runtime liveness probe — always 200 while the process is serving.",
+      "prerequisites": "None — an unauthenticated platform surface.",
+      "lifecycle_position": "Diagnose: the first check when anything looks wrong.",
+      "mutation": false,
+      "required_capability": "",
+      "platform": true,
+      "capability_ids": [],
+      "concept_ids": [],
+      "example_request": "None — a bodyless GET. The response is the liveness document: ok and the service name.",
+      "example_response": "See /docs/api/healthz for the canonical response anatomy.",
+      "error_reason_codes": [
+        "backend-unreachable"
+      ],
+      "next_operation_ids": [
+        "readyz"
+      ]
+    },
+    {
+      "operation_id": "readyz",
+      "method": "GET",
+      "path": "/readyz",
+      "description": "Runtime readiness: mode, environment and every consumed backend's state; 200 when all ready, 503 with per-backend detail when not.",
+      "purpose": "Runtime readiness: mode, environment and every consumed backend's state — 200 when all are ready, 503 with per-backend detail when not.",
+      "prerequisites": "None — an unauthenticated platform surface.",
+      "lifecycle_position": "Operate / Diagnose: separates liveness from readiness — a live runtime can still be degraded by a consumed backend.",
+      "mutation": false,
+      "required_capability": "",
+      "platform": true,
+      "capability_ids": [],
+      "concept_ids": [],
+      "example_request": "None — a bodyless GET. The response carries mode, environment and a backends map with state and detail per consumed backend.",
+      "example_response": "See /docs/api/readyz for the canonical response anatomy.",
+      "error_reason_codes": [
+        "backend-unreachable"
+      ],
+      "next_operation_ids": [
+        "application_self"
+      ]
+    },
+    {
+      "operation_id": "demo_contract_fulfillment",
+      "method": "GET",
+      "path": "/demo/contract-fulfillment",
+      "description": "The deterministic full-chain demo document (boundary, contract, plan, execution, evidence). POST with {\"instant\": RFC3339} for a specific instant.",
+      "purpose": "The deterministic full-chain demonstration document — the boundary trace, contract, plan, execution and evidence for one instant.",
+      "prerequisites": "None — the unauthenticated demonstration context (no capability grant).",
+      "lifecycle_position": "Understand: the canonical first run for learning the model end to end.",
+      "mutation": false,
+      "required_capability": "",
+      "platform": true,
+      "capability_ids": [
+        "deterministic-reference-demo"
+      ],
+      "concept_ids": [
+        "demo-fulfillment-journey",
+        "connectivity-contract",
+        "execution-plan",
+        "fulfillment",
+        "evidence",
+        "assurance"
+      ],
+      "example_request": {
+        "instant": "2026-09-13T01:30:00Z"
+      },
+      "example_response": "See /docs/api/demo_contract_fulfillment for the canonical response anatomy.",
+      "error_reason_codes": [
+        "backend-unreachable",
+        "malformed-json",
+        "invalid-request-body"
+      ],
+      "next_operation_ids": [
+        "platform_contract_read"
+      ]
+    },
+    {
+      "operation_id": "platform_contract_read",
+      "method": "GET",
+      "path": "/api/contracts/{contract_id}",
+      "description": "The UNVERSIONED platform-side contract read (no auth): the raw canonical contract dict, or the typed 404 envelope.",
+      "purpose": "The unversioned platform-side contract read — the raw canonical contract dict for a contract id, with no authentication.",
+      "prerequisites": "A contract id. The demonstration document's contract id works without a credential.",
+      "lifecycle_position": "Understand / Integrate: the platform mirror used where the versioned, authenticated read is not available.",
+      "mutation": false,
+      "required_capability": "",
+      "platform": true,
+      "capability_ids": [],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": "None — a bodyless GET. contract_id rides the path.",
+      "example_response": "See /docs/api/platform_contract_read for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "backend-unreachable"
+      ],
+      "next_operation_ids": [
+        "contract_get"
+      ]
+    },
+    {
+      "operation_id": "application_self",
+      "method": "GET",
+      "path": "/api/2.0/application",
+      "description": "The authenticated application: identity, environment, capabilities, status and validity.",
+      "purpose": "The authenticated application: identity, environment, capabilities, status and validity.",
+      "prerequisites": "A connected application credential (the session menu). No capability grant is required.",
+      "lifecycle_position": "Integrate: the first authenticated call — every later call runs as this principal.",
+      "mutation": false,
+      "required_capability": "",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "application-capability",
+        "policy"
+      ],
+      "example_request": "None — a bodyless authenticated GET. The response is the application resource: application_id, capabilities, environment, status and valid_until.",
+      "example_response": "See /docs/api/application_self for the canonical response anatomy.",
+      "error_reason_codes": [
+        "authentication-invalid",
+        "authentication-expired",
+        "environment-mismatch",
+        "version-unsupported",
+        "rate-limited",
+        "backend-unreachable"
+      ],
+      "next_operation_ids": [
+        "contracts_list"
+      ]
+    },
+    {
+      "operation_id": "intent_create",
+      "method": "POST",
+      "path": "/api/2.0/intents",
+      "description": "Record a connectivity intent (the contract creation core; the principal is derived from the authenticated application).",
+      "purpose": "Record a connectivity intent — the contract creation core. The principal is derived from the authenticated application.",
+      "prerequisites": "The intents:write capability, plus the canonical material: requirements, validity and termination are required; hard constraints and the referenced terms are optional.",
+      "lifecycle_position": "Build: the first mutation of every contract — describe the requirement, reach INTENT.",
+      "mutation": true,
+      "required_capability": "intents:write",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": {
+        "recorded_at": "2026-09-13T00:00:00Z",
+        "requirements": [
+          {
+            "ref_kind": "intent-requirements",
+            "value": "demo:intent-requirements:v1",
+            "provenance": {
+              "issuer": "intent-authority",
+              "decision_refs": [
+                "demo:intent:v1"
+              ]
+            }
+          }
+        ],
+        "hard_constraints": [
+          {
+            "kind": "latency-bound",
+            "params": {
+              "ms": 100
+            }
+          },
+          {
+            "kind": "throughput-floor",
+            "params": {
+              "bps": 1000
+            }
+          }
+        ],
+        "validity": {
+          "not_before": "2026-09-13T00:00:00Z",
+          "not_after": "2026-10-13T00:00:00Z"
+        },
+        "termination": {
+          "conditions": [
+            "principal-requested",
+            "validity-expired"
+          ],
+          "compensation": {
+            "ref_kind": "compensation",
+            "value": "demo:compensation:v1"
+          }
+        },
+        "beneficiaries": [
+          {
+            "beneficiary_kind": "DEVICE",
+            "beneficiary_ref": "demo:device:v1"
+          }
+        ],
+        "service_properties": [
+          {
+            "ref_kind": "service-property",
+            "value": "demo:service-property:v1"
+          }
+        ],
+        "usage_pricing_terms": {
+          "ref_kind": "usage-pricing-terms",
+          "value": "demo:usage-pricing:v1"
+        },
+        "assurance_obligations": [
+          {
+            "ref_kind": "assurance-obligation",
+            "value": "demo:assurance-obligation:v1",
+            "provenance": {
+              "issuer": "assurance-authority",
+              "decision_refs": [
+                "demo:assurance:v1"
+              ]
+            }
+          }
+        ],
+        "execution_scope": [
+          {
+            "ref_kind": "execution-scope",
+            "value": "demo:execution-scope:v1"
+          }
+        ]
+      },
+      "example_response": "See /docs/api/intent_create for the canonical response anatomy.",
+      "error_reason_codes": [
+        "capability-denied",
+        "invalid-input",
+        "temporal-invalid",
+        "secret-rejected",
+        "vocabulary",
+        "idempotency-key-required",
+        "sequence-conflict",
+        "malformed-json",
+        "invalid-request-body",
+        "payload-too-large"
+      ],
+      "next_operation_ids": [
+        "offers_accept"
+      ]
+    },
+    {
+      "operation_id": "intents_list",
+      "method": "GET",
+      "path": "/api/2.0/intents",
+      "description": "Contracts still in the INTENT state. Pagination rides the GET request's JSON body: {limit (1..100, default 20), cursor, filters}.",
+      "purpose": "Contracts still in the INTENT state — the queue of recorded-but-not-yet-selected requirements.",
+      "prerequisites": "The intents:read capability.",
+      "lifecycle_position": "Build: survey what is awaiting offer selection.",
+      "mutation": false,
+      "required_capability": "intents:read",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": "Pagination rides the GET request's JSON body — {limit (1..100, default 20), cursor, filters}. No other body members are sent.",
+      "example_response": "See /docs/api/intents_list for the canonical response anatomy.",
+      "error_reason_codes": [
+        "pagination-invalid",
+        "filter-invalid",
+        "capability-denied",
+        "authentication-expired",
+        "rate-limited"
+      ],
+      "next_operation_ids": [
+        "intent_get"
+      ]
+    },
+    {
+      "operation_id": "intent_get",
+      "method": "GET",
+      "path": "/api/2.0/intents/{intent_id}",
+      "description": "One intent's canonical contract resource (full canonical material).",
+      "purpose": "One intent's canonical contract resource — the full canonical material, verbatim.",
+      "prerequisites": "The intents:read capability and an intent id.",
+      "lifecycle_position": "Build: review what was recorded before accepting offers.",
+      "mutation": false,
+      "required_capability": "intents:read",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": "None — a bodyless GET. intent_id rides the path.",
+      "example_response": "See /docs/api/intent_get for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "unknown-contract",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "intent_lifecycle"
+      ]
+    },
+    {
+      "operation_id": "intent_lifecycle",
+      "method": "GET",
+      "path": "/api/2.0/intents/{intent_id}/lifecycle",
+      "description": "The honest lifecycle observation: contract state machine, statements, execution status — physical connectivity is never claimed by API success.",
+      "purpose": "The honest lifecycle observation for one contract: state machine position, statements and execution status — physical connectivity is never claimed by API success.",
+      "prerequisites": "The intents:read capability and an intent id.",
+      "lifecycle_position": "Build / Operate / Diagnose: the canonical what-is-ADCOS-doing read, rendered by the contract detail page's Eligibility section.",
+      "mutation": false,
+      "required_capability": "intents:read",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "eligibility",
+        "fulfillment",
+        "connectivity-contract"
+      ],
+      "example_request": "None — a bodyless GET. intent_id rides the path.",
+      "example_response": "See /docs/api/intent_lifecycle for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "unknown-contract",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "contract_get"
+      ]
+    },
+    {
+      "operation_id": "offers_accept",
+      "method": "POST",
+      "path": "/api/2.0/intents/{intent_id}/offers",
+      "description": "Accept opaque typed offer references onto the intent (OFFER_SELECTED).",
+      "purpose": "Accept opaque typed offer references onto the intent — the contract moves to OFFER_SELECTED.",
+      "prerequisites": "The intents:write capability, an intent in the INTENT state, and the offer references to accept.",
+      "lifecycle_position": "Build: eligibility → offer selection — the bridge from requirement to plan.",
+      "mutation": true,
+      "required_capability": "intents:write",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "offer",
+        "connectivity-contract"
+      ],
+      "example_request": {
+        "recorded_at": "2026-09-13T00:10:00Z",
+        "offers": [
+          {
+            "ref_kind": "offer",
+            "value": "demo:offer:ran-reference:v1",
+            "provenance": {
+              "issuer": "provider:ran-reference",
+              "decision_refs": [
+                "demo:offer:v1"
+              ]
+            }
+          }
+        ]
+      },
+      "example_response": "See /docs/api/offers_accept for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "unknown-contract",
+        "invalid-transition",
+        "capability-denied",
+        "invalid-input",
+        "vocabulary",
+        "idempotency-key-required"
+      ],
+      "next_operation_ids": [
+        "contract_activate"
+      ]
+    },
+    {
+      "operation_id": "contract_activate",
+      "method": "POST",
+      "path": "/api/2.0/intents/{intent_id}/activation",
+      "description": "Activate the contract (CONTRACT_ACTIVE) with the activation instant and signature references.",
+      "purpose": "Activate the contract — the move to CONTRACT_ACTIVE, recording the activation instant and signature references.",
+      "prerequisites": "The intents:write capability and a contract in OFFER_SELECTED — offers must be accepted first.",
+      "lifecycle_position": "Build → Operate: the contract becomes active and fulfillment work begins.",
+      "mutation": true,
+      "required_capability": "intents:write",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract",
+        "fulfillment"
+      ],
+      "example_request": {
+        "activated_at": "2026-09-13T00:20:00Z",
+        "signature_refs": [
+          {
+            "ref_kind": "signature",
+            "value": "demo:signature:v1"
+          }
+        ]
+      },
+      "example_response": "See /docs/api/contract_activate for the canonical response anatomy.",
+      "error_reason_codes": [
+        "invalid-transition",
+        "not-yet-valid",
+        "temporal-invalid",
+        "capability-denied",
+        "resource-unknown",
+        "idempotency-key-required"
+      ],
+      "next_operation_ids": [
+        "intent_lifecycle"
+      ]
+    },
+    {
+      "operation_id": "contracts_list",
+      "method": "GET",
+      "path": "/api/2.0/contracts",
+      "description": "All the application's contracts. Pagination rides the GET request's JSON body: {limit (1..100, default 20), cursor, filters}. Filters: {state: <lifecycle state>}.",
+      "purpose": "All the application's contracts — the portfolio view, filterable by lifecycle state.",
+      "prerequisites": "The intents:read capability.",
+      "lifecycle_position": "Operate: the contracts workspace's backing read.",
+      "mutation": false,
+      "required_capability": "intents:read",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": "Pagination rides the GET request's JSON body — {limit (1..100, default 20), cursor, filters}. No other body members are sent.",
+      "example_response": "See /docs/api/contracts_list for the canonical response anatomy.",
+      "error_reason_codes": [
+        "pagination-invalid",
+        "filter-invalid",
+        "capability-denied",
+        "rate-limited"
+      ],
+      "next_operation_ids": [
+        "contract_get"
+      ]
+    },
+    {
+      "operation_id": "contract_get",
+      "method": "GET",
+      "path": "/api/2.0/contracts/{contract_id}",
+      "description": "One canonical contract resource with the complete lifecycle material.",
+      "purpose": "One canonical contract resource with the complete lifecycle material — requirements, constraints, accepted offers, the plan binding and referenced terms.",
+      "prerequisites": "The intents:read capability and a contract id.",
+      "lifecycle_position": "Operate: the contract detail page's core read.",
+      "mutation": false,
+      "required_capability": "intents:read",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract",
+        "execution-plan"
+      ],
+      "example_request": "None — a bodyless GET. contract_id rides the path.",
+      "example_response": "See /docs/api/contract_get for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "unknown-contract",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "contract_usage"
+      ]
+    },
+    {
+      "operation_id": "contract_usage",
+      "method": "GET",
+      "path": "/api/2.0/contracts/{contract_id}/usage",
+      "description": "The contract's referenced usage/pricing semantics (referenced, never interpreted).",
+      "purpose": "The contract's referenced usage/pricing semantics — referenced, never interpreted.",
+      "prerequisites": "The usage:read capability and a contract id.",
+      "lifecycle_position": "Operate: the usage half of the contract's referenced terms.",
+      "mutation": false,
+      "required_capability": "usage:read",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": "None — a bodyless GET. contract_id rides the path.",
+      "example_response": "See /docs/api/contract_usage for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "unknown-contract",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "contract_assurance"
+      ]
+    },
+    {
+      "operation_id": "contract_assurance",
+      "method": "GET",
+      "path": "/api/2.0/contracts/{contract_id}/assurance",
+      "description": "The contract's referenced assurance obligations (referenced, never evaluated here).",
+      "purpose": "The contract's referenced assurance obligations — referenced, never evaluated here.",
+      "prerequisites": "The assurance:read capability and a contract id.",
+      "lifecycle_position": "Operate: the assurance read behind the Assurance workspace.",
+      "mutation": false,
+      "required_capability": "assurance:read",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "assurance",
+        "connectivity-contract"
+      ],
+      "example_request": "None — a bodyless GET. contract_id rides the path.",
+      "example_response": "See /docs/api/contract_assurance for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "unknown-contract",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "lease_grant"
+      ]
+    },
+    {
+      "operation_id": "contract_terminate",
+      "method": "POST",
+      "path": "/api/2.0/contracts/{contract_id}/termination",
+      "description": "Terminate the contract (terminal state) with a condition and reason.",
+      "purpose": "Terminate the contract — a terminal state, recorded with a condition and a reason.",
+      "prerequisites": "The intents:write capability, a non-terminal contract, and the termination condition and reason to record.",
+      "lifecycle_position": "Operate: the end of the lifecycle — nothing follows a terminal contract.",
+      "mutation": true,
+      "required_capability": "intents:write",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": {
+        "recorded_at": "2026-09-13T03:00:00Z",
+        "condition": "principal-requested",
+        "reason": "operator-requested-termination"
+      },
+      "example_response": "See /docs/api/contract_terminate for the canonical response anatomy.",
+      "error_reason_codes": [
+        "contract-terminal",
+        "invalid-transition",
+        "capability-denied",
+        "resource-unknown",
+        "unknown-contract",
+        "idempotency-key-required"
+      ],
+      "next_operation_ids": [
+        "contracts_list"
+      ]
+    },
+    {
+      "operation_id": "lease_grant",
+      "method": "POST",
+      "path": "/api/2.0/contracts/{contract_id}/leases",
+      "description": "Grant a lease on the contract for a validity window.",
+      "purpose": "Grant a lease on the contract — a bounded access window over the fulfilled connectivity.",
+      "prerequisites": "The leases:write capability, an active contract, and the window instants.",
+      "lifecycle_position": "Operate: consuming the contract — access is granted in windows, not forever.",
+      "mutation": true,
+      "required_capability": "leases:write",
+      "platform": false,
+      "capability_ids": [
+        "leases"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": {
+        "granted_at": "2026-09-13T01:00:00Z",
+        "not_before": "2026-09-13T01:00:00Z",
+        "not_after": "2026-09-13T02:00:00Z"
+      },
+      "example_response": "See /docs/api/lease_grant for the canonical response anatomy.",
+      "error_reason_codes": [
+        "not-yet-valid",
+        "expired",
+        "temporal-invalid",
+        "invalid-transition",
+        "capability-denied",
+        "resource-unknown"
+      ],
+      "next_operation_ids": [
+        "lease_get"
+      ]
+    },
+    {
+      "operation_id": "leases_list",
+      "method": "GET",
+      "path": "/api/2.0/leases",
+      "description": "The application's leases. Pagination rides the GET request's JSON body: {limit (1..100, default 20), cursor, filters}. Filters: {state: <lease state>}.",
+      "purpose": "The application's leases, filterable by lease state.",
+      "prerequisites": "The leases:read capability.",
+      "lifecycle_position": "Operate: surveying the granted access windows.",
+      "mutation": false,
+      "required_capability": "leases:read",
+      "platform": false,
+      "capability_ids": [
+        "leases"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": "Pagination rides the GET request's JSON body — {limit (1..100, default 20), cursor, filters}. No other body members are sent.",
+      "example_response": "See /docs/api/leases_list for the canonical response anatomy.",
+      "error_reason_codes": [
+        "pagination-invalid",
+        "filter-invalid",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "lease_get"
+      ]
+    },
+    {
+      "operation_id": "lease_get",
+      "method": "GET",
+      "path": "/api/2.0/leases/{lease_id}",
+      "description": "One lease resource: contract, window and state.",
+      "purpose": "One lease resource: its contract, window and state.",
+      "prerequisites": "The leases:read capability and a lease id.",
+      "lifecycle_position": "Operate: inspecting one access window.",
+      "mutation": false,
+      "required_capability": "leases:read",
+      "platform": false,
+      "capability_ids": [
+        "leases"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": "None — a bodyless GET. lease_id rides the path.",
+      "example_response": "See /docs/api/lease_get for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "lease_renew"
+      ]
+    },
+    {
+      "operation_id": "lease_renew",
+      "method": "POST",
+      "path": "/api/2.0/leases/{lease_id}/renewal",
+      "description": "Renew a lease for a new validity window (the prior lease enters `renewed`).",
+      "purpose": "Renew a lease for a new validity window — the prior lease enters renewed.",
+      "prerequisites": "The leases:write capability, a renewable lease, and the new window instants.",
+      "lifecycle_position": "Operate: keeping access continuous as windows close.",
+      "mutation": true,
+      "required_capability": "leases:write",
+      "platform": false,
+      "capability_ids": [
+        "leases"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": {
+        "granted_at": "2026-09-13T01:00:00Z",
+        "not_before": "2026-09-13T01:00:00Z",
+        "not_after": "2026-09-13T02:00:00Z"
+      },
+      "example_response": "See /docs/api/lease_renew for the canonical response anatomy.",
+      "error_reason_codes": [
+        "expired",
+        "temporal-invalid",
+        "invalid-transition",
+        "capability-denied",
+        "resource-unknown"
+      ],
+      "next_operation_ids": [
+        "leases_list"
+      ]
+    },
+    {
+      "operation_id": "lease_revoke",
+      "method": "POST",
+      "path": "/api/2.0/leases/{lease_id}/revocation",
+      "description": "Revoke a lease (terminal) with a recorded reason.",
+      "purpose": "Revoke a lease — terminal, with a recorded reason.",
+      "prerequisites": "The leases:write capability and a lease to revoke.",
+      "lifecycle_position": "Operate: deliberately ending one access window.",
+      "mutation": true,
+      "required_capability": "leases:write",
+      "platform": false,
+      "capability_ids": [
+        "leases"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": {
+        "recorded_at": "2026-09-13T02:10:00Z",
+        "reason": "operator-requested-revocation"
+      },
+      "example_response": "See /docs/api/lease_revoke for the canonical response anatomy.",
+      "error_reason_codes": [
+        "invalid-transition",
+        "capability-denied",
+        "resource-unknown"
+      ],
+      "next_operation_ids": [
+        "leases_list"
+      ]
+    },
+    {
+      "operation_id": "endpoints_list",
+      "method": "GET",
+      "path": "/api/2.0/webhook-endpoints",
+      "description": "The application's webhook endpoints. Pagination rides the GET request's JSON body: {limit (1..100, default 20), cursor, filters}.",
+      "purpose": "The application's registered webhook endpoints.",
+      "prerequisites": "The webhooks:read capability.",
+      "lifecycle_position": "Integrate: surveying where events are delivered.",
+      "mutation": false,
+      "required_capability": "webhooks:read",
+      "platform": false,
+      "capability_ids": [
+        "webhook-observations"
+      ],
+      "concept_ids": [
+        "webhook"
+      ],
+      "example_request": "Pagination rides the GET request's JSON body — {limit (1..100, default 20), cursor, filters}. No other body members are sent.",
+      "example_response": "See /docs/api/endpoints_list for the canonical response anatomy.",
+      "error_reason_codes": [
+        "pagination-invalid",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "endpoint_get"
+      ]
+    },
+    {
+      "operation_id": "endpoint_register",
+      "method": "POST",
+      "path": "/api/2.0/webhook-endpoints",
+      "description": "Register a webhook endpoint for observation event types.",
+      "purpose": "Register a webhook endpoint for observation event types.",
+      "prerequisites": "The webhooks:write capability, an HTTPS URL, and the event types to observe — from the backend's frozen vocabulary.",
+      "lifecycle_position": "Integrate: wiring your backend into ADCOS events.",
+      "mutation": true,
+      "required_capability": "webhooks:write",
+      "platform": false,
+      "capability_ids": [
+        "webhook-observations"
+      ],
+      "concept_ids": [
+        "webhook",
+        "application-capability"
+      ],
+      "example_request": {
+        "url": "https://example.com/hooks/adcos",
+        "event_types": [
+          "connectivity_intent.created",
+          "webhook_endpoint.registered"
+        ]
+      },
+      "example_response": "See /docs/api/endpoint_register for the canonical response anatomy.",
+      "error_reason_codes": [
+        "invalid-input",
+        "secret-rejected",
+        "vocabulary",
+        "capability-denied",
+        "idempotency-key-required",
+        "malformed-json"
+      ],
+      "next_operation_ids": [
+        "endpoints_list"
+      ]
+    },
+    {
+      "operation_id": "endpoint_get",
+      "method": "GET",
+      "path": "/api/2.0/webhook-endpoints/{endpoint_id}",
+      "description": "One webhook endpoint resource (url, event types, key id).",
+      "purpose": "One webhook endpoint resource: url, event types and key id.",
+      "prerequisites": "The webhooks:read capability and an endpoint id.",
+      "lifecycle_position": "Integrate: verifying one delivery target.",
+      "mutation": false,
+      "required_capability": "webhooks:read",
+      "platform": false,
+      "capability_ids": [
+        "webhook-observations"
+      ],
+      "concept_ids": [
+        "webhook"
+      ],
+      "example_request": "None — a bodyless GET. endpoint_id rides the path.",
+      "example_response": "See /docs/api/endpoint_get for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "deliveries_list"
+      ]
+    },
+    {
+      "operation_id": "deliveries_list",
+      "method": "GET",
+      "path": "/api/2.0/webhook-endpoints/{endpoint_id}/deliveries",
+      "description": "The endpoint's delivery attempts (event, status, retries). Pagination rides the GET request's JSON body: {limit (1..100, default 20), cursor, filters}.",
+      "purpose": "The endpoint's delivery attempts — event, status, retries and next-attempt instants.",
+      "prerequisites": "The webhooks:read capability and an endpoint id.",
+      "lifecycle_position": "Integrate / Operate: confirming events actually arrive.",
+      "mutation": false,
+      "required_capability": "webhooks:read",
+      "platform": false,
+      "capability_ids": [
+        "webhook-observations"
+      ],
+      "concept_ids": [
+        "webhook"
+      ],
+      "example_request": "Pagination rides the GET request's JSON body — {limit (1..100, default 20), cursor, filters}. No other body members are sent.",
+      "example_response": "See /docs/api/deliveries_list for the canonical response anatomy.",
+      "error_reason_codes": [
+        "pagination-invalid",
+        "resource-unknown",
+        "capability-denied"
+      ],
+      "next_operation_ids": []
+    }
+  ],
+  "workflow_sequences": {
+    "note": "The canonical integration lifecycle per pattern (design §4). Each step's operation_id, when present, is a real coverage-registry operation the stage maps onto; stages without one carry an honest note instead of an invented endpoint.",
+    "patterns": [
+      {
+        "pattern_id": "application",
+        "steps": [
+          {
+            "stage": "Connectivity Intent",
+            "operation_id": "intent_create",
+            "note": "Record the technology-neutral connectivity requirement — requirements, hard constraints, validity, termination and referenced terms. The principal is derived from the authenticated application."
+          },
+          {
+            "stage": "Eligibility / Policy",
+            "operation_id": "intent_lifecycle",
+            "note": "ADCOS evaluates the accepted policy/eligibility path internally; the lifecycle observation surfaces the resulting statements. The application consumes them — it never reimplements the policy engine."
+          },
+          {
+            "stage": "Provider Offers",
+            "operation_id": "offers_accept",
+            "note": "Accept the opaque typed offer references onto the intent (OFFER_SELECTED). Offers stay opaque: the application never interprets provider-internal semantics."
+          },
+          {
+            "stage": "ConnectivityContract",
+            "operation_id": "contract_activate",
+            "note": "Activate the contract — from here the ConnectivityContract is the sole durable contract authority for this connectivity."
+          },
+          {
+            "stage": "Execution Plan",
+            "operation_id": null,
+            "note": "ADCOS composes the accepted offers into an execution plan and references it against the contract. No separate plan operation exists on the developer boundary — read the contract for the referenced execution material."
+          },
+          {
+            "stage": "Provider realization",
+            "operation_id": null,
+            "note": "Realization happens provider-side behind the ADCOS adapter. The application observes execution status through lifecycle reads; provider internals never cross the boundary."
+          },
+          {
+            "stage": "Evidence + Assurance",
+            "operation_id": "contract_assurance",
+            "note": "Read the referenced assurance obligations. Evidence and assurance are referenced, never fabricated — software evidence and physical/network evidence stay distinct."
+          }
+        ]
+      },
+      {
+        "pattern_id": "gateway-relay",
+        "steps": [
+          {
+            "stage": "Connectivity Intent",
+            "operation_id": "intent_create",
+            "note": "Record the technology-neutral gateway/relay connectivity requirement. The requirement describes the backhaul outcome needed — never the platform's internal content/data routing."
+          },
+          {
+            "stage": "Eligibility / Policy",
+            "operation_id": "intent_lifecycle",
+            "note": "ADCOS evaluates the accepted policy/eligibility path internally; the lifecycle observation surfaces the resulting statements for the gateway controller to consume."
+          },
+          {
+            "stage": "Provider Offers",
+            "operation_id": "offers_accept",
+            "note": "Accept the opaque typed offer references onto the intent (OFFER_SELECTED). Provider-internal access technology never crosses into the platform's domain."
+          },
+          {
+            "stage": "ConnectivityContract",
+            "operation_id": "contract_activate",
+            "note": "Activate the contract. The gateway/relay connectivity outcome is now governed by the ConnectivityContract — the platform's local data plane remains its own authority."
+          },
+          {
+            "stage": "Execution Plan",
+            "operation_id": null,
+            "note": "ADCOS composes the accepted offers into an execution plan and references it against the contract. No separate plan operation exists on the developer boundary."
+          },
+          {
+            "stage": "Provider realization",
+            "operation_id": null,
+            "note": "Access realization happens provider-side behind the ADCOS adapter; the platform observes execution status, never provider topology. Local/P2P transfers never route through ADCOS merely because backhaul does."
+          },
+          {
+            "stage": "Evidence + Assurance",
+            "operation_id": "contract_assurance",
+            "note": "Read the referenced assurance obligations; contracts_list tracks the platform's backhaul contracts. Evidence is referenced, never fabricated."
+          }
+        ]
+      },
+      {
+        "pattern_id": "fleet-subscriber",
+        "steps": [
+          {
+            "stage": "Connectivity Intent",
+            "operation_id": "intent_create",
+            "note": "Record the technology-neutral connectivity requirement for the device or subscriber cohort — beneficiaries ride the intent; cohort membership itself stays application-owned."
+          },
+          {
+            "stage": "Eligibility / Policy",
+            "operation_id": null,
+            "note": "Policy and eligibility are evaluated inside ADCOS; this pattern observes the outcome through the contract state machine rather than a dedicated lifecycle operation."
+          },
+          {
+            "stage": "Provider Offers",
+            "operation_id": "offers_accept",
+            "note": "Accept the opaque typed offer references onto the intent (OFFER_SELECTED). Provider subscriber/network mechanics never enter the product domain."
+          },
+          {
+            "stage": "ConnectivityContract",
+            "operation_id": "contract_activate",
+            "note": "Activate the contract — ADCOS owns the contract and bounded lease lifecycle from here."
+          },
+          {
+            "stage": "Execution Plan",
+            "operation_id": null,
+            "note": "ADCOS composes the accepted offers into an execution plan and references it against the contract. No separate plan operation exists on the developer boundary."
+          },
+          {
+            "stage": "Provider realization",
+            "operation_id": null,
+            "note": "Subscriber and network realization stay provider-owned; the application sees contract and lease state only — never provider-native identity or routing."
+          },
+          {
+            "stage": "Evidence + Assurance",
+            "operation_id": null,
+            "note": "Assurance obligations are referenced at intent creation and read back through the canonical contract material; bounded leases (grant/renew/revoke) carry the cohort's validity windows."
+          }
+        ]
+      },
+      {
+        "pattern_id": "provider-adapter",
+        "steps": [
+          {
+            "stage": "Connectivity Intent",
+            "operation_id": "intent_create",
+            "note": "A consuming application records its technology-neutral requirement; the adapter side never writes provider-specific technology into the intent."
+          },
+          {
+            "stage": "Eligibility / Policy",
+            "operation_id": null,
+            "note": "Policy and eligibility are evaluated inside ADCOS behind the adapter boundary — provider authorization is translated into ADCOS outcomes, never exported."
+          },
+          {
+            "stage": "Provider Offers",
+            "operation_id": "offers_accept",
+            "note": "Provider capabilities enter as opaque typed offer references (OFFER_SELECTED) — the consumer sees technology-neutral offers, not provider APIs."
+          },
+          {
+            "stage": "ConnectivityContract",
+            "operation_id": "contract_activate",
+            "note": "Activate the contract — the exchange/orchestration authority over this connectivity outcome."
+          },
+          {
+            "stage": "Execution Plan",
+            "operation_id": null,
+            "note": "ADCOS composes accepted offers into an execution plan; the adapter translates provider-native realization into ADCOS typed execution material without exposing a global topology model."
+          },
+          {
+            "stage": "Provider realization",
+            "operation_id": null,
+            "note": "Realization runs on the provider's own network and APIs, entirely behind the ADCOS adapter boundary."
+          },
+          {
+            "stage": "Evidence + Assurance",
+            "operation_id": "contract_assurance",
+            "note": "Read the referenced assurance obligations. Provider realization failures surface as typed ADCOS outcomes — never as leaked provider SDK types."
+          }
+        ]
+      },
+      {
+        "pattern_id": "marketplace-orchestration",
+        "steps": [
+          {
+            "stage": "Connectivity Intent",
+            "operation_id": "intent_create",
+            "note": "Record the customer's technology-neutral connectivity requirement; commercial semantics stay in the marketplace, connectivity semantics in the intent."
+          },
+          {
+            "stage": "Eligibility / Policy",
+            "operation_id": null,
+            "note": "Policy and eligibility are evaluated inside ADCOS; the marketplace observes the outcome through the contract state machine and the intent list (intents_list) rather than reimplementing the policy engine."
+          },
+          {
+            "stage": "Provider Offers",
+            "operation_id": "offers_accept",
+            "note": "Accept the opaque typed offer references onto the intent (OFFER_SELECTED); opaque references are preserved verbatim, never reinterpreted."
+          },
+          {
+            "stage": "ConnectivityContract",
+            "operation_id": "contract_activate",
+            "note": "Activate the contract — ADCOS remains the connectivity contract authority; the marketplace never becomes a second connectivity ledger."
+          },
+          {
+            "stage": "Execution Plan",
+            "operation_id": null,
+            "note": "ADCOS composes the accepted offers into an execution plan and references it against the contract. No separate plan operation exists on the developer boundary."
+          },
+          {
+            "stage": "Provider realization",
+            "operation_id": null,
+            "note": "Provider capability and realization stay provider-owned; the marketplace consumes referenced usage and assurance material (contract_usage, contract_assurance), never provider internals."
+          },
+          {
+            "stage": "Evidence + Assurance",
+            "operation_id": "contract_assurance",
+            "note": "Read the referenced assurance obligations; endpoint_register subscribes signed observations for customer-facing activity feeds while contract reads stay canonical. contract_terminate ends the lifecycle when a customer cancels."
+          }
+        ]
+      }
+    ]
+  },
+  "webhooks": {
+    "rule": "Webhooks are observations. They do not replace canonical contract reads and never become a second source of canonical business state.",
+    "frozen_event_types": [
+      "connectivity_intent.created",
+      "connectivity_contract.offers_selected",
+      "connectivity_contract.activated",
+      "connectivity_contract.terminated",
+      "connectivity_contract.state_changed",
+      "connectivity_lease.granted",
+      "connectivity_lease.renewed",
+      "connectivity_lease.revoked",
+      "webhook_endpoint.registered"
+    ],
+    "registration": "Register endpoints with endpoint_register (POST /api/2.0/webhook-endpoints). Event types come only from the frozen vocabulary above; the backend rejects any other value with invalid-input.",
+    "verification": "Implement webhook signature verification and replay protections where webhooks are used."
+  },
+  "errors": {
+    "handling": [
+      "Preserve the exact backend reason code.",
+      "Identify the affected resource.",
+      "Determine whether the error is retryable according to API metadata.",
+      "Read the canonical resource before issuing a state-dependent retry.",
+      "Never hide an unavailable deployment capability behind a fake result."
+    ],
+    "unknown_rule": "Unknown reason codes must remain unknown; the client must not invent semantics.",
+    "reason_codes": [
+      "authentication-invalid",
+      "authentication-expired",
+      "environment-mismatch",
+      "capability-denied",
+      "version-unsupported",
+      "rate-limited",
+      "idempotency-key-required",
+      "idempotency-conflict",
+      "pagination-invalid",
+      "filter-invalid",
+      "resource-unknown",
+      "route-unknown",
+      "invalid-input",
+      "invalid-transition",
+      "invalid-state",
+      "unknown-contract",
+      "contract-terminal",
+      "constraint-immutable",
+      "not-yet-valid",
+      "expired",
+      "temporal-invalid",
+      "secret-rejected",
+      "vocabulary",
+      "sequence-conflict",
+      "replay-stale",
+      "journal-tamper",
+      "store-failed",
+      "payload-too-large",
+      "malformed-json",
+      "invalid-request-body",
+      "backend-unreachable",
+      "internal-error"
+    ],
+    "reason_code_source": "The canonical reason-code vocabulary of the ADCOS developer boundary — transcribed verbatim from the console's canonical error taxonomy (the same frozen pin the errors documentation page and the registry tests carry). Codes are ids, never synonyms."
+  },
+  "versioning": {
+    "rule": "The API uses explicit versioning. Route version and X-ADCOS-API-Version must agree.",
+    "current_major_line": "2.0",
+    "compatibility": "Compatible versions allow additive optional fields; breaking field changes require a new major version. Consumers must not depend on deprecated/retired behavior as if it were current."
+  },
+  "security_rules": {
+    "secrets": "Never place API credentials or webhook signing secrets into public docs, examples, browser local storage, or LLM context assets. Public examples may show header names and synthetic non-secret placeholders only.",
+    "boundary": "Browser and application examples use the canonical HTTP developer boundary only.",
+    "provider_isolation": "Provider SDKs and provider-native network objects must never appear in application-facing integration examples."
+  },
+  "evidence_rules": {
+    "api_success": "ADCOS API success is never represented as proof of physical connectivity success.",
+    "evidence_classes": "Software/deployment evidence and physical/network evidence are different evidence classes; never turn software deployment evidence into physical-network proof.",
+    "evidence_semantics": "Evidence records support statements about what happened and where it came from. Assurance obligations describe what should hold for a contract to count as assured.",
+    "fulfillment_observation": "Operational observation reports execution state; it does not automatically prove physical success."
+  },
+  "anti_patterns": [
+    "Do not create a second contract authority.",
+    "Do not encode provider-specific topology into application domain logic.",
+    "Do not treat webhook observations as canonical state.",
+    "Do not equate API success with physical connectivity success.",
+    "Do not invent unavailable endpoints.",
+    "Do not invent provider capabilities.",
+    "Do not make application data-plane availability depend on ADCOS control-plane availability unless the product explicitly chooses that tradeoff.",
     "Preserve canonical reason codes.",
-    "Do not invent unsupported endpoints, capabilities or telemetry.",
-    "Do not expose secrets in public documentation or LLM context.",
-    "Use the published operation registry as the current API surface and preserve API-version rules."
+    "Preserve API version and compatibility rules.",
+    "Use idempotency and declared request semantics as defined by the API.",
+    "Distinguish software evidence from physical/network evidence.",
+    "add `AdcosContract` as a second source of truth for connectivity contracts;",
+    "copy ADCOS contract state into a second mutable ledger and let both authorities change it;",
+    "make an app call provider APIs directly for the same capability ADCOS is orchestrating;",
+    "interpret webhooks as authoritative state mutations without a canonical read;",
+    "claim physical availability based only on an API 2xx response;",
+    "build a global ADCOS topology map from provider data;",
+    "invent an endpoint because the product story seems to require one;",
+    "use a fake provider/network result in a production-status surface;",
+    "route every local/P2P ShareNet data transfer through ADCOS;",
+    "expose public secrets in generated LLM context."
   ],
-  "shareNet_reference": {
-    "pattern_id":"gateway-relay",
-    "boundary":"ShareNet content/P2P plane -> technology-neutral gateway/relay connectivity requirement -> ADCOS -> provider realization",
-    "sharenet_owns":["content addressing","P2P distribution","publisher trust","delivery receipts","contribution/corpus/training semantics","application economics"],
-    "adcos_owns":["connectivity intent/contract lifecycle","provider orchestration","execution/assurance references","leases","developer observations"],
-    "provider_owns":["topology","access realization","routing","subscriber/network authority"],
-    "critical_rule":"Ordinary device-to-device ShareNet transfers remain inside ShareNet and do not become ADCOS connectivity transactions.",
-    "integration_shape":"Introduce an application-level ADCOS connectivity port/client for gateway/backhaul needs; do not put ADCOS inside ShareNet core-transport."
-  },
-  "operation_source":"/adcos-operations.json",
-  "capability_source":"/adcos-capabilities.json",
-  "human_entry":"/build",
-  "human_docs":"/docs",
-  "api_explorer":"/developers/explorer",
-  "complete_context":"/llms-full.txt"
+  "production_checklist": {
+    "before_production": [
+      "Application identity and required capability grants are understood.",
+      "API version is explicit and route/header versions agree.",
+      "Mutations use required idempotency semantics.",
+      "Contract hard constraints are treated as immutable after creation.",
+      "Error handling preserves canonical reason codes.",
+      "Webhook signature verification and replay protections are implemented where webhooks are used.",
+      "Provider implementation is isolated behind the appropriate ADCOS boundary.",
+      "Software vs physical/network evidence is represented honestly.",
+      "Degraded ADCOS control-plane behavior is explicit.",
+      "No second connectivity contract authority exists.",
+      "No provider-native APIs leak into the product domain.",
+      "The integration has been tested through the actual ADCOS HTTP boundary."
+    ],
+    "llm_implementation_workflow": [
+      "Identify the product's connectivity outcome and integration pattern.",
+      "Mark application/ADCOS/provider authorities explicitly.",
+      "Choose only capabilities and operations present in the published registry.",
+      "Define the application-side connectivity port/client.",
+      "Map the product lifecycle to the ADCOS contract lifecycle.",
+      "Add webhook observations only where asynchronous awareness is needed.",
+      "Keep ADCOS control-plane failures separate from unrelated product/data-plane behavior.",
+      "Implement typed error handling and idempotent mutations.",
+      "Preserve hard constraints exactly.",
+      "Test provider-independence and authority boundaries.",
+      "Validate examples against the live Developer API/Explorer before claiming integration completeness."
+    ]
+  }
 }

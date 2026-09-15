@@ -67,10 +67,9 @@ Providers retain provider-native topology, routing, subscriber authority, physic
 
 Use when an application needs connectivity for itself, a service endpoint or a bounded cohort.
 
-Typical sequence:
-`application_self → intent_create → intents/intent_get → intent_lifecycle → offers_accept → contract_activate → contract_get → contract_assurance`
-
 The application owns product behavior. ADCOS owns connectivity contract state. Providers own realization.
+
+Operations (from the integration registry): `application_self → intent_create → intent_lifecycle → offers_accept → contract_activate → contract_get → contract_assurance`
 
 ### Gateway / relay platform
 
@@ -78,17 +77,25 @@ Use when a platform has its own application/data plane and needs backhaul or gat
 
 Important design rule: ADCOS manages the gateway/relay connectivity outcome, not the application's internal content/data routing. A local or P2P transfer inside the platform does not become an ADCOS connectivity transaction simply because ADCOS provides backhaul connectivity.
 
+Operations (from the integration registry): `application_self → intent_create → intent_lifecycle → offers_accept → contract_activate → contracts_list → contract_get → contract_assurance`
+
 ### Fleet / subscriber connectivity
 
 Use when a product purchases/allocates connectivity for devices or subscribers. The product retains cohort membership and business semantics; ADCOS owns the connectivity contract and bounded lease lifecycle; provider subscriber/network mechanics remain provider-owned.
+
+Operations (from the integration registry): `application_self → intent_create → offers_accept → contract_activate → contracts_list → contract_get → lease_grant → leases_list → lease_renew → lease_revoke`
 
 ### Provider / adapter integration
 
 Use when a network provider exposes capabilities to ADCOS. Provider SDK/API objects stay behind the adapter. Consuming applications see technology-neutral offers and contract/execution outcomes.
 
-### Marketplace / orchestration product
+Operations (from the integration registry): `intent_create → offers_accept → contract_activate → contract_get → contract_assurance`
+
+### Connectivity marketplace / orchestration
 
 A higher-level marketplace may own commercial UX and customer context while delegating actual connectivity orchestration to ADCOS. Do not turn the marketplace into a second connectivity ledger or reinterpret opaque provider references.
+
+Operations (from the integration registry): `application_self → intent_create → intents_list → offers_accept → contract_activate → contracts_list → contract_get → contract_usage → contract_assurance → contract_terminate → endpoint_register`
 
 ## API model
 
@@ -102,7 +109,38 @@ The public boundary includes operations for:
 - lease grant/list/get/renew/revoke
 - webhook endpoint registration/list/get/deliveries
 
-The console coverage registry is the authoritative list of executable developer operations. Use `/adcos-operations.json` for the current published projection.
+Complete operation registry (25 operations, projected from the console coverage registry — the authoritative list):
+
+- GET /api/2.0/application (application_self) — The authenticated application: identity, environment, capabilities, status and validity.
+- POST /api/2.0/intents (intent_create) — Record a connectivity intent — the contract creation core. The principal is derived from the authenticated application.
+- GET /api/2.0/intents (intents_list) — Contracts still in the INTENT state — the queue of recorded-but-not-yet-selected requirements.
+- GET /api/2.0/intents/{intent_id} (intent_get) — One intent's canonical contract resource — the full canonical material, verbatim.
+- GET /api/2.0/intents/{intent_id}/lifecycle (intent_lifecycle) — The honest lifecycle observation for one contract: state machine position, statements and execution status — physical connectivity is never claimed by API success.
+- POST /api/2.0/intents/{intent_id}/offers (offers_accept) — Accept opaque typed offer references onto the intent — the contract moves to OFFER_SELECTED.
+- POST /api/2.0/intents/{intent_id}/activation (contract_activate) — Activate the contract — the move to CONTRACT_ACTIVE, recording the activation instant and signature references.
+- GET /api/2.0/contracts (contracts_list) — All the application's contracts — the portfolio view, filterable by lifecycle state.
+- GET /api/2.0/contracts/{contract_id} (contract_get) — One canonical contract resource with the complete lifecycle material — requirements, constraints, accepted offers, the plan binding and referenced terms.
+- GET /api/2.0/contracts/{contract_id}/usage (contract_usage) — The contract's referenced usage/pricing semantics — referenced, never interpreted.
+- GET /api/2.0/contracts/{contract_id}/assurance (contract_assurance) — The contract's referenced assurance obligations — referenced, never evaluated here.
+- POST /api/2.0/contracts/{contract_id}/termination (contract_terminate) — Terminate the contract — a terminal state, recorded with a condition and a reason.
+- POST /api/2.0/contracts/{contract_id}/leases (lease_grant) — Grant a lease on the contract — a bounded access window over the fulfilled connectivity.
+- GET /api/2.0/leases (leases_list) — The application's leases, filterable by lease state.
+- GET /api/2.0/leases/{lease_id} (lease_get) — One lease resource: its contract, window and state.
+- POST /api/2.0/leases/{lease_id}/renewal (lease_renew) — Renew a lease for a new validity window — the prior lease enters renewed.
+- POST /api/2.0/leases/{lease_id}/revocation (lease_revoke) — Revoke a lease — terminal, with a recorded reason.
+- GET /api/2.0/webhook-endpoints (endpoints_list) — The application's registered webhook endpoints.
+- POST /api/2.0/webhook-endpoints (endpoint_register) — Register a webhook endpoint for observation event types.
+- GET /api/2.0/webhook-endpoints/{endpoint_id} (endpoint_get) — One webhook endpoint resource: url, event types and key id.
+- GET /api/2.0/webhook-endpoints/{endpoint_id}/deliveries (deliveries_list) — The endpoint's delivery attempts — event, status, retries and next-attempt instants.
+
+Platform surfaces (unauthenticated):
+
+- GET /healthz (healthz) — Runtime liveness probe — always 200 while the process is serving.
+- GET /readyz (readyz) — Runtime readiness: mode, environment and every consumed backend's state — 200 when all are ready, 503 with per-backend detail when not.
+- GET /demo/contract-fulfillment (demo_contract_fulfillment) — The deterministic full-chain demonstration document — the boundary trace, contract, plan, execution and evidence for one instant.
+- GET /api/contracts/{contract_id} (platform_contract_read) — The unversioned platform-side contract read — the raw canonical contract dict for a contract id, with no authentication.
+
+The console coverage registry is the authoritative list of executable developer operations. Use /adcos-operations.json for the current published projection.
 
 Mutations require the capabilities and idempotency semantics defined by the API. Do not create client-side business rules that silently weaken hard contract constraints.
 
@@ -140,6 +178,23 @@ A bounded validity window over a contract. Lease mutations are separate lifecycl
 
 Signed observation delivery. Use it to react asynchronously, but maintain canonical state from authoritative API reads.
 
+## Webhook observations
+
+Webhooks are signed observations. Use them to react asynchronously, but maintain canonical state from authoritative API reads — they never become a second source of canonical business state.
+
+The frozen event-type vocabulary (the backend rejects any other value):
+- connectivity_intent.created
+- connectivity_contract.offers_selected
+- connectivity_contract.activated
+- connectivity_contract.terminated
+- connectivity_contract.state_changed
+- connectivity_lease.granted
+- connectivity_lease.renewed
+- connectivity_lease.revoked
+- webhook_endpoint.registered
+
+Register endpoints with endpoint_register (POST /api/2.0/webhook-endpoints); implement signature verification and replay protections where webhooks are used.
+
 ## Error handling
 
 When an ADCOS operation fails:
@@ -151,9 +206,12 @@ When an ADCOS operation fails:
 
 Unknown reason codes must remain unknown; the client must not invent semantics.
 
+The canonical reason-code vocabulary (verbatim — never synonyms):
+authentication-invalid, authentication-expired, environment-mismatch, capability-denied, version-unsupported, rate-limited, idempotency-key-required, idempotency-conflict, pagination-invalid, filter-invalid, resource-unknown, route-unknown, invalid-input, invalid-transition, invalid-state, unknown-contract, contract-terminal, constraint-immutable, not-yet-valid, expired, temporal-invalid, secret-rejected, vocabulary, sequence-conflict, replay-stale, journal-tamper, store-failed, payload-too-large, malformed-json, invalid-request-body, backend-unreachable, internal-error
+
 ## Versioning
 
-The API uses explicit versioning. Route version and `X-ADCOS-API-Version` must agree. Compatible versions allow additive optional fields; breaking field changes require a new major version. Consumers must not depend on deprecated/retired behavior as if it were current.
+The API uses explicit versioning. Route version and X-ADCOS-API-Version must agree. Compatible versions allow additive optional fields; breaking field changes require a new major version. Consumers must not depend on deprecated/retired behavior as if it were current.
 
 ## ShareNet reference architecture
 
@@ -206,7 +264,6 @@ Never place API credentials or webhook signing secrets into public docs, example
 ## LLM implementation workflow
 
 When an LLM is asked to add ADCOS to a product:
-
 1. Identify the product's connectivity outcome and integration pattern.
 2. Mark application/ADCOS/provider authorities explicitly.
 3. Choose only capabilities and operations present in the published registry.
@@ -232,6 +289,19 @@ Never:
 - use a fake provider/network result in a production-status surface;
 - route every local/P2P ShareNet data transfer through ADCOS;
 - expose public secrets in generated LLM context.
+
+LLM safety rules (mandatory):
+- Do not create a second contract authority.
+- Do not encode provider-specific topology into application domain logic.
+- Do not treat webhook observations as canonical state.
+- Do not equate API success with physical connectivity success.
+- Do not invent unavailable endpoints.
+- Do not invent provider capabilities.
+- Do not make application data-plane availability depend on ADCOS control-plane availability unless the product explicitly chooses that tradeoff.
+- Preserve canonical reason codes.
+- Preserve API version and compatibility rules.
+- Use idempotency and declared request semantics as defined by the API.
+- Distinguish software evidence from physical/network evidence.
 
 ## Production checklist
 

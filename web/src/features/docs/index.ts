@@ -49,6 +49,31 @@ export {
 export { GuideIndex, GUIDE_INDEX_TEST_IDS } from "./guide-index";
 export { GuidePage, GUIDE_PAGE_TEST_IDS } from "./guide-page";
 
+// the Build with ADCOS section (the frozen Build-with-ADCOS design §8:
+// the hub, the four pattern pages, the ShareNet reference, the lifecycle
+// implementation and the production checklist — pattern facts GENERATED
+// from the integration registry)
+export {
+  BUILD_DOCS_SECTION,
+  BUILD_PAGE_TEST_IDS,
+  BUILD_PAGES,
+  BuildApplicationPage,
+  BuildChecklistPage,
+  BuildFleetSubscriberPage,
+  BuildGatewayRelayPage,
+  BuildLifecyclePage,
+  BuildPatternDocPage,
+  BuildProviderPage,
+  BuildSectionHub,
+  SHARENET_ADCOS_AUTHORITY,
+  SHARENET_APPLICATION_AUTHORITY,
+  SHARENET_OFFLINE_RULE,
+  SHARENET_P2P_TRANSFER_RULE,
+  SHARENET_PROVIDER_AUTHORITY,
+  buildDocsHomeEntries,
+  buildPageById,
+} from "./build-pages";
+
 // the API hub and operation page (GENERATED from coverage + education)
 export { ApiHub, API_HUB_TEST_IDS } from "./api-hub";
 export { OperationPage, OPERATION_PAGE_TEST_IDS } from "./operation-page";

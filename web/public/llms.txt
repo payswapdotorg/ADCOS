@@ -12,7 +12,7 @@ Start here:
 - /developers/explorer — executable API Explorer
 
 Core lifecycle:
-Connectivity Intent → Eligibility/Policy → Provider Offers → ConnectivityContract → Execution Plan → Provider realization → Evidence + Assurance
+Connectivity Intent → Eligibility / Policy → Provider Offers → ConnectivityContract → Execution Plan → Provider realization → Evidence + Assurance
 
 Authority boundaries:
 - The ConnectivityContract is the canonical ADCOS contract authority.

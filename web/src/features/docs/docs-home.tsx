@@ -3,8 +3,11 @@
 /**
  * DocsHome — the documentation home: the docs information architecture
  * itself (the frozen V2 design §9 tree — Start here, Concepts, Guides,
- * API, SDKs, Errors, Troubleshooting, Reference) with the route-local
- * search filtering the IA by term in the browser.
+ * Build with ADCOS, API, SDKs, Errors, Troubleshooting, Reference) with
+ * the route-local search filtering the IA by term in the browser. The
+ * Build with ADCOS group (the frozen Build-with-ADCOS design §8) is
+ * injected between Guides and API and lists its own seven-page entries
+ * plus the /build console CTA.
  *
  * The Console V2 documentation system — the DEC-0128 program, Task 3 of
  * the frozen plan. The counts on the IA entries are derived from the
@@ -19,6 +22,7 @@ import Link from "next/link";
 import { COVERAGE } from "@/lib/api/coverage";
 import { CONCEPTS, GUIDES } from "@/lib/education";
 import { EmptyState, ExternalLinkIcon } from "@/components/ui";
+import { BUILD_DOCS_SECTION, buildDocsHomeEntries } from "./build-pages";
 import { DocsContextSlot } from "./docs-context";
 import { DOCS_SECTIONS, matchesDocsTerm } from "./docs-shared";
 import { DocsSearch } from "./docs-search";
@@ -86,29 +90,51 @@ function sectionMeta(sectionId: string): string | undefined {
   }
 }
 
-/** The full IA as renderable entries (section groups in §9 order). */
+/**
+ * The full IA as renderable entry groups, in the frozen design's order —
+ * the §9 sections of DOCS_SECTIONS with the Build with ADCOS section
+ * (the frozen Build-with-ADCOS design §8) injected BETWEEN Guides and
+ * API. The Build group lists its own seven-page entries (the hub is the
+ * section header itself) plus the /build console CTA.
+ */
 function docsIaEntries(): {
   sectionId: string;
   sectionLabel: string;
   sectionHref: string;
   entries: DocsHomeEntry[];
 }[] {
-  const groups = DOCS_SECTIONS.map((section) => ({
-    sectionId: section.id,
-    sectionLabel: section.label,
-    sectionHref: section.href,
-    entries:
-      section.id === "start"
-        ? START_ENTRIES
-        : [
-            {
-              title: section.label,
-              href: section.href,
-              description: section.description,
-              meta: sectionMeta(section.id),
-            },
-          ],
-  }));
+  const groups: {
+    sectionId: string;
+    sectionLabel: string;
+    sectionHref: string;
+    entries: DocsHomeEntry[];
+  }[] = [];
+  for (const section of DOCS_SECTIONS) {
+    groups.push({
+      sectionId: section.id,
+      sectionLabel: section.label,
+      sectionHref: section.href,
+      entries:
+        section.id === "start"
+          ? START_ENTRIES
+          : [
+              {
+                title: section.label,
+                href: section.href,
+                description: section.description,
+                meta: sectionMeta(section.id),
+              },
+            ],
+    });
+    if (section.id === "guides") {
+      groups.push({
+        sectionId: BUILD_DOCS_SECTION.id,
+        sectionLabel: BUILD_DOCS_SECTION.label,
+        sectionHref: BUILD_DOCS_SECTION.href,
+        entries: buildDocsHomeEntries(),
+      });
+    }
+  }
   return groups;
 }
 

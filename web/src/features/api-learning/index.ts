@@ -1,14 +1,21 @@
 /**
  * The API-learning feature (the DEC-0128 program, Tasks 6-7 of the
  * frozen plan — docs/superpowers/plans/2026-09-14-adcos-console-v2-
- * learning-experience.md).
+ * learning-experience.md; the build-context block extends it under the
+ * Build with ADCOS & LLM Integration program, plan Task 5 —
+ * docs/superpowers/plans/2026-09-15-adcos-build-with-adcos-llm-
+ * integration.md).
  *
  * The reusable EDUCATION sections composed AROUND the V1 API Explorer's
  * operations and the V1 error workbench's captured failures:
  * - `operation-education` — the "About this operation" progressive-
  *   disclosure block (purpose / prerequisites / lifecycle position /
  *   typical sequence / fields / curl from registry metadata / related
- *   concepts / related reason codes / next operation);
+ *   concepts / related reason codes / next operation), which mounts the
+ *   `build-context-block` (the Build-with-ADCOS & LLM Integration
+ *   program, plan Task 5 — integration-pattern membership, the
+ *   lifecycle position and the public machine-readable context
+ *   pointer) after the existing education content;
  * - `reason-guidance` — the canonical reason-code troubleshooting table
  *   (the six-part anatomy: what happened / why / affected resource /
  *   next action / API reproduction / learn more).
@@ -24,6 +31,11 @@ export {
   OperationEducationPanel,
   OPERATION_EDUCATION_TEST_IDS,
 } from "./operation-education";
+export {
+  BuildContextBlock,
+  BUILD_CONTEXT_TEST_IDS,
+  INTEGRATION_CONTEXT_HREF,
+} from "./build-context-block";
 export {
   REASON_TROUBLESHOOTING,
   getReasonTroubleshooting,

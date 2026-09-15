@@ -13,9 +13,12 @@
 node_modules/
 target/
 dist/
-build/
+/build/
 coverage/
 .cache/
+
+# Local JS tooling debris (bun install side artifact; the repo tracks package-lock.json)
+web/bun.lock
 
 # Runtime state
 *.db

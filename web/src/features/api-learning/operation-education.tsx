@@ -39,6 +39,7 @@ import { getOperationEducation } from "@/lib/education";
 import { ApiRequestPanel } from "@/components/ui";
 import { ConceptLink } from "@/features/learning";
 import { maskedRequestHeaders } from "@/features/api-explorer/executor";
+import { BuildContextBlock } from "./build-context-block";
 
 /** Stable test ids for the education affordance and its panel. */
 export const OPERATION_EDUCATION_TEST_IDS = {
@@ -234,6 +235,13 @@ export function OperationEducationPanel({
             Education composed from the operation-learning registry and the
             coverage registry — the same authorities the whole console uses.
           </p>
+
+          {/* the Build context block (the Build-with-ADCOS & LLM
+              Integration program, plan Task 5) — integration-pattern
+              membership, the lifecycle position and the public
+              machine-readable context pointer; still inside the
+              collapsed-by-default disclosure, links only */}
+          <BuildContextBlock operationId={record.operation} />
         </div>
       ) : null}
     </div>

@@ -1,27 +1,851 @@
 {
   "api_version": "2.0",
   "operations": [
-    {"id":"application_self","method":"GET","path":"/api/2.0/application","purpose":"Read authenticated application identity, environment and capabilities"},
-    {"id":"intent_create","method":"POST","path":"/api/2.0/intents","purpose":"Create a technology-neutral connectivity intent"},
-    {"id":"intents_list","method":"GET","path":"/api/2.0/intents","purpose":"List intents still in INTENT state"},
-    {"id":"intent_get","method":"GET","path":"/api/2.0/intents/{intent_id}","purpose":"Read one canonical intent resource"},
-    {"id":"intent_lifecycle","method":"GET","path":"/api/2.0/intents/{intent_id}/lifecycle","purpose":"Read lifecycle and honest execution observations"},
-    {"id":"offers_accept","method":"POST","path":"/api/2.0/intents/{intent_id}/offers","purpose":"Accept opaque typed provider offer references"},
-    {"id":"contract_activate","method":"POST","path":"/api/2.0/intents/{intent_id}/activation","purpose":"Activate the canonical connectivity contract"},
-    {"id":"contracts_list","method":"GET","path":"/api/2.0/contracts","purpose":"List application contracts"},
-    {"id":"contract_get","method":"GET","path":"/api/2.0/contracts/{contract_id}","purpose":"Read canonical contract state and referenced execution material"},
-    {"id":"contract_usage","method":"GET","path":"/api/2.0/contracts/{contract_id}/usage","purpose":"Read referenced usage/pricing semantics"},
-    {"id":"contract_assurance","method":"GET","path":"/api/2.0/contracts/{contract_id}/assurance","purpose":"Read referenced assurance obligations"},
-    {"id":"contract_terminate","method":"POST","path":"/api/2.0/contracts/{contract_id}/termination","purpose":"Terminate a contract"},
-    {"id":"lease_grant","method":"POST","path":"/api/2.0/contracts/{contract_id}/leases","purpose":"Grant a bounded contract lease"},
-    {"id":"leases_list","method":"GET","path":"/api/2.0/leases","purpose":"List application leases"},
-    {"id":"lease_get","method":"GET","path":"/api/2.0/leases/{lease_id}","purpose":"Read a lease"},
-    {"id":"lease_renew","method":"POST","path":"/api/2.0/leases/{lease_id}/renewal","purpose":"Renew a lease"},
-    {"id":"lease_revoke","method":"POST","path":"/api/2.0/leases/{lease_id}/revocation","purpose":"Revoke a lease"},
-    {"id":"endpoints_list","method":"GET","path":"/api/2.0/webhook-endpoints","purpose":"List registered webhook endpoints"},
-    {"id":"endpoint_register","method":"POST","path":"/api/2.0/webhook-endpoints","purpose":"Register a signed-observation webhook endpoint"},
-    {"id":"endpoint_get","method":"GET","path":"/api/2.0/webhook-endpoints/{endpoint_id}","purpose":"Read a webhook endpoint"},
-    {"id":"deliveries_list","method":"GET","path":"/api/2.0/webhook-endpoints/{endpoint_id}/deliveries","purpose":"Read webhook delivery observations"}
+    {
+      "operation_id": "healthz",
+      "method": "GET",
+      "path": "/healthz",
+      "description": "Runtime liveness (always 200). The shell's environment indicator also derives readiness from /readyz.",
+      "purpose": "Runtime liveness probe — always 200 while the process is serving.",
+      "prerequisites": "None — an unauthenticated platform surface.",
+      "lifecycle_position": "Diagnose: the first check when anything looks wrong.",
+      "mutation": false,
+      "required_capability": "",
+      "platform": true,
+      "capability_ids": [],
+      "concept_ids": [],
+      "example_request": "None — a bodyless GET. The response is the liveness document: ok and the service name.",
+      "example_response": "See /docs/api/healthz for the canonical response anatomy.",
+      "error_reason_codes": [
+        "backend-unreachable"
+      ],
+      "next_operation_ids": [
+        "readyz"
+      ]
+    },
+    {
+      "operation_id": "readyz",
+      "method": "GET",
+      "path": "/readyz",
+      "description": "Runtime readiness: mode, environment and every consumed backend's state; 200 when all ready, 503 with per-backend detail when not.",
+      "purpose": "Runtime readiness: mode, environment and every consumed backend's state — 200 when all are ready, 503 with per-backend detail when not.",
+      "prerequisites": "None — an unauthenticated platform surface.",
+      "lifecycle_position": "Operate / Diagnose: separates liveness from readiness — a live runtime can still be degraded by a consumed backend.",
+      "mutation": false,
+      "required_capability": "",
+      "platform": true,
+      "capability_ids": [],
+      "concept_ids": [],
+      "example_request": "None — a bodyless GET. The response carries mode, environment and a backends map with state and detail per consumed backend.",
+      "example_response": "See /docs/api/readyz for the canonical response anatomy.",
+      "error_reason_codes": [
+        "backend-unreachable"
+      ],
+      "next_operation_ids": [
+        "application_self"
+      ]
+    },
+    {
+      "operation_id": "demo_contract_fulfillment",
+      "method": "GET",
+      "path": "/demo/contract-fulfillment",
+      "description": "The deterministic full-chain demo document (boundary, contract, plan, execution, evidence). POST with {\"instant\": RFC3339} for a specific instant.",
+      "purpose": "The deterministic full-chain demonstration document — the boundary trace, contract, plan, execution and evidence for one instant.",
+      "prerequisites": "None — the unauthenticated demonstration context (no capability grant).",
+      "lifecycle_position": "Understand: the canonical first run for learning the model end to end.",
+      "mutation": false,
+      "required_capability": "",
+      "platform": true,
+      "capability_ids": [
+        "deterministic-reference-demo"
+      ],
+      "concept_ids": [
+        "demo-fulfillment-journey",
+        "connectivity-contract",
+        "execution-plan",
+        "fulfillment",
+        "evidence",
+        "assurance"
+      ],
+      "example_request": {
+        "instant": "2026-09-13T01:30:00Z"
+      },
+      "example_response": "See /docs/api/demo_contract_fulfillment for the canonical response anatomy.",
+      "error_reason_codes": [
+        "backend-unreachable",
+        "malformed-json",
+        "invalid-request-body"
+      ],
+      "next_operation_ids": [
+        "platform_contract_read"
+      ]
+    },
+    {
+      "operation_id": "platform_contract_read",
+      "method": "GET",
+      "path": "/api/contracts/{contract_id}",
+      "description": "The UNVERSIONED platform-side contract read (no auth): the raw canonical contract dict, or the typed 404 envelope.",
+      "purpose": "The unversioned platform-side contract read — the raw canonical contract dict for a contract id, with no authentication.",
+      "prerequisites": "A contract id. The demonstration document's contract id works without a credential.",
+      "lifecycle_position": "Understand / Integrate: the platform mirror used where the versioned, authenticated read is not available.",
+      "mutation": false,
+      "required_capability": "",
+      "platform": true,
+      "capability_ids": [],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": "None — a bodyless GET. contract_id rides the path.",
+      "example_response": "See /docs/api/platform_contract_read for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "backend-unreachable"
+      ],
+      "next_operation_ids": [
+        "contract_get"
+      ]
+    },
+    {
+      "operation_id": "application_self",
+      "method": "GET",
+      "path": "/api/2.0/application",
+      "description": "The authenticated application: identity, environment, capabilities, status and validity.",
+      "purpose": "The authenticated application: identity, environment, capabilities, status and validity.",
+      "prerequisites": "A connected application credential (the session menu). No capability grant is required.",
+      "lifecycle_position": "Integrate: the first authenticated call — every later call runs as this principal.",
+      "mutation": false,
+      "required_capability": "",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "application-capability",
+        "policy"
+      ],
+      "example_request": "None — a bodyless authenticated GET. The response is the application resource: application_id, capabilities, environment, status and valid_until.",
+      "example_response": "See /docs/api/application_self for the canonical response anatomy.",
+      "error_reason_codes": [
+        "authentication-invalid",
+        "authentication-expired",
+        "environment-mismatch",
+        "version-unsupported",
+        "rate-limited",
+        "backend-unreachable"
+      ],
+      "next_operation_ids": [
+        "contracts_list"
+      ]
+    },
+    {
+      "operation_id": "intent_create",
+      "method": "POST",
+      "path": "/api/2.0/intents",
+      "description": "Record a connectivity intent (the contract creation core; the principal is derived from the authenticated application).",
+      "purpose": "Record a connectivity intent — the contract creation core. The principal is derived from the authenticated application.",
+      "prerequisites": "The intents:write capability, plus the canonical material: requirements, validity and termination are required; hard constraints and the referenced terms are optional.",
+      "lifecycle_position": "Build: the first mutation of every contract — describe the requirement, reach INTENT.",
+      "mutation": true,
+      "required_capability": "intents:write",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": {
+        "recorded_at": "2026-09-13T00:00:00Z",
+        "requirements": [
+          {
+            "ref_kind": "intent-requirements",
+            "value": "demo:intent-requirements:v1",
+            "provenance": {
+              "issuer": "intent-authority",
+              "decision_refs": [
+                "demo:intent:v1"
+              ]
+            }
+          }
+        ],
+        "hard_constraints": [
+          {
+            "kind": "latency-bound",
+            "params": {
+              "ms": 100
+            }
+          },
+          {
+            "kind": "throughput-floor",
+            "params": {
+              "bps": 1000
+            }
+          }
+        ],
+        "validity": {
+          "not_before": "2026-09-13T00:00:00Z",
+          "not_after": "2026-10-13T00:00:00Z"
+        },
+        "termination": {
+          "conditions": [
+            "principal-requested",
+            "validity-expired"
+          ],
+          "compensation": {
+            "ref_kind": "compensation",
+            "value": "demo:compensation:v1"
+          }
+        },
+        "beneficiaries": [
+          {
+            "beneficiary_kind": "DEVICE",
+            "beneficiary_ref": "demo:device:v1"
+          }
+        ],
+        "service_properties": [
+          {
+            "ref_kind": "service-property",
+            "value": "demo:service-property:v1"
+          }
+        ],
+        "usage_pricing_terms": {
+          "ref_kind": "usage-pricing-terms",
+          "value": "demo:usage-pricing:v1"
+        },
+        "assurance_obligations": [
+          {
+            "ref_kind": "assurance-obligation",
+            "value": "demo:assurance-obligation:v1",
+            "provenance": {
+              "issuer": "assurance-authority",
+              "decision_refs": [
+                "demo:assurance:v1"
+              ]
+            }
+          }
+        ],
+        "execution_scope": [
+          {
+            "ref_kind": "execution-scope",
+            "value": "demo:execution-scope:v1"
+          }
+        ]
+      },
+      "example_response": "See /docs/api/intent_create for the canonical response anatomy.",
+      "error_reason_codes": [
+        "capability-denied",
+        "invalid-input",
+        "temporal-invalid",
+        "secret-rejected",
+        "vocabulary",
+        "idempotency-key-required",
+        "sequence-conflict",
+        "malformed-json",
+        "invalid-request-body",
+        "payload-too-large"
+      ],
+      "next_operation_ids": [
+        "offers_accept"
+      ]
+    },
+    {
+      "operation_id": "intents_list",
+      "method": "GET",
+      "path": "/api/2.0/intents",
+      "description": "Contracts still in the INTENT state. Pagination rides the GET request's JSON body: {limit (1..100, default 20), cursor, filters}.",
+      "purpose": "Contracts still in the INTENT state — the queue of recorded-but-not-yet-selected requirements.",
+      "prerequisites": "The intents:read capability.",
+      "lifecycle_position": "Build: survey what is awaiting offer selection.",
+      "mutation": false,
+      "required_capability": "intents:read",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": "Pagination rides the GET request's JSON body — {limit (1..100, default 20), cursor, filters}. No other body members are sent.",
+      "example_response": "See /docs/api/intents_list for the canonical response anatomy.",
+      "error_reason_codes": [
+        "pagination-invalid",
+        "filter-invalid",
+        "capability-denied",
+        "authentication-expired",
+        "rate-limited"
+      ],
+      "next_operation_ids": [
+        "intent_get"
+      ]
+    },
+    {
+      "operation_id": "intent_get",
+      "method": "GET",
+      "path": "/api/2.0/intents/{intent_id}",
+      "description": "One intent's canonical contract resource (full canonical material).",
+      "purpose": "One intent's canonical contract resource — the full canonical material, verbatim.",
+      "prerequisites": "The intents:read capability and an intent id.",
+      "lifecycle_position": "Build: review what was recorded before accepting offers.",
+      "mutation": false,
+      "required_capability": "intents:read",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": "None — a bodyless GET. intent_id rides the path.",
+      "example_response": "See /docs/api/intent_get for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "unknown-contract",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "intent_lifecycle"
+      ]
+    },
+    {
+      "operation_id": "intent_lifecycle",
+      "method": "GET",
+      "path": "/api/2.0/intents/{intent_id}/lifecycle",
+      "description": "The honest lifecycle observation: contract state machine, statements, execution status — physical connectivity is never claimed by API success.",
+      "purpose": "The honest lifecycle observation for one contract: state machine position, statements and execution status — physical connectivity is never claimed by API success.",
+      "prerequisites": "The intents:read capability and an intent id.",
+      "lifecycle_position": "Build / Operate / Diagnose: the canonical what-is-ADCOS-doing read, rendered by the contract detail page's Eligibility section.",
+      "mutation": false,
+      "required_capability": "intents:read",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "eligibility",
+        "fulfillment",
+        "connectivity-contract"
+      ],
+      "example_request": "None — a bodyless GET. intent_id rides the path.",
+      "example_response": "See /docs/api/intent_lifecycle for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "unknown-contract",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "contract_get"
+      ]
+    },
+    {
+      "operation_id": "offers_accept",
+      "method": "POST",
+      "path": "/api/2.0/intents/{intent_id}/offers",
+      "description": "Accept opaque typed offer references onto the intent (OFFER_SELECTED).",
+      "purpose": "Accept opaque typed offer references onto the intent — the contract moves to OFFER_SELECTED.",
+      "prerequisites": "The intents:write capability, an intent in the INTENT state, and the offer references to accept.",
+      "lifecycle_position": "Build: eligibility → offer selection — the bridge from requirement to plan.",
+      "mutation": true,
+      "required_capability": "intents:write",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "offer",
+        "connectivity-contract"
+      ],
+      "example_request": {
+        "recorded_at": "2026-09-13T00:10:00Z",
+        "offers": [
+          {
+            "ref_kind": "offer",
+            "value": "demo:offer:ran-reference:v1",
+            "provenance": {
+              "issuer": "provider:ran-reference",
+              "decision_refs": [
+                "demo:offer:v1"
+              ]
+            }
+          }
+        ]
+      },
+      "example_response": "See /docs/api/offers_accept for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "unknown-contract",
+        "invalid-transition",
+        "capability-denied",
+        "invalid-input",
+        "vocabulary",
+        "idempotency-key-required"
+      ],
+      "next_operation_ids": [
+        "contract_activate"
+      ]
+    },
+    {
+      "operation_id": "contract_activate",
+      "method": "POST",
+      "path": "/api/2.0/intents/{intent_id}/activation",
+      "description": "Activate the contract (CONTRACT_ACTIVE) with the activation instant and signature references.",
+      "purpose": "Activate the contract — the move to CONTRACT_ACTIVE, recording the activation instant and signature references.",
+      "prerequisites": "The intents:write capability and a contract in OFFER_SELECTED — offers must be accepted first.",
+      "lifecycle_position": "Build → Operate: the contract becomes active and fulfillment work begins.",
+      "mutation": true,
+      "required_capability": "intents:write",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract",
+        "fulfillment"
+      ],
+      "example_request": {
+        "activated_at": "2026-09-13T00:20:00Z",
+        "signature_refs": [
+          {
+            "ref_kind": "signature",
+            "value": "demo:signature:v1"
+          }
+        ]
+      },
+      "example_response": "See /docs/api/contract_activate for the canonical response anatomy.",
+      "error_reason_codes": [
+        "invalid-transition",
+        "not-yet-valid",
+        "temporal-invalid",
+        "capability-denied",
+        "resource-unknown",
+        "idempotency-key-required"
+      ],
+      "next_operation_ids": [
+        "intent_lifecycle"
+      ]
+    },
+    {
+      "operation_id": "contracts_list",
+      "method": "GET",
+      "path": "/api/2.0/contracts",
+      "description": "All the application's contracts. Pagination rides the GET request's JSON body: {limit (1..100, default 20), cursor, filters}. Filters: {state: <lifecycle state>}.",
+      "purpose": "All the application's contracts — the portfolio view, filterable by lifecycle state.",
+      "prerequisites": "The intents:read capability.",
+      "lifecycle_position": "Operate: the contracts workspace's backing read.",
+      "mutation": false,
+      "required_capability": "intents:read",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": "Pagination rides the GET request's JSON body — {limit (1..100, default 20), cursor, filters}. No other body members are sent.",
+      "example_response": "See /docs/api/contracts_list for the canonical response anatomy.",
+      "error_reason_codes": [
+        "pagination-invalid",
+        "filter-invalid",
+        "capability-denied",
+        "rate-limited"
+      ],
+      "next_operation_ids": [
+        "contract_get"
+      ]
+    },
+    {
+      "operation_id": "contract_get",
+      "method": "GET",
+      "path": "/api/2.0/contracts/{contract_id}",
+      "description": "One canonical contract resource with the complete lifecycle material.",
+      "purpose": "One canonical contract resource with the complete lifecycle material — requirements, constraints, accepted offers, the plan binding and referenced terms.",
+      "prerequisites": "The intents:read capability and a contract id.",
+      "lifecycle_position": "Operate: the contract detail page's core read.",
+      "mutation": false,
+      "required_capability": "intents:read",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract",
+        "execution-plan"
+      ],
+      "example_request": "None — a bodyless GET. contract_id rides the path.",
+      "example_response": "See /docs/api/contract_get for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "unknown-contract",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "contract_usage"
+      ]
+    },
+    {
+      "operation_id": "contract_usage",
+      "method": "GET",
+      "path": "/api/2.0/contracts/{contract_id}/usage",
+      "description": "The contract's referenced usage/pricing semantics (referenced, never interpreted).",
+      "purpose": "The contract's referenced usage/pricing semantics — referenced, never interpreted.",
+      "prerequisites": "The usage:read capability and a contract id.",
+      "lifecycle_position": "Operate: the usage half of the contract's referenced terms.",
+      "mutation": false,
+      "required_capability": "usage:read",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": "None — a bodyless GET. contract_id rides the path.",
+      "example_response": "See /docs/api/contract_usage for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "unknown-contract",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "contract_assurance"
+      ]
+    },
+    {
+      "operation_id": "contract_assurance",
+      "method": "GET",
+      "path": "/api/2.0/contracts/{contract_id}/assurance",
+      "description": "The contract's referenced assurance obligations (referenced, never evaluated here).",
+      "purpose": "The contract's referenced assurance obligations — referenced, never evaluated here.",
+      "prerequisites": "The assurance:read capability and a contract id.",
+      "lifecycle_position": "Operate: the assurance read behind the Assurance workspace.",
+      "mutation": false,
+      "required_capability": "assurance:read",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "assurance",
+        "connectivity-contract"
+      ],
+      "example_request": "None — a bodyless GET. contract_id rides the path.",
+      "example_response": "See /docs/api/contract_assurance for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "unknown-contract",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "lease_grant"
+      ]
+    },
+    {
+      "operation_id": "contract_terminate",
+      "method": "POST",
+      "path": "/api/2.0/contracts/{contract_id}/termination",
+      "description": "Terminate the contract (terminal state) with a condition and reason.",
+      "purpose": "Terminate the contract — a terminal state, recorded with a condition and a reason.",
+      "prerequisites": "The intents:write capability, a non-terminal contract, and the termination condition and reason to record.",
+      "lifecycle_position": "Operate: the end of the lifecycle — nothing follows a terminal contract.",
+      "mutation": true,
+      "required_capability": "intents:write",
+      "platform": false,
+      "capability_ids": [
+        "application-connectivity"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": {
+        "recorded_at": "2026-09-13T03:00:00Z",
+        "condition": "principal-requested",
+        "reason": "operator-requested-termination"
+      },
+      "example_response": "See /docs/api/contract_terminate for the canonical response anatomy.",
+      "error_reason_codes": [
+        "contract-terminal",
+        "invalid-transition",
+        "capability-denied",
+        "resource-unknown",
+        "unknown-contract",
+        "idempotency-key-required"
+      ],
+      "next_operation_ids": [
+        "contracts_list"
+      ]
+    },
+    {
+      "operation_id": "lease_grant",
+      "method": "POST",
+      "path": "/api/2.0/contracts/{contract_id}/leases",
+      "description": "Grant a lease on the contract for a validity window.",
+      "purpose": "Grant a lease on the contract — a bounded access window over the fulfilled connectivity.",
+      "prerequisites": "The leases:write capability, an active contract, and the window instants.",
+      "lifecycle_position": "Operate: consuming the contract — access is granted in windows, not forever.",
+      "mutation": true,
+      "required_capability": "leases:write",
+      "platform": false,
+      "capability_ids": [
+        "leases"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": {
+        "granted_at": "2026-09-13T01:00:00Z",
+        "not_before": "2026-09-13T01:00:00Z",
+        "not_after": "2026-09-13T02:00:00Z"
+      },
+      "example_response": "See /docs/api/lease_grant for the canonical response anatomy.",
+      "error_reason_codes": [
+        "not-yet-valid",
+        "expired",
+        "temporal-invalid",
+        "invalid-transition",
+        "capability-denied",
+        "resource-unknown"
+      ],
+      "next_operation_ids": [
+        "lease_get"
+      ]
+    },
+    {
+      "operation_id": "leases_list",
+      "method": "GET",
+      "path": "/api/2.0/leases",
+      "description": "The application's leases. Pagination rides the GET request's JSON body: {limit (1..100, default 20), cursor, filters}. Filters: {state: <lease state>}.",
+      "purpose": "The application's leases, filterable by lease state.",
+      "prerequisites": "The leases:read capability.",
+      "lifecycle_position": "Operate: surveying the granted access windows.",
+      "mutation": false,
+      "required_capability": "leases:read",
+      "platform": false,
+      "capability_ids": [
+        "leases"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": "Pagination rides the GET request's JSON body — {limit (1..100, default 20), cursor, filters}. No other body members are sent.",
+      "example_response": "See /docs/api/leases_list for the canonical response anatomy.",
+      "error_reason_codes": [
+        "pagination-invalid",
+        "filter-invalid",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "lease_get"
+      ]
+    },
+    {
+      "operation_id": "lease_get",
+      "method": "GET",
+      "path": "/api/2.0/leases/{lease_id}",
+      "description": "One lease resource: contract, window and state.",
+      "purpose": "One lease resource: its contract, window and state.",
+      "prerequisites": "The leases:read capability and a lease id.",
+      "lifecycle_position": "Operate: inspecting one access window.",
+      "mutation": false,
+      "required_capability": "leases:read",
+      "platform": false,
+      "capability_ids": [
+        "leases"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": "None — a bodyless GET. lease_id rides the path.",
+      "example_response": "See /docs/api/lease_get for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "lease_renew"
+      ]
+    },
+    {
+      "operation_id": "lease_renew",
+      "method": "POST",
+      "path": "/api/2.0/leases/{lease_id}/renewal",
+      "description": "Renew a lease for a new validity window (the prior lease enters `renewed`).",
+      "purpose": "Renew a lease for a new validity window — the prior lease enters renewed.",
+      "prerequisites": "The leases:write capability, a renewable lease, and the new window instants.",
+      "lifecycle_position": "Operate: keeping access continuous as windows close.",
+      "mutation": true,
+      "required_capability": "leases:write",
+      "platform": false,
+      "capability_ids": [
+        "leases"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": {
+        "granted_at": "2026-09-13T01:00:00Z",
+        "not_before": "2026-09-13T01:00:00Z",
+        "not_after": "2026-09-13T02:00:00Z"
+      },
+      "example_response": "See /docs/api/lease_renew for the canonical response anatomy.",
+      "error_reason_codes": [
+        "expired",
+        "temporal-invalid",
+        "invalid-transition",
+        "capability-denied",
+        "resource-unknown"
+      ],
+      "next_operation_ids": [
+        "leases_list"
+      ]
+    },
+    {
+      "operation_id": "lease_revoke",
+      "method": "POST",
+      "path": "/api/2.0/leases/{lease_id}/revocation",
+      "description": "Revoke a lease (terminal) with a recorded reason.",
+      "purpose": "Revoke a lease — terminal, with a recorded reason.",
+      "prerequisites": "The leases:write capability and a lease to revoke.",
+      "lifecycle_position": "Operate: deliberately ending one access window.",
+      "mutation": true,
+      "required_capability": "leases:write",
+      "platform": false,
+      "capability_ids": [
+        "leases"
+      ],
+      "concept_ids": [
+        "connectivity-contract"
+      ],
+      "example_request": {
+        "recorded_at": "2026-09-13T02:10:00Z",
+        "reason": "operator-requested-revocation"
+      },
+      "example_response": "See /docs/api/lease_revoke for the canonical response anatomy.",
+      "error_reason_codes": [
+        "invalid-transition",
+        "capability-denied",
+        "resource-unknown"
+      ],
+      "next_operation_ids": [
+        "leases_list"
+      ]
+    },
+    {
+      "operation_id": "endpoints_list",
+      "method": "GET",
+      "path": "/api/2.0/webhook-endpoints",
+      "description": "The application's webhook endpoints. Pagination rides the GET request's JSON body: {limit (1..100, default 20), cursor, filters}.",
+      "purpose": "The application's registered webhook endpoints.",
+      "prerequisites": "The webhooks:read capability.",
+      "lifecycle_position": "Integrate: surveying where events are delivered.",
+      "mutation": false,
+      "required_capability": "webhooks:read",
+      "platform": false,
+      "capability_ids": [
+        "webhook-observations"
+      ],
+      "concept_ids": [
+        "webhook"
+      ],
+      "example_request": "Pagination rides the GET request's JSON body — {limit (1..100, default 20), cursor, filters}. No other body members are sent.",
+      "example_response": "See /docs/api/endpoints_list for the canonical response anatomy.",
+      "error_reason_codes": [
+        "pagination-invalid",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "endpoint_get"
+      ]
+    },
+    {
+      "operation_id": "endpoint_register",
+      "method": "POST",
+      "path": "/api/2.0/webhook-endpoints",
+      "description": "Register a webhook endpoint for observation event types.",
+      "purpose": "Register a webhook endpoint for observation event types.",
+      "prerequisites": "The webhooks:write capability, an HTTPS URL, and the event types to observe — from the backend's frozen vocabulary.",
+      "lifecycle_position": "Integrate: wiring your backend into ADCOS events.",
+      "mutation": true,
+      "required_capability": "webhooks:write",
+      "platform": false,
+      "capability_ids": [
+        "webhook-observations"
+      ],
+      "concept_ids": [
+        "webhook",
+        "application-capability"
+      ],
+      "example_request": {
+        "url": "https://example.com/hooks/adcos",
+        "event_types": [
+          "connectivity_intent.created",
+          "webhook_endpoint.registered"
+        ]
+      },
+      "example_response": "See /docs/api/endpoint_register for the canonical response anatomy.",
+      "error_reason_codes": [
+        "invalid-input",
+        "secret-rejected",
+        "vocabulary",
+        "capability-denied",
+        "idempotency-key-required",
+        "malformed-json"
+      ],
+      "next_operation_ids": [
+        "endpoints_list"
+      ]
+    },
+    {
+      "operation_id": "endpoint_get",
+      "method": "GET",
+      "path": "/api/2.0/webhook-endpoints/{endpoint_id}",
+      "description": "One webhook endpoint resource (url, event types, key id).",
+      "purpose": "One webhook endpoint resource: url, event types and key id.",
+      "prerequisites": "The webhooks:read capability and an endpoint id.",
+      "lifecycle_position": "Integrate: verifying one delivery target.",
+      "mutation": false,
+      "required_capability": "webhooks:read",
+      "platform": false,
+      "capability_ids": [
+        "webhook-observations"
+      ],
+      "concept_ids": [
+        "webhook"
+      ],
+      "example_request": "None — a bodyless GET. endpoint_id rides the path.",
+      "example_response": "See /docs/api/endpoint_get for the canonical response anatomy.",
+      "error_reason_codes": [
+        "resource-unknown",
+        "capability-denied"
+      ],
+      "next_operation_ids": [
+        "deliveries_list"
+      ]
+    },
+    {
+      "operation_id": "deliveries_list",
+      "method": "GET",
+      "path": "/api/2.0/webhook-endpoints/{endpoint_id}/deliveries",
+      "description": "The endpoint's delivery attempts (event, status, retries). Pagination rides the GET request's JSON body: {limit (1..100, default 20), cursor, filters}.",
+      "purpose": "The endpoint's delivery attempts — event, status, retries and next-attempt instants.",
+      "prerequisites": "The webhooks:read capability and an endpoint id.",
+      "lifecycle_position": "Integrate / Operate: confirming events actually arrive.",
+      "mutation": false,
+      "required_capability": "webhooks:read",
+      "platform": false,
+      "capability_ids": [
+        "webhook-observations"
+      ],
+      "concept_ids": [
+        "webhook"
+      ],
+      "example_request": "Pagination rides the GET request's JSON body — {limit (1..100, default 20), cursor, filters}. No other body members are sent.",
+      "example_response": "See /docs/api/deliveries_list for the canonical response anatomy.",
+      "error_reason_codes": [
+        "pagination-invalid",
+        "resource-unknown",
+        "capability-denied"
+      ],
+      "next_operation_ids": []
+    }
   ],
   "rule": "This is a documentation projection of the canonical console coverage registry. It must not become a second executable endpoint catalog."
 }
