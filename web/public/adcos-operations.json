@@ -1,0 +1,27 @@
+{
+  "api_version": "2.0",
+  "operations": [
+    {"id":"application_self","method":"GET","path":"/api/2.0/application","purpose":"Read authenticated application identity, environment and capabilities"},
+    {"id":"intent_create","method":"POST","path":"/api/2.0/intents","purpose":"Create a technology-neutral connectivity intent"},
+    {"id":"intents_list","method":"GET","path":"/api/2.0/intents","purpose":"List intents still in INTENT state"},
+    {"id":"intent_get","method":"GET","path":"/api/2.0/intents/{intent_id}","purpose":"Read one canonical intent resource"},
+    {"id":"intent_lifecycle","method":"GET","path":"/api/2.0/intents/{intent_id}/lifecycle","purpose":"Read lifecycle and honest execution observations"},
+    {"id":"offers_accept","method":"POST","path":"/api/2.0/intents/{intent_id}/offers","purpose":"Accept opaque typed provider offer references"},
+    {"id":"contract_activate","method":"POST","path":"/api/2.0/intents/{intent_id}/activation","purpose":"Activate the canonical connectivity contract"},
+    {"id":"contracts_list","method":"GET","path":"/api/2.0/contracts","purpose":"List application contracts"},
+    {"id":"contract_get","method":"GET","path":"/api/2.0/contracts/{contract_id}","purpose":"Read canonical contract state and referenced execution material"},
+    {"id":"contract_usage","method":"GET","path":"/api/2.0/contracts/{contract_id}/usage","purpose":"Read referenced usage/pricing semantics"},
+    {"id":"contract_assurance","method":"GET","path":"/api/2.0/contracts/{contract_id}/assurance","purpose":"Read referenced assurance obligations"},
+    {"id":"contract_terminate","method":"POST","path":"/api/2.0/contracts/{contract_id}/termination","purpose":"Terminate a contract"},
+    {"id":"lease_grant","method":"POST","path":"/api/2.0/contracts/{contract_id}/leases","purpose":"Grant a bounded contract lease"},
+    {"id":"leases_list","method":"GET","path":"/api/2.0/leases","purpose":"List application leases"},
+    {"id":"lease_get","method":"GET","path":"/api/2.0/leases/{lease_id}","purpose":"Read a lease"},
+    {"id":"lease_renew","method":"POST","path":"/api/2.0/leases/{lease_id}/renewal","purpose":"Renew a lease"},
+    {"id":"lease_revoke","method":"POST","path":"/api/2.0/leases/{lease_id}/revocation","purpose":"Revoke a lease"},
+    {"id":"endpoints_list","method":"GET","path":"/api/2.0/webhook-endpoints","purpose":"List registered webhook endpoints"},
+    {"id":"endpoint_register","method":"POST","path":"/api/2.0/webhook-endpoints","purpose":"Register a signed-observation webhook endpoint"},
+    {"id":"endpoint_get","method":"GET","path":"/api/2.0/webhook-endpoints/{endpoint_id}","purpose":"Read a webhook endpoint"},
+    {"id":"deliveries_list","method":"GET","path":"/api/2.0/webhook-endpoints/{endpoint_id}/deliveries","purpose":"Read webhook delivery observations"}
+  ],
+  "rule": "This is a documentation projection of the canonical console coverage registry. It must not become a second executable endpoint catalog."
+}
